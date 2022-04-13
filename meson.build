@@ -226,7 +226,7 @@ if get_option('default_library') == 'shared'
   plugins_pkgconfig_install_dir = disabler()
 endif
 
-#subdir('ext')
+subdir('ext')
 #subdir('tests')
 #subdir('docs')
 
