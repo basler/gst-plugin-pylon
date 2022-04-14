@@ -227,7 +227,7 @@ if get_option('default_library') == 'shared'
 endif
 
 subdir('ext')
-#subdir('tests')
+subdir('tests')
 subdir('docs')
 
 configure_file(output : 'config.h', configuration : cdata)
