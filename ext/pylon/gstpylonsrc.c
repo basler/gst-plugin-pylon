@@ -105,8 +105,9 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
       &gst_pylon_src_src_template);
 
   gst_element_class_set_static_metadata (GST_ELEMENT_CLASS (klass),
-      "FIXME Long name", "Generic", "FIXME Description",
-      "FIXME <fixme@example.com>");
+      "Basler/Pylon source element", "Source/Video/Hardware",
+      "Source element for Basler cameras",
+      "Michael Gruner <michael.gruner@ridgerun.com>");
 
   gobject_class->set_property = gst_pylon_src_set_property;
   gobject_class->get_property = gst_pylon_src_get_property;
@@ -432,15 +433,15 @@ plugin_init (GstPlugin * plugin)
 #ifndef PACKAGE
 #define PACKAGE "FIXME_package"
 #endif
-#ifndef PACKAGE_NAME
-#define PACKAGE_NAME "FIXME_package_name"
+#ifndef GST_PACKAGE_NAME
+#define GST_PACKAGE_NAME "FIXME_package_name"
 #endif
 #ifndef GST_PACKAGE_ORIGIN
-#define GST_PACKAGE_ORIGIN "http://FIXME.org/"
+#define GST_PACKAGE_ORIGIN "https://www.ridgerun.com"
 #endif
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    pylonsrc,
+    pylon,
     "FIXME plugin description",
-    plugin_init, VERSION, "LGPL", PACKAGE_NAME, GST_PACKAGE_ORIGIN)
+    plugin_init, VERSION, "Proprietary", GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

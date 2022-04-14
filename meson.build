@@ -228,7 +228,7 @@ endif
 
 subdir('ext')
 #subdir('tests')
-#subdir('docs')
+subdir('docs')
 
 configure_file(output : 'config.h', configuration : cdata)
 
