@@ -8,14 +8,14 @@
 /**
  * SECTION:element-gstpylonsrc
  *
- * The pylonsrc element does FIXME stuff.
+ * The pylonsrc element captures images from Basler cameras.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v fakesrc ! pylonsrc ! FIXME ! fakesink
+ * gst-launch-1.0 -v pylonsrc ! videoconvert ! autovideosink
  * ]|
- * FIXME Describe what the pipeline does.
+ * Capture images from a Basler camera and display them.
  * </refsect2>
  */
 
@@ -33,7 +33,6 @@ GST_DEBUG_CATEGORY_STATIC (gst_pylon_src_debug_category);
 struct _GstPylonSrc
 {
   GstBaseSrc base_pylonsrc;
-
 };
 
 /* prototypes */
@@ -412,36 +411,3 @@ gst_pylon_src_fill (GstBaseSrc * src, guint64 offset, guint size,
 
   return GST_FLOW_OK;
 }
-
-static gboolean
-plugin_init (GstPlugin * plugin)
-{
-
-  /* FIXME Remember to set the rank if it's an element that is meant
-     to be autoplugged by decodebin. */
-  return gst_element_register (plugin, "pylonsrc", GST_RANK_NONE,
-      GST_TYPE_PYLON_SRC);
-}
-
-/* FIXME: these are normally defined by the GStreamer build system.
-   If you are creating an element to be included in gst-plugins-*,
-   remove these, as they're always defined.  Otherwise, edit as
-   appropriate for your external plugin package. */
-#ifndef VERSION
-#define VERSION "0.0.FIXME"
-#endif
-#ifndef PACKAGE
-#define PACKAGE "FIXME_package"
-#endif
-#ifndef GST_PACKAGE_NAME
-#define GST_PACKAGE_NAME "FIXME_package_name"
-#endif
-#ifndef GST_PACKAGE_ORIGIN
-#define GST_PACKAGE_ORIGIN "https://www.ridgerun.com"
-#endif
-
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
-    GST_VERSION_MINOR,
-    pylon,
-    "FIXME plugin description",
-    plugin_init, VERSION, "Proprietary", GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)
