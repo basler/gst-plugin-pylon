@@ -23,8 +23,6 @@
 #include "config.h"
 #endif
 
-#include <gst/gst.h>
-#include <gst/base/gstbasesrc.h>
 #include "gstpylonsrc.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_pylon_src_debug_category);
@@ -32,7 +30,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_pylon_src_debug_category);
 
 struct _GstPylonSrc
 {
-  GstBaseSrc base_pylonsrc;
+  GstPushSrc base_pylonsrc;
 };
 
 /* prototypes */
@@ -42,34 +40,19 @@ static void gst_pylon_src_set_property (GObject * object,
     guint property_id, const GValue * value, GParamSpec * pspec);
 static void gst_pylon_src_get_property (GObject * object,
     guint property_id, GValue * value, GParamSpec * pspec);
-static void gst_pylon_src_dispose (GObject * object);
 static void gst_pylon_src_finalize (GObject * object);
 
 static GstCaps *gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter);
-static gboolean gst_pylon_src_negotiate (GstBaseSrc * src);
 static GstCaps *gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps);
 static gboolean gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps);
 static gboolean gst_pylon_src_decide_allocation (GstBaseSrc * src,
     GstQuery * query);
 static gboolean gst_pylon_src_start (GstBaseSrc * src);
 static gboolean gst_pylon_src_stop (GstBaseSrc * src);
-static void gst_pylon_src_get_times (GstBaseSrc * src, GstBuffer * buffer,
-    GstClockTime * start, GstClockTime * end);
-static gboolean gst_pylon_src_get_size (GstBaseSrc * src, guint64 * size);
-static gboolean gst_pylon_src_is_seekable (GstBaseSrc * src);
-static gboolean gst_pylon_src_prepare_seek_segment (GstBaseSrc * src,
-    GstEvent * seek, GstSegment * segment);
-static gboolean gst_pylon_src_do_seek (GstBaseSrc * src, GstSegment * segment);
 static gboolean gst_pylon_src_unlock (GstBaseSrc * src);
 static gboolean gst_pylon_src_unlock_stop (GstBaseSrc * src);
 static gboolean gst_pylon_src_query (GstBaseSrc * src, GstQuery * query);
-static gboolean gst_pylon_src_event (GstBaseSrc * src, GstEvent * event);
-static GstFlowReturn gst_pylon_src_create (GstBaseSrc * src, guint64 offset,
-    guint size, GstBuffer ** buf);
-static GstFlowReturn gst_pylon_src_alloc (GstBaseSrc * src, guint64 offset,
-    guint size, GstBuffer ** buf);
-static GstFlowReturn gst_pylon_src_fill (GstBaseSrc * src, guint64 offset,
-    guint size, GstBuffer * buf);
+static GstFlowReturn gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf);
 
 enum
 {
@@ -82,13 +65,13 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("application/unknown")
+    GST_STATIC_CAPS ("ANY")
     );
 
 
 /* class initialization */
 
-G_DEFINE_TYPE_WITH_CODE (GstPylonSrc, gst_pylon_src, GST_TYPE_BASE_SRC,
+G_DEFINE_TYPE_WITH_CODE (GstPylonSrc, gst_pylon_src, GST_TYPE_PUSH_SRC,
     GST_DEBUG_CATEGORY_INIT (gst_pylon_src_debug_category, "pylonsrc", 0,
         "debug category for pylonsrc element"));
 
@@ -97,6 +80,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
+  GstPushSrcClass *push_src_class = GST_PUSH_SRC_CLASS (klass);
 
   /* Setting up pads and setting metadata should be moved to
      base_class_init if you intend to subclass this class. */
@@ -110,30 +94,20 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 
   gobject_class->set_property = gst_pylon_src_set_property;
   gobject_class->get_property = gst_pylon_src_get_property;
-  gobject_class->dispose = gst_pylon_src_dispose;
   gobject_class->finalize = gst_pylon_src_finalize;
+
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_pylon_src_get_caps);
-  base_src_class->negotiate = GST_DEBUG_FUNCPTR (gst_pylon_src_negotiate);
   base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_pylon_src_fixate);
   base_src_class->set_caps = GST_DEBUG_FUNCPTR (gst_pylon_src_set_caps);
   base_src_class->decide_allocation =
       GST_DEBUG_FUNCPTR (gst_pylon_src_decide_allocation);
   base_src_class->start = GST_DEBUG_FUNCPTR (gst_pylon_src_start);
   base_src_class->stop = GST_DEBUG_FUNCPTR (gst_pylon_src_stop);
-  base_src_class->get_times = GST_DEBUG_FUNCPTR (gst_pylon_src_get_times);
-  base_src_class->get_size = GST_DEBUG_FUNCPTR (gst_pylon_src_get_size);
-  base_src_class->is_seekable = GST_DEBUG_FUNCPTR (gst_pylon_src_is_seekable);
-  base_src_class->prepare_seek_segment =
-      GST_DEBUG_FUNCPTR (gst_pylon_src_prepare_seek_segment);
-  base_src_class->do_seek = GST_DEBUG_FUNCPTR (gst_pylon_src_do_seek);
   base_src_class->unlock = GST_DEBUG_FUNCPTR (gst_pylon_src_unlock);
   base_src_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_pylon_src_unlock_stop);
   base_src_class->query = GST_DEBUG_FUNCPTR (gst_pylon_src_query);
-  base_src_class->event = GST_DEBUG_FUNCPTR (gst_pylon_src_event);
-  base_src_class->create = GST_DEBUG_FUNCPTR (gst_pylon_src_create);
-  base_src_class->alloc = GST_DEBUG_FUNCPTR (gst_pylon_src_alloc);
-  base_src_class->fill = GST_DEBUG_FUNCPTR (gst_pylon_src_fill);
 
+  push_src_class->create = GST_DEBUG_FUNCPTR (gst_pylon_src_create);
 }
 
 static void
@@ -141,13 +115,13 @@ gst_pylon_src_init (GstPylonSrc * pylonsrc)
 {
 }
 
-void
+static void
 gst_pylon_src_set_property (GObject * object, guint property_id,
     const GValue * value, GParamSpec * pspec)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (object);
 
-  GST_DEBUG_OBJECT (pylonsrc, "set_property");
+  GST_LOG_OBJECT (pylonsrc, "set_property");
 
   switch (property_id) {
     default:
@@ -156,13 +130,13 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
   }
 }
 
-void
+static void
 gst_pylon_src_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (object);
 
-  GST_DEBUG_OBJECT (pylonsrc, "get_property");
+  GST_LOG_OBJECT (pylonsrc, "get_property");
 
   switch (property_id) {
     default:
@@ -171,24 +145,12 @@ gst_pylon_src_get_property (GObject * object, guint property_id,
   }
 }
 
-void
-gst_pylon_src_dispose (GObject * object)
-{
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (object);
-
-  GST_DEBUG_OBJECT (pylonsrc, "dispose");
-
-  /* clean up as possible.  may be called multiple times */
-
-  G_OBJECT_CLASS (gst_pylon_src_parent_class)->dispose (object);
-}
-
-void
+static void
 gst_pylon_src_finalize (GObject * object)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (object);
 
-  GST_DEBUG_OBJECT (pylonsrc, "finalize");
+  GST_LOG_OBJECT (pylonsrc, "finalize");
 
   /* clean up object here */
 
@@ -201,20 +163,10 @@ gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
 
-  GST_DEBUG_OBJECT (pylonsrc, "get_caps");
+  GST_LOG_OBJECT (pylonsrc, "get_caps");
 
-  return NULL;
-}
-
-/* decide on caps */
-static gboolean
-gst_pylon_src_negotiate (GstBaseSrc * src)
-{
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
-
-  GST_DEBUG_OBJECT (pylonsrc, "negotiate");
-
-  return TRUE;
+  /* TODO: fixme */
+  return gst_caps_new_any ();
 }
 
 /* called if, in negotiation, caps need fixating */
@@ -223,9 +175,10 @@ gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
 
-  GST_DEBUG_OBJECT (pylonsrc, "fixate");
+  GST_LOG_OBJECT (pylonsrc, "fixate");
 
-  return NULL;
+  /* TODO: fixme */
+  return gst_caps_fixate (caps);
 }
 
 /* notify the subclass of new caps */
@@ -234,7 +187,7 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
 
-  GST_DEBUG_OBJECT (pylonsrc, "set_caps");
+  GST_LOG_OBJECT (pylonsrc, "set_caps");
 
   return TRUE;
 }
@@ -245,7 +198,7 @@ gst_pylon_src_decide_allocation (GstBaseSrc * src, GstQuery * query)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
 
-  GST_DEBUG_OBJECT (pylonsrc, "decide_allocation");
+  GST_LOG_OBJECT (pylonsrc, "decide_allocation");
 
   return TRUE;
 }
@@ -256,7 +209,7 @@ gst_pylon_src_start (GstBaseSrc * src)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
 
-  GST_DEBUG_OBJECT (pylonsrc, "start");
+  GST_LOG_OBJECT (pylonsrc, "start");
 
   return TRUE;
 }
@@ -266,65 +219,7 @@ gst_pylon_src_stop (GstBaseSrc * src)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
 
-  GST_DEBUG_OBJECT (pylonsrc, "stop");
-
-  return TRUE;
-}
-
-/* given a buffer, return start and stop time when it should be pushed
- * out. The base class will sync on the clock using these times. */
-static void
-gst_pylon_src_get_times (GstBaseSrc * src, GstBuffer * buffer,
-    GstClockTime * start, GstClockTime * end)
-{
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
-
-  GST_DEBUG_OBJECT (pylonsrc, "get_times");
-
-}
-
-/* get the total size of the resource in bytes */
-static gboolean
-gst_pylon_src_get_size (GstBaseSrc * src, guint64 * size)
-{
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
-
-  GST_DEBUG_OBJECT (pylonsrc, "get_size");
-
-  return TRUE;
-}
-
-/* check if the resource is seekable */
-static gboolean
-gst_pylon_src_is_seekable (GstBaseSrc * src)
-{
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
-
-  GST_DEBUG_OBJECT (pylonsrc, "is_seekable");
-
-  return TRUE;
-}
-
-/* Prepare the segment on which to perform do_seek(), converting to the
- * current basesrc format. */
-static gboolean
-gst_pylon_src_prepare_seek_segment (GstBaseSrc * src, GstEvent * seek,
-    GstSegment * segment)
-{
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
-
-  GST_DEBUG_OBJECT (pylonsrc, "prepare_seek_segment");
-
-  return TRUE;
-}
-
-/* notify subclasses of a seek */
-static gboolean
-gst_pylon_src_do_seek (GstBaseSrc * src, GstSegment * segment)
-{
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
-
-  GST_DEBUG_OBJECT (pylonsrc, "do_seek");
+  GST_LOG_OBJECT (pylonsrc, "stop");
 
   return TRUE;
 }
@@ -336,7 +231,7 @@ gst_pylon_src_unlock (GstBaseSrc * src)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
 
-  GST_DEBUG_OBJECT (pylonsrc, "unlock");
+  GST_LOG_OBJECT (pylonsrc, "unlock");
 
   return TRUE;
 }
@@ -347,7 +242,7 @@ gst_pylon_src_unlock_stop (GstBaseSrc * src)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
 
-  GST_DEBUG_OBJECT (pylonsrc, "unlock_stop");
+  GST_LOG_OBJECT (pylonsrc, "unlock_stop");
 
   return TRUE;
 }
@@ -358,56 +253,22 @@ gst_pylon_src_query (GstBaseSrc * src, GstQuery * query)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
 
-  GST_DEBUG_OBJECT (pylonsrc, "query");
+  GST_LOG_OBJECT (pylonsrc, "query");
 
-  return TRUE;
-}
-
-/* notify subclasses of an event */
-static gboolean
-gst_pylon_src_event (GstBaseSrc * src, GstEvent * event)
-{
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
-
-  GST_DEBUG_OBJECT (pylonsrc, "event");
-
-  return TRUE;
+  return GST_BASE_SRC_CLASS (gst_pylon_src_parent_class)->query (src, query);
 }
 
 /* ask the subclass to create a buffer with offset and size, the default
  * implementation will call alloc and fill. */
 static GstFlowReturn
-gst_pylon_src_create (GstBaseSrc * src, guint64 offset, guint size,
-    GstBuffer ** buf)
+gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
 
-  GST_DEBUG_OBJECT (pylonsrc, "create");
+  GST_LOG_OBJECT (pylonsrc, "create");
 
-  return GST_FLOW_OK;
-}
+  GST_FIXME_OBJECT (pylonsrc,
+      "plug-in under development! not able to produce buffers yet!");
 
-/* ask the subclass to allocate an output buffer. The default implementation
- * will use the negotiated allocator. */
-static GstFlowReturn
-gst_pylon_src_alloc (GstBaseSrc * src, guint64 offset, guint size,
-    GstBuffer ** buf)
-{
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
-
-  GST_DEBUG_OBJECT (pylonsrc, "alloc");
-
-  return GST_FLOW_OK;
-}
-
-/* ask the subclass to fill the buffer with data from offset and size */
-static GstFlowReturn
-gst_pylon_src_fill (GstBaseSrc * src, guint64 offset, guint size,
-    GstBuffer * buf)
-{
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
-
-  GST_DEBUG_OBJECT (pylonsrc, "fill");
-
-  return GST_FLOW_OK;
+  return GST_FLOW_ERROR;
 }

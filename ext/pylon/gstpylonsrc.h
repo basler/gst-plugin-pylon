@@ -8,13 +8,13 @@
 #ifndef _GST_PYLON_SRC_H_
 #define _GST_PYLON_SRC_H_
 
-#include <gst/base/gstbasesrc.h>
+#include <gst/base/gstpushsrc.h>
 
 G_BEGIN_DECLS
 
 #define GST_TYPE_PYLON_SRC gst_pylon_src_get_type ()
 G_DECLARE_FINAL_TYPE (GstPylonSrc, gst_pylon_src,
-    GST, PYLON_SRC, GstBaseSrc)
+    GST, PYLON_SRC, GstPushSrc)
 
 G_END_DECLS
 
