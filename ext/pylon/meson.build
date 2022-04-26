@@ -2,7 +2,7 @@
 
 pylon_sources = [
   'gstpylonsrc.c',
-  'gstpylon.c'
+  'gstpylonplugin.c'
 ]
 
 gstpylon = library('gstpylon',
