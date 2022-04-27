@@ -17,7 +17,14 @@ struct _GstPylon {
 
 GstPylon *gst_pylon_new () {
   GstPylon *self = (GstPylon*)g_malloc (sizeof (GstPylon));
-  *self = {.camera = new Pylon::CBaslerUniversalInstantCamera (Pylon::CTlFactory::GetInstance().CreateFirstDevice())}; 
+
+  try {
+    self->camera = new Pylon::CBaslerUniversalInstantCamera (Pylon::CTlFactory::GetInstance().CreateFirstDevice());
+  }
+  catch (const Pylon::GenericException& e) {
+    std::cerr << "The camera object could not be created" << std::endl << e.GetDescription() << std::endl;
+  }
+
   return self;
 }
 
