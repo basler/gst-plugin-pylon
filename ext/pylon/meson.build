@@ -13,7 +13,7 @@ pylon_link_args = run_command(pylon_config, '--libs', check : true).stdout().str
 
 pylon_dep = declare_dependency (
   compile_args : pylon_c_args,
-  link_args : pylon_link_args
+  link_args : pylon_link_args + ['-Wl,-rpath',  '-Wl,@0@/lib'.format(pylon_path)]
 )
 
 pylon_sources = [
