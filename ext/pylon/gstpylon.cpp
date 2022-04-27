@@ -15,8 +15,8 @@ struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera *camera;
 };
 
-void gst_pylon_initialize() {
-  Pylon::PylonInitialize();
+void gst_pylon_initialize () {
+  Pylon::PylonInitialize ();
 }
 
 GstPylon *gst_pylon_new () {
@@ -26,7 +26,7 @@ GstPylon *gst_pylon_new () {
     self->camera = new Pylon::CBaslerUniversalInstantCamera (Pylon::CTlFactory::GetInstance().CreateFirstDevice());
   }
   catch (const Pylon::GenericException& e) {
-    std::cerr << "The camera object could not be created" << std::endl << e.GetDescription() << std::endl;
+    std::cerr << "The camera object could not be created." << std::endl << e.GetDescription() << std::endl;
   }
 
   return self;
@@ -37,4 +37,22 @@ void gst_pylon_free (GstPylon *self) {
   self->camera = nullptr;
 
   g_free (self);
+}
+
+void gst_pylon_start (GstPylon *self) {
+  try {
+    self->camera->Open();
+  }
+  catch (const Pylon::GenericException& e) {
+    std::cerr << "The camera could not be opened." << std::endl << e.GetDescription() << std::endl;
+  }
+}
+
+void gst_pylon_stop (GstPylon *self) {
+  try {
+    self->camera->Close();
+  }
+  catch (const Pylon::GenericException& e) {
+    std::cerr << "The camera could not be closed." << std::endl << e.GetDescription() << std::endl;
+  }
 }

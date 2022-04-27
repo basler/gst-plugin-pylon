@@ -32,6 +32,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_pylon_src_debug_category);
 struct _GstPylonSrc
 {
   GstPushSrc base_pylonsrc;
+  GstPylon *pylon;
 };
 
 /* prototypes */
@@ -116,6 +117,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 static void
 gst_pylon_src_init (GstPylonSrc * pylonsrc)
 {
+  pylonsrc->pylon = gst_pylon_new ();
 }
 
 static void
@@ -156,6 +158,7 @@ gst_pylon_src_finalize (GObject * object)
   GST_LOG_OBJECT (pylonsrc, "finalize");
 
   /* clean up object here */
+  gst_pylon_free (pylonsrc->pylon);
 
   G_OBJECT_CLASS (gst_pylon_src_parent_class)->finalize (object);
 }
@@ -214,6 +217,8 @@ gst_pylon_src_start (GstBaseSrc * src)
 
   GST_LOG_OBJECT (pylonsrc, "start");
 
+  gst_pylon_start (pylonsrc->pylon);
+
   return TRUE;
 }
 
@@ -223,6 +228,8 @@ gst_pylon_src_stop (GstBaseSrc * src)
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
 
   GST_LOG_OBJECT (pylonsrc, "stop");
+
+  gst_pylon_stop (pylonsrc->pylon);
 
   return TRUE;
 }
