@@ -12,14 +12,18 @@
 #include "gstpylon.hpp"
 
 struct _GstPylon {
-  Pylon::CBaslerUniversalInstantCamera camera;
+  Pylon::CBaslerUniversalInstantCamera *camera;
 };
 
 GstPylon *gst_pylon_new () {
   GstPylon *self = (GstPylon*)g_malloc (sizeof (GstPylon));
+  *self = {.camera = new Pylon::CBaslerUniversalInstantCamera (Pylon::CTlFactory::GetInstance().CreateFirstDevice())}; 
   return self;
 }
 
 void gst_pylon_free (GstPylon *self) {
+  delete self->camera;
+  self->camera = nullptr;
+
   g_free (self);
 }
