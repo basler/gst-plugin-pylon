@@ -6,15 +6,20 @@
  *          Marsol Zeledon <marisol.zeledon@ridgerun.com>
  */
 
-#ifndef GSTPYLON_HPP
-#define GSTPYLON_HPP
+#ifndef GSTPYLON_H
+#define GSTPYLON_H
 
 #include <glib.h>
+
+G_BEGIN_DECLS
 
 typedef struct _GstPylon GstPylon;
 
 GstPylon *gst_pylon_new ();
 void gst_pylon_free (GstPylon *self);
 
+void gst_pylon_start (GstPylon * self);
 
-#endif  // GSTPYLON_HPP
+G_END_DECLS
+
+#endif  // GSTPYLON_H

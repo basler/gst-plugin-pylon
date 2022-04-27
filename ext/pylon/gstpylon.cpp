@@ -9,7 +9,7 @@
 #include <pylon/PylonIncludes.h>
 #include <pylon/BaslerUniversalInstantCamera.h>
 
-#include "gstpylon.hpp"
+#include "gstpylon.h"
 
 struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera *camera;
