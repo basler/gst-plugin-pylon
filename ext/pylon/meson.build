@@ -26,9 +26,18 @@ gstpylon = library('gstpylon',
   c_args : gst_plugin_pylon_args,
   link_args : noseh_link_args,
   include_directories : [configinc],
-  dependencies : [gstbase_dep, gstvideo_dep, pylon_dep],
+  dependencies : [gstbase_dep, gstvideo_dep],
   install : true,
   install_dir : plugins_install_dir,
+)
+
+gstpylonadapter = static_library('gstpylonadapter',
+  'gstpylon.cpp',
+  cpp_args : gst_plugin_pylon_args,
+  link_args : noseh_link_args,
+  include_directories : [configinc],
+  dependencies : [gstbase_dep, pylon_dep],
+  install : false,
 )
 pkgconfig.generate(gstpylon, install_dir : plugins_pkgconfig_install_dir)
 plugins += [gstpylon]
