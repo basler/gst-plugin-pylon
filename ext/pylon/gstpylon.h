@@ -15,6 +15,8 @@ G_BEGIN_DECLS
 
 typedef struct _GstPylon GstPylon;
 
+void gst_pylon_initialize();
+
 GstPylon *gst_pylon_new ();
 void gst_pylon_free (GstPylon *self);
 

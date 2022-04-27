@@ -15,6 +15,10 @@ struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera *camera;
 };
 
+void gst_pylon_initialize() {
+  Pylon::PylonInitialize();
+}
+
 GstPylon *gst_pylon_new () {
   GstPylon *self = (GstPylon*)g_malloc (sizeof (GstPylon));
 

@@ -23,6 +23,7 @@
 #include "config.h"
 #endif
 
+#include "gstpylon.h"
 #include "gstpylonsrc.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_pylon_src_debug_category);
@@ -108,6 +109,8 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   base_src_class->query = GST_DEBUG_FUNCPTR (gst_pylon_src_query);
 
   push_src_class->create = GST_DEBUG_FUNCPTR (gst_pylon_src_create);
+
+  gst_pylon_initialize ();
 }
 
 static void
