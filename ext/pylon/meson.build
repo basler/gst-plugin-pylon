@@ -8,8 +8,8 @@ if not pylon_config.found()
   error('Pylon SDK not found, is it installed? If you installed it in alternative location you may specify it using -Dpylon-path=')
 endif
 
-pylon_c_args = run_command(pylon_config, '--cflags', check : false).stdout().strip()
-pylon_link_args = run_command(pylon_config, '--libs', check : true).stdout().strip()
+pylon_c_args = run_command(pylon_config, '--cflags', check : true).stdout().strip().split()
+pylon_link_args = run_command(pylon_config, '--libs', check : true).stdout().strip().split()
 
 pylon_dep = declare_dependency (
   compile_args : pylon_c_args,
@@ -18,7 +18,8 @@ pylon_dep = declare_dependency (
 
 pylon_sources = [
   'gstpylonsrc.c',
-  'gstpylonplugin.c'
+  'gstpylonplugin.c',
+  'gstpylon.cpp'
 ]
 
 gstpylon = library('gstpylon',
@@ -26,18 +27,10 @@ gstpylon = library('gstpylon',
   c_args : gst_plugin_pylon_args,
   link_args : noseh_link_args,
   include_directories : [configinc],
-  dependencies : [gstbase_dep, gstvideo_dep],
+  dependencies : [gstbase_dep, gstvideo_dep, pylon_dep],
   install : true,
   install_dir : plugins_install_dir,
 )
 
-gstpylonadapter = static_library('gstpylonadapter',
-  'gstpylon.cpp',
-  cpp_args : gst_plugin_pylon_args,
-  link_args : noseh_link_args,
-  include_directories : [configinc],
-  dependencies : [gstbase_dep, pylon_dep],
-  install : false,
-)
 pkgconfig.generate(gstpylon, install_dir : plugins_pkgconfig_install_dir)
 plugins += [gstpylon]
