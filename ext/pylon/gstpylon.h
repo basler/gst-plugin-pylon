@@ -3,11 +3,11 @@
  * All Rights Reserved.
  *
  * Authors: Michael Gruner <michael.gruner@ridgerun.com>
- *          Marsol Zeledon <marisol.zeledon@ridgerun.com>
+ *          Marisol Zeledon <marisol.zeledon@ridgerun.com>
  */
 
-#ifndef GSTPYLON_H
-#define GSTPYLON_H
+#ifndef GSTPYLON_H_
+#define GSTPYLON_H_
 
 #include <glib.h>
 
@@ -25,4 +25,4 @@ void gst_pylon_stop (GstPylon *self);
 
 G_END_DECLS
 
-#endif  // GSTPYLON_H
+#endif  // GSTPYLON_H_

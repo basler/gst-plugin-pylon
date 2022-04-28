@@ -23,8 +23,9 @@
 #include "config.h"
 #endif
 
-#include "gstpylon.h"
 #include "gstpylonsrc.h"
+
+#include "gstpylon.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_pylon_src_debug_category);
 #define GST_CAT_DEFAULT gst_pylon_src_debug_category

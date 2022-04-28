@@ -3,13 +3,13 @@
  * All Rights Reserved.
  *
  * Authors: Michael Gruner <michael.gruner@ridgerun.com>
- *          Marsol Zeledon <marisol.zeledon@ridgerun.com>
+ *          Marisol Zeledon <marisol.zeledon@ridgerun.com>
  */
+
+#include "gstpylon.h"
 
 #include <pylon/PylonIncludes.h>
 #include <pylon/BaslerUniversalInstantCamera.h>
-
-#include "gstpylon.h"
 
 struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera *camera;
