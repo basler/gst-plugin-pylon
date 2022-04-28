@@ -8,6 +8,7 @@
 
 #include "gstpylon.h"
 
+#include <gst/gst.h>
 #include <pylon/PylonIncludes.h>
 #include <pylon/BaslerUniversalInstantCamera.h>
 
@@ -27,16 +28,11 @@ gst_pylon_new ()
 {
   GstPylon *self = (GstPylon *) g_malloc (sizeof (GstPylon));
 
-  try {
-    self->camera =
-        new Pylon::CBaslerUniversalInstantCamera (Pylon::CTlFactory::
-        GetInstance ().CreateFirstDevice ());
-  }
-  catch (const Pylon::GenericException & e)
-  {
-    std::cerr << "The camera object could not be created." << std::endl << e.
-        GetDescription () << std::endl;
-  }
+  g_return_val_if_fail (self, NULL);
+
+  self->camera =
+      new Pylon::CBaslerUniversalInstantCamera (Pylon::
+      CTlFactory::GetInstance ().CreateFirstDevice ());
 
   return self;
 }
@@ -44,34 +40,51 @@ gst_pylon_new ()
 void
 gst_pylon_free (GstPylon * self)
 {
+  g_return_if_fail (self);
+
   delete self->camera;
   self->camera = nullptr;
 
   g_free (self);
 }
 
-void
-gst_pylon_start (GstPylon * self)
+gboolean
+gst_pylon_start (GstPylon * self, GError ** err)
 {
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (err == NULL || *err == NULL, FALSE);
+
   try {
     self->camera->Open ();
   }
   catch (const Pylon::GenericException & e)
   {
-    std::cerr << "The camera could not be opened." << std::endl << e.
-        GetDescription () << std::endl;
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        e.GetDescription ());
+    ret = FALSE;
   }
+
+  return ret;
 }
 
-void
-gst_pylon_stop (GstPylon * self)
+gboolean
+gst_pylon_stop (GstPylon * self, GError ** err)
 {
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (err == NULL || *err == NULL, FALSE);
+
   try {
     self->camera->Close ();
   }
-  catch (const Pylon::GenericException & e)
-  {
-    std::cerr << "The camera could not be closed." << std::endl << e.
-        GetDescription () << std::endl;
+  catch (const Pylon::GenericException & e) {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        e.GetDescription ());
+    ret = FALSE;
   }
+
+  return ret;
 }

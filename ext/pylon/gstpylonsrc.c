@@ -215,24 +215,40 @@ static gboolean
 gst_pylon_src_start (GstBaseSrc * src)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
+  GError *error = NULL;
+  gboolean ret = TRUE;
 
   GST_LOG_OBJECT (pylonsrc, "start");
 
-  gst_pylon_start (pylonsrc->pylon);
+  ret = gst_pylon_start (pylonsrc->pylon, &error);
 
-  return TRUE;
+  if (ret == FALSE && error) {
+    GST_ELEMENT_ERROR (pylonsrc, LIBRARY, FAILED, ("Failed to open camera: %s"),
+        (error->message));
+    g_free (error);
+  }
+
+  return ret;
 }
 
 static gboolean
 gst_pylon_src_stop (GstBaseSrc * src)
 {
   GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
+  GError *error = NULL;
+  gboolean ret = TRUE;
 
   GST_LOG_OBJECT (pylonsrc, "stop");
 
-  gst_pylon_stop (pylonsrc->pylon);
+  ret = gst_pylon_stop (pylonsrc->pylon, &error);
 
-  return TRUE;
+  if (ret == FALSE && error) {
+    GST_ELEMENT_ERROR (pylonsrc, LIBRARY, FAILED,
+        ("Failed to close camera: %s"), (error->message));
+    g_free (error);
+  }
+
+  return ret;
 }
 
 /* unlock any pending access to the resource. subclasses should unlock
