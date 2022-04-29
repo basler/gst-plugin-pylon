@@ -65,7 +65,7 @@ gst_pylon_start (GstPylon * self, GError ** err)
   gboolean ret = TRUE;
 
   g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (err == NULL || *err == NULL, FALSE);
+  g_return_val_if_fail (err || *err == NULL, FALSE);
 
   try {
     self->camera->Open ();
@@ -85,7 +85,7 @@ gst_pylon_stop (GstPylon * self, GError ** err)
   gboolean ret = TRUE;
 
   g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (err == NULL || *err == NULL, FALSE);
+  g_return_val_if_fail (err || *err == NULL, FALSE);
 
   try {
     self->camera->Close ();

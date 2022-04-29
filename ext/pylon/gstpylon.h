@@ -6,8 +6,8 @@
  *          Marisol Zeledon <marisol.zeledon@ridgerun.com>
  */
 
-#ifndef GSTPYLON_H_
-#define GSTPYLON_H_
+#ifndef GSTPYLONPLUGIN_PYLON_GSTPYLON_H_
+#define GSTPYLONPLUGIN_PYLON_GSTPYLON_H_
 
 #include <glib.h>
 
@@ -22,4 +22,4 @@ gboolean gst_pylon_start (GstPylon * self, GError ** err);
 gboolean gst_pylon_stop (GstPylon * self, GError ** err);
 
 G_END_DECLS
-#endif // GSTPYLON_H_
+#endif // GSTPYLONPLUGIN_PYLON_GSTPYLON_H_
