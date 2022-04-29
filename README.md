@@ -6,10 +6,16 @@ Project under construction!
 
 ## Building the project
 
-Make sure GStreamer is properly installed. In Debian-based systems you
-can run the following commands:
+Make sure the dependencies are properly installed. In Debian-based
+systems you can run the following commands:
 
 ```bash
+# Meson build system.
+# Remove older meson from APT and install newer PIP version
+sudo apt remove meson
+sudo -H python3 -m pip install meson
+
+# GStreamer
 sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 ```
 
