@@ -24,28 +24,39 @@ gst_pylon_initialize ()
 }
 
 GstPylon *
-gst_pylon_new ()
+gst_pylon_new (GError ** err)
 {
   GstPylon *self = (GstPylon *) g_malloc (sizeof (GstPylon));
 
   g_return_val_if_fail (self, NULL);
 
-  self->camera =
-      new Pylon::CBaslerUniversalInstantCamera (Pylon::
-      CTlFactory::GetInstance ().CreateFirstDevice ());
+  try {
+    self->camera =
+        new Pylon::CBaslerUniversalInstantCamera (Pylon::CTlFactory::
+        GetInstance ().CreateFirstDevice ());
+  }
+  catch (const Pylon::GenericException & e)
+  {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        e.GetDescription ());
+  }
 
   return self;
 }
 
-void
+gboolean
 gst_pylon_free (GstPylon * self)
 {
-  g_return_if_fail (self);
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (self, FALSE);
 
   delete self->camera;
   self->camera = nullptr;
 
   g_free (self);
+
+  return ret;
 }
 
 gboolean
@@ -59,8 +70,7 @@ gst_pylon_start (GstPylon * self, GError ** err)
   try {
     self->camera->Open ();
   }
-  catch (const Pylon::GenericException & e)
-  {
+  catch (const Pylon::GenericException & e) {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
         e.GetDescription ());
     ret = FALSE;
