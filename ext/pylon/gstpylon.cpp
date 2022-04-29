@@ -52,7 +52,7 @@ gst_pylon_free (GstPylon * self)
   g_return_val_if_fail (self, FALSE);
 
   delete self->camera;
-  self->camera = nullptr;
+  self->camera = NULL;
 
   g_free (self);
 

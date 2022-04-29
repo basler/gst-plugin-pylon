@@ -118,6 +118,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 static void
 gst_pylon_src_init (GstPylonSrc * self)
 {
+  self->pylon = NULL;
 }
 
 static void
@@ -216,7 +217,7 @@ gst_pylon_src_start (GstBaseSrc * src)
   GError *error = NULL;
   gboolean ret = TRUE;
 
-  GST_LOG_OBJECT (self, "start");
+  GST_LOG_OBJECT (self, "Starting camera device");
 
   self->pylon = gst_pylon_new (&error);
 
@@ -247,7 +248,7 @@ gst_pylon_src_stop (GstBaseSrc * src)
   GError *error = NULL;
   gboolean ret = TRUE;
 
-  GST_LOG_OBJECT (self, "stop");
+  GST_LOG_OBJECT (self, "Stopping camera device");
 
   ret = gst_pylon_stop (self->pylon, &error);
 
