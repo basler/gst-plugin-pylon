@@ -224,7 +224,7 @@ gst_pylon_src_start (GstBaseSrc * src)
   if (error) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Failed to create camera object. %s"), (error->message));
-    g_free (error);
+    g_error_free (error);
     ret = FALSE;
     goto out;
   }
@@ -234,9 +234,15 @@ gst_pylon_src_start (GstBaseSrc * src)
   if (ret == FALSE && error) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED, ("Failed to open camera. %s"),
         (error->message));
-    g_free (error);
+    g_error_free (error);
+    goto free_gst_pylon;
   }
 
+  goto out;
+
+free_gst_pylon:
+  ret = gst_pylon_free (self->pylon);
+  self->pylon = NULL;
 out:
   return ret;
 }
@@ -255,10 +261,11 @@ gst_pylon_src_stop (GstBaseSrc * src)
   if (ret == FALSE && error) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Failed to close camera. %s"), (error->message));
-    g_free (error);
+    g_error_free (error);
   }
 
   ret = gst_pylon_free (self->pylon);
+  self->pylon = NULL;
 
   return ret;
 }

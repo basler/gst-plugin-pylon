@@ -32,13 +32,15 @@ gst_pylon_new (GError ** err)
 
   try {
     self->camera =
-        new Pylon::CBaslerUniversalInstantCamera (Pylon::CTlFactory::
-        GetInstance ().CreateFirstDevice ());
+        new Pylon::CBaslerUniversalInstantCamera (Pylon::
+        CTlFactory::GetInstance ().CreateFirstDevice ());
   }
   catch (const Pylon::GenericException & e)
   {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
         e.GetDescription ());
+    g_free (self);
+    self = NULL;
   }
 
   return self;
