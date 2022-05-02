@@ -9,8 +9,8 @@
 #include "gstpylon.h"
 
 #include <gst/gst.h>
-#include <pylon/PylonIncludes.h>
 #include <pylon/BaslerUniversalInstantCamera.h>
+#include <pylon/PylonIncludes.h>
 
 struct _GstPylon
 {
