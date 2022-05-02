@@ -6,12 +6,14 @@
  *          Marisol Zeledon <marisol.zeledon@ridgerun.com>
  */
 
-#ifndef GSTPYLONPLUGIN_PYLON_GSTPYLON_H_
-#define GSTPYLONPLUGIN_PYLON_GSTPYLON_H_
+#ifndef _GST_PYLON_H_
+#define _GST_PYLON_H_
 
 #include <glib.h>
 
-G_BEGIN_DECLS typedef struct _GstPylon GstPylon;
+G_BEGIN_DECLS
+
+typedef struct _GstPylon GstPylon;
 
 void gst_pylon_initialize ();
 
@@ -22,4 +24,5 @@ gboolean gst_pylon_start (GstPylon * self, GError ** err);
 gboolean gst_pylon_stop (GstPylon * self, GError ** err);
 
 G_END_DECLS
-#endif // GSTPYLONPLUGIN_PYLON_GSTPYLON_H_
+
+#endif

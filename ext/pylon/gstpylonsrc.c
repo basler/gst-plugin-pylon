@@ -217,7 +217,7 @@ gst_pylon_src_start (GstBaseSrc * src)
   GError *error = NULL;
   gboolean ret = TRUE;
 
-  GST_LOG_OBJECT (self, "Starting camera device");
+  GST_INFO_OBJECT (self, "Starting camera device");
 
   self->pylon = gst_pylon_new (&error);
 
@@ -254,7 +254,7 @@ gst_pylon_src_stop (GstBaseSrc * src)
   GError *error = NULL;
   gboolean ret = TRUE;
 
-  GST_LOG_OBJECT (self, "Stopping camera device");
+  GST_INFO_OBJECT (self, "Stopping camera device");
 
   ret = gst_pylon_stop (self->pylon, &error);
 
