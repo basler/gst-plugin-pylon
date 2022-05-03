@@ -105,7 +105,7 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
   Pylon::CBaslerUniversalGrabResultPtr ptr_grab_result;
   size_t buffer_size;
   GstMapInfo info;
-  std::string error_str;
+  int timeout_ms = 5000;
   gboolean ret = TRUE;
 
   g_return_val_if_fail (self, FALSE);
@@ -114,47 +114,42 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
 
   /* Catch the timeout exception if any */
   try {
-    self->camera->RetrieveResult (5000, ptr_grab_result,
+    self->camera->RetrieveResult (timeout_ms, ptr_grab_result,
         Pylon::TimeoutHandling_ThrowException);
   }
-  catch (const Pylon::GenericException & e) {
-    error_str = e.GetDescription ();
-    goto set_g_error;
+  catch (const Pylon::GenericException & e)
+  {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        e.GetDescription ());
+    return FALSE;
   }
 
   if (ptr_grab_result->GrabSucceeded () == FALSE) {
-    error_str = ptr_grab_result->GetErrorDescription ();
-    goto set_g_error;
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        ptr_grab_result->GetErrorDescription ().c_str ());
+    return FALSE;
   }
 
   buffer_size = ptr_grab_result->GetBufferSize ();
   *buf = gst_buffer_new_allocate (NULL, buffer_size, NULL);
 
   if (*buf == NULL) {
-    error_str = "Failed to allocate buffer.";
-    goto set_g_error;
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        "Failed to allocate buffer.");
+    return FALSE;
   }
 
   ret = gst_buffer_map (*buf, &info, GST_MAP_WRITE);
 
   if (ret == FALSE) {
-    error_str = "Failed tu map buffer.";
-    goto unref_buffer;
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        "Failed tu map buffer.");
+    gst_buffer_unref (*buf);
+    return FALSE;
   }
 
   memcpy (info.data, ptr_grab_result->GetBuffer (), buffer_size);
   gst_buffer_unmap (*buf, &info);
 
-  goto out;
-
-unref_buffer:
-  gst_buffer_unref (*buf);
-
-set_g_error:
-  g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-      error_str.c_str ());
-  ret = FALSE;
-
-out:
-  return ret;
+  return TRUE;
 }
