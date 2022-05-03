@@ -69,6 +69,7 @@ gst_pylon_start (GstPylon * self, GError ** err)
 
   try {
     self->camera->Open ();
+    self->camera->StartGrabbing ();
   }
   catch (const Pylon::GenericException & e) {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
@@ -88,6 +89,7 @@ gst_pylon_stop (GstPylon * self, GError ** err)
   g_return_val_if_fail (err || *err == NULL, FALSE);
 
   try {
+    self->camera->StopGrabbing ();
     self->camera->Close ();
   }
   catch (const Pylon::GenericException & e) {
