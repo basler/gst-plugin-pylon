@@ -239,7 +239,7 @@ free_gst_pylon:
 
 log_gst_error:
   GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-      ("Failed to open camera. %s"), (error->message));
+      ("Failed to open camera."), ("%s", error->message));
   g_error_free (error);
   ret = FALSE;
 
@@ -260,7 +260,7 @@ gst_pylon_src_stop (GstBaseSrc * src)
 
   if (ret == FALSE && error) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Failed to close camera. %s"), (error->message));
+        ("Failed to close camera."), ("%s", error->message));
     g_error_free (error);
   }
 

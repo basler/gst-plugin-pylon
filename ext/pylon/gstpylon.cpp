@@ -48,8 +48,6 @@ gst_pylon_new (GError ** err)
 void
 gst_pylon_free (GstPylon * self)
 {
-  gboolean ret = TRUE;
-
   g_return_if_fail (self);
 
   delete self->camera;
