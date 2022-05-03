@@ -104,6 +104,7 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
 {
   Pylon::CBaslerUniversalGrabResultPtr ptr_grab_result;
   size_t buffer_size;
+  GstMapInfo info;
   std::string error_str;
   gboolean ret = TRUE;
 
@@ -121,12 +122,33 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
     goto set_g_error;
   }
 
-  if (!ptr_grab_result->GrabSucceeded ()) {
+  if (ptr_grab_result->GrabSucceeded () == FALSE) {
     error_str = ptr_grab_result->GetErrorDescription ();
     goto set_g_error;
   }
 
   buffer_size = ptr_grab_result->GetBufferSize ();
+  *buf = gst_buffer_new_allocate (NULL, buffer_size, NULL);
+
+  if (*buf == NULL) {
+    error_str = "Failed to allocate buffer.";
+    goto set_g_error;
+  }
+
+  ret = gst_buffer_map (*buf, &info, GST_MAP_WRITE);
+
+  if (ret == FALSE) {
+    error_str = "Failed tu map buffer.";
+    goto unref_buffer;
+  }
+
+  memcpy (info.data, ptr_grab_result->GetBuffer (), buffer_size);
+  gst_buffer_unmap (*buf, &info);
+
+  goto out;
+
+unref_buffer:
+  gst_buffer_unref (*buf);
 
 set_g_error:
   g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
