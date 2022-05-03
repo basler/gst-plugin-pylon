@@ -112,7 +112,7 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
   g_return_val_if_fail (buf, FALSE);
   g_return_val_if_fail (err || *err == NULL, FALSE);
 
-  /* Catch the timout exception if any */
+  /* Catch the timeout exception if any */
   try {
     self->camera->RetrieveResult (5000, ptr_grab_result,
         Pylon::TimeoutHandling_ThrowException);
