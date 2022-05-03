@@ -31,8 +31,8 @@ gst_pylon_new (GError ** err)
 
   try {
     self->camera =
-        new Pylon::CBaslerUniversalInstantCamera (Pylon::CTlFactory::
-        GetInstance ().CreateFirstDevice ());
+        new Pylon::CBaslerUniversalInstantCamera (Pylon::
+        CTlFactory::GetInstance ().CreateFirstDevice ());
   }
   catch (const Pylon::GenericException & e)
   {
@@ -104,6 +104,7 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
 {
   Pylon::CBaslerUniversalGrabResultPtr ptr_grab_result;
   size_t buffer_size;
+  std::string error_str;
   gboolean ret = TRUE;
 
   g_return_val_if_fail (self, FALSE);
@@ -116,20 +117,21 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
         Pylon::TimeoutHandling_ThrowException);
   }
   catch (const Pylon::GenericException & e) {
-    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-        e.GetDescription ());
-    ret = FALSE;
-    goto out;
+    error_str = e.GetDescription ();
+    goto set_g_error;
   }
 
   if (!ptr_grab_result->GrabSucceeded ()) {
-    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-        (ptr_grab_result->GetErrorDescription()).c_str());
-    ret = FALSE;
-    goto out;
+    error_str = ptr_grab_result->GetErrorDescription ();
+    goto set_g_error;
   }
 
   buffer_size = ptr_grab_result->GetBufferSize ();
+
+set_g_error:
+  g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+      error_str.c_str ());
+  ret = FALSE;
 
 out:
   return ret;
