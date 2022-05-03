@@ -1,3 +1,7 @@
+# Pylon specific options
+option('pylon-path', type : 'string', yield : true,
+       description : 'The path to Pylon installation dir (defaults to "/opt/pylon")')
+
 # Common feature options
 option('examples', type : 'feature', value : 'auto', yield : true)
 option('tests', type : 'feature', value : 'auto', yield : true)

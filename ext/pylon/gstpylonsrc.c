@@ -25,12 +25,15 @@
 
 #include "gstpylonsrc.h"
 
+#include "gstpylon.h"
+
 GST_DEBUG_CATEGORY_STATIC (gst_pylon_src_debug_category);
 #define GST_CAT_DEFAULT gst_pylon_src_debug_category
 
 struct _GstPylonSrc
 {
   GstPushSrc base_pylonsrc;
+  GstPylon *pylon;
 };
 
 /* prototypes */
@@ -108,20 +111,23 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   base_src_class->query = GST_DEBUG_FUNCPTR (gst_pylon_src_query);
 
   push_src_class->create = GST_DEBUG_FUNCPTR (gst_pylon_src_create);
+
+  gst_pylon_initialize ();
 }
 
 static void
-gst_pylon_src_init (GstPylonSrc * pylonsrc)
+gst_pylon_src_init (GstPylonSrc * self)
 {
+  self->pylon = NULL;
 }
 
 static void
 gst_pylon_src_set_property (GObject * object, guint property_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (object);
+  GstPylonSrc *self = GST_PYLON_SRC (object);
 
-  GST_LOG_OBJECT (pylonsrc, "set_property");
+  GST_LOG_OBJECT (self, "set_property");
 
   switch (property_id) {
     default:
@@ -134,9 +140,9 @@ static void
 gst_pylon_src_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (object);
+  GstPylonSrc *self = GST_PYLON_SRC (object);
 
-  GST_LOG_OBJECT (pylonsrc, "get_property");
+  GST_LOG_OBJECT (self, "get_property");
 
   switch (property_id) {
     default:
@@ -148,9 +154,9 @@ gst_pylon_src_get_property (GObject * object, guint property_id,
 static void
 gst_pylon_src_finalize (GObject * object)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (object);
+  GstPylonSrc *self = GST_PYLON_SRC (object);
 
-  GST_LOG_OBJECT (pylonsrc, "finalize");
+  GST_LOG_OBJECT (self, "finalize");
 
   /* clean up object here */
 
@@ -161,9 +167,9 @@ gst_pylon_src_finalize (GObject * object)
 static GstCaps *
 gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
+  GstPylonSrc *self = GST_PYLON_SRC (src);
 
-  GST_LOG_OBJECT (pylonsrc, "get_caps");
+  GST_LOG_OBJECT (self, "get_caps");
 
   /* TODO: fixme */
   return gst_caps_new_any ();
@@ -173,9 +179,9 @@ gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
 static GstCaps *
 gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
+  GstPylonSrc *self = GST_PYLON_SRC (src);
 
-  GST_LOG_OBJECT (pylonsrc, "fixate");
+  GST_LOG_OBJECT (self, "fixate");
 
   /* TODO: fixme */
   return gst_caps_fixate (caps);
@@ -185,9 +191,9 @@ gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
 static gboolean
 gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
+  GstPylonSrc *self = GST_PYLON_SRC (src);
 
-  GST_LOG_OBJECT (pylonsrc, "set_caps");
+  GST_LOG_OBJECT (self, "set_caps");
 
   return TRUE;
 }
@@ -196,9 +202,9 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
 static gboolean
 gst_pylon_src_decide_allocation (GstBaseSrc * src, GstQuery * query)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
+  GstPylonSrc *self = GST_PYLON_SRC (src);
 
-  GST_LOG_OBJECT (pylonsrc, "decide_allocation");
+  GST_LOG_OBJECT (self, "decide_allocation");
 
   return TRUE;
 }
@@ -207,21 +213,61 @@ gst_pylon_src_decide_allocation (GstBaseSrc * src, GstQuery * query)
 static gboolean
 gst_pylon_src_start (GstBaseSrc * src)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
+  GstPylonSrc *self = GST_PYLON_SRC (src);
+  GError *error = NULL;
+  gboolean ret = TRUE;
 
-  GST_LOG_OBJECT (pylonsrc, "start");
+  GST_INFO_OBJECT (self, "Starting camera device");
 
-  return TRUE;
+  self->pylon = gst_pylon_new (&error);
+
+  if (error) {
+    goto log_gst_error;
+  }
+
+  ret = gst_pylon_start (self->pylon, &error);
+
+  if (ret == FALSE && error) {
+    goto free_gst_pylon;
+  }
+
+  goto out;
+
+free_gst_pylon:
+  gst_pylon_free (self->pylon);
+  self->pylon = NULL;
+
+log_gst_error:
+  GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+      ("Failed to open camera. %s"), (error->message));
+  g_error_free (error);
+  ret = FALSE;
+
+out:
+  return ret;
 }
 
 static gboolean
 gst_pylon_src_stop (GstBaseSrc * src)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
+  GstPylonSrc *self = GST_PYLON_SRC (src);
+  GError *error = NULL;
+  gboolean ret = TRUE;
 
-  GST_LOG_OBJECT (pylonsrc, "stop");
+  GST_INFO_OBJECT (self, "Stopping camera device");
 
-  return TRUE;
+  ret = gst_pylon_stop (self->pylon, &error);
+
+  if (ret == FALSE && error) {
+    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+        ("Failed to close camera. %s"), (error->message));
+    g_error_free (error);
+  }
+
+  gst_pylon_free (self->pylon);
+  self->pylon = NULL;
+
+  return ret;
 }
 
 /* unlock any pending access to the resource. subclasses should unlock
@@ -229,9 +275,9 @@ gst_pylon_src_stop (GstBaseSrc * src)
 static gboolean
 gst_pylon_src_unlock (GstBaseSrc * src)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
+  GstPylonSrc *self = GST_PYLON_SRC (src);
 
-  GST_LOG_OBJECT (pylonsrc, "unlock");
+  GST_LOG_OBJECT (self, "unlock");
 
   return TRUE;
 }
@@ -240,9 +286,9 @@ gst_pylon_src_unlock (GstBaseSrc * src)
 static gboolean
 gst_pylon_src_unlock_stop (GstBaseSrc * src)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
+  GstPylonSrc *self = GST_PYLON_SRC (src);
 
-  GST_LOG_OBJECT (pylonsrc, "unlock_stop");
+  GST_LOG_OBJECT (self, "unlock_stop");
 
   return TRUE;
 }
@@ -251,9 +297,9 @@ gst_pylon_src_unlock_stop (GstBaseSrc * src)
 static gboolean
 gst_pylon_src_query (GstBaseSrc * src, GstQuery * query)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
+  GstPylonSrc *self = GST_PYLON_SRC (src);
 
-  GST_LOG_OBJECT (pylonsrc, "query");
+  GST_LOG_OBJECT (self, "query");
 
   return GST_BASE_SRC_CLASS (gst_pylon_src_parent_class)->query (src, query);
 }
@@ -263,11 +309,11 @@ gst_pylon_src_query (GstBaseSrc * src, GstQuery * query)
 static GstFlowReturn
 gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
 {
-  GstPylonSrc *pylonsrc = GST_PYLON_SRC (src);
+  GstPylonSrc *self = GST_PYLON_SRC (src);
 
-  GST_LOG_OBJECT (pylonsrc, "create");
+  GST_LOG_OBJECT (self, "create");
 
-  GST_FIXME_OBJECT (pylonsrc,
+  GST_FIXME_OBJECT (self,
       "plug-in under development! not able to produce buffers yet!");
 
   return GST_FLOW_ERROR;
