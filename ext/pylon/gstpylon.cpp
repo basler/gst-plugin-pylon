@@ -8,7 +8,6 @@
 
 #include "gstpylon.h"
 
-#include <gst/gst.h>
 #include <pylon/BaslerUniversalInstantCamera.h>
 #include <pylon/PylonIncludes.h>
 
@@ -32,8 +31,8 @@ gst_pylon_new (GError ** err)
 
   try {
     self->camera =
-        new Pylon::CBaslerUniversalInstantCamera (Pylon::
-        CTlFactory::GetInstance ().CreateFirstDevice ());
+        new Pylon::CBaslerUniversalInstantCamera (Pylon::CTlFactory::
+        GetInstance ().CreateFirstDevice ());
   }
   catch (const Pylon::GenericException & e)
   {
@@ -71,7 +70,8 @@ gst_pylon_start (GstPylon * self, GError ** err)
     self->camera->Open ();
     self->camera->StartGrabbing ();
   }
-  catch (const Pylon::GenericException & e) {
+  catch (const Pylon::GenericException & e)
+  {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
         e.GetDescription ());
     ret = FALSE;
@@ -98,5 +98,41 @@ gst_pylon_stop (GstPylon * self, GError ** err)
     ret = FALSE;
   }
 
+  return ret;
+}
+
+gboolean
+gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
+{
+  Pylon::CBaslerUniversalGrabResultPtr ptr_grab_result;
+  size_t buffer_size;
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (buf, FALSE);
+  g_return_val_if_fail (err || *err == NULL, FALSE);
+
+  /* Catch the timout exception if any */
+  try {
+    self->camera->RetrieveResult (5000, ptr_grab_result,
+        Pylon::TimeoutHandling_ThrowException);
+  }
+  catch (const Pylon::GenericException & e) {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        e.GetDescription ());
+    ret = FALSE;
+    goto out;
+  }
+
+  if (!ptr_grab_result->GrabSucceeded ()) {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        (ptr_grab_result->GetErrorDescription()).c_str());
+    ret = FALSE;
+    goto out;
+  }
+
+  buffer_size = ptr_grab_result->GetBufferSize ();
+
+out:
   return ret;
 }
