@@ -75,10 +75,9 @@ gst_pylon_start (GstPylon * self, GError ** err)
     self->camera->Height.SetValue (height, Pylon::IntegerValueCorrection_None);
     self->camera->AcquisitionFrameRateEnable.SetValue (true);
     self->camera->AcquisitionFrameRateAbs.SetValue (framerate,
-        Pylon::IntegerValueCorrection_None);
-    self->camera->
-        PixelFormat.SetValue (Basler_UniversalCameraParams::
-        PixelFormat_RGB8Packed, Pylon::IntegerValueCorrection_None);
+        Pylon::FloatValueCorrection_None);
+    self->camera->PixelFormat.
+        SetValue (Basler_UniversalCameraParams::PixelFormat_RGB8Packed);
 
     self->camera->StartGrabbing ();
   }
