@@ -68,7 +68,8 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("ANY")
+    GST_STATIC_CAPS
+    ("video/x-raw,width=1920,height=1080,framerate=30/1,format=RGB")
     );
 
 
