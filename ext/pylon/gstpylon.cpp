@@ -102,16 +102,12 @@ gst_pylon_stop (GstPylon * self, GError ** err)
 gboolean
 gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
 {
-  Pylon::CBaslerUniversalGrabResultPtr ptr_grab_result;
-  size_t buffer_size;
-  GstMapInfo info;
-  int timeout_ms = 5000;
-  gboolean ret = TRUE;
-
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (buf, FALSE);
   g_return_val_if_fail (err || *err == NULL, FALSE);
 
+  Pylon::CBaslerUniversalGrabResultPtr ptr_grab_result;
+  gint timeout_ms = 5000;
   /* Catch the timeout exception if any */
   try {
     self->camera->RetrieveResult (timeout_ms, ptr_grab_result,
@@ -130,7 +126,7 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
     return FALSE;
   }
 
-  buffer_size = ptr_grab_result->GetBufferSize ();
+  gsize buffer_size = ptr_grab_result->GetBufferSize ();
   *buf = gst_buffer_new_allocate (NULL, buffer_size, NULL);
 
   if (*buf == NULL) {
@@ -139,12 +135,14 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
     return FALSE;
   }
 
-  ret = gst_buffer_map (*buf, &info, GST_MAP_WRITE);
+  GstMapInfo info = GST_MAP_INFO_INIT;
+  gboolean ret = gst_buffer_map (*buf, &info, GST_MAP_WRITE);
 
   if (ret == FALSE) {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
         "Failed tu map buffer.");
     gst_buffer_unref (*buf);
+    *buf = NULL;
     return FALSE;
   }
 
