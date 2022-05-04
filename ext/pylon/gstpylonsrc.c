@@ -34,6 +34,7 @@ struct _GstPylonSrc
 {
   GstPushSrc base_pylonsrc;
   GstPylon *pylon;
+  guint64 offset;
 };
 
 /* prototypes */
@@ -55,6 +56,7 @@ static gboolean gst_pylon_src_stop (GstBaseSrc * src);
 static gboolean gst_pylon_src_unlock (GstBaseSrc * src);
 static gboolean gst_pylon_src_unlock_stop (GstBaseSrc * src);
 static gboolean gst_pylon_src_query (GstBaseSrc * src, GstQuery * query);
+static void gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf);
 static GstFlowReturn gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf);
 
 enum
@@ -247,9 +249,11 @@ free_gst_pylon:
 
 log_gst_error:
   GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-      ("Failed to open camera."), ("%s", error->message));
+      ("Failed to start camera."), ("%s", error->message));
   g_error_free (error);
   ret = FALSE;
+
+  self->offset = 0;
 
 out:
   return ret;
@@ -312,6 +316,19 @@ gst_pylon_src_query (GstBaseSrc * src, GstQuery * query)
   return GST_BASE_SRC_CLASS (gst_pylon_src_parent_class)->query (src, query);
 }
 
+/* add time metadata to buffer */
+static void
+gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
+{
+  g_return_if_fail (self);
+  g_return_if_fail (buf);
+
+  GST_LOG_OBJECT (self, "Setting buffer metadata");
+
+  GST_BUFFER_OFFSET (buf) = self->offset;
+  GST_BUFFER_OFFSET_END (buf) = self->offset + 1;
+}
+
 /* ask the subclass to create a buffer with offset and size, the default
  * implementation will call alloc and fill. */
 static GstFlowReturn
@@ -334,6 +351,8 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
     }
     ret = GST_FLOW_ERROR;
   }
+
+  gst_plyon_src_add_metadata (self, *buf);
 
   return ret;
 }
