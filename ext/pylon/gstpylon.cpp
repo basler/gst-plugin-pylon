@@ -66,6 +66,19 @@ gst_pylon_start (GstPylon * self, GError ** err)
 
   try {
     self->camera->Open ();
+
+    /* hard code camera configuration */
+    gint width = 1920;
+    gint height = 1080;
+    gdouble framerate = 30.0;
+    self->camera->Width.SetValue (width, Pylon::IntegerValueCorrection_None);
+    self->camera->Height.SetValue (height, Pylon::IntegerValueCorrection_None);
+    self->camera->AcquisitionFrameRateEnable.SetValue (true);
+    self->camera->AcquisitionFrameRateAbs.SetValue (framerate,
+        Pylon::FloatValueCorrection_None);
+    self->camera->PixelFormat.
+        SetValue (Basler_UniversalCameraParams::PixelFormat_RGB8Packed);
+
     self->camera->StartGrabbing ();
   }
   catch (const Pylon::GenericException & e)
@@ -113,8 +126,7 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
     self->camera->RetrieveResult (timeout_ms, ptr_grab_result,
         Pylon::TimeoutHandling_ThrowException);
   }
-  catch (const Pylon::GenericException & e)
-  {
+  catch (const Pylon::GenericException & e) {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
         e.GetDescription ());
     return FALSE;

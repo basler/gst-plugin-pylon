@@ -68,7 +68,8 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("ANY")
+    GST_STATIC_CAPS
+    ("video/x-raw,width=1920,height=1080,framerate=30/1,format=RGB")
     );
 
 
@@ -167,12 +168,19 @@ gst_pylon_src_finalize (GObject * object)
 static GstCaps *
 gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
 {
-  GstPylonSrc *self = GST_PYLON_SRC (src);
+  GstPadTemplate *templ = NULL;
+  GstCaps *outcaps = NULL;
 
-  GST_LOG_OBJECT (self, "get_caps");
+  templ = gst_static_pad_template_get (&gst_pylon_src_src_template);
+  outcaps = gst_pad_template_get_caps (templ);
 
-  /* TODO: fixme */
-  return gst_caps_new_any ();
+  if (filter) {
+    GstCaps *tmp = outcaps;
+    outcaps = gst_caps_intersect (outcaps, filter);
+    gst_caps_unref (tmp);
+  }
+
+  return outcaps;
 }
 
 /* called if, in negotiation, caps need fixating */
