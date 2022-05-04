@@ -8,7 +8,6 @@
 
 #include "gstpylon.h"
 
-#include <gst/gst.h>
 #include <pylon/BaslerUniversalInstantCamera.h>
 #include <pylon/PylonIncludes.h>
 
@@ -49,8 +48,6 @@ gst_pylon_new (GError ** err)
 void
 gst_pylon_free (GstPylon * self)
 {
-  gboolean ret = TRUE;
-
   g_return_if_fail (self);
 
   delete self->camera;
@@ -69,8 +66,10 @@ gst_pylon_start (GstPylon * self, GError ** err)
 
   try {
     self->camera->Open ();
+    self->camera->StartGrabbing ();
   }
-  catch (const Pylon::GenericException & e) {
+  catch (const Pylon::GenericException & e)
+  {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
         e.GetDescription ());
     ret = FALSE;
@@ -88,6 +87,7 @@ gst_pylon_stop (GstPylon * self, GError ** err)
   g_return_val_if_fail (err || *err == NULL, FALSE);
 
   try {
+    self->camera->StopGrabbing ();
     self->camera->Close ();
   }
   catch (const Pylon::GenericException & e) {
@@ -97,4 +97,57 @@ gst_pylon_stop (GstPylon * self, GError ** err)
   }
 
   return ret;
+}
+
+gboolean
+gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
+{
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (buf, FALSE);
+  g_return_val_if_fail (err || *err == NULL, FALSE);
+
+  Pylon::CBaslerUniversalGrabResultPtr ptr_grab_result;
+  gint timeout_ms = 5000;
+  /* Catch the timeout exception if any */
+  try {
+    self->camera->RetrieveResult (timeout_ms, ptr_grab_result,
+        Pylon::TimeoutHandling_ThrowException);
+  }
+  catch (const Pylon::GenericException & e)
+  {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        e.GetDescription ());
+    return FALSE;
+  }
+
+  if (ptr_grab_result->GrabSucceeded () == FALSE) {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        ptr_grab_result->GetErrorDescription ().c_str ());
+    return FALSE;
+  }
+
+  gsize buffer_size = ptr_grab_result->GetBufferSize ();
+  *buf = gst_buffer_new_allocate (NULL, buffer_size, NULL);
+
+  if (*buf == NULL) {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        "Failed to allocate buffer.");
+    return FALSE;
+  }
+
+  GstMapInfo info = GST_MAP_INFO_INIT;
+  gboolean ret = gst_buffer_map (*buf, &info, GST_MAP_WRITE);
+
+  if (ret == FALSE) {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        "Failed tu map buffer.");
+    gst_buffer_unref (*buf);
+    *buf = NULL;
+    return FALSE;
+  }
+
+  memcpy (info.data, ptr_grab_result->GetBuffer (), buffer_size);
+  gst_buffer_unmap (*buf, &info);
+
+  return TRUE;
 }

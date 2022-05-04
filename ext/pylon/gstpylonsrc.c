@@ -239,7 +239,7 @@ free_gst_pylon:
 
 log_gst_error:
   GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-      ("Failed to open camera. %s"), (error->message));
+      ("Failed to open camera."), ("%s", error->message));
   g_error_free (error);
   ret = FALSE;
 
@@ -260,7 +260,7 @@ gst_pylon_src_stop (GstBaseSrc * src)
 
   if (ret == FALSE && error) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Failed to close camera. %s"), (error->message));
+        ("Failed to close camera."), ("%s", error->message));
     g_error_free (error);
   }
 
@@ -310,11 +310,22 @@ static GstFlowReturn
 gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
 {
   GstPylonSrc *self = GST_PYLON_SRC (src);
+  GError *error = NULL;
+  gboolean pylon_ret = TRUE;
+  GstFlowReturn ret = GST_FLOW_OK;
 
-  GST_LOG_OBJECT (self, "create");
+  GST_LOG_OBJECT (self, "Creating buffer");
 
-  GST_FIXME_OBJECT (self,
-      "plug-in under development! not able to produce buffers yet!");
+  pylon_ret = gst_pylon_capture (self->pylon, buf, &error);
 
-  return GST_FLOW_ERROR;
+  if (pylon_ret == FALSE) {
+    if (error) {
+      GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+          ("Failed to create buffer."), ("%s", error->message));
+      g_error_free (error);
+    }
+    ret = GST_FLOW_ERROR;
+  }
+
+  return ret;
 }
