@@ -320,6 +320,9 @@ gst_pylon_src_query (GstBaseSrc * src, GstQuery * query)
 static void
 gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
 {
+  GstClock *clock;
+  GstClockTime abs_time, base_time, timestamp;
+
   g_return_if_fail (self);
   g_return_if_fail (buf);
 
@@ -327,6 +330,29 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
 
   GST_BUFFER_OFFSET (buf) = self->offset;
   GST_BUFFER_OFFSET_END (buf) = self->offset + 1;
+
+  GST_OBJECT_LOCK (self);
+  if ((clock = GST_ELEMENT_CLOCK (self))) {
+    /* we have a clock, get base time and ref clock */
+    base_time = GST_ELEMENT (self)->base_time;
+    gst_object_ref (clock);
+  } else {
+    /* no clock, can't set timestamps */
+    base_time = GST_CLOCK_TIME_NONE;
+  }
+  GST_OBJECT_UNLOCK (self);
+
+  /* sample pipeline clock */
+  if (clock) {
+    abs_time = gst_clock_get_time (clock);
+    gst_object_unref (clock);
+  } else {
+    abs_time = GST_CLOCK_TIME_NONE;
+  }
+
+  timestamp = abs_time - base_time;
+
+  GST_BUFFER_TIMESTAMP (buf) = timestamp;
 }
 
 /* ask the subclass to create a buffer with offset and size, the default
