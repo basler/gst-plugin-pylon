@@ -379,6 +379,7 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
   }
 
   gst_plyon_src_add_metadata (self, *buf);
+  self->offset++;
 
   return ret;
 }
