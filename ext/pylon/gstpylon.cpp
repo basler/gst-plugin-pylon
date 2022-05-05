@@ -8,8 +8,11 @@
 
 #include "gstpylon.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #include <pylon/BaslerUniversalInstantCamera.h>
 #include <pylon/PylonIncludes.h>
+#pragma GCC diagnostic pop
 
 struct _GstPylon
 {
