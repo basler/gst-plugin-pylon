@@ -133,7 +133,7 @@ cdata.set('HAVE_CPU_X86_64', host_machine.cpu() == 'amd64')
 cdata.set('HAVE_GCC_ASM', cc.get_id() != 'msvc')
 cdata.set_quoted('VERSION', meson.project_version())
 cdata.set_quoted('PACKAGE_VERSION', meson.project_version())
-cdata.set_quoted('GST_LICENSE', 'Proprietary')
+cdata.set_quoted('GST_PACKAGE_LICENSE', 'BSD')
 cdata.set_quoted('PACKAGE', 'gst-plugin-pylon')
 cdata.set_quoted('LOCALEDIR', join_paths(get_option('prefix'), get_option('localedir')))
 
