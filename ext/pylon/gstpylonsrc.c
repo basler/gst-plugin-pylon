@@ -34,6 +34,8 @@ struct _GstPylonSrc
 {
   GstPushSrc base_pylonsrc;
   GstPylon *pylon;
+  guint64 offset;
+  GstClockTime duration;
 };
 
 /* prototypes */
@@ -55,6 +57,7 @@ static gboolean gst_pylon_src_stop (GstBaseSrc * src);
 static gboolean gst_pylon_src_unlock (GstBaseSrc * src);
 static gboolean gst_pylon_src_unlock_stop (GstBaseSrc * src);
 static gboolean gst_pylon_src_query (GstBaseSrc * src, GstQuery * query);
+static void gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf);
 static GstFlowReturn gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf);
 
 enum
@@ -120,6 +123,8 @@ static void
 gst_pylon_src_init (GstPylonSrc * self)
 {
   self->pylon = NULL;
+  self->offset = G_GUINT64_CONSTANT (0);
+  self->duration = GST_CLOCK_TIME_NONE;
 }
 
 static void
@@ -200,8 +205,19 @@ static gboolean
 gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
 {
   GstPylonSrc *self = GST_PYLON_SRC (src);
+  GstStructure *gst_stucture = NULL;
+  gint numerator = 0;
+  gint denominator = 0;
 
-  GST_LOG_OBJECT (self, "set_caps");
+  GST_INFO_OBJECT (self, "Setting new caps: %" GST_PTR_FORMAT, caps);
+
+  gst_stucture = gst_caps_get_structure (caps, 0);
+  gst_structure_get_fraction (gst_stucture, "framerate", &numerator,
+      &denominator);
+
+  GST_OBJECT_LOCK (self);
+  self->duration = gst_util_uint64_scale (GST_SECOND, denominator, numerator);
+  GST_OBJECT_UNLOCK (self);
 
   return TRUE;
 }
@@ -247,9 +263,11 @@ free_gst_pylon:
 
 log_gst_error:
   GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-      ("Failed to open camera."), ("%s", error->message));
+      ("Failed to start camera."), ("%s", error->message));
   g_error_free (error);
   ret = FALSE;
+
+  self->offset = 0;
 
 out:
   return ret;
@@ -312,6 +330,49 @@ gst_pylon_src_query (GstBaseSrc * src, GstQuery * query)
   return GST_BASE_SRC_CLASS (gst_pylon_src_parent_class)->query (src, query);
 }
 
+/* add time metadata to buffer */
+static void
+gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
+{
+  GstClock *clock = NULL;
+  GstClockTime abs_time = GST_CLOCK_TIME_NONE;
+  GstClockTime base_time = GST_CLOCK_TIME_NONE;
+  GstClockTime timestamp = GST_CLOCK_TIME_NONE;
+
+  g_return_if_fail (self);
+  g_return_if_fail (buf);
+
+  GST_LOG_OBJECT (self, "Setting buffer metadata");
+
+  GST_OBJECT_LOCK (self);
+  /* set duration */
+  GST_BUFFER_DURATION (buf) = self->duration;
+
+  if ((clock = GST_ELEMENT_CLOCK (self))) {
+    /* we have a clock, get base time and ref clock */
+    base_time = GST_ELEMENT (self)->base_time;
+    gst_object_ref (clock);
+  } else {
+    /* no clock, can't set timestamps */
+    base_time = GST_CLOCK_TIME_NONE;
+  }
+  GST_OBJECT_UNLOCK (self);
+
+  /* sample pipeline clock */
+  if (clock) {
+    abs_time = gst_clock_get_time (clock);
+    gst_object_unref (clock);
+  } else {
+    abs_time = GST_CLOCK_TIME_NONE;
+  }
+
+  timestamp = abs_time - base_time;
+
+  GST_BUFFER_TIMESTAMP (buf) = timestamp;
+  GST_BUFFER_OFFSET (buf) = self->offset;
+  GST_BUFFER_OFFSET_END (buf) = self->offset + 1;
+}
+
 /* ask the subclass to create a buffer with offset and size, the default
  * implementation will call alloc and fill. */
 static GstFlowReturn
@@ -334,6 +395,9 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
     }
     ret = GST_FLOW_ERROR;
   }
+
+  gst_plyon_src_add_metadata (self, *buf);
+  self->offset++;
 
   return ret;
 }
