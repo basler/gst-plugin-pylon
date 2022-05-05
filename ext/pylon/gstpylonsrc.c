@@ -123,8 +123,8 @@ static void
 gst_pylon_src_init (GstPylonSrc * self)
 {
   self->pylon = NULL;
-  self->offset = 0;
-  self->duration = 0;
+  self->offset = G_GUINT64_CONSTANT (0);
+  self->duration = GST_CLOCK_TIME_NONE;
 }
 
 static void
@@ -335,9 +335,9 @@ static void
 gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
 {
   GstClock *clock = NULL;
-  GstClockTime abs_time = 0;
-  GstClockTime base_time = 0;
-  GstClockTime timestamp = 0;
+  GstClockTime abs_time = GST_CLOCK_TIME_NONE;
+  GstClockTime base_time = GST_CLOCK_TIME_NONE;
+  GstClockTime timestamp = GST_CLOCK_TIME_NONE;
 
   g_return_if_fail (self);
   g_return_if_fail (buf);
