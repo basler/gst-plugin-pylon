@@ -35,6 +35,7 @@ struct _GstPylonSrc
   GstPushSrc base_pylonsrc;
   GstPylon *pylon;
   guint64 offset;
+  GstClockTime duration;
 };
 
 /* prototypes */
@@ -202,8 +203,19 @@ static gboolean
 gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
 {
   GstPylonSrc *self = GST_PYLON_SRC (src);
+  GstStructure *gst_stucture;
+  gint numerator;
+  gint denominator;
 
-  GST_LOG_OBJECT (self, "set_caps");
+  GST_INFO_OBJECT (self, "Setting new caps");
+
+  gst_stucture = gst_caps_get_structure (caps, 0);
+  gst_structure_get_fraction (gst_stucture, "framerate", &numerator,
+      &denominator);
+
+  GST_OBJECT_LOCK (self);
+  self->duration = gst_util_uint64_scale (GST_SECOND, denominator, numerator);
+  GST_OBJECT_UNLOCK (self);
 
   return TRUE;
 }
@@ -328,10 +340,10 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
 
   GST_LOG_OBJECT (self, "Setting buffer metadata");
 
-  GST_BUFFER_OFFSET (buf) = self->offset;
-  GST_BUFFER_OFFSET_END (buf) = self->offset + 1;
-
   GST_OBJECT_LOCK (self);
+  /* set duration */
+  GST_BUFFER_DURATION (buf) = self->duration;
+
   if ((clock = GST_ELEMENT_CLOCK (self))) {
     /* we have a clock, get base time and ref clock */
     base_time = GST_ELEMENT (self)->base_time;
@@ -353,6 +365,8 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   timestamp = abs_time - base_time;
 
   GST_BUFFER_TIMESTAMP (buf) = timestamp;
+  GST_BUFFER_OFFSET (buf) = self->offset;
+  GST_BUFFER_OFFSET_END (buf) = self->offset + 1;
 }
 
 /* ask the subclass to create a buffer with offset and size, the default
