@@ -33,10 +33,10 @@
 
 #include "gstpylon.h"
 
-#ifdef _MSC_VER // MSVC
+#ifdef _MSC_VER                 // MSVC
 #pragma warning(push)
 #pragma warning(disable : 4265)
-#elif __GNUC__ // GCC, CLANG, MinGW
+#elif __GNUC__                  // GCC, CLANG, MinGW
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #endif
@@ -44,15 +44,15 @@
 #include <pylon/BaslerUniversalInstantCamera.h>
 #include <pylon/PylonIncludes.h>
 
-#ifdef _MSC_VER // MSVC
+#ifdef _MSC_VER                 // MSVC
 #pragma warning(pop)
-#elif __GNUC__ // GCC, CLANG, MinWG
+#elif __GNUC__                  // GCC, CLANG, MinWG
 #pragma GCC diagnostic pop
 #endif
 
 struct _GstPylon
 {
-  Pylon::CBaslerUniversalInstantCamera * camera;
+  Pylon::CBaslerUniversalInstantCamera camera;
 };
 
 void
@@ -69,9 +69,8 @@ gst_pylon_new (GError ** err)
   g_return_val_if_fail (self, NULL);
 
   try {
-    self->camera =
-        new Pylon::CBaslerUniversalInstantCamera (Pylon::
-        CTlFactory::GetInstance ().CreateFirstDevice ());
+    self->camera.Attach (Pylon::CTlFactory::GetInstance ().
+        CreateFirstDevice ());
   }
   catch (const Pylon::GenericException & e)
   {
@@ -89,9 +88,6 @@ gst_pylon_free (GstPylon * self)
 {
   g_return_if_fail (self);
 
-  delete self->camera;
-  self->camera = NULL;
-
   delete self;
 }
 
@@ -104,21 +100,22 @@ gst_pylon_start (GstPylon * self, GError ** err)
   g_return_val_if_fail (err || *err == NULL, FALSE);
 
   try {
-    self->camera->Open ();
+    self->camera.Open ();
 
     /* hard code camera configuration */
     gint width = 1920;
     gint height = 1080;
     gdouble framerate = 30.0;
-    self->camera->Width.SetValue (width, Pylon::IntegerValueCorrection_None);
-    self->camera->Height.SetValue (height, Pylon::IntegerValueCorrection_None);
-    self->camera->AcquisitionFrameRateEnable.SetValue (true);
-    self->camera->AcquisitionFrameRateAbs.SetValue (framerate,
+    self->camera.Width.SetValue (width, Pylon::IntegerValueCorrection_None);
+    self->camera.Height.SetValue (height, Pylon::IntegerValueCorrection_None);
+    self->camera.AcquisitionFrameRateEnable.SetValue (true);
+    self->camera.AcquisitionFrameRateAbs.SetValue (framerate,
         Pylon::FloatValueCorrection_None);
-    self->camera->PixelFormat.
-        SetValue (Basler_UniversalCameraParams::PixelFormat_RGB8Packed);
+    self->camera.
+        PixelFormat.SetValue (Basler_UniversalCameraParams::
+        PixelFormat_RGB8Packed);
 
-    self->camera->StartGrabbing ();
+    self->camera.StartGrabbing ();
   }
   catch (const Pylon::GenericException & e)
   {
@@ -139,10 +136,11 @@ gst_pylon_stop (GstPylon * self, GError ** err)
   g_return_val_if_fail (err || *err == NULL, FALSE);
 
   try {
-    self->camera->StopGrabbing ();
-    self->camera->Close ();
+    self->camera.StopGrabbing ();
+    self->camera.Close ();
   }
-  catch (const Pylon::GenericException & e) {
+  catch (const Pylon::GenericException & e)
+  {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
         e.GetDescription ());
     ret = FALSE;
@@ -162,10 +160,11 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
   gint timeout_ms = 5000;
   /* Catch the timeout exception if any */
   try {
-    self->camera->RetrieveResult (timeout_ms, ptr_grab_result,
+    self->camera.RetrieveResult (timeout_ms, ptr_grab_result,
         Pylon::TimeoutHandling_ThrowException);
   }
-  catch (const Pylon::GenericException & e) {
+  catch (const Pylon::GenericException & e)
+  {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
         e.GetDescription ());
     return FALSE;
