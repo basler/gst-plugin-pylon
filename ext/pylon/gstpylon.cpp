@@ -64,7 +64,7 @@ gst_pylon_initialize ()
 GstPylon *
 gst_pylon_new (GError ** err)
 {
-  GstPylon *self = (GstPylon *) g_malloc (sizeof (GstPylon));
+  GstPylon *self = new GstPylon;
 
   g_return_val_if_fail (self, NULL);
 
@@ -92,7 +92,7 @@ gst_pylon_free (GstPylon * self)
   delete self->camera;
   self->camera = NULL;
 
-  g_free (self);
+  delete self;
 }
 
 gboolean
