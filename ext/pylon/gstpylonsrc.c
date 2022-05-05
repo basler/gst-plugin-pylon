@@ -123,6 +123,8 @@ static void
 gst_pylon_src_init (GstPylonSrc * self)
 {
   self->pylon = NULL;
+  self->offset = 0;
+  self->duration = 0;
 }
 
 static void
@@ -203,11 +205,11 @@ static gboolean
 gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
 {
   GstPylonSrc *self = GST_PYLON_SRC (src);
-  GstStructure *gst_stucture;
-  gint numerator;
-  gint denominator;
+  GstStructure *gst_stucture = NULL;
+  gint numerator = 0;
+  gint denominator = 0;
 
-  GST_INFO_OBJECT (self, "Setting new caps");
+  GST_INFO_OBJECT (self, "Setting new caps: %" GST_PTR_FORMAT, caps);
 
   gst_stucture = gst_caps_get_structure (caps, 0);
   gst_structure_get_fraction (gst_stucture, "framerate", &numerator,
@@ -332,8 +334,10 @@ gst_pylon_src_query (GstBaseSrc * src, GstQuery * query)
 static void
 gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
 {
-  GstClock *clock;
-  GstClockTime abs_time, base_time, timestamp;
+  GstClock *clock = NULL;
+  GstClockTime abs_time = 0;
+  GstClockTime base_time = 0;
+  GstClockTime timestamp = 0;
 
   g_return_if_fail (self);
   g_return_if_fail (buf);
