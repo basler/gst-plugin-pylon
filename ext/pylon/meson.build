@@ -3,17 +3,25 @@ if pylon_path == ''
   pylon_path = '/opt/pylon'
 endif
 
+pylon_rpath = get_option('pylon-rpath')
+if pylon_rpath == ''
+  pylon_rpath = pylon_path + '/lib'
+endif
+
 pylon_config = find_program ('pylon-config', dirs: pylon_path + '/bin/', required : false, disabler : true)
 if not pylon_config.found()
   error('Pylon SDK not found, is it installed? If you installed it in alternative location you may specify it using -Dpylon-path=')
 endif
+
+message('Pylon path: ' + pylon_path)
+message('Pylon rpath: ' + pylon_rpath)
 
 pylon_c_args = run_command(pylon_config, '--cflags', check : true).stdout().strip().split()
 pylon_link_args = run_command(pylon_config, '--libs', check : true).stdout().strip().split()
 
 pylon_dep = declare_dependency (
   compile_args : pylon_c_args,
-  link_args : pylon_link_args + ['-Wl,-rpath',  '-Wl,@0@/lib'.format(pylon_path)]
+  link_args : pylon_link_args + ['-Wl,-rpath',  '-Wl,@0@'.format(pylon_rpath)]
 )
 
 pylon_sources = [
