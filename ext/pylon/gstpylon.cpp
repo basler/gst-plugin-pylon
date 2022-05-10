@@ -50,6 +50,8 @@
 #pragma GCC diagnostic pop
 #endif
 
+static void free_ptr_grab_result (gpointer data);
+
 struct _GstPylon
 {
   Pylon::CBaslerUniversalInstantCamera camera;
@@ -148,9 +150,11 @@ gst_pylon_stop (GstPylon * self, GError ** err)
   return ret;
 }
 
-void
+static void
 free_ptr_grab_result (gpointer data)
 {
+  g_return_if_fail (data);
+
   Pylon::CBaslerUniversalGrabResultPtr * ptr_grab_result =
       static_cast < Pylon::CBaslerUniversalGrabResultPtr * >(data);
   delete ptr_grab_result;
@@ -189,7 +193,8 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
   *buf =
       gst_buffer_new_wrapped_full (static_cast < GstMemoryFlags > (0),
       ptr_grab_result->GetBuffer (), buffer_size, 0, buffer_size,
-      persistent_ptr_grab_result, (GDestroyNotify) free_ptr_grab_result);
+      persistent_ptr_grab_result,
+      static_cast < GDestroyNotify > (free_ptr_grab_result));
 
   return TRUE;
 }
