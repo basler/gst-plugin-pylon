@@ -139,14 +139,21 @@ gst_pylon_stop (GstPylon * self, GError ** err)
     self->camera.StopGrabbing ();
     self->camera.Close ();
   }
-  catch (const Pylon::GenericException & e)
-  {
+  catch (const Pylon::GenericException & e) {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
         e.GetDescription ());
     ret = FALSE;
   }
 
   return ret;
+}
+
+void
+free_ptr_grab_result (gpointer data)
+{
+  Pylon::CBaslerUniversalGrabResultPtr * ptr_grab_result =
+      static_cast < Pylon::CBaslerUniversalGrabResultPtr * >(data);
+  delete ptr_grab_result;
 }
 
 gboolean
@@ -177,27 +184,12 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
   }
 
   gsize buffer_size = ptr_grab_result->GetBufferSize ();
-  *buf = gst_buffer_new_allocate (NULL, buffer_size, NULL);
-
-  if (*buf == NULL) {
-    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-        "Failed to allocate buffer.");
-    return FALSE;
-  }
-
-  GstMapInfo info = GST_MAP_INFO_INIT;
-  gboolean ret = gst_buffer_map (*buf, &info, GST_MAP_WRITE);
-
-  if (ret == FALSE) {
-    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-        "Failed tu map buffer.");
-    gst_buffer_unref (*buf);
-    *buf = NULL;
-    return FALSE;
-  }
-
-  memcpy (info.data, ptr_grab_result->GetBuffer (), buffer_size);
-  gst_buffer_unmap (*buf, &info);
+  Pylon::CBaslerUniversalGrabResultPtr * persistent_ptr_grab_result =
+      new Pylon::CBaslerUniversalGrabResultPtr (ptr_grab_result);
+  *buf =
+      gst_buffer_new_wrapped_full (static_cast < GstMemoryFlags > (0),
+      ptr_grab_result->GetBuffer (), buffer_size, 0, buffer_size,
+      persistent_ptr_grab_result, (GDestroyNotify) free_ptr_grab_result);
 
   return TRUE;
 }
