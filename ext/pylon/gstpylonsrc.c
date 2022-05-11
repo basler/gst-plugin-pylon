@@ -281,6 +281,8 @@ gst_pylon_src_start (GstBaseSrc * src)
     goto free_gst_pylon;
   }
 
+  self->offset = 0;
+
   goto out;
 
 free_gst_pylon:
@@ -292,8 +294,6 @@ log_gst_error:
       ("Failed to start camera."), ("%s", error->message));
   g_error_free (error);
   ret = FALSE;
-
-  self->offset = 0;
 
 out:
   return ret;
