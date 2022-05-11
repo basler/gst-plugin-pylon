@@ -49,6 +49,7 @@ void gst_pylon_free (GstPylon * self);
 gboolean gst_pylon_start (GstPylon * self, GError ** err);
 gboolean gst_pylon_stop (GstPylon * self, GError ** err);
 gboolean gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err);
+gboolean gst_pylon_query_configuration (GstPylon * self, GError ** err);
 
 G_END_DECLS
 

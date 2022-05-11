@@ -281,6 +281,8 @@ gst_pylon_src_start (GstBaseSrc * src)
     goto free_gst_pylon;
   }
 
+  ret = gst_pylon_query_configuration (self->pylon, &error);
+
   self->offset = 0;
 
   goto out;

@@ -198,3 +198,66 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
 
   return TRUE;
 }
+
+gboolean
+gst_pylon_query_configuration (GstPylon * self, GError ** err)
+{
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (err || *err == NULL, FALSE);
+
+  try {
+    self->camera.OffsetX.TrySetToMinimum ();
+    self->camera.OffsetY.TrySetToMinimum ();
+  }
+  catch (const Pylon::GenericException & e) {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        e.GetDescription ());
+    return FALSE;
+  }
+
+  if (self->camera.Width.IsReadable ()) {
+    std::cout << "Getting Width values" << std::endl;
+    std::cout << "Min Width            : " << self->camera.Width.
+        GetMin () << std::endl;
+    std::cout << "Max Width            : " << self->camera.Width.
+        GetMax () << std::endl;
+    std::cout << "Current Width        : " << self->camera.Width.
+        GetValue () << std::endl;
+    std::cout << "\n";
+  }
+
+  if (self->camera.Height.IsReadable ()) {
+    std::cout << "Getting Height values" << std::endl;
+    std::cout << "Min Height           : " << self->camera.Height.
+        GetMin () << std::endl;
+    std::cout << "Max Height           : " << self->camera.Height.
+        GetMax () << std::endl;
+    std::cout << "Current Height       : " << self->camera.Height.
+        GetValue () << std::endl;
+    std::cout << "\n";
+  }
+
+  if (self->camera.AcquisitionFrameRateAbs.IsReadable ()) {
+    std::cout << "Getting framerate max and min values" << std::endl;
+    std::cout << "Min FPS            : " << self->camera.
+        AcquisitionFrameRateAbs.GetMin () << std::endl;
+    std::cout << "Max FPS            : " << self->camera.
+        AcquisitionFrameRateAbs.GetMax () << std::endl;
+    std::cout << "Current FPS        : " << self->camera.
+        AcquisitionFrameRateAbs.GetValue () << std::endl;
+    std::cout << "\n";
+  }
+
+  GenApi::INodeMap & nodemap = self->camera.GetNodeMap ();
+  Pylon::CEnumParameter pixelFormat (nodemap, "PixelFormat");
+  GenApi::StringList_t values;
+  pixelFormat.GetSettableValues (values);
+
+  std::cout << "Getting available PixelFormats" << std::endl;
+  for (guint i = 0; i < values.size (); i++) {
+    std::cout << values[i] << std::endl;
+  }
+  std::cout << "\n";
+
+  return TRUE;
+}
