@@ -224,7 +224,7 @@ gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
 
 log_gst_error:
   GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-      ("Failed to query caps."), ("%s", error->message));
+      ("Failed to get caps."), ("%s", error->message));
   g_error_free (error);
 
 out:

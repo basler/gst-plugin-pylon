@@ -238,8 +238,8 @@ gst_pylon_pfnc_to_gst (GenApi::StringList_t genapi_formats)
 GstCaps *
 gst_pylon_query_configuration (GstPylon * self, GError ** err)
 {
-  g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (err || *err == NULL, FALSE);
+  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (err || *err == NULL, NULL);
 
   try {
     self->camera.OffsetX.TrySetToMinimum ();
@@ -248,7 +248,7 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
   catch (const Pylon::GenericException & e) {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
         e.GetDescription ());
-    return FALSE;
+    return NULL;
   }
 
   GenApi::INodeMap & nodemap = self->camera.GetNodeMap ();
