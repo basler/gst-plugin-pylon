@@ -200,7 +200,6 @@ static GstCaps *
 gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
 {
   GstPylonSrc *self = GST_PYLON_SRC (src);
-  GstPadTemplate *templ = NULL;
   GstCaps *outcaps = NULL;
   GError *error = NULL;
 
@@ -209,8 +208,11 @@ gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     return gst_pad_get_pad_template_caps (GST_BASE_SRC_PAD (self));
   }
 
-  templ = gst_static_pad_template_get (&gst_pylon_src_src_template);
-  outcaps = gst_pad_template_get_caps (templ);
+  outcaps = gst_pylon_query_configuration (self->pylon, &error);
+
+  if (outcaps == NULL && error) {
+    goto log_gst_error;
+  }
 
   if (filter) {
     GstCaps *tmp = outcaps;
@@ -218,8 +220,14 @@ gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     gst_caps_unref (tmp);
   }
 
-  gst_pylon_query_configuration (self->pylon, &error);
+  goto out;
 
+log_gst_error:
+  GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+      ("Failed to query caps."), ("%s", error->message));
+  g_error_free (error);
+
+out:
   return outcaps;
 }
 

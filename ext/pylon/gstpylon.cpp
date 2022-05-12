@@ -235,7 +235,7 @@ gst_pylon_pfnc_to_gst (GenApi::StringList_t genapi_formats)
   return formats_list;
 }
 
-gboolean
+GstCaps *
 gst_pylon_query_configuration (GstPylon * self, GError ** err)
 {
   g_return_val_if_fail (self, FALSE);
@@ -262,8 +262,27 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
 
   if (gst_formats.empty ()) {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-        "Failed to find any supported formats available");
+        "Failed to find any supported pixel formats available");
+    return NULL;
   }
 
-  return TRUE;
+  GstCaps *caps = gst_caps_new_empty ();
+  GstStructure *gst_structure = gst_structure_new_empty ("video/x-raw");
+
+  /* Filling format field */
+  GValueArray *value_array = g_value_array_new (0);
+
+  for (guint i = 0; i < gst_formats.size (); i++) {
+    GValue value = G_VALUE_INIT;
+    g_value_init (&value, G_TYPE_STRING);
+    g_value_set_string (&value, gst_formats.at (i).c_str ());
+    value_array = g_value_array_append (value_array, &value);
+    g_value_unset (&value);
+  }
+
+  gst_structure_set_list (gst_structure, "format", value_array);
+
+  gst_caps_append_structure (caps, gst_structure);
+
+  return caps;
 }
