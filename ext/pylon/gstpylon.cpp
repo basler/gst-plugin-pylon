@@ -241,16 +241,7 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
   g_return_val_if_fail (self, NULL);
   g_return_val_if_fail (err || *err == NULL, NULL);
 
-  try {
-    self->camera.OffsetX.TrySetToMinimum ();
-    self->camera.OffsetY.TrySetToMinimum ();
-  }
-  catch (const Pylon::GenericException & e) {
-    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-        e.GetDescription ());
-    return NULL;
-  }
-
+  /* Query camera available parameters */
   GenApi::INodeMap & nodemap = self->camera.GetNodeMap ();
   Pylon::CEnumParameter pixelFormat (nodemap, "PixelFormat");
   GenApi::StringList_t genapi_formats;
@@ -266,14 +257,30 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
     return NULL;
   }
 
+  try {
+    self->camera.OffsetX.TrySetToMinimum ();
+    self->camera.OffsetY.TrySetToMinimum ();
+  }
+  catch (const Pylon::GenericException & e) {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        e.GetDescription ());
+    return NULL;
+  }
+
+  gint64 min_w = self->camera.Width.GetMin ();
+  gint64 max_w = self->camera.Width.GetMax ();
+  gint64 min_h = self->camera.Height.GetMin ();
+  gint64 max_h = self->camera.Height.GetMax ();
+
+  /* Build gst caps */
   GstCaps *caps = gst_caps_new_empty ();
   GstStructure *gst_structure = gst_structure_new_empty ("video/x-raw");
+  GValue value = G_VALUE_INIT;
 
-  /* Filling format field */
+  /* Fill format field */
   GValueArray *value_array = g_value_array_new (0);
 
   for (guint i = 0; i < gst_formats.size (); i++) {
-    GValue value = G_VALUE_INIT;
     g_value_init (&value, G_TYPE_STRING);
     g_value_set_string (&value, gst_formats.at (i).c_str ());
     value_array = g_value_array_append (value_array, &value);
@@ -281,6 +288,18 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
   }
 
   gst_structure_set_list (gst_structure, "format", value_array);
+
+  /* Fill width field */
+  g_value_init (&value, GST_TYPE_INT_RANGE);
+  gst_value_set_int_range (&value, min_w, max_w);
+  gst_structure_set_value (gst_structure, "width", &value);
+  g_value_unset (&value);
+
+  /* Fill height field */
+  g_value_init (&value, GST_TYPE_INT_RANGE);
+  gst_value_set_int_range (&value, min_h, max_h);
+  gst_structure_set_value (gst_structure, "height", &value);
+  g_value_unset (&value);
 
   gst_caps_append_structure (caps, gst_structure);
 
