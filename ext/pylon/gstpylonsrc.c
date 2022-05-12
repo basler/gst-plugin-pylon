@@ -53,6 +53,8 @@
 
 #include "gstpylon.h"
 
+#include <gst/video/video.h>
+
 GST_DEBUG_CATEGORY_STATIC (gst_pylon_src_debug_category);
 #define GST_CAT_DEFAULT gst_pylon_src_debug_category
 
@@ -97,8 +99,7 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS
-    ("video/x-raw,width=1920,height=1080,framerate=30/1,format=RGB")
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE (" {GRAY8, GRAY16_LE, RGB, BGR} "))
     );
 
 
