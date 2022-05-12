@@ -199,8 +199,15 @@ gst_pylon_src_finalize (GObject * object)
 static GstCaps *
 gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
 {
+  GstPylonSrc *self = GST_PYLON_SRC (src);
   GstPadTemplate *templ = NULL;
   GstCaps *outcaps = NULL;
+  GError *error = NULL;
+
+  if (!self->pylon) {
+    GST_INFO_OBJECT (self, "Returning src template caps");
+    return gst_pad_get_pad_template_caps (GST_BASE_SRC_PAD (self));
+  }
 
   templ = gst_static_pad_template_get (&gst_pylon_src_src_template);
   outcaps = gst_pad_template_get_caps (templ);
@@ -210,6 +217,8 @@ gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     outcaps = gst_caps_intersect (outcaps, filter);
     gst_caps_unref (tmp);
   }
+
+  gst_pylon_query_configuration (self->pylon, &error);
 
   return outcaps;
 }
@@ -280,8 +289,6 @@ gst_pylon_src_start (GstBaseSrc * src)
   if (ret == FALSE && error) {
     goto free_gst_pylon;
   }
-
-  ret = gst_pylon_query_configuration (self->pylon, &error);
 
   self->offset = 0;
 
