@@ -52,17 +52,6 @@
 #pragma GCC diagnostic pop
 #endif
 
-/* *INDENT-OFF* */
-static const
-std::map < GenICam_3_1_Basler_pylon::gcstring, std::string > formats_map = {
-  {"Mono8", "GRAY8"},
-  {"Mono10", "GRAY16_LE"},
-  {"Mono12", "GRAY16_LE"},
-  {"RGB8Packed", "RGB"},
-  {"BGR8Packed", "BGR"}
-};
-/* *INDENT-ON* */
-
 /* prototypes */
 static void free_ptr_grab_result (gpointer data);
 /* *INDENT-OFF* */
@@ -219,9 +208,19 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
 
 /* *INDENT-OFF* */
 static std::vector <std::string>
-/* *INDENT-OFF* */
+/* *INDENT-ON* */
+
 gst_pylon_pfnc_to_gst (GenApi::StringList_t genapi_formats)
 {
+  /* *INDENT-OFF* */
+  static const std::map <const GenICam_3_1_Basler_pylon::gcstring, const std::string> formats_map = {
+        {"Mono8", "GRAY8"},
+        {"Mono10", "GRAY16_LE"},
+	{"Mono12", "GRAY16_LE"},
+	{"RGB8Packed", "RGB"},
+	{"BGR8Packed", "BGR"}
+  };
+  /* *INDENT-ON* */
   std::vector < std::string > formats_list;
 
   for (guint i = 0; i < genapi_formats.size (); i++) {
