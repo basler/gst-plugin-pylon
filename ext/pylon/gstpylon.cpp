@@ -52,26 +52,23 @@
 #pragma GCC diagnostic pop
 #endif
 
+/* *INDENT-OFF* */
+static const
 std::map < GenICam_3_1_Basler_pylon::gcstring, std::string > formats_map = {
-  {
-  "Mono8", "GRAY8"}
-  , {
-  "Mono10", "GRAY16_LE"}
-  , {
-  "Mono12", "GRAY16_LE"}
-  , {
-  "RGB8Packed", "RGB"}
-  , {
-  "BGR8Packed", "BGR"}
+  {"Mono8", "GRAY8"},
+  {"Mono10", "GRAY16_LE"},
+  {"Mono12", "GRAY16_LE"},
+  {"RGB8Packed", "RGB"},
+  {"BGR8Packed", "BGR"}
 };
+/* *INDENT-ON* */
 
 /* prototypes */
-static void
-free_ptr_grab_result (gpointer data);
-static
-    std::vector <
-    std::string >
+static void free_ptr_grab_result (gpointer data);
+/* *INDENT-OFF* */
+static std::vector <std::string>
 gst_pylon_pfnc_to_gst (GenApi::StringList_t genapi_formats);
+/* *INDENT-ON* */
 
 struct _GstPylon
 {
@@ -92,8 +89,8 @@ gst_pylon_new (GError ** err)
   g_return_val_if_fail (self, NULL);
 
   try {
-    self->camera.Attach (Pylon::CTlFactory::GetInstance ().
-        CreateFirstDevice ());
+    self->camera.
+        Attach (Pylon::CTlFactory::GetInstance ().CreateFirstDevice ());
   }
   catch (const Pylon::GenericException & e)
   {
@@ -134,9 +131,8 @@ gst_pylon_start (GstPylon * self, GError ** err)
     self->camera.AcquisitionFrameRateEnable.SetValue (true);
     self->camera.AcquisitionFrameRateAbs.SetValue (framerate,
         Pylon::FloatValueCorrection_None);
-    self->camera.
-        PixelFormat.SetValue (Basler_UniversalCameraParams::
-        PixelFormat_RGB8Packed);
+    self->camera.PixelFormat.
+        SetValue (Basler_UniversalCameraParams::PixelFormat_RGB8Packed);
 
     self->camera.StartGrabbing ();
   }
@@ -162,7 +158,8 @@ gst_pylon_stop (GstPylon * self, GError ** err)
     self->camera.StopGrabbing ();
     self->camera.Close ();
   }
-  catch (const Pylon::GenericException & e) {
+  catch (const Pylon::GenericException & e)
+  {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
         e.GetDescription ());
     ret = FALSE;
@@ -220,9 +217,9 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
   return TRUE;
 }
 
-static
-    std::vector <
-    std::string >
+/* *INDENT-OFF* */
+static std::vector <std::string>
+/* *INDENT-OFF* */
 gst_pylon_pfnc_to_gst (GenApi::StringList_t genapi_formats)
 {
   std::vector < std::string > formats_list;
@@ -261,7 +258,8 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
     self->camera.OffsetX.TrySetToMinimum ();
     self->camera.OffsetY.TrySetToMinimum ();
   }
-  catch (const Pylon::GenericException & e) {
+  catch (const Pylon::GenericException & e)
+  {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
         e.GetDescription ());
     return NULL;
