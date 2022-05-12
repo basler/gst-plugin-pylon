@@ -33,6 +33,8 @@
 
 #include "gstpylon.h"
 
+#include <map>
+
 #ifdef _MSC_VER                 // MSVC
 #pragma warning(push)
 #pragma warning(disable : 4265)
@@ -50,7 +52,26 @@
 #pragma GCC diagnostic pop
 #endif
 
-static void free_ptr_grab_result (gpointer data);
+std::map < GenICam_3_1_Basler_pylon::gcstring, std::string > formats_map = {
+  {
+  "Mono8", "GRAY8"}
+  , {
+  "Mono10", "GRAY16_LE"}
+  , {
+  "Mono12", "GRAY16_LE"}
+  , {
+  "RGB8Packed", "RGB"}
+  , {
+  "BGR8Packed", "BGR"}
+};
+
+/* prototypes */
+static void
+free_ptr_grab_result (gpointer data);
+static
+    std::vector <
+    std::string >
+gst_pylon_pfnc_to_gst (GenApi::StringList_t genapi_formats);
 
 struct _GstPylon
 {
@@ -199,6 +220,21 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
   return TRUE;
 }
 
+static
+    std::vector <
+    std::string >
+gst_pylon_pfnc_to_gst (GenApi::StringList_t genapi_formats)
+{
+  std::vector < std::string > formats_list;
+
+  for (guint i = 0; i < genapi_formats.size (); i++) {
+    if (formats_map.find (genapi_formats[i]) != formats_map.end ()) {
+      formats_list.push_back (formats_map.at (genapi_formats[i]));
+    }
+  }
+  return formats_list;
+}
+
 gboolean
 gst_pylon_query_configuration (GstPylon * self, GError ** err)
 {
@@ -215,49 +251,19 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
     return FALSE;
   }
 
-  if (self->camera.Width.IsReadable ()) {
-    std::cout << "Getting Width values" << std::endl;
-    std::cout << "Min Width            : " << self->camera.Width.
-        GetMin () << std::endl;
-    std::cout << "Max Width            : " << self->camera.Width.
-        GetMax () << std::endl;
-    std::cout << "Current Width        : " << self->camera.Width.
-        GetValue () << std::endl;
-    std::cout << "\n";
-  }
-
-  if (self->camera.Height.IsReadable ()) {
-    std::cout << "Getting Height values" << std::endl;
-    std::cout << "Min Height           : " << self->camera.Height.
-        GetMin () << std::endl;
-    std::cout << "Max Height           : " << self->camera.Height.
-        GetMax () << std::endl;
-    std::cout << "Current Height       : " << self->camera.Height.
-        GetValue () << std::endl;
-    std::cout << "\n";
-  }
-
-  if (self->camera.AcquisitionFrameRateAbs.IsReadable ()) {
-    std::cout << "Getting framerate max and min values" << std::endl;
-    std::cout << "Min FPS            : " << self->camera.
-        AcquisitionFrameRateAbs.GetMin () << std::endl;
-    std::cout << "Max FPS            : " << self->camera.
-        AcquisitionFrameRateAbs.GetMax () << std::endl;
-    std::cout << "Current FPS        : " << self->camera.
-        AcquisitionFrameRateAbs.GetValue () << std::endl;
-    std::cout << "\n";
-  }
-
   GenApi::INodeMap & nodemap = self->camera.GetNodeMap ();
   Pylon::CEnumParameter pixelFormat (nodemap, "PixelFormat");
-  GenApi::StringList_t values;
-  pixelFormat.GetSettableValues (values);
+  GenApi::StringList_t genapi_formats;
+  pixelFormat.GetSettableValues (genapi_formats);
 
-  std::cout << "Getting available PixelFormats" << std::endl;
-  for (guint i = 0; i < values.size (); i++) {
-    std::cout << values[i] << std::endl;
+  /* Convert GenApi formats to Gst formats */
+  std::vector < std::string > gst_formats =
+      gst_pylon_pfnc_to_gst (genapi_formats);
+
+  if (gst_formats.empty ()) {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        "Failed to find any supported formats available");
   }
-  std::cout << "\n";
 
   return TRUE;
 }
