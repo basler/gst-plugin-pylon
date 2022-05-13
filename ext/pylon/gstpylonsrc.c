@@ -247,11 +247,38 @@ static GstCaps *
 gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
 {
   GstPylonSrc *self = GST_PYLON_SRC (src);
+  GstCaps *outcaps = NULL;
+  GstStructure *st = NULL;
+  static const gint preferred_width = 1920;
+  static const gint preferred_height = 1080;
+  static const gint preferred_framerate_num = 30;
+  static const gint preferred_framerate_den = 1;
 
-  GST_LOG_OBJECT (self, "fixate");
 
-  /* TODO: fixme */
-  return gst_caps_fixate (caps);
+  GST_DEBUG_OBJECT (self, "Fixating caps %" GST_PTR_FORMAT, caps);
+
+  if (gst_caps_is_fixed (caps)) {
+    GST_DEBUG_OBJECT (self, "Caps are already fixed");
+    return caps;
+  }
+
+  outcaps = gst_caps_new_empty ();
+  st = gst_structure_copy (gst_caps_get_structure (caps, 0));
+  gst_caps_unref (caps);
+
+  gst_structure_fixate_field_nearest_int (st, "width", preferred_width);
+  gst_structure_fixate_field_nearest_int (st, "height", preferred_height);
+  gst_structure_fixate_field_nearest_fraction (st, "framerate",
+      preferred_framerate_num, preferred_framerate_den);
+
+  gst_caps_append_structure (outcaps, st);
+
+  /* Fixate the remainder of the fields */
+  outcaps = gst_caps_fixate (outcaps);
+
+  GST_INFO_OBJECT (self, "Fixated caps to %" GST_PTR_FORMAT, outcaps);
+
+  return outcaps;
 }
 
 /* notify the subclass of new caps */
