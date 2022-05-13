@@ -59,9 +59,12 @@ static void gst_pylon_query_integer (GstPylon * self, GValue * outvalue,
     const std::string & name);
 static void gst_pylon_query_width (GstPylon * self, GValue * outvalue);
 static void gst_pylon_query_height (GstPylon * self, GValue * outvalue);
-static void gst_pylon_query_framerate (GstPylon * self, GValue * outvalue);
 /* *INDENT-OFF* */
-static std::string gst_pylon_pfnc_to_gst (GenICam_3_1_Basler_pylon::gcstring genapi_format);
+static void gst_pylon_query_framerate (GstPylon * self, GValue * outvalue);
+static std::string gst_pylon_translate_format (const std::string &format,
+    const std::map<const std::string, const std::string> &map);
+static std::string gst_pylon_gst_to_pfnc (const std::string &gst_format);
+static std::string gst_pylon_pfnc_to_gst (const std::string &genapi_format);
 static std::vector <std::string> gst_pylon_pfnc_list_to_gst (GenApi::StringList_t genapi_formats);
 /* *INDENT-ON* */
 
@@ -86,6 +89,7 @@ gst_pylon_new (GError ** err)
   try {
     self->camera.Attach (Pylon::CTlFactory::GetInstance ().
         CreateFirstDevice ());
+    self->camera.Open ();
   }
   catch (const Pylon::GenericException & e)
   {
@@ -103,6 +107,8 @@ gst_pylon_free (GstPylon * self)
 {
   g_return_if_fail (self);
 
+  self->camera.Close ();
+
   delete self;
 }
 
@@ -115,21 +121,6 @@ gst_pylon_start (GstPylon * self, GError ** err)
   g_return_val_if_fail (err || *err == NULL, FALSE);
 
   try {
-    self->camera.Open ();
-
-    /* hard code camera configuration */
-    gint width = 1920;
-    gint height = 1080;
-    gdouble framerate = 30.0;
-    self->camera.Width.SetValue (width, Pylon::IntegerValueCorrection_None);
-    self->camera.Height.SetValue (height, Pylon::IntegerValueCorrection_None);
-    self->camera.AcquisitionFrameRateEnable.SetValue (true);
-    self->camera.AcquisitionFrameRateAbs.SetValue (framerate,
-        Pylon::FloatValueCorrection_None);
-    self->camera.
-        PixelFormat.SetValue (Basler_UniversalCameraParams::
-        PixelFormat_RGB8Packed);
-
     self->camera.StartGrabbing ();
   }
   catch (const Pylon::GenericException & e)
@@ -152,7 +143,6 @@ gst_pylon_stop (GstPylon * self, GError ** err)
 
   try {
     self->camera.StopGrabbing ();
-    self->camera.Close ();
   }
   catch (const Pylon::GenericException & e)
   {
@@ -215,10 +205,39 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
 
 static
     std::string
-gst_pylon_pfnc_to_gst (GenICam_3_1_Basler_pylon::gcstring genapi_format)
+gst_pylon_translate_format (const std::string & in_format,
+    const std::map < const std::string, const std::string > &map)
+{
+  std::string out_format;
+  if (map.find (in_format) != map.end ()) {
+    out_format = map.at (in_format);
+  }
+
+  return out_format;
+}
+
+static
+    std::string
+gst_pylon_gst_to_pfnc (const std::string & gst_format)
 {
   /* *INDENT-OFF* */
-  static const std::map <const GenICam_3_1_Basler_pylon::gcstring, const std::string> formats_map = {
+  static const std::map <const std::string, const std::string> formats_map = {
+        {"GRAY8", "Mono8"},
+	{"GRAY16", "Mono12_LE"},
+	{"RGB", "RGB8Packed"},
+	{"BGR", "BGR8Packed"}
+  };
+  /* *INDENT-ON* */
+
+  return gst_pylon_translate_format (gst_format, formats_map);;
+}
+
+static
+    std::string
+gst_pylon_pfnc_to_gst (const std::string & genapi_format)
+{
+  /* *INDENT-OFF* */
+  static const std::map <const std::string, const std::string> formats_map = {
         {"Mono8", "GRAY8"},
         {"Mono10", "GRAY16_LE"},
 	{"Mono12", "GRAY16_LE"},
@@ -227,12 +246,7 @@ gst_pylon_pfnc_to_gst (GenICam_3_1_Basler_pylon::gcstring genapi_format)
   };
   /* *INDENT-ON* */
 
-  std::string gst_format;
-  if (formats_map.find (genapi_format) != formats_map.end ()) {
-    gst_format = formats_map.at (genapi_format);
-  }
-
-  return gst_format;
+  return gst_pylon_translate_format (genapi_format, formats_map);
 }
 
 /* *INDENT-OFF* */
@@ -244,7 +258,7 @@ gst_pylon_pfnc_list_to_gst (GenApi::StringList_t genapi_formats)
   std::vector < std::string > formats_list;
 
 for (const auto & fmt:genapi_formats) {
-    std::string gst_fmt = gst_pylon_pfnc_to_gst (fmt);
+    std::string gst_fmt = gst_pylon_pfnc_to_gst (std::string (fmt));
 
     if (!gst_fmt.empty ()) {
       formats_list.push_back (gst_fmt);
@@ -374,8 +388,6 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
       GstPylonQuery func = query.first;
       const gchar *name = query.second.c_str ();
 
-      std::cout << "Setting " << name << std::endl;
-
       func (self, &value);
       gst_structure_set_value (gst_structure, name, &value);
       g_value_unset (&value);
@@ -394,4 +406,87 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
   gst_caps_append_structure (caps, gst_structure);
 
   return caps;
+}
+
+gboolean
+gst_pylon_set_configuration (GstPylon * self,
+    const GstCaps * conf, GError ** err)
+{
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (conf, FALSE);
+  g_return_val_if_fail (err || *err == NULL, FALSE);
+
+  GstStructure *st = gst_caps_get_structure (conf, 0);
+
+  try {
+    const std::string gst_format = gst_structure_get_string (st, "format");
+    if (gst_format.empty ()) {
+      /* *INDENT-OFF* */
+      throw Pylon::GenericException ("Unable to find the format in the configuration",
+          __FILE__, __LINE__);
+      /* *INDENT-ON* */
+    }
+
+    gint gst_width = 0;
+    if (!gst_structure_get_int (st, "width", &gst_width)) {
+      /* *INDENT-OFF* */
+      throw Pylon::GenericException ("Unable to find the width in the configuration",
+          __FILE__, __LINE__);
+      /* *INDENT-ON* */
+    }
+
+    gint gst_height = 0;
+    if (!gst_structure_get_int (st, "height", &gst_height)) {
+      /* *INDENT-OFF* */
+      throw Pylon::GenericException ("Unable to find the height in the configuration",
+          __FILE__, __LINE__);
+      /* *INDENT-ON* */
+    }
+
+    gint gst_numerator = 0;
+    gint gst_denominator = 0;
+    if (!gst_structure_get_fraction (st, "framerate", &gst_numerator,
+            &gst_denominator)) {
+
+      /* *INDENT-OFF* */
+      throw Pylon::GenericException ("Unable to find the framerate in the configuration",
+          __FILE__, __LINE__);
+      /* *INDENT-ON* */
+    }
+
+    GenApi::INodeMap & nodemap = self->camera.GetNodeMap ();
+
+    Pylon::CEnumParameter format (nodemap, "PixelFormat");
+    const std::string pfnc_format = gst_pylon_gst_to_pfnc (gst_format);
+    if (pfnc_format.empty ()) {
+      /* *INDENT-OFF* */
+      throw Pylon::GenericException (std::string ("Unsupported GStreamer format: " + gst_format).c_str (),
+          __FILE__, __LINE__);
+      /* *INDENT-ON* */
+    }
+
+    format.SetValue (gst_pylon_gst_to_pfnc (gst_format).c_str ());
+
+    Pylon::CIntegerParameter width (nodemap, "Width");
+    width.SetValue (gst_width, Pylon::IntegerValueCorrection_None);
+
+    Pylon::CIntegerParameter height (nodemap, "Height");
+    height.SetValue (gst_height, Pylon::IntegerValueCorrection_None);
+
+    Pylon::CBooleanParameter framerate_enable (nodemap,
+        "AcquisitionFrameRateEnable");
+    framerate_enable.SetValue (true);
+
+    Pylon::CFloatParameter framerate (nodemap, "AcquisitionFrameRateAbs");
+    gdouble div = 1.0 * gst_numerator / gst_denominator;
+    framerate.SetValue (div, Pylon::FloatValueCorrection_None);
+  }
+  catch (const Pylon::GenericException & e)
+  {
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        e.GetDescription ());
+    return FALSE;
+  }
+
+  return TRUE;
 }

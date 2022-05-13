@@ -262,6 +262,9 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   GstStructure *gst_stucture = NULL;
   gint numerator = 0;
   gint denominator = 0;
+  GError *error = NULL;
+  gboolean ret = FALSE;
+  const gchar *action = NULL;
 
   GST_INFO_OBJECT (self, "Setting new caps: %" GST_PTR_FORMAT, caps);
 
@@ -273,7 +276,33 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   self->duration = gst_util_uint64_scale (GST_SECOND, denominator, numerator);
   GST_OBJECT_UNLOCK (self);
 
-  return TRUE;
+  ret = gst_pylon_stop (self->pylon, &error);
+  if (FALSE == ret && error) {
+    action = "stop";
+    goto error;
+  }
+
+  ret = gst_pylon_set_configuration (self->pylon, caps, &error);
+  if (FALSE == ret && error) {
+    action = "configure";
+    goto error;
+  }
+
+  ret = gst_pylon_start (self->pylon, &error);
+  if (FALSE == ret && error) {
+    action = "start";
+    goto error;
+  }
+
+  goto out;
+
+error:
+  GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+      ("Failed to %s camera.", action), ("%s", error->message));
+  g_error_free (error);
+
+out:
+  return ret;
 }
 
 /* setup allocation query */
@@ -300,30 +329,16 @@ gst_pylon_src_start (GstBaseSrc * src)
   self->pylon = gst_pylon_new (&error);
 
   if (error) {
-    goto log_gst_error;
+    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+        ("Failed to start camera."), ("%s", error->message));
+    g_error_free (error);
+    ret = FALSE;
+
+  } else {
+    self->offset = 0;
   }
 
-  ret = gst_pylon_start (self->pylon, &error);
 
-  if (ret == FALSE && error) {
-    goto free_gst_pylon;
-  }
-
-  self->offset = 0;
-
-  goto out;
-
-free_gst_pylon:
-  gst_pylon_free (self->pylon);
-  self->pylon = NULL;
-
-log_gst_error:
-  GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-      ("Failed to start camera."), ("%s", error->message));
-  g_error_free (error);
-  ret = FALSE;
-
-out:
   return ret;
 }
 
