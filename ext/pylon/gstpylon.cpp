@@ -55,8 +55,11 @@
 /* prototypes */
 static void free_ptr_grab_result (gpointer data);
 /* *INDENT-OFF* */
+static std::string
+gst_pylon_pfnc_to_gst (GenICam_3_1_Basler_pylon::gcstring genapi_format);
+
 static std::vector <std::string>
-gst_pylon_pfnc_to_gst (GenApi::StringList_t genapi_formats);
+gst_pylon_pfnc_list_to_gst (GenApi::StringList_t genapi_formats);
 /* *INDENT-ON* */
 
 struct _GstPylon
@@ -78,8 +81,8 @@ gst_pylon_new (GError ** err)
   g_return_val_if_fail (self, NULL);
 
   try {
-    self->camera.
-        Attach (Pylon::CTlFactory::GetInstance ().CreateFirstDevice ());
+    self->camera.Attach (Pylon::CTlFactory::GetInstance ().
+        CreateFirstDevice ());
   }
   catch (const Pylon::GenericException & e)
   {
@@ -120,8 +123,9 @@ gst_pylon_start (GstPylon * self, GError ** err)
     self->camera.AcquisitionFrameRateEnable.SetValue (true);
     self->camera.AcquisitionFrameRateAbs.SetValue (framerate,
         Pylon::FloatValueCorrection_None);
-    self->camera.PixelFormat.
-        SetValue (Basler_UniversalCameraParams::PixelFormat_RGB8Packed);
+    self->camera.
+        PixelFormat.SetValue (Basler_UniversalCameraParams::
+        PixelFormat_RGB8Packed);
 
     self->camera.StartGrabbing ();
   }
@@ -206,11 +210,9 @@ gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err)
   return TRUE;
 }
 
-/* *INDENT-OFF* */
-static std::vector <std::string>
-/* *INDENT-ON* */
-
-gst_pylon_pfnc_to_gst (GenApi::StringList_t genapi_formats)
+static
+    std::string
+gst_pylon_pfnc_to_gst (GenICam_3_1_Basler_pylon::gcstring genapi_format)
 {
   /* *INDENT-OFF* */
   static const std::map <const GenICam_3_1_Basler_pylon::gcstring, const std::string> formats_map = {
@@ -221,13 +223,31 @@ gst_pylon_pfnc_to_gst (GenApi::StringList_t genapi_formats)
 	{"BGR8Packed", "BGR"}
   };
   /* *INDENT-ON* */
+
+  std::string gst_format;
+  if (formats_map.find (genapi_format) != formats_map.end ()) {
+    gst_format = formats_map.at (genapi_format);
+  }
+
+  return gst_format;
+}
+
+/* *INDENT-OFF* */
+static std::vector <std::string>
+/* *INDENT-ON* */
+
+gst_pylon_pfnc_list_to_gst (GenApi::StringList_t genapi_formats)
+{
   std::vector < std::string > formats_list;
 
-  for (guint i = 0; i < genapi_formats.size (); i++) {
-    if (formats_map.find (genapi_formats[i]) != formats_map.end ()) {
-      formats_list.push_back (formats_map.at (genapi_formats[i]));
+for (const auto & fmt:genapi_formats) {
+    std::string gst_fmt = gst_pylon_pfnc_to_gst (fmt);
+
+    if (!gst_fmt.empty ()) {
+      formats_list.push_back (gst_fmt);
     }
   }
+
   return formats_list;
 }
 
@@ -245,7 +265,7 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
 
   /* Convert GenApi formats to Gst formats */
   std::vector < std::string > gst_formats =
-      gst_pylon_pfnc_to_gst (genapi_formats);
+      gst_pylon_pfnc_list_to_gst (genapi_formats);
 
   if (gst_formats.empty ()) {
     g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
