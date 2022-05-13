@@ -54,12 +54,15 @@
 
 /* prototypes */
 static void free_ptr_grab_result (gpointer data);
+static void gst_pylon_query_format (GstPylon * self, GValue * outvalue);
+static void gst_pylon_query_integer (GstPylon * self, GValue * outvalue,
+    const std::string & name);
+static void gst_pylon_query_width (GstPylon * self, GValue * outvalue);
+static void gst_pylon_query_height (GstPylon * self, GValue * outvalue);
+static void gst_pylon_query_framerate (GstPylon * self, GValue * outvalue);
 /* *INDENT-OFF* */
-static std::string
-gst_pylon_pfnc_to_gst (GenICam_3_1_Basler_pylon::gcstring genapi_format);
-
-static std::vector <std::string>
-gst_pylon_pfnc_list_to_gst (GenApi::StringList_t genapi_formats);
+static std::string gst_pylon_pfnc_to_gst (GenICam_3_1_Basler_pylon::gcstring genapi_format);
+static std::vector <std::string> gst_pylon_pfnc_list_to_gst (GenApi::StringList_t genapi_formats);
 /* *INDENT-ON* */
 
 struct _GstPylon
@@ -251,15 +254,17 @@ for (const auto & fmt:genapi_formats) {
   return formats_list;
 }
 
-GstCaps *
-gst_pylon_query_configuration (GstPylon * self, GError ** err)
-{
-  g_return_val_if_fail (self, NULL);
-  g_return_val_if_fail (err || *err == NULL, NULL);
+typedef void (*GstPylonQuery) (GstPylon *, GValue *);
 
-  /* Query camera available parameters */
+static void
+gst_pylon_query_format (GstPylon * self, GValue * outvalue)
+{
+  g_return_if_fail (self);
+  g_return_if_fail (outvalue);
+
   GenApi::INodeMap & nodemap = self->camera.GetNodeMap ();
   Pylon::CEnumParameter pixelFormat (nodemap, "PixelFormat");
+
   GenApi::StringList_t genapi_formats;
   pixelFormat.GetSettableValues (genapi_formats);
 
@@ -267,60 +272,64 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
   std::vector < std::string > gst_formats =
       gst_pylon_pfnc_list_to_gst (genapi_formats);
 
-  if (gst_formats.empty ()) {
-    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-        "Failed to find any supported pixel formats available");
-    return NULL;
-  }
-
-  try {
-    self->camera.OffsetX.TrySetToMinimum ();
-    self->camera.OffsetY.TrySetToMinimum ();
-  }
-  catch (const Pylon::GenericException & e)
-  {
-    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-        e.GetDescription ());
-    return NULL;
-  }
-
-  gint min_w = self->camera.Width.GetMin ();
-  gint max_w = self->camera.Width.GetMax ();
-  gint min_h = self->camera.Height.GetMin ();
-  gint max_h = self->camera.Height.GetMax ();
-
-  /* Build gst caps */
-  GstCaps *caps = gst_caps_new_empty ();
-  GstStructure *gst_structure = gst_structure_new_empty ("video/x-raw");
-  GValue value = G_VALUE_INIT;
-
   /* Fill format field */
-  GValue value_list = G_VALUE_INIT;
-  g_value_init (&value_list, GST_TYPE_LIST);
+  g_value_init (outvalue, GST_TYPE_LIST);
 
-for (const auto & fmt:gst_formats) {
-    g_value_init (&value, G_TYPE_STRING);
+  GValue value = G_VALUE_INIT;
+  g_value_init (&value, G_TYPE_STRING);
+
+  /* *INDENT-OFF* */
+  for (const auto & fmt : gst_formats) {
     g_value_set_string (&value, fmt.c_str ());
-    gst_value_list_append_value (&value_list, &value);
-    g_value_unset (&value);
+    gst_value_list_append_value (outvalue, &value);
   }
+  /* *INDENT-ON* */
 
-  gst_structure_set_value (gst_structure, "format", &value_list);
-  g_value_unset (&value_list);
-
-  /* Fill width field */
-  g_value_init (&value, GST_TYPE_INT_RANGE);
-  gst_value_set_int_range (&value, min_w, max_w);
-  gst_structure_set_value (gst_structure, "width", &value);
   g_value_unset (&value);
+}
 
-  /* Fill height field */
-  g_value_init (&value, GST_TYPE_INT_RANGE);
-  gst_value_set_int_range (&value, min_h, max_h);
-  gst_structure_set_value (gst_structure, "height", &value);
-  g_value_unset (&value);
+static void
+gst_pylon_query_integer (GstPylon * self, GValue * outvalue,
+    const std::string & name)
+{
+  g_return_if_fail (self);
+  g_return_if_fail (outvalue);
 
-  /* Fill framerate field */
+  GenApi::INodeMap & nodemap = self->camera.GetNodeMap ();
+  Pylon::CIntegerParameter param (nodemap, name.c_str ());
+
+  gint min = param.GetMin ();
+  gint max = param.GetMax ();
+
+  g_value_init (outvalue, GST_TYPE_INT_RANGE);
+  gst_value_set_int_range (outvalue, min, max);
+}
+
+static void
+gst_pylon_query_width (GstPylon * self, GValue * outvalue)
+{
+  g_return_if_fail (self);
+  g_return_if_fail (outvalue);
+
+  gst_pylon_query_integer (self, outvalue, "Width");
+}
+
+static void
+gst_pylon_query_height (GstPylon * self, GValue * outvalue)
+{
+  g_return_if_fail (self);
+  g_return_if_fail (outvalue);
+
+  gst_pylon_query_integer (self, outvalue, "Height");
+}
+
+static void
+gst_pylon_query_framerate (GstPylon * self, GValue * outvalue)
+{
+  g_return_if_fail (self);
+  g_return_if_fail (outvalue);
+
+  GenApi::INodeMap & nodemap = self->camera.GetNodeMap ();
   Pylon::CFloatParameter framerate (nodemap, "AcquisitionFrameRateAbs");
   gdouble min_fps = framerate.GetMin ();
   gdouble max_fps = framerate.GetMax ();
@@ -333,11 +342,54 @@ for (const auto & fmt:gst_formats) {
   gint max_fps_den = 0;
   gst_util_double_to_fraction (max_fps, &max_fps_num, &max_fps_den);
 
-  g_value_init (&value, GST_TYPE_FRACTION_RANGE);
-  gst_value_set_fraction_range_full (&value, min_fps_num, min_fps_den,
+  g_value_init (outvalue, GST_TYPE_FRACTION_RANGE);
+  gst_value_set_fraction_range_full (outvalue, min_fps_num, min_fps_den,
       max_fps_num, max_fps_den);
-  gst_structure_set_value (gst_structure, "framerate", &value);
-  g_value_unset (&value);
+}
+
+GstCaps *
+gst_pylon_query_configuration (GstPylon * self, GError ** err)
+{
+  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (err || *err == NULL, NULL);
+
+  /* Build gst caps */
+  GstCaps *caps = gst_caps_new_empty ();
+  GstStructure *gst_structure = gst_structure_new_empty ("video/x-raw");
+  GValue value = G_VALUE_INIT;
+
+  const std::vector < std::pair < GstPylonQuery, const std::string >> queries = {
+    {gst_pylon_query_format, "format"},
+    {gst_pylon_query_width, "width"},
+    {gst_pylon_query_height, "height"},
+    {gst_pylon_query_framerate, "framerate"}
+  };
+
+  try {
+    /* Offsets are set to 0 to get the true image geometry */
+    self->camera.OffsetX.TrySetToMinimum ();
+    self->camera.OffsetY.TrySetToMinimum ();
+
+  for (const auto & query:queries) {
+      GstPylonQuery func = query.first;
+      const gchar *name = query.second.c_str ();
+
+      std::cout << "Setting " << name << std::endl;
+
+      func (self, &value);
+      gst_structure_set_value (gst_structure, name, &value);
+      g_value_unset (&value);
+    }
+  }
+  catch (const Pylon::GenericException & e)
+  {
+    gst_structure_free (gst_structure);
+    gst_caps_unref (caps);
+
+    g_set_error (err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        e.GetDescription ());
+    return NULL;
+  }
 
   gst_caps_append_structure (caps, gst_structure);
 
