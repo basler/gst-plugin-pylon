@@ -294,16 +294,18 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
   GValue value = G_VALUE_INIT;
 
   /* Fill format field */
-  GValueArray *value_array = g_value_array_new (0);
+  GValue value_list = G_VALUE_INIT;
+  g_value_init (&value_list, GST_TYPE_LIST);
 
 for (const auto & fmt:gst_formats) {
     g_value_init (&value, G_TYPE_STRING);
     g_value_set_string (&value, fmt.c_str ());
-    value_array = g_value_array_append (value_array, &value);
+    gst_value_list_append_value (&value_list, &value);
     g_value_unset (&value);
   }
 
-  gst_structure_set_list (gst_structure, "format", value_array);
+  gst_structure_set_value (gst_structure, "format", &value_list);
+  g_value_unset (&value_list);
 
   /* Fill width field */
   g_value_init (&value, GST_TYPE_INT_RANGE);
