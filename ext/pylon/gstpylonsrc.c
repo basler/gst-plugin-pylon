@@ -205,8 +205,11 @@ gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
   GError *error = NULL;
 
   if (!self->pylon) {
-    GST_INFO_OBJECT (self, "Returning src template caps");
-    return gst_pad_get_pad_template_caps (GST_BASE_SRC_PAD (self));
+    outcaps = gst_pad_get_pad_template_caps (GST_BASE_SRC_PAD (self));
+    GST_INFO_OBJECT (self,
+        "Camera not open yet, Returning src template caps %" GST_PTR_FORMAT,
+        outcaps);
+    goto out;
   }
 
   outcaps = gst_pylon_query_configuration (self->pylon, &error);
@@ -215,11 +218,18 @@ gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     goto log_gst_error;
   }
 
+  GST_DEBUG_OBJECT (self, "Camera returned caps %" GST_PTR_FORMAT, outcaps);
+
   if (filter) {
     GstCaps *tmp = outcaps;
+
+    GST_DEBUG_OBJECT (self, "Filtering with %" GST_PTR_FORMAT, filter);
+
     outcaps = gst_caps_intersect (outcaps, filter);
     gst_caps_unref (tmp);
   }
+
+  GST_INFO_OBJECT (self, "Returning caps %" GST_PTR_FORMAT, outcaps);
 
   goto out;
 
