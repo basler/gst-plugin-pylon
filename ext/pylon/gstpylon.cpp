@@ -81,8 +81,8 @@ gst_pylon_new (GError ** err)
   g_return_val_if_fail (self, NULL);
 
   try {
-    self->camera.Attach (Pylon::CTlFactory::GetInstance ().
-        CreateFirstDevice ());
+    self->camera.
+        Attach (Pylon::CTlFactory::GetInstance ().CreateFirstDevice ());
   }
   catch (const Pylon::GenericException & e)
   {
@@ -123,9 +123,8 @@ gst_pylon_start (GstPylon * self, GError ** err)
     self->camera.AcquisitionFrameRateEnable.SetValue (true);
     self->camera.AcquisitionFrameRateAbs.SetValue (framerate,
         Pylon::FloatValueCorrection_None);
-    self->camera.
-        PixelFormat.SetValue (Basler_UniversalCameraParams::
-        PixelFormat_RGB8Packed);
+    self->camera.PixelFormat.
+        SetValue (Basler_UniversalCameraParams::PixelFormat_RGB8Packed);
 
     self->camera.StartGrabbing ();
   }
@@ -284,10 +283,10 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
     return NULL;
   }
 
-  gint64 min_w = self->camera.Width.GetMin ();
-  gint64 max_w = self->camera.Width.GetMax ();
-  gint64 min_h = self->camera.Height.GetMin ();
-  gint64 max_h = self->camera.Height.GetMax ();
+  gint min_w = self->camera.Width.GetMin ();
+  gint max_w = self->camera.Width.GetMax ();
+  gint min_h = self->camera.Height.GetMin ();
+  gint max_h = self->camera.Height.GetMax ();
 
   /* Build gst caps */
   GstCaps *caps = gst_caps_new_empty ();
@@ -297,9 +296,9 @@ gst_pylon_query_configuration (GstPylon * self, GError ** err)
   /* Fill format field */
   GValueArray *value_array = g_value_array_new (0);
 
-  for (guint i = 0; i < gst_formats.size (); i++) {
+for (const auto & fmt:gst_formats) {
     g_value_init (&value, G_TYPE_STRING);
-    g_value_set_string (&value, gst_formats.at (i).c_str ());
+    g_value_set_string (&value, fmt.c_str ());
     value_array = g_value_array_append (value_array, &value);
     g_value_unset (&value);
   }
