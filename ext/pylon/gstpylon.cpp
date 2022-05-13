@@ -81,8 +81,8 @@ gst_pylon_new (GError ** err)
   g_return_val_if_fail (self, NULL);
 
   try {
-    self->camera.
-        Attach (Pylon::CTlFactory::GetInstance ().CreateFirstDevice ());
+    self->camera.Attach (Pylon::CTlFactory::GetInstance ().
+        CreateFirstDevice ());
   }
   catch (const Pylon::GenericException & e)
   {
@@ -123,8 +123,9 @@ gst_pylon_start (GstPylon * self, GError ** err)
     self->camera.AcquisitionFrameRateEnable.SetValue (true);
     self->camera.AcquisitionFrameRateAbs.SetValue (framerate,
         Pylon::FloatValueCorrection_None);
-    self->camera.PixelFormat.
-        SetValue (Basler_UniversalCameraParams::PixelFormat_RGB8Packed);
+    self->camera.
+        PixelFormat.SetValue (Basler_UniversalCameraParams::
+        PixelFormat_RGB8Packed);
 
     self->camera.StartGrabbing ();
   }
@@ -317,6 +318,25 @@ for (const auto & fmt:gst_formats) {
   g_value_init (&value, GST_TYPE_INT_RANGE);
   gst_value_set_int_range (&value, min_h, max_h);
   gst_structure_set_value (gst_structure, "height", &value);
+  g_value_unset (&value);
+
+  /* Fill framerate field */
+  Pylon::CFloatParameter framerate (nodemap, "AcquisitionFrameRateAbs");
+  gdouble min_fps = framerate.GetMin ();
+  gdouble max_fps = framerate.GetMax ();
+
+  gint min_fps_num = 0;
+  gint min_fps_den = 0;
+  gst_util_double_to_fraction (min_fps, &min_fps_num, &min_fps_den);
+
+  gint max_fps_num = 0;
+  gint max_fps_den = 0;
+  gst_util_double_to_fraction (max_fps, &max_fps_num, &max_fps_den);
+
+  g_value_init (&value, GST_TYPE_FRACTION_RANGE);
+  gst_value_set_fraction_range_full (&value, min_fps_num, min_fps_den,
+      max_fps_num, max_fps_den);
+  gst_structure_set_value (gst_structure, "framerate", &value);
   g_value_unset (&value);
 
   gst_caps_append_structure (caps, gst_structure);
