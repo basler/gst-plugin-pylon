@@ -53,6 +53,8 @@
 
 #include "gstpylon.h"
 
+#include <gst/video/video.h>
+
 GST_DEBUG_CATEGORY_STATIC (gst_pylon_src_debug_category);
 #define GST_CAT_DEFAULT gst_pylon_src_debug_category
 
@@ -97,8 +99,7 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS
-    ("video/x-raw,width=1920,height=1080,framerate=30/1,format=RGB")
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE (" {GRAY8, GRAY16_LE, RGB, BGR} "))
     );
 
 
@@ -199,18 +200,45 @@ gst_pylon_src_finalize (GObject * object)
 static GstCaps *
 gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
 {
-  GstPadTemplate *templ = NULL;
+  GstPylonSrc *self = GST_PYLON_SRC (src);
   GstCaps *outcaps = NULL;
+  GError *error = NULL;
 
-  templ = gst_static_pad_template_get (&gst_pylon_src_src_template);
-  outcaps = gst_pad_template_get_caps (templ);
+  if (!self->pylon) {
+    outcaps = gst_pad_get_pad_template_caps (GST_BASE_SRC_PAD (self));
+    GST_INFO_OBJECT (self,
+        "Camera not open yet, returning src template caps %" GST_PTR_FORMAT,
+        outcaps);
+    goto out;
+  }
+
+  outcaps = gst_pylon_query_configuration (self->pylon, &error);
+
+  if (outcaps == NULL && error) {
+    goto log_gst_error;
+  }
+
+  GST_DEBUG_OBJECT (self, "Camera returned caps %" GST_PTR_FORMAT, outcaps);
 
   if (filter) {
     GstCaps *tmp = outcaps;
+
+    GST_DEBUG_OBJECT (self, "Filtering with %" GST_PTR_FORMAT, filter);
+
     outcaps = gst_caps_intersect (outcaps, filter);
     gst_caps_unref (tmp);
   }
 
+  GST_INFO_OBJECT (self, "Returning caps %" GST_PTR_FORMAT, outcaps);
+
+  goto out;
+
+log_gst_error:
+  GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+      ("Failed to get caps."), ("%s", error->message));
+  g_error_free (error);
+
+out:
   return outcaps;
 }
 
@@ -219,11 +247,38 @@ static GstCaps *
 gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
 {
   GstPylonSrc *self = GST_PYLON_SRC (src);
+  GstCaps *outcaps = NULL;
+  GstStructure *st = NULL;
+  static const gint preferred_width = 1920;
+  static const gint preferred_height = 1080;
+  static const gint preferred_framerate_num = 30;
+  static const gint preferred_framerate_den = 1;
 
-  GST_LOG_OBJECT (self, "fixate");
 
-  /* TODO: fixme */
-  return gst_caps_fixate (caps);
+  GST_DEBUG_OBJECT (self, "Fixating caps %" GST_PTR_FORMAT, caps);
+
+  if (gst_caps_is_fixed (caps)) {
+    GST_DEBUG_OBJECT (self, "Caps are already fixed");
+    return caps;
+  }
+
+  outcaps = gst_caps_new_empty ();
+  st = gst_structure_copy (gst_caps_get_structure (caps, 0));
+  gst_caps_unref (caps);
+
+  gst_structure_fixate_field_nearest_int (st, "width", preferred_width);
+  gst_structure_fixate_field_nearest_int (st, "height", preferred_height);
+  gst_structure_fixate_field_nearest_fraction (st, "framerate",
+      preferred_framerate_num, preferred_framerate_den);
+
+  gst_caps_append_structure (outcaps, st);
+
+  /* Fixate the remainder of the fields */
+  outcaps = gst_caps_fixate (outcaps);
+
+  GST_INFO_OBJECT (self, "Fixated caps to %" GST_PTR_FORMAT, outcaps);
+
+  return outcaps;
 }
 
 /* notify the subclass of new caps */
@@ -234,6 +289,9 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   GstStructure *gst_stucture = NULL;
   gint numerator = 0;
   gint denominator = 0;
+  GError *error = NULL;
+  gboolean ret = FALSE;
+  const gchar *action = NULL;
 
   GST_INFO_OBJECT (self, "Setting new caps: %" GST_PTR_FORMAT, caps);
 
@@ -245,7 +303,33 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   self->duration = gst_util_uint64_scale (GST_SECOND, denominator, numerator);
   GST_OBJECT_UNLOCK (self);
 
-  return TRUE;
+  ret = gst_pylon_stop (self->pylon, &error);
+  if (FALSE == ret && error) {
+    action = "stop";
+    goto error;
+  }
+
+  ret = gst_pylon_set_configuration (self->pylon, caps, &error);
+  if (FALSE == ret && error) {
+    action = "configure";
+    goto error;
+  }
+
+  ret = gst_pylon_start (self->pylon, &error);
+  if (FALSE == ret && error) {
+    action = "start";
+    goto error;
+  }
+
+  goto out;
+
+error:
+  GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+      ("Failed to %s camera.", action), ("%s", error->message));
+  g_error_free (error);
+
+out:
+  return ret;
 }
 
 /* setup allocation query */
@@ -272,30 +356,16 @@ gst_pylon_src_start (GstBaseSrc * src)
   self->pylon = gst_pylon_new (&error);
 
   if (error) {
-    goto log_gst_error;
+    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+        ("Failed to start camera."), ("%s", error->message));
+    g_error_free (error);
+    ret = FALSE;
+
+  } else {
+    self->offset = 0;
   }
 
-  ret = gst_pylon_start (self->pylon, &error);
 
-  if (ret == FALSE && error) {
-    goto free_gst_pylon;
-  }
-
-  goto out;
-
-free_gst_pylon:
-  gst_pylon_free (self->pylon);
-  self->pylon = NULL;
-
-log_gst_error:
-  GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-      ("Failed to start camera."), ("%s", error->message));
-  g_error_free (error);
-  ret = FALSE;
-
-  self->offset = 0;
-
-out:
   return ret;
 }
 
