@@ -207,7 +207,7 @@ gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
   if (!self->pylon) {
     outcaps = gst_pad_get_pad_template_caps (GST_BASE_SRC_PAD (self));
     GST_INFO_OBJECT (self,
-        "Camera not open yet, Returning src template caps %" GST_PTR_FORMAT,
+        "Camera not open yet, returning src template caps %" GST_PTR_FORMAT,
         outcaps);
     goto out;
   }
