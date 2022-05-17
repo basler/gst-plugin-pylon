@@ -17,27 +17,35 @@ if test "x$version" = "x"; then
       echo "Did not find GNU indent, please install it before continuing."
       exit 1
     else
-      INDENT=indent
+      GNU_INDENT=indent
     fi
   else
-    INDENT=gindent
+    GNU_INDENT=gindent
   fi
 else
-  INDENT=gnuindent
+  GNU_INDENT=gnuindent
 fi
 
-case `$INDENT --version` in
+case `$GNU_INDENT --version` in
   GNU*)
       ;;
   default)
       echo "GStreamer git pre-commit hook:"
       echo "Did not find GNU indent, please install it before continuing."
-      echo "(Found $INDENT, but it doesn't seem to be GNU indent)"
+      echo "(Found $GNU_INDENT, but it doesn't seem to be GNU indent)"
       exit 1
       ;;
 esac
 
-INDENT_PARAMETERS="--braces-on-if-line \
+STYLE="$(echo $(cat hooks/cpp.clang-format))"
+PARAM="--sort-includes -i"
+RES=`clang-format --version`
+if [ "$RES" = "" ]; then
+  echo "You need to install clang-format"
+  exit 1
+fi
+
+GNT_INDENT_PARAMETERS="--braces-on-if-line \
 	--case-brace-indentation0 \
 	--case-indentation2 \
 	--braces-after-struct-decl-line \
@@ -57,12 +65,24 @@ for file in `git diff-index --cached --name-only HEAD --diff-filter=ACMR| grep -
     # revision in the index (and not the checked out version).
     nf=`git checkout-index --temp ${file} | cut -f 1`
     newfile=`mktemp /tmp/${nf}.XXXXXX` || exit 1
-    $INDENT ${INDENT_PARAMETERS} \
-	$nf -o $newfile 2>> /dev/null
-    # FIXME: Call indent twice as it tends to do line-breaks
-    # different for every second call.
-    $INDENT ${INDENT_PARAMETERS} \
-        $newfile 2>> /dev/null
+
+    #Check if file is an .cpp file
+    echo $file | grep "\.cpp"
+    found_cpp=1
+
+    if [ $found_cpp = 1 ] ; then
+      cp "${nf}" "${newfile}"
+      clang-format --style="$STYLE" $PARAM \
+      $newfile 2>> /dev/null
+    else
+      $GNU_INDENT ${GNT_INDENT_PARAMETERS} \
+      $nf -o $newfile 2>> /dev/null
+      # FIXME: Call indent twice as it tends to do line-breaks
+      # different for every second call.
+      $GNU_INDENT ${GNT_INDENT_PARAMETERS} \
+          $newfile 2>> /dev/null
+    fi
+
     diff -u -p "${nf}" "${newfile}"
     r=$?
     rm "${newfile}"
@@ -75,6 +95,10 @@ echo " Please fix before committing. Don't forget to run git add before trying t
 echo " If the whole file is to be committed, this should work (run from the top-level directory):      "
 echo "                                                                                                 "
 echo "   gst-indent $file; git add $file; git commit"
+echo "                                                                                                 "
+echo " If the file is a .cpp file that's not part of a GStreamer plug-in: "
+echo "                                                                                                 "
+echo "   cpp-format $file; git add $file; git commit"
 echo "                                                                                                 "
 echo "================================================================================================="
         exit 1
