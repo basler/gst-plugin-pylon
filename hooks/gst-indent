@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+#
+# Format code with a consistent code style
+#
+
+file=$1
+
+if [ "$file" = "" ]; then
+    echo "Please specify the file to indent, run as:"
+    echo "   gst-indent <file>"
+    exit 1
+fi
+
+version=`gnuindent --version 2>/dev/null`
+if test "x$version" = "x"; then
+  version=`gindent --version 2>/dev/null`
+  if test "x$version" = "x"; then
+    version=`indent --version 2>/dev/null`
+    if test "x$version" = "x"; then
+      echo "GStreamer git pre-commit hook:"
+      echo "Did not find GNU indent, please install it before continuing."
+      exit 1
+    else
+      GNU_INDENT=indent
+    fi
+  else
+    GNU_INDENT=gindent
+  fi
+else
+  GNU_INDENT=gnuindent
+fi
+
+case `$GNU_INDENT --version` in
+  GNU*)
+      ;;
+  default)
+      echo "GStreamer git pre-commit hook:"
+      echo "Did not find GNU indent, please install it before continuing."
+      echo "(Found $GNU_INDENT, but it doesn't seem to be GNU indent)"
+      exit 1
+      ;;
+esac
+
+GNU_INDENT_PARAMETERS="--braces-on-if-line \
+	--case-brace-indentation0 \
+	--case-indentation2 \
+	--braces-after-struct-decl-line \
+	--line-length80 \
+	--no-tabs \
+	--cuddle-else \
+	--dont-line-up-parentheses \
+	--continuation-indentation4 \
+	--honour-newlines \
+	--tab-size8 \
+	--indent-level2 \
+	--leave-preprocessor-space"
+
+echo "--Formatting ${file}--"
+eval ${GNU_INDENT} ${GNU_INDENT_PARAMETERS} ${file}

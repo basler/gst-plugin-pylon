@@ -118,7 +118,7 @@ echo "==========================================================================
 echo " Code style error in: $file                                                                      "
 echo "                                                                                                 "
 echo " Please fix before committing. Don't forget to run git add before trying to commit again.        "
-echo " If the whole file is to be committed, this should work (run from the top-level directory):      "
+echo " If the whole file is to be committed, run as (scripts may be found in hooks/):                  "
 echo "                                                                                                 "
 echo "   gst-indent $file; git add $file; git commit"
 echo "                                                                                                 "
