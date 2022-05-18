@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Check that the code follows a consistent code style
 #
@@ -66,11 +66,11 @@ for file in `git diff-index --cached --name-only HEAD --diff-filter=ACMR| grep -
     nf=`git checkout-index --temp ${file} | cut -f 1`
     newfile=`mktemp /tmp/${nf}.XXXXXX` || exit 1
 
-    #Check if file is an .cpp file
-    echo $file | grep "\.cpp"
-    found_cpp=1
+    #Check if file is a .cpp file
+    echo $file | grep -e "\.cpp$"
+    found_cpp=$?
 
-    if [ $found_cpp = 1 ] ; then
+    if [ $found_cpp = 0 ] ; then
       cp "${nf}" "${newfile}"
       clang-format --style="$STYLE" $PARAM \
       $newfile 2>> /dev/null
