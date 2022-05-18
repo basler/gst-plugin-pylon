@@ -26,7 +26,7 @@ else
   GNU_INDENT=gnuindent
 fi
 
-version=`clang-format --version`
+version=`clang-format --version 2>/dev/null`
 if test "x$version" = "x"; then
   echo "Did not find clang-format, please install it before continuing."
   exit 1
