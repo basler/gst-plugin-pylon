@@ -58,19 +58,17 @@ static void gst_pylon_query_format(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_integer(GstPylon *self, GValue *outvalue,
                                     const std::string &name);
 static void gst_pylon_query_width(GstPylon *self, GValue *outvalue);
-static void gst_pylon_query_height(
-    GstPylon *self,
-    GValue *outvalue) static void gst_pylon_query_framerate(GstPylon *self,
-                                                            GValue *outvalue);
+static void gst_pylon_query_height(GstPylon *self, GValue *outvalue);
+static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue);
 static std::string gst_pylon_translate_format(
     const std::string &format,
     const std::map<const std::string, const std::string> &map);
 static std::string gst_pylon_gst_to_pfnc(const std::string &gst_format);
 static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format);
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
-    GenApi::StringList_t genapi_formats)
+    GenApi::StringList_t genapi_formats);
 
-    struct _GstPylon {
+struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera camera;
 };
 
@@ -210,10 +208,9 @@ static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format) {
 
   return gst_pylon_translate_format(genapi_format, formats_map);
 }
-static std::vector <
-    std::string
+static std::vector<std::string>
 
-    gst_pylon_pfnc_list_to_gst(GenApi::StringList_t genapi_formats) {
+gst_pylon_pfnc_list_to_gst(GenApi::StringList_t genapi_formats) {
   std::vector<std::string> formats_list;
 
   for (const auto &fmt : genapi_formats) {
