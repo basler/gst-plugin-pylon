@@ -26,14 +26,6 @@ else
   GNU_INDENT=gnuindent
 fi
 
-version=`clang-format --version 2>/dev/null`
-if test "x$version" = "x"; then
-  echo "Did not find clang-format, please install it before continuing."
-  exit 1
-else
-  CLANG_INDENT=clang-format
-fi
-
 case `$GNU_INDENT --version` in
   GNU*)
       ;;
@@ -44,6 +36,14 @@ case `$GNU_INDENT --version` in
       exit 1
       ;;
 esac
+
+version=`clang-format --version 2>/dev/null`
+if test "x$version" = "x"; then
+  echo "Did not find clang-format, please install it before continuing."
+  exit 1
+else
+  CLANG_INDENT=clang-format
+fi
 
 GNU_INDENT_PARAMETERS="--braces-on-if-line \
 	--case-brace-indentation0 \
