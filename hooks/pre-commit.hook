@@ -82,7 +82,7 @@ CLANG_INDENT_STYLE="{
    ]
 }"
 
-CLANG_INDENT_PARAMETERS="--style=${CLANG_INDENT_STYLE} \
+CLANG_INDENT_PARAMETERS="--style=\"${CLANG_INDENT_STYLE}\" \
     --sort-includes \
     -i"
 
@@ -107,7 +107,7 @@ for file in `git diff-index --cached --name-only HEAD --diff-filter=ACMR| grep -
       PARAMS=${GNU_INDENT_PARAMETERS}
     fi
 
-    ${INDENTER} ${PARAMS} $newfile 2>> /dev/null
+    eval ${INDENTER} ${PARAMS} $newfile 2>> /dev/null
 
     diff -u -p "${nf}" "${newfile}"
     r=$?
