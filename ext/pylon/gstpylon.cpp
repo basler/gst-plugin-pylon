@@ -434,7 +434,13 @@ void gst_pylon_set_video_meta(GstPylon *self, GstBuffer *buf) {
   gsize offset[GST_VIDEO_MAX_PLANES] = {0};
   gint stride[GST_VIDEO_MAX_PLANES] = {0};
   guint n_planes = 1;
-  stride[n_planes - 1] = width.GetValue();
+  gint format_n_bytes = 1;
+
+  if ("RGB" == gst_pixelformat || "BGR" == gst_pixelformat) {
+    format_n_bytes = 3;
+  }
+
+  stride[n_planes - 1] = width.GetValue() * format_n_bytes;
 
   gst_buffer_add_video_meta_full(
       buf, GST_VIDEO_FRAME_FLAG_NONE,
