@@ -467,6 +467,9 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   GST_BUFFER_TIMESTAMP (buf) = timestamp;
   GST_BUFFER_OFFSET (buf) = self->offset;
   GST_BUFFER_OFFSET_END (buf) = self->offset + 1;
+
+  /* add video meta data */
+  gst_pylon_set_video_meta (self->pylon, buf);
 }
 
 /* ask the subclass to create a buffer with offset and size, the default

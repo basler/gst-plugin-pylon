@@ -33,6 +33,8 @@
 
 #include "gstpylon.h"
 
+#include <gst/video/video.h>
+
 #include <map>
 
 #ifdef _MSC_VER  // MSVC
@@ -195,7 +197,6 @@ static std::string gst_pylon_gst_to_pfnc(const std::string &gst_format) {
       {"BGR", "BGR8Packed"}};
 
   return gst_pylon_translate_format(gst_format, formats_map);
-  ;
 }
 
 static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format) {
@@ -208,9 +209,9 @@ static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format) {
 
   return gst_pylon_translate_format(genapi_format, formats_map);
 }
-static std::vector<std::string>
 
-gst_pylon_pfnc_list_to_gst(GenApi::StringList_t genapi_formats) {
+static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
+    GenApi::StringList_t genapi_formats) {
   std::vector<std::string> formats_list;
 
   for (const auto &fmt : genapi_formats) {
@@ -416,4 +417,27 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   }
 
   return TRUE;
+}
+
+void gst_pylon_set_video_meta(GstPylon *self, GstBuffer *buf) {
+  g_return_if_fail(self);
+  g_return_if_fail(buf);
+
+  GenApi::INodeMap &nodemap = self->camera.GetNodeMap();
+  Pylon::CEnumParameter pixelformat(nodemap, "PixelFormat");
+  Pylon::CIntegerParameter width(nodemap, "Width");
+  Pylon::CIntegerParameter height(nodemap, "Height");
+
+  std::string gst_pixelformat =
+      gst_pylon_pfnc_to_gst(std::string(pixelformat.GetValue()));
+
+  gsize offset[GST_VIDEO_MAX_PLANES] = {0};
+  gint stride[GST_VIDEO_MAX_PLANES] = {0};
+  guint n_planes = 1;
+  stride[n_planes - 1] = width.GetValue();
+
+  gst_buffer_add_video_meta_full(
+      buf, GST_VIDEO_FRAME_FLAG_NONE,
+      gst_video_format_from_string(gst_pixelformat.c_str()), width.GetValue(),
+      height.GetValue(), n_planes, offset, stride);
 }

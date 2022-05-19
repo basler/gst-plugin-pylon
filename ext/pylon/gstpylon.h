@@ -52,6 +52,7 @@ gboolean gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err);
 GstCaps *gst_pylon_query_configuration (GstPylon * self, GError ** err);
 gboolean gst_pylon_set_configuration (GstPylon * self, const GstCaps *conf,
     GError ** err);
+void gst_pylon_set_video_meta (GstPylon *self, GstBuffer * buf);
 
 G_END_DECLS
 
