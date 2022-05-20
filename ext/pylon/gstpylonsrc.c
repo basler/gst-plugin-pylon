@@ -64,6 +64,7 @@ struct _GstPylonSrc
   GstPylon *pylon;
   guint64 offset;
   GstClockTime duration;
+  GstVideoInfo video_info;
 };
 
 /* prototypes */
@@ -152,6 +153,7 @@ gst_pylon_src_init (GstPylonSrc * self)
   self->pylon = NULL;
   self->offset = G_GUINT64_CONSTANT (0);
   self->duration = GST_CLOCK_TIME_NONE;
+  gst_video_info_init (&self->video_info);
 }
 
 static void
@@ -321,6 +323,8 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
     goto error;
   }
 
+  ret = gst_video_info_from_caps (&self->video_info, caps);
+
   goto out;
 
 error:
@@ -434,6 +438,12 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   GstClockTime abs_time = GST_CLOCK_TIME_NONE;
   GstClockTime base_time = GST_CLOCK_TIME_NONE;
   GstClockTime timestamp = GST_CLOCK_TIME_NONE;
+  GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
+  guint width = 1;
+  guint height = 1;
+  guint n_planes = 1;
+  gint stride[GST_VIDEO_MAX_PLANES] = { 0 };
+  gint format_n_bytes = 1;
 
   g_return_if_fail (self);
   g_return_if_fail (buf);
@@ -469,7 +479,22 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   GST_BUFFER_OFFSET_END (buf) = self->offset + 1;
 
   /* add video meta data */
-  gst_pylon_set_video_meta (self->pylon, buf);
+  format = GST_VIDEO_INFO_FORMAT (&self->video_info);
+  width = GST_VIDEO_INFO_WIDTH (&self->video_info);
+  height = GST_VIDEO_INFO_HEIGHT (&self->video_info);
+  n_planes = GST_VIDEO_INFO_N_PLANES (&self->video_info);
+
+  /* stride is being constructed manually since the pylon stride
+   * does not match with the GstVideoInfo obtained stride. */
+  stride[n_planes - 1] = GST_VIDEO_INFO_WIDTH (&self->video_info);
+  if (!GST_VIDEO_INFO_IS_GRAY (&self->video_info)) {
+    format_n_bytes = 3;
+  }
+
+  stride[n_planes - 1] = width * format_n_bytes;
+
+  gst_buffer_add_video_meta_full (buf, GST_VIDEO_FRAME_FLAG_NONE, format, width,
+      height, n_planes, self->video_info.offset, stride);
 }
 
 /* ask the subclass to create a buffer with offset and size, the default

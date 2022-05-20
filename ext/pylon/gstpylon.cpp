@@ -33,8 +33,6 @@
 
 #include "gstpylon.h"
 
-#include <gst/video/video.h>
-
 #include <map>
 
 #ifdef _MSC_VER  // MSVC
@@ -417,33 +415,4 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   }
 
   return TRUE;
-}
-
-void gst_pylon_set_video_meta(GstPylon *self, GstBuffer *buf) {
-  g_return_if_fail(self);
-  g_return_if_fail(buf);
-
-  GenApi::INodeMap &nodemap = self->camera.GetNodeMap();
-  Pylon::CEnumParameter pixelformat(nodemap, "PixelFormat");
-  Pylon::CIntegerParameter width(nodemap, "Width");
-  Pylon::CIntegerParameter height(nodemap, "Height");
-
-  std::string gst_pixelformat =
-      gst_pylon_pfnc_to_gst(std::string(pixelformat.GetValue()));
-
-  gsize offset[GST_VIDEO_MAX_PLANES] = {0};
-  gint stride[GST_VIDEO_MAX_PLANES] = {0};
-  guint n_planes = 1;
-  gint format_n_bytes = 1;
-
-  if ("RGB" == gst_pixelformat || "BGR" == gst_pixelformat) {
-    format_n_bytes = 3;
-  }
-
-  stride[n_planes - 1] = width.GetValue() * format_n_bytes;
-
-  gst_buffer_add_video_meta_full(
-      buf, GST_VIDEO_FRAME_FLAG_NONE,
-      gst_video_format_from_string(gst_pixelformat.c_str()), width.GetValue(),
-      height.GetValue(), n_planes, offset, stride);
 }
