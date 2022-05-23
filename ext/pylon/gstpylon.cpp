@@ -189,21 +189,14 @@ static std::string gst_pylon_translate_format(
 
 static std::string gst_pylon_gst_to_pfnc(const std::string &gst_format) {
   static const std::map<const std::string, const std::string> formats_map = {
-      {"GRAY8", "Mono8"},
-      {"GRAY16_LE", "Mono12"},
-      {"RGB", "RGB8Packed"},
-      {"BGR", "BGR8Packed"}};
+      {"GRAY8", "Mono8"}, {"RGB", "RGB8Packed"}, {"BGR", "BGR8Packed"}};
 
   return gst_pylon_translate_format(gst_format, formats_map);
 }
 
 static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format) {
   static const std::map<const std::string, const std::string> formats_map = {
-      {"Mono8", "GRAY8"},
-      {"Mono10", "GRAY16_LE"},
-      {"Mono12", "GRAY16_LE"},
-      {"RGB8Packed", "RGB"},
-      {"BGR8Packed", "BGR"}};
+      {"Mono8", "GRAY8"}, {"RGB8Packed", "RGB"}, {"BGR8Packed", "BGR"}};
 
   return gst_pylon_translate_format(genapi_format, formats_map);
 }
