@@ -310,7 +310,7 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
 
   /* Build gst caps */
   GstCaps *caps = gst_caps_new_empty();
-  GstStructure *gst_structure = gst_structure_new_empty("video/x-raw");
+  GstStructure *st = gst_structure_new_empty("video/x-raw");
   GValue value = G_VALUE_INIT;
 
   const std::vector<std::pair<GstPylonQuery, const std::string>> queries = {
@@ -329,11 +329,11 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
       const gchar *name = query.second.c_str();
 
       func(self, &value);
-      gst_structure_set_value(gst_structure, name, &value);
+      gst_structure_set_value(st, name, &value);
       g_value_unset(&value);
     }
   } catch (const Pylon::GenericException &e) {
-    gst_structure_free(gst_structure);
+    gst_structure_free(st);
     gst_caps_unref(caps);
 
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
@@ -341,7 +341,7 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
     return NULL;
   }
 
-  gst_caps_append_structure(caps, gst_structure);
+  gst_caps_append_structure(caps, st);
 
   return caps;
 }

@@ -288,7 +288,7 @@ static gboolean
 gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
 {
   GstPylonSrc *self = GST_PYLON_SRC (src);
-  GstStructure *gst_stucture = NULL;
+  GstStructure *st = NULL;
   gint numerator = 0;
   gint denominator = 0;
   GError *error = NULL;
@@ -297,9 +297,8 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
 
   GST_INFO_OBJECT (self, "Setting new caps: %" GST_PTR_FORMAT, caps);
 
-  gst_stucture = gst_caps_get_structure (caps, 0);
-  gst_structure_get_fraction (gst_stucture, "framerate", &numerator,
-      &denominator);
+  st = gst_caps_get_structure (caps, 0);
+  gst_structure_get_fraction (st, "framerate", &numerator, &denominator);
 
   GST_OBJECT_LOCK (self);
   self->duration = gst_util_uint64_scale (GST_SECOND, denominator, numerator);
@@ -368,7 +367,6 @@ gst_pylon_src_start (GstBaseSrc * src)
   } else {
     self->offset = 0;
   }
-
 
   return ret;
 }
