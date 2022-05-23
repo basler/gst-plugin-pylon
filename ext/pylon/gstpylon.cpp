@@ -74,13 +74,22 @@ struct _GstPylon {
 
 void gst_pylon_initialize() { Pylon::PylonInitialize(); }
 
-GstPylon *gst_pylon_new(GError **err) {
+GstPylon *gst_pylon_new(gchar *device_name, GError **err) {
   GstPylon *self = new GstPylon;
 
   g_return_val_if_fail(self, NULL);
 
   try {
-    self->camera.Attach(Pylon::CTlFactory::GetInstance().CreateFirstDevice());
+    Pylon::CTlFactory &TlFactory = Pylon::CTlFactory::GetInstance();
+
+    if (device_name) {
+      Pylon::CDeviceInfo device_info;
+      device_info.SetFullName(device_name);
+      self->camera.Attach(TlFactory.CreateDevice(device_info));
+    } else {
+      self->camera.Attach(TlFactory.CreateFirstDevice());
+    }
+
     self->camera.Open();
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",

@@ -65,6 +65,8 @@ struct _GstPylonSrc
   guint64 offset;
   GstClockTime duration;
   GstVideoInfo video_info;
+
+  gchar *device_name;
 };
 
 /* prototypes */
@@ -91,7 +93,8 @@ static GstFlowReturn gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf);
 
 enum
 {
-  PROP_0
+  PROP_0,
+  PROP_DEVICE_NAME
 };
 
 /* pad templates */
@@ -100,7 +103,7 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE (" {GRAY8, GRAY16_LE, RGB, BGR} "))
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE (" {GRAY8, RGB, BGR} "))
     );
 
 
@@ -130,6 +133,10 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   gobject_class->set_property = gst_pylon_src_set_property;
   gobject_class->get_property = gst_pylon_src_get_property;
   gobject_class->finalize = gst_pylon_src_finalize;
+
+  g_object_class_install_property (gobject_class, PROP_DEVICE_NAME,
+      g_param_spec_string ("device-name", "Device name",
+          "The name of the device to use", NULL, G_PARAM_READWRITE));
 
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_pylon_src_get_caps);
   base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_pylon_src_fixate);
@@ -164,11 +171,19 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
 
   GST_LOG_OBJECT (self, "set_property");
 
+  GST_OBJECT_LOCK (self);
+
   switch (property_id) {
+    case PROP_DEVICE_NAME:
+      g_free (self->device_name);
+      self->device_name = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
+
+  GST_OBJECT_UNLOCK (self);
 }
 
 static void
@@ -179,11 +194,18 @@ gst_pylon_src_get_property (GObject * object, guint property_id,
 
   GST_LOG_OBJECT (self, "get_property");
 
+  GST_OBJECT_LOCK (self);
+
   switch (property_id) {
+    case PROP_DEVICE_NAME:
+      g_value_set_string (value, self->device_name);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
+
+  GST_OBJECT_UNLOCK (self);
 }
 
 static void
@@ -356,7 +378,7 @@ gst_pylon_src_start (GstBaseSrc * src)
 
   GST_INFO_OBJECT (self, "Starting camera device");
 
-  self->pylon = gst_pylon_new (&error);
+  self->pylon = gst_pylon_new (self->device_name, &error);
 
   if (error) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
