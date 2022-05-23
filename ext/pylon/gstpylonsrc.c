@@ -439,9 +439,9 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   GstClockTime base_time = GST_CLOCK_TIME_NONE;
   GstClockTime timestamp = GST_CLOCK_TIME_NONE;
   GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
-  guint width = 1;
-  guint height = 1;
-  guint n_planes = 1;
+  guint width = 0;
+  guint height = 0;
+  guint n_planes = 0;
   gint stride[GST_VIDEO_MAX_PLANES] = { 0 };
 
   g_return_if_fail (self);
