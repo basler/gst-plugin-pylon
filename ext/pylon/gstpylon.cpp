@@ -195,7 +195,6 @@ static std::string gst_pylon_gst_to_pfnc(const std::string &gst_format) {
       {"BGR", "BGR8Packed"}};
 
   return gst_pylon_translate_format(gst_format, formats_map);
-  ;
 }
 
 static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format) {
@@ -208,9 +207,9 @@ static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format) {
 
   return gst_pylon_translate_format(genapi_format, formats_map);
 }
-static std::vector<std::string>
 
-gst_pylon_pfnc_list_to_gst(GenApi::StringList_t genapi_formats) {
+static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
+    GenApi::StringList_t genapi_formats) {
   std::vector<std::string> formats_list;
 
   for (const auto &fmt : genapi_formats) {
