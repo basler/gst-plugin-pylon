@@ -190,7 +190,7 @@ static std::string gst_pylon_translate_format(
 static std::string gst_pylon_gst_to_pfnc(const std::string &gst_format) {
   static const std::map<const std::string, const std::string> formats_map = {
       {"GRAY8", "Mono8"},
-      {"GRAY16", "Mono12_LE"},
+      {"GRAY16_LE", "Mono12"},
       {"RGB", "RGB8Packed"},
       {"BGR", "BGR8Packed"}};
 
