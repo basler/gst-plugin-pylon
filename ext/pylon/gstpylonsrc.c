@@ -442,7 +442,6 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   guint width = 1;
   guint height = 1;
   guint n_planes = 1;
-  gint w_subsampling = 0;
   gint stride[GST_VIDEO_MAX_PLANES] = { 0 };
 
   g_return_if_fail (self);
@@ -487,12 +486,7 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   /* stride is being constructed manually since the pylon stride
    * does not match with the GstVideoInfo obtained stride. */
   for (gint p = 0; p < n_planes; p++) {
-    w_subsampling = GST_VIDEO_FORMAT_INFO_W_SUB (self->video_info.finfo, p);
-    if (w_subsampling >= width) {
-      stride[p] =
-          width * GST_VIDEO_INFO_COMP_PSTRIDE (&self->video_info,
-          p) / w_subsampling;
-    }
+    stride[p] = width * GST_VIDEO_INFO_COMP_PSTRIDE (&self->video_info, p);
   }
 
   gst_buffer_add_video_meta_full (buf, GST_VIDEO_FRAME_FLAG_NONE, format, width,
