@@ -189,21 +189,14 @@ static std::string gst_pylon_translate_format(
 
 static std::string gst_pylon_gst_to_pfnc(const std::string &gst_format) {
   static const std::map<const std::string, const std::string> formats_map = {
-      {"GRAY8", "Mono8"},
-      {"GRAY16", "Mono12_LE"},
-      {"RGB", "RGB8Packed"},
-      {"BGR", "BGR8Packed"}};
+      {"GRAY8", "Mono8"}, {"RGB", "RGB8Packed"}, {"BGR", "BGR8Packed"}};
 
   return gst_pylon_translate_format(gst_format, formats_map);
 }
 
 static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format) {
   static const std::map<const std::string, const std::string> formats_map = {
-      {"Mono8", "GRAY8"},
-      {"Mono10", "GRAY16_LE"},
-      {"Mono12", "GRAY16_LE"},
-      {"RGB8Packed", "RGB"},
-      {"BGR8Packed", "BGR"}};
+      {"Mono8", "GRAY8"}, {"RGB8Packed", "RGB"}, {"BGR8Packed", "BGR"}};
 
   return gst_pylon_translate_format(genapi_format, formats_map);
 }
@@ -310,7 +303,7 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
 
   /* Build gst caps */
   GstCaps *caps = gst_caps_new_empty();
-  GstStructure *gst_structure = gst_structure_new_empty("video/x-raw");
+  GstStructure *st = gst_structure_new_empty("video/x-raw");
   GValue value = G_VALUE_INIT;
 
   const std::vector<std::pair<GstPylonQuery, const std::string>> queries = {
@@ -329,11 +322,11 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
       const gchar *name = query.second.c_str();
 
       func(self, &value);
-      gst_structure_set_value(gst_structure, name, &value);
+      gst_structure_set_value(st, name, &value);
       g_value_unset(&value);
     }
   } catch (const Pylon::GenericException &e) {
-    gst_structure_free(gst_structure);
+    gst_structure_free(st);
     gst_caps_unref(caps);
 
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
@@ -341,7 +334,7 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
     return NULL;
   }
 
-  gst_caps_append_structure(caps, gst_structure);
+  gst_caps_append_structure(caps, st);
 
   return caps;
 }
