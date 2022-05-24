@@ -74,7 +74,7 @@ struct _GstPylon {
 
 void gst_pylon_initialize() { Pylon::PylonInitialize(); }
 
-GstPylon *gst_pylon_new(const gchar *device_name,
+GstPylon *gst_pylon_new(const gchar *device_user_name,
                         const gchar *device_serial_number, gint device_index,
                         GError **err) {
   GstPylon *self = new GstPylon;
@@ -88,8 +88,8 @@ GstPylon *gst_pylon_new(const gchar *device_name,
     Pylon::DeviceInfoList_t device_list;
     Pylon::CDeviceInfo device_info;
 
-    if (device_name) {
-      filter[0].SetFullName(device_name);
+    if (device_user_name) {
+      filter[0].SetUserDefinedName(device_user_name);
     }
 
     if (device_serial_number) {
