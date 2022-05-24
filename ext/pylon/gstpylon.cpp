@@ -94,7 +94,8 @@ static Pylon::CDeviceInfo gst_pylon_find_device(Pylon::CTlFactory &factory,
   return device_info;
 }
 
-GstPylon *gst_pylon_new(gchar *device_name, gint device_index, GError **err) {
+GstPylon *gst_pylon_new(const gchar *device_name, gint device_index,
+                        GError **err) {
   GstPylon *self = new GstPylon;
   Pylon::DeviceInfoList_t devices_list;
 

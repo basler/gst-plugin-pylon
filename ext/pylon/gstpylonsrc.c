@@ -396,7 +396,9 @@ gst_pylon_src_start (GstBaseSrc * src)
 
   GST_INFO_OBJECT (self, "Starting camera device");
 
+  GST_OBJECT_LOCK (self);
   self->pylon = gst_pylon_new (self->device_name, self->device_index, &error);
+  GST_OBJECT_UNLOCK (self);
 
   if (error) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
