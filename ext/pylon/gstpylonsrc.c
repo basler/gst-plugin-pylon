@@ -146,19 +146,24 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_DEVICE_USER_NAME,
       g_param_spec_string ("device-user-name", "Device user defined name",
-          "The user-defined name of the device to use. Has preference over the device serial number and index",
+          "The user-defined name of the device to use. May be combined "
+          "with other device selection properties to reduce the search.",
           PROP_DEVICE_USER_NAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_DEVICE_SERIAL_NUMBER,
       g_param_spec_string ("device-serial-number", "Device serial number",
-          "The serial number of the device to use. Has preference over the device index",
+          "The serial number of the device to use. May be combined with "
+          "other device selection properties to reduce the search.",
           PROP_DEVICE_SERIAL_NUMBER_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_DEVICE_INDEX,
       g_param_spec_int ("device-index", "Device index",
-          "The index of the device to use", PROP_DEVICE_INDEX_MIN,
+          "The index of the device to use. This index applies to the "
+          "resulting device list after applying the other device selection "
+          "properties. The index is mandatory if multiple devices match "
+          "the given search criteria.", PROP_DEVICE_INDEX_MIN,
           PROP_DEVICE_INDEX_MAX, PROP_DEVICE_INDEX_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
