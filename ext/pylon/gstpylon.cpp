@@ -67,8 +67,6 @@ static std::string gst_pylon_gst_to_pfnc(const std::string &gst_format);
 static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format);
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     GenApi::StringList_t genapi_formats);
-static Pylon::CDeviceInfo gst_pylon_find_device(Pylon::CTlFactory &factory,
-                                                gint device_index);
 
 struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera camera;
@@ -76,44 +74,58 @@ struct _GstPylon {
 
 void gst_pylon_initialize() { Pylon::PylonInitialize(); }
 
-static Pylon::CDeviceInfo gst_pylon_find_device(Pylon::CTlFactory &factory,
-                                                gint device_index) {
-  Pylon::DeviceInfoList_t device_list;
-  Pylon::CDeviceInfo device_info;
-
-  try {
-    factory.EnumerateDevices(device_list);
-    device_info = device_list.at(device_index);
-  } catch (const std::out_of_range &e) {
-    std::string msg = "Device " + std::to_string(device_index) +
-                      " is out of range of " +
-                      std::to_string(device_list.size()) + " devices";
-    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
-  }
-
-  return device_info;
-}
-
 GstPylon *gst_pylon_new(const gchar *device_name,
                         const gchar *device_serial_number, gint device_index,
                         GError **err) {
   GstPylon *self = new GstPylon;
-  Pylon::DeviceInfoList_t devices_list;
 
   g_return_val_if_fail(self, NULL);
   g_return_val_if_fail(err || *err == NULL, NULL);
 
   try {
     Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
+    Pylon::DeviceInfoList_t filter(1);
+    Pylon::DeviceInfoList_t device_list;
     Pylon::CDeviceInfo device_info;
 
     if (device_name) {
-      device_info.SetFullName(device_name);
-    } else if (device_serial_number) {
-      device_info.SetSerialNumber(device_serial_number);
-    } else {
-      device_info = gst_pylon_find_device(factory, device_index);
+      filter[0].SetFullName(device_name);
     }
+
+    if (device_serial_number) {
+      filter[0].SetSerialNumber(device_serial_number);
+    }
+
+    factory.EnumerateDevices(device_list, filter);
+
+    gint n_devices = device_list.size();
+    if (0 == n_devices) {
+      throw Pylon::GenericException(
+          "No devices found matching the specified criteria", __FILE__,
+          __LINE__);
+    }
+
+    if (n_devices > 1 && -1 == device_index) {
+      std::string msg = "At least " + std::to_string(n_devices) +
+                        " devices match the specified criteria, use "
+                        "\"device-index\" to select one";
+      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    }
+
+    if (device_index >= n_devices) {
+      std::string msg = "Device index " + std::to_string(device_index) +
+                        " exceeds the " + std::to_string(n_devices) +
+                        " devices found to match the given criteria";
+      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    }
+
+    // Only one device was found, we don't require the user specifying an index
+    // and if they did, we already checked for out-of-range errors above
+    if (1 == n_devices) {
+      device_index = 0;
+    }
+
+    device_info = device_list.at(device_index);
 
     self->camera.Attach(factory.CreateDevice(device_info));
     self->camera.Open();
