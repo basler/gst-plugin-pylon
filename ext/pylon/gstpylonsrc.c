@@ -67,6 +67,7 @@ struct _GstPylonSrc
   GstVideoInfo video_info;
 
   gchar *device_name;
+  gchar *device_serial_number;
   gint device_index;
 };
 
@@ -96,10 +97,12 @@ enum
 {
   PROP_0,
   PROP_DEVICE_NAME,
+  PROP_DEVICE_SERIAL_NUMBER,
   PROP_DEVICE_INDEX
 };
 
 #define PROP_DEVICE_NAME_DEFAULT NULL
+#define PROP_DEVICE_SERIAL_NUMBER_DEFAULT NULL
 #define PROP_DEVICE_INDEX_DEFAULT 0
 #define PROP_DEVICE_INDEX_MIN 0
 #define PROP_DEVICE_INDEX_MAX G_MAXINT32
@@ -143,8 +146,14 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_DEVICE_NAME,
       g_param_spec_string ("device-name", "Device name",
-          "The name of the device to use. Has preference over the device index.",
+          "The name of the device to use. Has preference over the device serial number and index",
           PROP_DEVICE_NAME_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+  g_object_class_install_property (gobject_class, PROP_DEVICE_SERIAL_NUMBER,
+      g_param_spec_string ("device-serial-number", "Device serial number",
+          "The serial number of the device to use. Has preference over the device index",
+          PROP_DEVICE_SERIAL_NUMBER_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_DEVICE_INDEX,
@@ -176,6 +185,9 @@ gst_pylon_src_init (GstPylonSrc * self)
   self->pylon = NULL;
   self->offset = G_GUINT64_CONSTANT (0);
   self->duration = GST_CLOCK_TIME_NONE;
+  self->device_name = PROP_DEVICE_NAME_DEFAULT;
+  self->device_serial_number = PROP_DEVICE_SERIAL_NUMBER_DEFAULT;
+  self->device_index = PROP_DEVICE_INDEX_DEFAULT;
   gst_video_info_init (&self->video_info);
 }
 
@@ -193,6 +205,10 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
     case PROP_DEVICE_NAME:
       g_free (self->device_name);
       self->device_name = g_value_dup_string (value);
+      break;
+    case PROP_DEVICE_SERIAL_NUMBER:
+      g_free (self->device_serial_number);
+      self->device_serial_number = g_value_dup_string (value);
       break;
     case PROP_DEVICE_INDEX:
       self->device_index = g_value_get_int (value);
@@ -219,6 +235,9 @@ gst_pylon_src_get_property (GObject * object, guint property_id,
     case PROP_DEVICE_NAME:
       g_value_set_string (value, self->device_name);
       break;
+    case PROP_DEVICE_SERIAL_NUMBER:
+      g_value_set_string (value, self->device_serial_number);
+      break;
     case PROP_DEVICE_INDEX:
       g_value_set_int (value, self->device_index);
       break;
@@ -237,7 +256,11 @@ gst_pylon_src_finalize (GObject * object)
 
   GST_LOG_OBJECT (self, "finalize");
 
-  /* clean up object here */
+  g_free (self->device_name);
+  self->device_name = NULL;
+
+  g_free (self->device_serial_number);
+  self->device_serial_number = NULL;
 
   G_OBJECT_CLASS (gst_pylon_src_parent_class)->finalize (object);
 }
@@ -401,7 +424,9 @@ gst_pylon_src_start (GstBaseSrc * src)
   GST_INFO_OBJECT (self, "Starting camera device");
 
   GST_OBJECT_LOCK (self);
-  self->pylon = gst_pylon_new (self->device_name, self->device_index, &error);
+  self->pylon =
+      gst_pylon_new (self->device_name, self->device_serial_number,
+      self->device_index, &error);
   GST_OBJECT_UNLOCK (self);
 
   if (error) {

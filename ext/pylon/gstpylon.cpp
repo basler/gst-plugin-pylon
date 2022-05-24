@@ -94,7 +94,8 @@ static Pylon::CDeviceInfo gst_pylon_find_device(Pylon::CTlFactory &factory,
   return device_info;
 }
 
-GstPylon *gst_pylon_new(const gchar *device_name, gint device_index,
+GstPylon *gst_pylon_new(const gchar *device_name,
+                        const gchar *device_serial_number, gint device_index,
                         GError **err) {
   GstPylon *self = new GstPylon;
   Pylon::DeviceInfoList_t devices_list;
@@ -108,6 +109,8 @@ GstPylon *gst_pylon_new(const gchar *device_name, gint device_index,
 
     if (device_name) {
       device_info.SetFullName(device_name);
+    } else if (device_serial_number) {
+      device_info.SetSerialNumber(device_serial_number);
     } else {
       device_info = gst_pylon_find_device(factory, device_index);
     }
