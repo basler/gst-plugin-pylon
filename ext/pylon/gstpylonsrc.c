@@ -421,9 +421,12 @@ gst_pylon_src_start (GstBaseSrc * src)
   GError *error = NULL;
   gboolean ret = TRUE;
 
-  GST_INFO_OBJECT (self, "Starting camera device");
-
   GST_OBJECT_LOCK (self);
+  GST_INFO_OBJECT (self,
+      "Attempting to start camera device with the following configuration:"
+      "\n\tname: %s\n\tserial number: %s\n\tindex: %d", self->device_name,
+      self->device_serial_number, self->device_index);
+
   self->pylon =
       gst_pylon_new (self->device_name, self->device_serial_number,
       self->device_index, &error);
