@@ -65,6 +65,10 @@ struct _GstPylonSrc
   guint64 offset;
   GstClockTime duration;
   GstVideoInfo video_info;
+
+  gchar *device_name;
+  gchar *device_serial_number;
+  gint device_index;
 };
 
 /* prototypes */
@@ -91,8 +95,17 @@ static GstFlowReturn gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf);
 
 enum
 {
-  PROP_0
+  PROP_0,
+  PROP_DEVICE_NAME,
+  PROP_DEVICE_SERIAL_NUMBER,
+  PROP_DEVICE_INDEX
 };
+
+#define PROP_DEVICE_NAME_DEFAULT NULL
+#define PROP_DEVICE_SERIAL_NUMBER_DEFAULT NULL
+#define PROP_DEVICE_INDEX_DEFAULT 0
+#define PROP_DEVICE_INDEX_MIN 0
+#define PROP_DEVICE_INDEX_MAX G_MAXINT32
 
 /* pad templates */
 
@@ -100,7 +113,7 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE (" {GRAY8, GRAY16_LE, RGB, BGR} "))
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE (" {GRAY8, RGB, BGR} "))
     );
 
 
@@ -131,6 +144,25 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   gobject_class->get_property = gst_pylon_src_get_property;
   gobject_class->finalize = gst_pylon_src_finalize;
 
+  g_object_class_install_property (gobject_class, PROP_DEVICE_NAME,
+      g_param_spec_string ("device-name", "Device name",
+          "The name of the device to use. Has preference over the device serial number and index",
+          PROP_DEVICE_NAME_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+  g_object_class_install_property (gobject_class, PROP_DEVICE_SERIAL_NUMBER,
+      g_param_spec_string ("device-serial-number", "Device serial number",
+          "The serial number of the device to use. Has preference over the device index",
+          PROP_DEVICE_SERIAL_NUMBER_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+  g_object_class_install_property (gobject_class, PROP_DEVICE_INDEX,
+      g_param_spec_int ("device-index", "Device index",
+          "The index of the device to use", PROP_DEVICE_INDEX_MIN,
+          PROP_DEVICE_INDEX_MAX, PROP_DEVICE_INDEX_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_pylon_src_get_caps);
   base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_pylon_src_fixate);
   base_src_class->set_caps = GST_DEBUG_FUNCPTR (gst_pylon_src_set_caps);
@@ -153,6 +185,9 @@ gst_pylon_src_init (GstPylonSrc * self)
   self->pylon = NULL;
   self->offset = G_GUINT64_CONSTANT (0);
   self->duration = GST_CLOCK_TIME_NONE;
+  self->device_name = PROP_DEVICE_NAME_DEFAULT;
+  self->device_serial_number = PROP_DEVICE_SERIAL_NUMBER_DEFAULT;
+  self->device_index = PROP_DEVICE_INDEX_DEFAULT;
   gst_video_info_init (&self->video_info);
 }
 
@@ -164,11 +199,26 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
 
   GST_LOG_OBJECT (self, "set_property");
 
+  GST_OBJECT_LOCK (self);
+
   switch (property_id) {
+    case PROP_DEVICE_NAME:
+      g_free (self->device_name);
+      self->device_name = g_value_dup_string (value);
+      break;
+    case PROP_DEVICE_SERIAL_NUMBER:
+      g_free (self->device_serial_number);
+      self->device_serial_number = g_value_dup_string (value);
+      break;
+    case PROP_DEVICE_INDEX:
+      self->device_index = g_value_get_int (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
+
+  GST_OBJECT_UNLOCK (self);
 }
 
 static void
@@ -179,11 +229,24 @@ gst_pylon_src_get_property (GObject * object, guint property_id,
 
   GST_LOG_OBJECT (self, "get_property");
 
+  GST_OBJECT_LOCK (self);
+
   switch (property_id) {
+    case PROP_DEVICE_NAME:
+      g_value_set_string (value, self->device_name);
+      break;
+    case PROP_DEVICE_SERIAL_NUMBER:
+      g_value_set_string (value, self->device_serial_number);
+      break;
+    case PROP_DEVICE_INDEX:
+      g_value_set_int (value, self->device_index);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
+
+  GST_OBJECT_UNLOCK (self);
 }
 
 static void
@@ -193,7 +256,11 @@ gst_pylon_src_finalize (GObject * object)
 
   GST_LOG_OBJECT (self, "finalize");
 
-  /* clean up object here */
+  g_free (self->device_name);
+  self->device_name = NULL;
+
+  g_free (self->device_serial_number);
+  self->device_serial_number = NULL;
 
   G_OBJECT_CLASS (gst_pylon_src_parent_class)->finalize (object);
 }
@@ -354,9 +421,16 @@ gst_pylon_src_start (GstBaseSrc * src)
   GError *error = NULL;
   gboolean ret = TRUE;
 
-  GST_INFO_OBJECT (self, "Starting camera device");
+  GST_OBJECT_LOCK (self);
+  GST_INFO_OBJECT (self,
+      "Attempting to start camera device with the following configuration:"
+      "\n\tname: %s\n\tserial number: %s\n\tindex: %d", self->device_name,
+      self->device_serial_number, self->device_index);
 
-  self->pylon = gst_pylon_new (&error);
+  self->pylon =
+      gst_pylon_new (self->device_name, self->device_serial_number,
+      self->device_index, &error);
+  GST_OBJECT_UNLOCK (self);
 
   if (error) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,

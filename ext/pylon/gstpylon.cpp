@@ -67,6 +67,8 @@ static std::string gst_pylon_gst_to_pfnc(const std::string &gst_format);
 static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format);
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     GenApi::StringList_t genapi_formats);
+static Pylon::CDeviceInfo gst_pylon_find_device(Pylon::CTlFactory &factory,
+                                                gint device_index);
 
 struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera camera;
@@ -74,18 +76,52 @@ struct _GstPylon {
 
 void gst_pylon_initialize() { Pylon::PylonInitialize(); }
 
-GstPylon *gst_pylon_new(GError **err) {
-  GstPylon *self = new GstPylon;
-
-  g_return_val_if_fail(self, NULL);
+static Pylon::CDeviceInfo gst_pylon_find_device(Pylon::CTlFactory &factory,
+                                                gint device_index) {
+  Pylon::DeviceInfoList_t device_list;
+  Pylon::CDeviceInfo device_info;
 
   try {
-    self->camera.Attach(Pylon::CTlFactory::GetInstance().CreateFirstDevice());
+    factory.EnumerateDevices(device_list);
+    device_info = device_list.at(device_index);
+  } catch (const std::out_of_range &e) {
+    std::string msg = "Device " + std::to_string(device_index) +
+                      " is out of range of " +
+                      std::to_string(device_list.size()) + " devices";
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
+
+  return device_info;
+}
+
+GstPylon *gst_pylon_new(const gchar *device_name,
+                        const gchar *device_serial_number, gint device_index,
+                        GError **err) {
+  GstPylon *self = new GstPylon;
+  Pylon::DeviceInfoList_t devices_list;
+
+  g_return_val_if_fail(self, NULL);
+  g_return_val_if_fail(err || *err == NULL, NULL);
+
+  try {
+    Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
+    Pylon::CDeviceInfo device_info;
+
+    if (device_name) {
+      device_info.SetFullName(device_name);
+    } else if (device_serial_number) {
+      device_info.SetSerialNumber(device_serial_number);
+    } else {
+      device_info = gst_pylon_find_device(factory, device_index);
+    }
+
+    self->camera.Attach(factory.CreateDevice(device_info));
     self->camera.Open();
+
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
-    g_free(self);
+    delete self;
     self = NULL;
   }
 

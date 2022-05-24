@@ -43,7 +43,8 @@ typedef struct _GstPylon GstPylon;
 
 void gst_pylon_initialize ();
 
-GstPylon *gst_pylon_new (GError ** err);
+GstPylon *gst_pylon_new (const gchar *device_name, const gchar *device_serial_number,
+    gint device_index, GError ** err);
 void gst_pylon_free (GstPylon * self);
 
 gboolean gst_pylon_start (GstPylon * self, GError ** err);
