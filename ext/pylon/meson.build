@@ -21,7 +21,7 @@ pylon_link_args = run_command(pylon_config, '--libs', check : true).stdout().str
 
 pylon_dep = declare_dependency (
   compile_args : pylon_c_args,
-  link_args : pylon_link_args + ['-Wl,-rpath',  '-Wl,@0@'.format(pylon_rpath)]
+  link_args : pylon_link_args
 )
 
 pylon_sources = [
@@ -38,6 +38,7 @@ gstpylon = library('gstpylon',
   dependencies : [gstbase_dep, gstvideo_dep, pylon_dep],
   install : true,
   install_dir : plugins_install_dir,
+  install_rpath : pylon_rpath,
 )
 
 pkgconfig.generate(gstpylon, install_dir : plugins_pkgconfig_install_dir)
