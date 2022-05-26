@@ -153,7 +153,8 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
     }
 
     if (user_set) {
-      self->camera.UserSetSelector.SetValue(user_set);
+      std::string set_selector_str = "UserSetSelector_" + std::string(user_set);
+      self->camera.UserSetSelector.SetValue(set_selector_str.c_str());
       self->camera.UserSetLoad.Execute();
     }
 
