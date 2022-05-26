@@ -69,6 +69,7 @@ struct _GstPylonSrc
   gchar *device_user_name;
   gchar *device_serial_number;
   gint device_index;
+  gchar *user_set;
 };
 
 /* prototypes */
@@ -98,7 +99,8 @@ enum
   PROP_0,
   PROP_DEVICE_USER_NAME,
   PROP_DEVICE_SERIAL_NUMBER,
-  PROP_DEVICE_INDEX
+  PROP_DEVICE_INDEX,
+  PROP_USER_SET
 };
 
 #define PROP_DEVICE_USER_NAME_DEFAULT NULL
@@ -106,6 +108,7 @@ enum
 #define PROP_DEVICE_INDEX_DEFAULT -1
 #define PROP_DEVICE_INDEX_MIN -1
 #define PROP_DEVICE_INDEX_MAX G_MAXINT32
+#define PROP_USER_SET_DEFAULT NULL
 
 /* pad templates */
 
@@ -167,6 +170,12 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           PROP_DEVICE_INDEX_MAX, PROP_DEVICE_INDEX_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
+  g_object_class_install_property (gobject_class, PROP_USER_SET,
+      g_param_spec_string ("user-set", "Device user configuration set",
+          "The user-defined configuration set to use",
+          PROP_DEVICE_USER_NAME_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
 
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_pylon_src_get_caps);
   base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_pylon_src_fixate);
@@ -193,6 +202,7 @@ gst_pylon_src_init (GstPylonSrc * self)
   self->device_user_name = PROP_DEVICE_USER_NAME_DEFAULT;
   self->device_serial_number = PROP_DEVICE_SERIAL_NUMBER_DEFAULT;
   self->device_index = PROP_DEVICE_INDEX_DEFAULT;
+  self->user_set = PROP_USER_SET_DEFAULT;
   gst_video_info_init (&self->video_info);
 }
 
@@ -217,6 +227,9 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
       break;
     case PROP_DEVICE_INDEX:
       self->device_index = g_value_get_int (value);
+      break;
+    case PROP_USER_SET:
+      self->user_set = g_value_dup_string (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -246,6 +259,9 @@ gst_pylon_src_get_property (GObject * object, guint property_id,
     case PROP_DEVICE_INDEX:
       g_value_set_int (value, self->device_index);
       break;
+    case PROP_USER_SET:
+      g_value_set_string (value, self->user_set);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -266,6 +282,9 @@ gst_pylon_src_finalize (GObject * object)
 
   g_free (self->device_serial_number);
   self->device_serial_number = NULL;
+
+  g_free (self->user_set);
+  self->user_set = NULL;
 
   G_OBJECT_CLASS (gst_pylon_src_parent_class)->finalize (object);
 }
@@ -429,8 +448,9 @@ gst_pylon_src_start (GstBaseSrc * src)
   GST_OBJECT_LOCK (self);
   GST_INFO_OBJECT (self,
       "Attempting to start camera device with the following configuration:"
-      "\n\tname: %s\n\tserial number: %s\n\tindex: %d", self->device_user_name,
-      self->device_serial_number, self->device_index);
+      "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s",
+      self->device_user_name, self->device_serial_number, self->device_index,
+      self->user_set);
 
   self->pylon =
       gst_pylon_new (self->device_user_name, self->device_serial_number,
@@ -438,15 +458,30 @@ gst_pylon_src_start (GstBaseSrc * src)
   GST_OBJECT_UNLOCK (self);
 
   if (error) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Failed to start camera."), ("%s", error->message));
-    g_error_free (error);
     ret = FALSE;
-
-  } else {
-    self->offset = 0;
+    goto log_gst_error;
   }
 
+  GST_OBJECT_LOCK (self);
+  if (self->user_set) {
+    ret = gst_pylon_set_user_config (self->pylon, self->user_set, &error);
+  }
+  GST_OBJECT_UNLOCK (self);
+
+  if (ret == FALSE && error) {
+    goto log_gst_error;
+  }
+
+  self->offset = 0;
+
+  goto out;
+
+log_gst_error:
+  GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+      ("Failed to start camera."), ("%s", error->message));
+  g_error_free (error);
+
+out:
   return ret;
 }
 

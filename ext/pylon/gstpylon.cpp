@@ -140,6 +140,32 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
   return self;
 }
 
+gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
+                                   GError **err) {
+  g_return_val_if_fail(self, FALSE);
+  g_return_val_if_fail(err || *err == NULL, FALSE);
+
+  try {
+    if (!self->camera.UserSetSelector.IsWritable()) {
+      throw Pylon::GenericException(
+          "The device does not support user configuration sets", __FILE__,
+          __LINE__);
+    }
+
+    if (user_set) {
+      self->camera.UserSetSelector.SetValue(user_set);
+      self->camera.UserSetLoad.Execute();
+    }
+
+  } catch (const Pylon::GenericException &e) {
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                e.GetDescription());
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
 void gst_pylon_free(GstPylon *self) {
   g_return_if_fail(self);
 
