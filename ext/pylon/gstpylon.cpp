@@ -157,7 +157,7 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
       set = std::string(user_set);
     }
 
-    if ("Auto" == set || "" == set) {
+    if ("Auto" == set || set.empty()) {
       set = "Default";
     }
 
