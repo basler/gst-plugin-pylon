@@ -155,8 +155,10 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
     std::string set;
     if (user_set) {
       set = std::string(user_set);
-    } else {
-      set = "UserSetSelector_Default";
+    }
+
+    if ("Auto" == set || "" == set) {
+      set = "Default";
     }
 
     if (self->camera.UserSetSelector.CanSetValue(set.c_str())) {
@@ -164,10 +166,11 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
     } else {
       GenApi::StringList_t values;
       self->camera.UserSetSelector.GetSettableValues(values);
-      std::string msg = "Invalid user set, has to be one of the following: ";
+      std::string msg = "Invalid user set, has to be one of the following:\n";
+      msg += "Auto\n";
 
       for (const auto &value : values) {
-        msg += std::string(value) + " ";
+        msg += std::string(value) + "\n";
       }
 
       throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);

@@ -172,7 +172,9 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_USER_SET,
       g_param_spec_string ("user-set", "Device user configuration set",
-          "The user-defined configuration set to use",
+          "The user-defined configuration set to use. Leaving this property "
+          "unset, or using 'Auto' or 'Default' all result in selecting the "
+          "default camera configuration.",
           PROP_DEVICE_USER_NAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
@@ -463,9 +465,7 @@ gst_pylon_src_start (GstBaseSrc * src)
   }
 
   GST_OBJECT_LOCK (self);
-  if (self->user_set) {
-    ret = gst_pylon_set_user_config (self->pylon, self->user_set, &error);
-  }
+  ret = gst_pylon_set_user_config (self->pylon, self->user_set, &error);
   GST_OBJECT_UNLOCK (self);
 
   if (ret == FALSE && error) {
