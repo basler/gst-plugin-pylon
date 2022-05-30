@@ -67,6 +67,9 @@ static std::string gst_pylon_gst_to_pfnc(const std::string &gst_format);
 static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format);
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     GenApi::StringList_t genapi_formats);
+static Basler_UniversalCameraParams::UserSetSelectorEnums
+gst_pylon_def_to_sel_enums(
+    const Basler_UniversalCameraParams::UserSetDefaultEnums &default_set);
 
 struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera camera;
@@ -140,6 +143,44 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
   return self;
 }
 
+static Basler_UniversalCameraParams::UserSetSelectorEnums
+gst_pylon_def_to_sel_enums(
+    const Basler_UniversalCameraParams::UserSetDefaultEnums &default_set) {
+  Basler_UniversalCameraParams::UserSetSelectorEnums set =
+      Basler_UniversalCameraParams::UserSetSelector_Default;
+
+  switch (default_set) {
+    case Basler_UniversalCameraParams::UserSetDefault_AutoFunctions:
+      set = Basler_UniversalCameraParams::UserSetSelector_AutoFunctions;
+      break;
+    case Basler_UniversalCameraParams::UserSetDefault_Color:
+      set = Basler_UniversalCameraParams::UserSetSelector_Color;
+      break;
+    case Basler_UniversalCameraParams::UserSetDefault_ColorRaw:
+      set = Basler_UniversalCameraParams::UserSetSelector_ColorRaw;
+      break;
+    case Basler_UniversalCameraParams::UserSetDefault_Default:
+      set = Basler_UniversalCameraParams::UserSetSelector_Default;
+      break;
+    case Basler_UniversalCameraParams::UserSetDefault_HighGain:
+      set = Basler_UniversalCameraParams::UserSetSelector_HighGain;
+      break;
+    case Basler_UniversalCameraParams::UserSetDefault_LightMicroscopy:
+      set = Basler_UniversalCameraParams::UserSetSelector_LightMicroscopy;
+      break;
+    case Basler_UniversalCameraParams::UserSetDefault_UserSet1:
+      set = Basler_UniversalCameraParams::UserSetSelector_UserSet1;
+      break;
+    case Basler_UniversalCameraParams::UserSetDefault_UserSet2:
+      set = Basler_UniversalCameraParams::UserSetSelector_UserSet2;
+      break;
+    case Basler_UniversalCameraParams::UserSetDefault_UserSet3:
+      set = Basler_UniversalCameraParams::UserSetSelector_UserSet3;
+      break;
+  }
+  return set;
+}
+
 gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
                                    GError **err) {
   g_return_val_if_fail(self, FALSE);
@@ -157,12 +198,28 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
       set = std::string(user_set);
     }
 
+    /* If auto or nothing is set, return default config */
     if ("Auto" == set || set.empty()) {
-      set = "Default";
-    }
+      Basler_UniversalCameraParams::UserSetSelectorEnums set_def =
+          Basler_UniversalCameraParams::UserSetSelector_Default;
 
-    if (self->camera.UserSetSelector.CanSetValue(set.c_str())) {
+      /* USB cameras */
+      if (self->camera.UserSetDefault.IsReadable()) {
+        set_def =
+            gst_pylon_def_to_sel_enums(self->camera.UserSetDefault.GetValue());
+      }
+      /* CameraLink and GigE cameras */
+      else if (self->camera.UserSetDefaultSelector.IsReadable()) {
+        set_def =
+            static_cast<Basler_UniversalCameraParams::UserSetSelectorEnums>(
+                self->camera.UserSetDefaultSelector.GetValue());
+      }
+
+      self->camera.UserSetSelector.SetValue(set_def);
+
+    } else if (self->camera.UserSetSelector.CanSetValue(set.c_str())) {
       self->camera.UserSetSelector.SetValue(set.c_str());
+
     } else {
       GenApi::StringList_t values;
       self->camera.UserSetSelector.GetSettableValues(values);
