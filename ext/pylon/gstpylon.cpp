@@ -152,11 +152,28 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
           __LINE__);
     }
 
+    std::string set;
     if (user_set) {
-      std::string set_selector_str = "UserSetSelector_" + std::string(user_set);
-      self->camera.UserSetSelector.SetValue(set_selector_str.c_str());
-      self->camera.UserSetLoad.Execute();
+      set = std::string(user_set);
+    } else {
+      set = "UserSetSelector_Default";
     }
+
+    if (self->camera.UserSetSelector.CanSetValue(set.c_str())) {
+      self->camera.UserSetSelector.SetValue(set.c_str());
+    } else {
+      GenApi::StringList_t values;
+      self->camera.UserSetSelector.GetSettableValues(values);
+      std::string msg = "Invalid user set, has to be one of the following: ";
+
+      for (const auto &value : values) {
+        msg += std::string(value) + " ";
+      }
+
+      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    }
+
+    self->camera.UserSetLoad.Execute();
 
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
