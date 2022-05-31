@@ -108,9 +108,16 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     }
 
     if (n_devices > 1 && -1 == device_index) {
-      std::string msg = "At least " + std::to_string(n_devices) +
-                        " devices match the specified criteria, use "
-                        "\"device-index\" to select one";
+      std::string msg =
+          "At least " + std::to_string(n_devices) +
+          " devices match the specified criteria, use "
+          "\"device-index\" to select one from the following list:\n";
+
+      for (gint i = 0; i < n_devices; i++) {
+        msg += "[" + std::to_string(i) +
+               "]: " + std::string(device_list.at(i).GetUserDefinedName()) +
+               " " + std::string(device_list.at(i).GetSerialNumber()) + "\n";
+      }
       throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
 
@@ -144,14 +151,16 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
 
 static std::string gst_pylon_query_default_set(
     const Pylon::CBaslerUniversalInstantCamera &camera) {
-  std::string set = "Default";
+  std::string set;
 
-  /* USB cameras */
-  if (camera.UserSetDefault.IsReadable()) {
+  /* Return default for cameras that don't support wake up default sets e.g
+   * CamEmulator */
+  if (!camera.UserSetDefault.IsReadable() &&
+      !camera.UserSetDefaultSelector.IsReadable()) {
+    set = "Default";
+  } else if (camera.GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
     set = std::string(camera.UserSetDefault.ToString());
-  }
-  /* CameraLink and GigE cameras */
-  else if (camera.UserSetDefaultSelector.IsReadable()) {
+  } else {
     set = std::string(camera.UserSetDefaultSelector.ToString());
   }
 
@@ -191,7 +200,6 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
       for (const auto &value : values) {
         msg += std::string(value) + "\n";
       }
-
       throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
 
