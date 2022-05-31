@@ -151,9 +151,14 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
 
 static std::string gst_pylon_query_default_set(
     const Pylon::CBaslerUniversalInstantCamera &camera) {
-  std::string set = "Default";
+  std::string set;
 
-  if (camera.GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
+  /* Return default for cameras that don't support wake up default sets e.g
+   * CamEmulator */
+  if (!camera.UserSetDefault.IsReadable() &&
+      !camera.UserSetDefaultSelector.IsReadable()) {
+    set = "Default";
+  } else if (camera.GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
     set = std::string(camera.UserSetDefault.ToString());
   } else {
     set = std::string(camera.UserSetDefaultSelector.ToString());
@@ -195,7 +200,6 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
       for (const auto &value : values) {
         msg += std::string(value) + "\n";
       }
-
       throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
 
