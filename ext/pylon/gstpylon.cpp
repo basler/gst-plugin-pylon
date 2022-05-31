@@ -153,12 +153,9 @@ static std::string gst_pylon_query_default_set(
     const Pylon::CBaslerUniversalInstantCamera &camera) {
   std::string set = "Default";
 
-  /* USB cameras */
-  if (camera.UserSetDefault.IsReadable()) {
+  if (camera.GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
     set = std::string(camera.UserSetDefault.ToString());
-  }
-  /* CameraLink and GigE cameras */
-  else if (camera.UserSetDefaultSelector.IsReadable()) {
+  } else {
     set = std::string(camera.UserSetDefaultSelector.ToString());
   }
 
