@@ -231,6 +231,7 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
       self->device_index = g_value_get_int (value);
       break;
     case PROP_USER_SET:
+      g_free (self->user_set);
       self->user_set = g_value_dup_string (value);
       break;
     default:
