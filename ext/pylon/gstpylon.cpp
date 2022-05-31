@@ -108,9 +108,16 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     }
 
     if (n_devices > 1 && -1 == device_index) {
-      std::string msg = "At least " + std::to_string(n_devices) +
-                        " devices match the specified criteria, use "
-                        "\"device-index\" to select one";
+      std::string msg =
+          "At least " + std::to_string(n_devices) +
+          " devices match the specified criteria, use "
+          "\"device-index\" to select one from the following list:\n";
+
+      for (gint i = 0; i < n_devices; i++) {
+        msg += "[" + std::to_string(i) +
+               "]: " + std::string(device_list.at(i).GetUserDefinedName()) +
+               " " + std::string(device_list.at(i).GetSerialNumber()) + "\n";
+      }
       throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
 
