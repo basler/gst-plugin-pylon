@@ -67,7 +67,7 @@ static std::string gst_pylon_gst_to_pfnc(const std::string &gst_format);
 static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format);
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     GenApi::StringList_t genapi_formats);
-static std::string gst_pylon_def_to_sel_enums(
+static std::string gst_pylon_query_default_set(
     const Pylon::CBaslerUniversalInstantCamera &camera);
 
 struct _GstPylon {
@@ -142,7 +142,7 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
   return self;
 }
 
-static std::string gst_pylon_def_to_sel_enums(
+static std::string gst_pylon_query_default_set(
     const Pylon::CBaslerUniversalInstantCamera &camera) {
   std::string set = "Default";
 
@@ -177,7 +177,7 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
 
     /* If auto or nothing is set, return default config */
     if ("Auto" == set || set.empty()) {
-      set = gst_pylon_def_to_sel_enums(self->camera);
+      set = gst_pylon_query_default_set(self->camera);
     }
 
     if (self->camera.UserSetSelector.CanSetValue(set.c_str())) {
