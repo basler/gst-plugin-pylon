@@ -39,34 +39,35 @@ GParamSpec *GstPylonParamFactory::make_param(GenApi::INode *node) {
   GParamSpec *spec = NULL;
   GenICam::gcstring name = node->GetName();
   GenICam::gcstring desc = node->GetToolTip();
+  GParamFlags flags = static_cast<GParamFlags>(
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | GST_PARAM_MUTABLE_READY);
 
   if (GenApi::intfIInteger == node->GetPrincipalInterfaceType()) {
     Pylon::CIntegerParameter param(node);
     spec = g_param_spec_int(name.c_str(), name.c_str(), desc.c_str(),
                             param.GetMin(), param.GetMax(), param.GetValue(),
-                            G_PARAM_READWRITE);
+                            flags);
 
   } else if (GenApi::intfIBoolean == node->GetPrincipalInterfaceType()) {
     Pylon::CBooleanParameter param(node);
     spec = g_param_spec_boolean(name.c_str(), name.c_str(), desc.c_str(),
-                                param.GetValue(), G_PARAM_READWRITE);
+                                param.GetValue(), flags);
 
   } else if (GenApi::intfIFloat == node->GetPrincipalInterfaceType()) {
     Pylon::CFloatParameter param(node);
     spec = g_param_spec_float(name.c_str(), name.c_str(), desc.c_str(),
                               param.GetMin(), param.GetMax(), param.GetValue(),
-                              G_PARAM_READWRITE);
+                              flags);
 
   } else if (GenApi::intfIString == node->GetPrincipalInterfaceType()) {
     Pylon::CStringParameter param(node);
     spec = g_param_spec_string(name.c_str(), name.c_str(), desc.c_str(),
-                               param.GetValue(), G_PARAM_READWRITE);
+                               param.GetValue(), flags);
 
   } else if (GenApi::intfIEnumeration == node->GetPrincipalInterfaceType()) {
     Pylon::CEnumParameter param(node);
-    spec =
-        g_param_spec_enum(name.c_str(), name.c_str(), desc.c_str(), G_TYPE_CHAR,
-                          param.GetIntValue(), G_PARAM_READWRITE);
+    spec = g_param_spec_enum(name.c_str(), name.c_str(), desc.c_str(),
+                             G_TYPE_INT, param.GetIntValue(), flags);
 
   } else {
     throw Pylon::GenericException("Cannot set param spec, invalid node",
