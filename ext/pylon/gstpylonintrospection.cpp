@@ -65,6 +65,9 @@ static GParamFlags gst_pylon_query_access(GenApi::INode *node) {
 }
 
 static void gst_pylon_make_spec_int(GenApi::INode *node, GParamSpec **spec) {
+  g_return_if_fail(node);
+  g_return_if_fail(spec);
+
   Pylon::CIntegerParameter param(node);
 
   *spec = g_param_spec_int(node->GetName(), node->GetDisplayName(),
@@ -74,6 +77,9 @@ static void gst_pylon_make_spec_int(GenApi::INode *node, GParamSpec **spec) {
 }
 
 static void gst_pylon_make_spec_bool(GenApi::INode *node, GParamSpec **spec) {
+  g_return_if_fail(node);
+  g_return_if_fail(spec);
+
   Pylon::CBooleanParameter param(node);
 
   *spec = g_param_spec_boolean(
@@ -82,6 +88,9 @@ static void gst_pylon_make_spec_bool(GenApi::INode *node, GParamSpec **spec) {
 }
 
 static void gst_pylon_make_spec_float(GenApi::INode *node, GParamSpec **spec) {
+  g_return_if_fail(node);
+  g_return_if_fail(spec);
+
   Pylon::CFloatParameter param(node);
 
   *spec =
@@ -91,6 +100,9 @@ static void gst_pylon_make_spec_float(GenApi::INode *node, GParamSpec **spec) {
 }
 
 static void gst_pylon_make_spec_str(GenApi::INode *node, GParamSpec **spec) {
+  g_return_if_fail(node);
+  g_return_if_fail(spec);
+
   Pylon::CStringParameter param(node);
 
   *spec = g_param_spec_string(node->GetName(), node->GetDisplayName(),
@@ -99,6 +111,9 @@ static void gst_pylon_make_spec_str(GenApi::INode *node, GParamSpec **spec) {
 }
 
 static void gst_pylon_make_spec_enum(GenApi::INode *node, GParamSpec **spec) {
+  g_return_if_fail(node);
+  g_return_if_fail(spec);
+
   Pylon::CEnumParameter param(node);
 
   *spec = g_param_spec_enum(node->GetName(), node->GetDisplayName(),
