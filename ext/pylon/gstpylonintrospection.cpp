@@ -92,7 +92,7 @@ static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node) {
 
   return g_param_spec_float(node->GetName(), node->GetDisplayName(),
                             node->GetDescription(), param.GetMin(),
-                            param.GetMax(), param.GetValue(),
+                            param.GetMax(), param.GetValueOrDefault(-1.0),
                             gst_pylon_query_access(node));
 }
 
@@ -101,9 +101,9 @@ static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node) {
 
   Pylon::CStringParameter param(node);
 
-  return g_param_spec_string(node->GetName(), node->GetDisplayName(),
-                             node->GetDescription(), param.GetValue(),
-                             gst_pylon_query_access(node));
+  return g_param_spec_string(
+      node->GetName(), node->GetDisplayName(), node->GetDescription(),
+      param.GetValueOrDefault("Default"), gst_pylon_query_access(node));
 }
 
 static GParamSpec *gst_pylon_make_spec_enum(GenApi::INode *node) {
@@ -137,7 +137,7 @@ GParamSpec *GstPylonParamFactory::make_param(GenApi::INode *node) {
     spec = gst_pylon_make_spec_enum(node);
 
   } else {
-    throw Pylon::GenericException("Cannot set param spec, invalid node",
+    throw Pylon::GenericException("Unable to set param spec, invalid node",
                                   __FILE__, __LINE__);
   }
 
