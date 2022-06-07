@@ -136,8 +136,9 @@ GParamSpec *GstPylonParamFactory::make_param(GenApi::INode *node) {
     spec = gst_pylon_make_spec_enum(node);
 
   } else {
-    throw Pylon::GenericException("Unable to set param spec, invalid node",
-                                  __FILE__, __LINE__);
+    std::string msg = "Unsupported node type " +
+                      std::to_string(node->GetPrincipalInterfaceType());
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
   }
 
   return spec;
