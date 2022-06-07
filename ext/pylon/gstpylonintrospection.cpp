@@ -45,20 +45,19 @@ static GParamFlags gst_pylon_query_access(GenApi::INode *node) {
   Pylon::CParameter param(node);
   gint flags = 0;
 
-  if (param.IsWritable() && param.IsReadable()) {
-    flags = G_PARAM_READWRITE;
-  } else if (param.IsWritable() && !param.IsReadable()) {
-    flags = G_PARAM_WRITABLE;
-  } else if (!param.IsWritable() && param.IsReadable()) {
-    flags = G_PARAM_READABLE;
+  if (param.IsReadable()) {
+    flags |= G_PARAM_READABLE;
+  }
+  if (param.IsWritable()) {
+    flags |= G_PARAM_WRITABLE;
   }
 
   GenICam::gcstring value;
   GenICam::gcstring attribute;
   if (node->GetProperty("pIsLocked", value, attribute)) {
-    flags = flags | GST_PARAM_MUTABLE_READY;
+    flags |= GST_PARAM_MUTABLE_READY;
   } else {
-    flags = flags | GST_PARAM_MUTABLE_PLAYING;
+    flags |= GST_PARAM_MUTABLE_PLAYING;
   }
 
   return static_cast<GParamFlags>(flags);
