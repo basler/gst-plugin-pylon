@@ -110,9 +110,9 @@ static GParamSpec *gst_pylon_make_spec_enum(GenApi::INode *node) {
 
   Pylon::CEnumParameter param(node);
 
-  return g_param_spec_enum(node->GetName(), node->GetDisplayName(),
-                           node->GetDescription(), G_TYPE_INT,
-                           param.GetIntValue(), gst_pylon_query_access(node));
+  return g_param_spec_int(node->GetName(), node->GetDisplayName(),
+                          node->GetDescription(), -1, -1, param.GetIntValue(),
+                          gst_pylon_query_access(node));
 }
 
 GParamSpec *GstPylonParamFactory::make_param(GenApi::INode *node) {
