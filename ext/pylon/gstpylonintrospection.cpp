@@ -33,42 +33,98 @@
 
 #include "gstpylonintrospection.h"
 
+/* prototypes */
+static void gst_pylon_make_spec_int(GenApi::INode *node, GParamSpec **spec);
+static void gst_pylon_make_spec_bool(GenApi::INode *node, GParamSpec **spec);
+static void gst_pylon_make_spec_float(GenApi::INode *node, GParamSpec **spec);
+static void gst_pylon_make_spec_str(GenApi::INode *node, GParamSpec **spec);
+static void gst_pylon_make_spec_enum(GenApi::INode *node, GParamSpec **spec);
+static GParamFlags gst_pylon_query_access(GenApi::INode *node);
+
+static GParamFlags gst_pylon_query_access(GenApi::INode *node) {
+  Pylon::CParameter param(node);
+  gint flags = 0;
+
+  if (param.IsWritable() && param.IsReadable()) {
+    flags = G_PARAM_READWRITE;
+  } else if (param.IsWritable() && !param.IsReadable()) {
+    flags = G_PARAM_WRITABLE;
+  } else if (!param.IsWritable() && param.IsReadable()) {
+    flags = G_PARAM_READABLE;
+  }
+
+  GenICam::gcstring value;
+  GenICam::gcstring attribute;
+  if (node->GetProperty("pIsLocked", value, attribute)) {
+    flags = flags | GST_PARAM_MUTABLE_READY;
+  } else {
+    flags = flags | GST_PARAM_MUTABLE_PLAYING;
+  }
+
+  return static_cast<GParamFlags>(flags);
+}
+
+static void gst_pylon_make_spec_int(GenApi::INode *node, GParamSpec **spec) {
+  Pylon::CIntegerParameter param(node);
+
+  *spec = g_param_spec_int(node->GetName(), node->GetDisplayName(),
+                           node->GetDescription(), param.GetMin(),
+                           param.GetMax(), param.GetValueOrDefault(-1),
+                           gst_pylon_query_access(node));
+}
+
+static void gst_pylon_make_spec_bool(GenApi::INode *node, GParamSpec **spec) {
+  Pylon::CBooleanParameter param(node);
+
+  *spec = g_param_spec_boolean(
+      node->GetName(), node->GetDisplayName(), node->GetDescription(),
+      param.GetValueOrDefault(FALSE), gst_pylon_query_access(node));
+}
+
+static void gst_pylon_make_spec_float(GenApi::INode *node, GParamSpec **spec) {
+  Pylon::CFloatParameter param(node);
+
+  *spec =
+      g_param_spec_float(node->GetName(), node->GetDisplayName(),
+                         node->GetDescription(), param.GetMin(), param.GetMax(),
+                         param.GetValue(), gst_pylon_query_access(node));
+}
+
+static void gst_pylon_make_spec_str(GenApi::INode *node, GParamSpec **spec) {
+  Pylon::CStringParameter param(node);
+
+  *spec = g_param_spec_string(node->GetName(), node->GetDisplayName(),
+                              node->GetDescription(), param.GetValue(),
+                              gst_pylon_query_access(node));
+}
+
+static void gst_pylon_make_spec_enum(GenApi::INode *node, GParamSpec **spec) {
+  Pylon::CEnumParameter param(node);
+
+  *spec = g_param_spec_enum(node->GetName(), node->GetDisplayName(),
+                            node->GetDescription(), G_TYPE_INT,
+                            param.GetIntValue(), gst_pylon_query_access(node));
+}
+
 GParamSpec *GstPylonParamFactory::make_param(GenApi::INode *node) {
   g_return_val_if_fail(node, NULL);
 
   GParamSpec *spec = NULL;
-  GenICam::gcstring name = node->GetName();
-  GenICam::gcstring display_name = node->GetDisplayName();
-  GenICam::gcstring desc = node->GetDescription();
-  GParamFlags flags = static_cast<GParamFlags>(
-      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | GST_PARAM_MUTABLE_READY);
 
   if (GenApi::intfIInteger == node->GetPrincipalInterfaceType()) {
-    Pylon::CIntegerParameter param(node);
-    spec = g_param_spec_int(name.c_str(), display_name.c_str(), desc.c_str(),
-                            param.GetMin(), param.GetMax(), param.GetValue(),
-                            flags);
+    gst_pylon_make_spec_int(node, &spec);
 
   } else if (GenApi::intfIBoolean == node->GetPrincipalInterfaceType()) {
-    Pylon::CBooleanParameter param(node);
-    spec = g_param_spec_boolean(name.c_str(), display_name.c_str(),
-                                desc.c_str(), param.GetValue(), flags);
+    gst_pylon_make_spec_bool(node, &spec);
 
   } else if (GenApi::intfIFloat == node->GetPrincipalInterfaceType()) {
-    Pylon::CFloatParameter param(node);
-    spec = g_param_spec_float(name.c_str(), display_name.c_str(), desc.c_str(),
-                              param.GetMin(), param.GetMax(), param.GetValue(),
-                              flags);
+    gst_pylon_make_spec_float(node, &spec);
 
   } else if (GenApi::intfIString == node->GetPrincipalInterfaceType()) {
-    Pylon::CStringParameter param(node);
-    spec = g_param_spec_string(name.c_str(), display_name.c_str(), desc.c_str(),
-                               param.GetValue(), flags);
+    gst_pylon_make_spec_str(node, &spec);
 
   } else if (GenApi::intfIEnumeration == node->GetPrincipalInterfaceType()) {
-    Pylon::CEnumParameter param(node);
-    spec = g_param_spec_enum(name.c_str(), display_name.c_str(), desc.c_str(),
-                             G_TYPE_INT, param.GetIntValue(), flags);
+    gst_pylon_make_spec_enum(node, &spec);
 
   } else {
     throw Pylon::GenericException("Cannot set param spec, invalid node",

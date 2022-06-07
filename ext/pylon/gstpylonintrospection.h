@@ -34,7 +34,6 @@
 #ifndef _GST_PYLON_INTROSPECTION_H_
 #define _GST_PYLON_INTROSPECTION_H_
 
-#include <glib.h>
 #include <gst/gst.h>
 
 #ifdef _MSC_VER  // MSVC
@@ -49,7 +48,7 @@
 
 class GstPylonParamFactory {
  public:
-  GParamSpec *make_param(GenApi::INode *node);
+  static GParamSpec *make_param(GenApi::INode *node);
 };
 
 #endif
