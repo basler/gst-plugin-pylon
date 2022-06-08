@@ -36,8 +36,12 @@
 
 #include <gst/gst.h>
 
+G_BEGIN_DECLS
+
 #define GST_TYPE_PYLON_CAMERA (gst_pylon_camera_get_type())
 G_DECLARE_FINAL_TYPE (GstPylonCamera, gst_pylon_camera,
     GST, PYLON_CAMERA, GObject)
+
+G_END_DECLS
 
 #endif
