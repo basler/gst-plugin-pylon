@@ -34,6 +34,11 @@
 
 #include "gstpyloncamera.h"
 
+struct _GstPylonCamera
+{
+  GObject parent;
+};
+
 G_DEFINE_TYPE (GstPylonCamera, gst_pylon_camera, G_TYPE_OBJECT);
 
 static void

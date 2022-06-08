@@ -36,30 +36,8 @@
 
 #include <gst/gst.h>
 
-#define GST_TYPE_PYLON_CAMERA \
-  (gst_pylon_camera_get_type())
-#define GST_PYLON_CAMERA(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_PYLON_CAMERA,GstPylonCamera))
-#define GST_PYLON_CAMERA_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_PYLON_CAMERA,GstPylonCameraClass))
-#define GST_IS_PYLON_CAMERA(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_PYLON_CAMERA))
-#define GST_IS_PYLON_CAMERA_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_PYLON_CAMERA))
-
-GType gst_pylon_camera_get_type (void);
-
-typedef struct _GstPylonCamera GstPylonCamera;
-typedef struct _GstPylonCameraClass GstPylonCameraClass;
-
-struct _GstPylonCamera
-{
-  GObject parent;
-};
-
-struct _GstPylonCameraClass
-{
-  GObjectClass parent_class;
-};
+#define GST_TYPE_PYLON_CAMERA (gst_pylon_camera_get_type())
+G_DECLARE_FINAL_TYPE (GstPylonCamera, gst_pylon_camera,
+    GST, PYLON_CAMERA, GObject)
 
 #endif
