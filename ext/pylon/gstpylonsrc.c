@@ -70,6 +70,7 @@ struct _GstPylonSrc
   gchar *device_serial_number;
   gint device_index;
   gchar *user_set;
+  GObject *cam;
 };
 
 /* prototypes */
@@ -100,7 +101,8 @@ enum
   PROP_DEVICE_USER_NAME,
   PROP_DEVICE_SERIAL_NUMBER,
   PROP_DEVICE_INDEX,
-  PROP_USER_SET
+  PROP_USER_SET,
+  PROP_CAM
 };
 
 #define PROP_DEVICE_USER_NAME_DEFAULT NULL
@@ -109,6 +111,7 @@ enum
 #define PROP_DEVICE_INDEX_MIN -1
 #define PROP_DEVICE_INDEX_MAX G_MAXINT32
 #define PROP_USER_SET_DEFAULT NULL
+#define PROP_CAM_DEFAULT NULL
 
 /* pad templates */
 
@@ -178,6 +181,9 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           PROP_DEVICE_USER_NAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
+  g_object_class_install_property (gobject_class, PROP_CAM,
+      g_param_spec_object ("cam", "Camera",
+          "The camera currently selected.", G_TYPE_OBJECT, G_PARAM_READABLE));
 
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_pylon_src_get_caps);
   base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_pylon_src_fixate);
@@ -205,6 +211,7 @@ gst_pylon_src_init (GstPylonSrc * self)
   self->device_serial_number = PROP_DEVICE_SERIAL_NUMBER_DEFAULT;
   self->device_index = PROP_DEVICE_INDEX_DEFAULT;
   self->user_set = PROP_USER_SET_DEFAULT;
+  self->cam = PROP_CAM_DEFAULT;
   gst_video_info_init (&self->video_info);
 }
 
@@ -233,6 +240,9 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
     case PROP_USER_SET:
       g_free (self->user_set);
       self->user_set = g_value_dup_string (value);
+      break;
+    case PROP_CAM:
+      self->cam = g_value_get_object (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -288,6 +298,9 @@ gst_pylon_src_finalize (GObject * object)
 
   g_free (self->user_set);
   self->user_set = NULL;
+
+  g_free (self->cam);
+  self->cam = NULL;
 
   G_OBJECT_CLASS (gst_pylon_src_parent_class)->finalize (object);
 }
