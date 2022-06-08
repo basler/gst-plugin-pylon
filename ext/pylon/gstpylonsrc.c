@@ -301,8 +301,10 @@ gst_pylon_src_finalize (GObject * object)
   g_free (self->user_set);
   self->user_set = NULL;
 
-  g_object_unref (self->cam);
-  self->cam = NULL;
+  if (self->cam) {
+    g_object_unref (self->cam);
+    self->cam = NULL;
+  }
 
   G_OBJECT_CLASS (gst_pylon_src_parent_class)->finalize (object);
 }
