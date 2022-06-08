@@ -27,6 +27,7 @@ pylon_dep = declare_dependency (
 pylon_sources = [
   'gstpylonsrc.c',
   'gstpylonplugin.c',
+  'gstpyloncamera.c',
   'gstpylon.cpp',
   'gstpylonintrospection.cpp'
 ]
