@@ -243,10 +243,6 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
       g_free (self->user_set);
       self->user_set = g_value_dup_string (value);
       break;
-    case PROP_CAM:
-      g_object_unref (self->cam);
-      self->cam = g_value_get_object (value);
-      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -277,6 +273,9 @@ gst_pylon_src_get_property (GObject * object, guint property_id,
       break;
     case PROP_USER_SET:
       g_value_set_string (value, self->user_set);
+      break;
+    case PROP_CAM:
+      g_value_set_object (value, self->cam);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
