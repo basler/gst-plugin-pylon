@@ -244,6 +244,7 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
       self->user_set = g_value_dup_string (value);
       break;
     case PROP_CAM:
+      g_object_unref (self->cam);
       self->cam = g_value_get_object (value);
       break;
     default:
@@ -301,7 +302,7 @@ gst_pylon_src_finalize (GObject * object)
   g_free (self->user_set);
   self->user_set = NULL;
 
-  g_free (self->cam);
+  g_object_unref (self->cam);
   self->cam = NULL;
 
   G_OBJECT_CLASS (gst_pylon_src_parent_class)->finalize (object);
