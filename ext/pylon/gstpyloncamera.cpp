@@ -37,7 +37,10 @@ struct _GstPylonCamera {
   GObject parent;
 };
 
-static void gst_pylon_camera_class_init(GstPylonCameraClass* klass) {}
+static void gst_pylon_camera_class_init(
+    GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
+  std::cout << std::string(camera->GetDeviceInfo().GetFullName()) << std::endl;
+}
 
 static void gst_pylon_camera_init(GstPylonCamera* self) {}
 
@@ -49,7 +52,7 @@ gboolean gst_pylon_camera_register(
       NULL,
       (GClassInitFunc)gst_pylon_camera_class_init,
       NULL,
-      NULL,
+      &camera,
       sizeof(GstPylonCamera),
       0,
       (GInstanceInitFunc)gst_pylon_camera_init,
@@ -60,7 +63,7 @@ gboolean gst_pylon_camera_register(
   type = g_type_from_name(cam_info.GetFullName().c_str());
   if (!type) {
     type = g_type_register_static(G_TYPE_OBJECT, cam_info.GetFullName().c_str(),
-                                  &typeinfo, (GTypeFlags)0);
+                                  &typeinfo, static_cast<GTypeFlags>(0));
   }
 
   return TRUE;

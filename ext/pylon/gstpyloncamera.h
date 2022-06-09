@@ -48,12 +48,6 @@
 #include <pylon/BaslerUniversalInstantCamera.h>
 #include <pylon/PylonIncludes.h>
 
-#ifdef _MSC_VER  // MSVC
-#pragma warning(pop)
-#elif __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
-#endif
-
 G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (GstPylonCamera, gst_pylon_camera,
