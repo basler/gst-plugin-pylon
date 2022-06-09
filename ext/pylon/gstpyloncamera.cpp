@@ -31,22 +31,12 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #include "gstpyloncamera.h"
 
-struct _GstPylonCamera
-{
+struct _GstPylonCamera {
   GObject parent;
 };
 
-G_DEFINE_TYPE (GstPylonCamera, gst_pylon_camera, G_TYPE_OBJECT);
+static void gst_pylon_camera_class_init(GstPylonCameraClass* klass) {}
 
-static void
-gst_pylon_camera_class_init (GstPylonCameraClass * klass)
-{
-}
-
-static void
-gst_pylon_camera_init (GstPylonCamera * self)
-{
-}
+static void gst_pylon_camera_init(GstPylonCamera* self) {}
