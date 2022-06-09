@@ -52,7 +52,6 @@
 #include "gstpylonsrc.h"
 
 #include "gstpylon.h"
-#include "gstpyloncamera.h"
 
 #include <gst/video/video.h>
 
@@ -184,8 +183,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_CAM,
       g_param_spec_object ("cam", "Camera",
-          "The camera currently selected.", GST_TYPE_PYLON_CAMERA,
-          G_PARAM_READABLE));
+          "The camera currently selected.", G_TYPE_OBJECT, G_PARAM_READABLE));
 
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_pylon_src_get_caps);
   base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_pylon_src_fixate);

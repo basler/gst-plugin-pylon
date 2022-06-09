@@ -32,6 +32,7 @@
  */
 
 #include "gstpylon.h"
+#include "gstpyloncamera.h"
 
 #include <map>
 

@@ -40,3 +40,28 @@ struct _GstPylonCamera {
 static void gst_pylon_camera_class_init(GstPylonCameraClass* klass) {}
 
 static void gst_pylon_camera_init(GstPylonCamera* self) {}
+
+gboolean gst_pylon_camera_register(
+    const Pylon::CBaslerUniversalInstantCamera& camera) {
+  GTypeInfo typeinfo = {
+      sizeof(GstPylonCameraClass),
+      NULL,
+      NULL,
+      (GClassInitFunc)gst_pylon_camera_class_init,
+      NULL,
+      NULL,
+      sizeof(GstPylonCamera),
+      0,
+      (GInstanceInitFunc)gst_pylon_camera_init,
+  };
+  GType type;
+
+  Pylon::CDeviceInfo cam_info = camera.GetDeviceInfo();
+  type = g_type_from_name(cam_info.GetFullName().c_str());
+  if (!type) {
+    type = g_type_register_static(G_TYPE_OBJECT, cam_info.GetFullName().c_str(),
+                                  &typeinfo, (GTypeFlags)0);
+  }
+
+  return TRUE;
+}

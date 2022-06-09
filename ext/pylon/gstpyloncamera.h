@@ -36,11 +36,30 @@
 
 #include <gst/gst.h>
 
+
+#ifdef _MSC_VER  // MSVC
+#pragma warning(push)
+#pragma warning(disable : 4265)
+#elif __GNUC__  // GCC, CLANG, MinGW
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#endif
+
+#include <pylon/BaslerUniversalInstantCamera.h>
+#include <pylon/PylonIncludes.h>
+
+#ifdef _MSC_VER  // MSVC
+#pragma warning(pop)
+#elif __GNUC__  // GCC, CLANG, MinWG
+#pragma GCC diagnostic pop
+#endif
+
 G_BEGIN_DECLS
 
-#define GST_TYPE_PYLON_CAMERA (gst_pylon_camera_get_type())
 G_DECLARE_FINAL_TYPE (GstPylonCamera, gst_pylon_camera,
     GST, PYLON_CAMERA, GObject)
+
+gboolean gst_pylon_camera_register (const Pylon::CBaslerUniversalInstantCamera &camera);
 
 G_END_DECLS
 
