@@ -70,7 +70,7 @@ static GParamSpec *gst_pylon_make_spec_int(GenApi::INode *node) {
 
   return g_param_spec_int(node->GetName(), node->GetDisplayName(),
                           node->GetDescription(), param.GetMin(),
-                          param.GetMax(), param.GetValueOrDefault(-1),
+                          param.GetMax(), param.GetValue(),
                           gst_pylon_query_access(node));
 }
 
@@ -91,7 +91,7 @@ static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node) {
 
   return g_param_spec_float(node->GetName(), node->GetDisplayName(),
                             node->GetDescription(), param.GetMin(),
-                            param.GetMax(), param.GetValueOrDefault(-1.0),
+                            param.GetMax(), param.GetValue(),
                             gst_pylon_query_access(node));
 }
 
@@ -100,9 +100,9 @@ static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node) {
 
   Pylon::CStringParameter param(node);
 
-  return g_param_spec_string(
-      node->GetName(), node->GetDisplayName(), node->GetDescription(),
-      param.GetValueOrDefault("Default"), gst_pylon_query_access(node));
+  return g_param_spec_string(node->GetName(), node->GetDisplayName(),
+                             node->GetDescription(), param.GetValue(),
+                             gst_pylon_query_access(node));
 }
 
 static GParamSpec *gst_pylon_make_spec_enum(GenApi::INode *node) {
@@ -136,7 +136,7 @@ GParamSpec *GstPylonParamFactory::make_param(GenApi::INode *node) {
     spec = gst_pylon_make_spec_enum(node);
 
   } else {
-    std::string msg = "Unsupported node type " +
+    std::string msg = "Unsupported node of type " +
                       std::to_string(node->GetPrincipalInterfaceType());
     throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
   }
