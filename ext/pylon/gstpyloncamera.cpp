@@ -32,18 +32,67 @@
  */
 
 #include "gstpyloncamera.h"
+#include "gstpylonintrospection.h"
+
+#include <queue>
 
 struct _GstPylonCamera {
   GObject parent;
 };
 
 /* prototypes */
+static void gst_pylon_camera_install_properties(
+    GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
 
 #define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
 
+static void gst_pylon_camera_install_properties(
+    GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
+  GenApi::INodeMap& nodemap = camera->GetNodeMap();
+  GObjectClass* oclass = G_OBJECT_CLASS(klass);
+  gint nprop = 1;
+
+  GenApi::INode* root_node = nodemap.GetNode("Root");
+  auto worklist = std::queue<GenApi::INode*>();
+
+  worklist.push(root_node);
+
+  while (!worklist.empty()) {
+    auto node = worklist.front();
+    worklist.pop();
+
+    /* Only handle real features, excluding selectors */
+    auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
+    if (node->IsFeature() && (node->GetVisibility() != GenApi::Invisible) &&
+        sel_node && !sel_node->IsSelector()) {
+      GenICam::gcstring value;
+      GenICam::gcstring attrib;
+
+      /* Handle only features with the 'Streamable' flag */
+      if (node->GetProperty("Streamable", value, attrib)) {
+        if ("Yes" == value) {
+          g_object_class_install_property(
+              oclass, nprop, GstPylonParamFactory::make_param(node));
+          nprop++;
+        }
+      }
+    }
+
+    /* Walk down all categories */
+    auto category_node = dynamic_cast<GenApi::ICategory*>(node);
+    if (category_node) {
+      GenApi::FeatureList_t features;
+      category_node->GetFeatures(features);
+      for (auto const& f : features) {
+        worklist.push(f->GetNode());
+      }
+    }
+  }
+}
+
 static void gst_pylon_camera_class_init(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
-  std::cout << std::string(camera->GetDeviceInfo().GetFullName()) << std::endl;
+  gst_pylon_camera_install_properties(klass, camera);
 }
 
 static void gst_pylon_camera_init(GstPylonCamera* self) {}
