@@ -37,6 +37,10 @@ struct _GstPylonCamera {
   GObject parent;
 };
 
+/* prototypes */
+
+#define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
+
 static void gst_pylon_camera_class_init(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
   std::cout << std::string(camera->GetDeviceInfo().GetFullName()) << std::endl;
@@ -59,12 +63,18 @@ gboolean gst_pylon_camera_register(
   };
   GType type;
 
-  Pylon::CDeviceInfo cam_info = camera.GetDeviceInfo();
-  type = g_type_from_name(cam_info.GetFullName().c_str());
+  Pylon::String_t cam_name = camera.GetDeviceInfo().GetFullName();
+
+  /* Convert camera name to a valid string */
+  gchar* type_name = g_strcanon(g_strdup(cam_name.c_str()), VALID_CHARS, '_');
+
+  type = g_type_from_name(type_name);
   if (!type) {
-    type = g_type_register_static(G_TYPE_OBJECT, cam_info.GetFullName().c_str(),
-                                  &typeinfo, static_cast<GTypeFlags>(0));
+    type = g_type_register_static(G_TYPE_OBJECT, type_name, &typeinfo,
+                                  static_cast<GTypeFlags>(0));
   }
+
+  g_free(type_name);
 
   return TRUE;
 }
