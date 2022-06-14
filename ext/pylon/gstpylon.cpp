@@ -31,6 +31,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "gstchildinspector.h"
 #include "gstpylon.h"
 #include "gstpyloncamera.h"
 
