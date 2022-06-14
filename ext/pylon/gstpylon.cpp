@@ -533,8 +533,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   return TRUE;
 }
 
-gboolean gst_pylon_get_string_properties(GstPylon *self, GError **err) {
-  g_return_val_if_fail(self, FALSE);
+gboolean gst_pylon_get_string_properties(GError **err) {
   g_return_val_if_fail(err || *err == NULL, FALSE);
 
   try {
