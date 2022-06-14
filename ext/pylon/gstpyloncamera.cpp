@@ -45,6 +45,11 @@ static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
 static void gst_pylon_camera_class_init(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
+static void gst_pylon_camera_set_property(GObject* object, guint property_id,
+                                          const GValue* value,
+                                          GParamSpec* pspec);
+static void gst_pylon_camera_get_property(GObject* object, guint property_id,
+                                          GValue* value, GParamSpec* pspec);
 
 #define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
 
@@ -94,7 +99,35 @@ static void gst_pylon_camera_install_properties(
 
 static void gst_pylon_camera_class_init(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
+  GObjectClass* oclass = G_OBJECT_CLASS(klass);
+
+  oclass->set_property = gst_pylon_camera_set_property;
+  oclass->get_property = gst_pylon_camera_get_property;
+
   gst_pylon_camera_install_properties(klass, camera);
+}
+
+static void gst_pylon_camera_set_property(GObject* object, guint property_id,
+                                          const GValue* value,
+                                          GParamSpec* pspec) {
+  GstPylonCamera* self = (GstPylonCamera*)object;
+
+  GST_OBJECT_LOCK(self);
+
+  // Set property here
+
+  GST_OBJECT_UNLOCK(self);
+}
+
+static void gst_pylon_camera_get_property(GObject* object, guint property_id,
+                                          GValue* value, GParamSpec* pspec) {
+  GstPylonCamera* self = (GstPylonCamera*)object;
+
+  GST_OBJECT_LOCK(self);
+
+  // Get property here
+
+  GST_OBJECT_UNLOCK(self);
 }
 
 static void gst_pylon_camera_init(GstPylonCamera* self) {}
