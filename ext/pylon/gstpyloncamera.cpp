@@ -43,6 +43,8 @@ struct _GstPylonCamera {
 /* prototypes */
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
+static void gst_pylon_camera_class_init(
+    GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
 
 #define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
 
