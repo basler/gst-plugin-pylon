@@ -59,7 +59,7 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (GstPylonCamera, gst_pylon_camera,
     GST, PYLON_CAMERA, GObject)
 
-gboolean gst_pylon_camera_register (const Pylon::CBaslerUniversalInstantCamera &camera);
+GType gst_pylon_camera_register (const Pylon::CBaslerUniversalInstantCamera &camera);
 
 G_END_DECLS
 

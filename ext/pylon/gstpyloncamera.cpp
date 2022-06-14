@@ -99,7 +99,7 @@ static void gst_pylon_camera_class_init(
 
 static void gst_pylon_camera_init(GstPylonCamera* self) {}
 
-gboolean gst_pylon_camera_register(
+GType gst_pylon_camera_register(
     const Pylon::CBaslerUniversalInstantCamera& camera) {
   GTypeInfo typeinfo = {
       sizeof(GstPylonCameraClass),
@@ -112,14 +112,13 @@ gboolean gst_pylon_camera_register(
       0,
       (GInstanceInitFunc)gst_pylon_camera_init,
   };
-  GType type;
 
   Pylon::String_t cam_name = camera.GetDeviceInfo().GetFullName();
 
   /* Convert camera name to a valid string */
   gchar* type_name = g_strcanon(g_strdup(cam_name.c_str()), VALID_CHARS, '_');
 
-  type = g_type_from_name(type_name);
+  GType type = g_type_from_name(type_name);
   if (!type) {
     type = g_type_register_static(G_TYPE_OBJECT, type_name, &typeinfo,
                                   static_cast<GTypeFlags>(0));
@@ -127,5 +126,5 @@ gboolean gst_pylon_camera_register(
 
   g_free(type_name);
 
-  return TRUE;
+  return type;
 }
