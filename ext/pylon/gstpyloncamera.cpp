@@ -77,10 +77,17 @@ static void gst_pylon_camera_install_properties(
 
       /* Handle only features with the 'Streamable' flag */
       if (node->GetProperty("Streamable", value, attrib)) {
-        if ("Yes" == value) {
-          g_object_class_install_property(
-              oclass, nprop, GstPylonParamFactory::make_param(node));
-          nprop++;
+        if (GenICam::gcstring("Yes") == value) {
+          try {
+            GParamSpec* pspec = GstPylonParamFactory::make_param(node);
+            g_object_class_install_property(oclass, nprop, pspec);
+            nprop++;
+          } catch (const Pylon::GenericException& e) {
+            GST_DEBUG("Unable to install property \"%s\" on \"%s\": %s",
+                      node->GetDisplayName().c_str(),
+                      camera->GetDeviceInfo().GetFullName().c_str(),
+                      e.GetDescription());
+          }
         }
       }
     }
