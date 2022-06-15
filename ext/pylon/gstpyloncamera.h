@@ -56,8 +56,14 @@
 
 G_BEGIN_DECLS
 
-G_DECLARE_FINAL_TYPE (GstPylonCamera, gst_pylon_camera,
+G_DECLARE_DERIVABLE_TYPE (GstPylonCamera, gst_pylon_camera,
     GST, PYLON_CAMERA, GObject)
+
+struct _GstPylonCameraClass
+{
+  GObjectClass parent_class;
+  Pylon::CBaslerUniversalInstantCamera *camera;
+};
 
 GType gst_pylon_camera_register (const Pylon::CBaslerUniversalInstantCamera &camera);
 

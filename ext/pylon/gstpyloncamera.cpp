@@ -36,10 +36,6 @@
 
 #include <queue>
 
-struct _GstPylonCamera {
-  GObject parent;
-};
-
 /* prototypes */
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
@@ -107,6 +103,8 @@ static void gst_pylon_camera_install_properties(
 static void gst_pylon_camera_class_init(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
+
+  klass->camera = camera;
 
   oclass->set_property = gst_pylon_camera_set_property;
   oclass->get_property = gst_pylon_camera_get_property;
