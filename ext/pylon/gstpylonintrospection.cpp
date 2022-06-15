@@ -79,9 +79,9 @@ static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node) {
 
   Pylon::CBooleanParameter param(node);
 
-  return g_param_spec_boolean(
-      node->GetName(), node->GetDisplayName(), node->GetDescription(),
-      param.GetValueOrDefault(FALSE), gst_pylon_query_access(node));
+  return g_param_spec_boolean(node->GetName(), node->GetDisplayName(),
+                              node->GetDescription(), param.GetValue(),
+                              gst_pylon_query_access(node));
 }
 
 static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node) {
