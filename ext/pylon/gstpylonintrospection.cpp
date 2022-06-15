@@ -68,10 +68,10 @@ static GParamSpec *gst_pylon_make_spec_int(GenApi::INode *node) {
 
   Pylon::CIntegerParameter param(node);
 
-  return g_param_spec_int(node->GetName(), node->GetDisplayName(),
-                          node->GetDescription(), param.GetMin(),
-                          param.GetMax(), param.GetValue(),
-                          gst_pylon_query_access(node));
+  return g_param_spec_int(
+      node->GetName(), node->GetDisplayName(), node->GetDescription(),
+      param.GetMin(), param.GetMax(), param.GetValueOrDefault(param.GetMin()),
+      gst_pylon_query_access(node));
 }
 
 static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node) {
@@ -89,10 +89,10 @@ static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node) {
 
   Pylon::CFloatParameter param(node);
 
-  return g_param_spec_float(node->GetName(), node->GetDisplayName(),
-                            node->GetDescription(), param.GetMin(),
-                            param.GetMax(), param.GetValue(),
-                            gst_pylon_query_access(node));
+  return g_param_spec_float(
+      node->GetName(), node->GetDisplayName(), node->GetDescription(),
+      param.GetMin(), param.GetMax(), param.GetValueOrDefault(param.GetMin()),
+      gst_pylon_query_access(node));
 }
 
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node) {
