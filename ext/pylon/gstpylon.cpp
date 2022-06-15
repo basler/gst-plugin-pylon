@@ -546,9 +546,11 @@ gchar *gst_pylon_get_string_properties(GError **err) {
     for (const auto &device : device_list) {
       Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
                                                   Pylon::Cleanup_Delete);
+      camera.Open();
       GType type = gst_pylon_camera_register(camera);
       GObject *obj = G_OBJECT(g_object_new(type, NULL));
       g_object_unref(obj);
+      camera.Close();
     }
 
   } catch (const Pylon::GenericException &e) {
