@@ -66,6 +66,9 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
 
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
+  g_return_if_fail(klass);
+  g_return_if_fail(camera);
+
   GenApi::INodeMap& nodemap = camera->GetNodeMap();
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
   gint nprop = 1;
@@ -187,10 +190,9 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
                                           const GValue* value,
                                           GParamSpec* pspec) {
   GstPylonCamera* self = (GstPylonCamera*)object;
+  GstPylonCameraClass* klass = GST_PYLON_CAMERA_GET_CLASS(self);
 
   GST_OBJECT_LOCK(self);
-
-  GstPylonCameraClass* klass = GST_PYLON_CAMERA_GET_CLASS(self);
 
   try {
     GenApi::INodeMap& nodemap = klass->camera->GetNodeMap();
@@ -227,10 +229,9 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
 static void gst_pylon_camera_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec) {
   GstPylonCamera* self = (GstPylonCamera*)object;
+  GstPylonCameraClass* klass = GST_PYLON_CAMERA_GET_CLASS(self);
 
   GST_OBJECT_LOCK(self);
-
-  GstPylonCameraClass* klass = GST_PYLON_CAMERA_GET_CLASS(self);
 
   try {
     GenApi::INodeMap& nodemap = klass->camera->GetNodeMap();
