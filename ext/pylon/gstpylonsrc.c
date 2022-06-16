@@ -187,7 +187,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 
   gst_pylon_get_string_properties (&error);
   if (error) {
-    GST_ERROR ("unable to parse camera properties: %s", error->message);
+    g_warning ("unable to parse camera properties: %s", error->message);
   }
 
   g_object_class_install_property (gobject_class, PROP_CAM,
