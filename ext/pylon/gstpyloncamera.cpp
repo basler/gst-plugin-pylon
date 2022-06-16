@@ -51,6 +51,11 @@ static void set_str_property(GenApi::INodeMap& nodemap, const GValue* value,
                              const gchar* name);
 static void set_enum_property(GenApi::INodeMap& nodemap, const GValue* value,
                               const gchar* name);
+static gint get_int_property(GenApi::INodeMap& nodemap, const gchar* name);
+static gboolean get_bool_property(GenApi::INodeMap& nodemap, const gchar* name);
+static gfloat get_float_property(GenApi::INodeMap& nodemap, const gchar* name);
+static gchar* get_str_property(GenApi::INodeMap& nodemap, const gchar* name);
+static gint get_enum_property(GenApi::INodeMap& nodemap, const gchar* name);
 static void gst_pylon_camera_set_property(GObject* object, guint property_id,
                                           const GValue* value,
                                           GParamSpec* pspec);
@@ -152,6 +157,32 @@ static void set_enum_property(GenApi::INodeMap& nodemap, const GValue* value,
   param.SetIntValue(g_value_get_int(value));
 }
 
+static gint get_int_property(GenApi::INodeMap& nodemap, const gchar* name) {
+  Pylon::CIntegerParameter param(nodemap, name);
+  return param.GetValue();
+}
+
+static gboolean get_bool_property(GenApi::INodeMap& nodemap,
+                                  const gchar* name) {
+  Pylon::CBooleanParameter param(nodemap, name);
+  return param.GetValue();
+}
+
+static gfloat get_float_property(GenApi::INodeMap& nodemap, const gchar* name) {
+  Pylon::CFloatParameter param(nodemap, name);
+  return param.GetValue();
+}
+
+static gchar* get_str_property(GenApi::INodeMap& nodemap, const gchar* name) {
+  Pylon::CStringParameter param(nodemap, name);
+  return g_strdup(param.GetValue().c_str());
+}
+
+static gint get_enum_property(GenApi::INodeMap& nodemap, const gchar* name) {
+  Pylon::CEnumParameter param(nodemap, name);
+  return param.GetIntValue();
+}
+
 static void gst_pylon_camera_set_property(GObject* object, guint property_id,
                                           const GValue* value,
                                           GParamSpec* pspec) {
@@ -201,7 +232,34 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
 
   GstPylonCameraClass* klass = GST_PYLON_CAMERA_GET_CLASS(self);
 
-  // Get property here
+  try {
+    GenApi::INodeMap& nodemap = klass->camera->GetNodeMap();
+    switch (pspec->value_type) {
+      case G_TYPE_INT:
+        g_value_set_int(value, get_int_property(nodemap, pspec->name));
+        break;
+      case G_TYPE_BOOLEAN:
+        g_value_set_boolean(value, get_bool_property(nodemap, pspec->name));
+        break;
+      case G_TYPE_FLOAT:
+        g_value_set_float(value, get_float_property(nodemap, pspec->name));
+        break;
+      case G_TYPE_STRING:
+        g_value_set_string(value, get_str_property(nodemap, pspec->name));
+        break;
+      case G_TYPE_ENUM:
+        g_value_set_int(value, get_enum_property(nodemap, pspec->name));
+        break;
+      default:
+        std::string msg =
+            "Unsupported GType: " + std::string(g_type_name(pspec->value_type));
+        throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    }
+  } catch (const Pylon::GenericException& e) {
+    GST_ERROR("Unable to get pylon property \"%s\" on \"%s\": %s", pspec->name,
+              klass->camera->GetDeviceInfo().GetFullName().c_str(),
+              e.GetDescription());
+  }
 
   GST_OBJECT_UNLOCK(self);
 }
