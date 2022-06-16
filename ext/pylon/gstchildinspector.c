@@ -190,18 +190,15 @@ gst_child_inspector_properties_to_string (GObject * object, guint alignment,
       (G_OBJECT_GET_CLASS (object), &num_properties);
 
   props = g_string_new (title);
-  GST_ERROR ("GRUNER: found %d properties", num_properties);
   for (i = 0; i < num_properties; i++) {
-    GST_ERROR ("GRUNER");
     prop =
         gst_child_inspector_property_to_string (object, property_specs[i],
         alignment);
-    GST_ERROR ("GRUNER");
     g_string_append_printf (props, "\n%s", prop);
   }
 
   g_free (property_specs);
   props_ = g_string_free (props, FALSE);
-  GST_ERROR ("GRUNER: %s", props_);
+  GST_ERROR ("GRUNER:\n %s", props_);
   return props_;
 }
