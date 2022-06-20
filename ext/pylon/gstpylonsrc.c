@@ -156,30 +156,30 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_DEVICE_USER_NAME,
       g_param_spec_string ("device-user-name", "Device user defined name",
-          "The user-defined name of the device to use. May be combined "
+          "The user-defined name of the device to use.\n \t\t\tMay be combined"
           "with other device selection properties to reduce the search.",
           PROP_DEVICE_USER_NAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_DEVICE_SERIAL_NUMBER,
       g_param_spec_string ("device-serial-number", "Device serial number",
-          "The serial number of the device to use. May be combined with "
+          "The serial number of the device to use.\n \t\t\tMay be combined with "
           "other device selection properties to reduce the search.",
           PROP_DEVICE_SERIAL_NUMBER_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_DEVICE_INDEX,
       g_param_spec_int ("device-index", "Device index",
-          "The index of the device to use. This index applies to the "
+          "The index of the device to use.\n \t\t\tThis index applies to the "
           "resulting device list after applying the other device selection "
-          "properties. The index is mandatory if multiple devices match "
+          "properties.\n \t\t\tThe index is mandatory if multiple devices match "
           "the given search criteria.", PROP_DEVICE_INDEX_MIN,
           PROP_DEVICE_INDEX_MAX, PROP_DEVICE_INDEX_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_USER_SET,
       g_param_spec_string ("user-set", "Device user configuration set",
-          "The user-defined configuration set to use. Leaving this property "
+          "The user-defined configuration set to use.\n \t\t\tLeaving this property "
           "unset, or using 'Auto' or 'Default' all result in selecting the "
           "default camera configuration.",
           PROP_DEVICE_USER_NAME_DEFAULT,
@@ -197,7 +197,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
       "\t\t\tThese properties can be accessed using the "
       "\"cam::<property>\" syntax.\n"
       "\t\t\tThe following list details the properties "
-      "for each camera\n%s", cam_params);
+      "for each camera.\n%s", cam_params);
 
   g_object_class_install_property (gobject_class, PROP_CAM,
       g_param_spec_object ("cam", "Camera", cam_blurb, G_TYPE_OBJECT,

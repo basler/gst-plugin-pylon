@@ -20,6 +20,10 @@ typedef gchar *(*GstChildInspectorTypeToString) (GParamSpec * pspec,
 
 static gchar *gst_child_inspector_type_int_to_string (GParamSpec * pspec,
     GValue * value);
+static gchar *gst_child_inspector_type_bool_to_string (GParamSpec * pspec,
+    GValue * value);
+static gchar *gst_child_inspector_type_float_to_string (GParamSpec * pspec,
+    GValue * value);
 static gchar *gst_child_inspector_type_string_to_string (GParamSpec * pspec,
     GValue * value);
 
@@ -38,11 +42,16 @@ struct _GstChildInspectorType
 static GstChildInspectorFlag flags[] = {
   {G_PARAM_READABLE, "readable"},
   {G_PARAM_WRITABLE, "writable"},
+  {GST_PARAM_MUTABLE_READY, "changeable only in NULL or READY state"},
+  {GST_PARAM_MUTABLE_PLAYING,
+      "changeable in NULL, READY, PAUSED or PLAYING state"},
   {}
 };
 
 static GstChildInspectorType types[] = {
   {G_TYPE_INT, gst_child_inspector_type_int_to_string},
+  {G_TYPE_BOOLEAN, gst_child_inspector_type_bool_to_string},
+  {G_TYPE_FLOAT, gst_child_inspector_type_float_to_string},
   {G_TYPE_STRING, gst_child_inspector_type_string_to_string},
   {}
 };
@@ -61,6 +70,21 @@ gst_child_inspector_type_int_to_string (GParamSpec * pspec, GValue * value)
 
   return g_strdup_printf ("Integer. Range: %d - %d Default: %d",
       pint->minimum, pint->maximum, g_value_get_int (value));
+}
+
+static gchar *
+gst_child_inspector_type_float_to_string (GParamSpec * pspec, GValue * value)
+{
+  GParamSpecFloat *pint = G_PARAM_SPEC_FLOAT (pspec);
+
+  return g_strdup_printf ("Float. Range: %.2f - %.2f Default: %.2f",
+      pint->minimum, pint->maximum, g_value_get_float (value));
+}
+
+static gchar *
+gst_child_inspector_type_bool_to_string (GParamSpec * pspec, GValue * value)
+{
+  return g_strdup_printf ("Boolean. Default: %d", g_value_get_boolean (value));
 }
 
 static const gchar *
@@ -159,9 +183,9 @@ gst_child_inspector_property_to_string (GObject * object, GParamSpec * param,
   type = gst_child_inspector_type_to_string (param, &value);
   g_value_unset (&value);
 
-  prop = g_strdup_printf ("%*s%-20s: %s\n"
-      "%*s%-21.21s flags: %s\n"
-      "%*s%-21.21s %s",
+  prop = g_strdup_printf ("%*s%-30s: %s\n"
+      "%*s%-31.31s flags: %s\n"
+      "%*s%-31.31s %s",
       alignment, "", name, blurb,
       alignment, "", "", flags, alignment, "", "", type);
 
