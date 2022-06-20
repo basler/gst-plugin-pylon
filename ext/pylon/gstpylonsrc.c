@@ -135,6 +135,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
   GstPushSrcClass *push_src_class = GST_PUSH_SRC_CLASS (klass);
+  gchar *cam_params, *cam_blurb = NULL;
   GError *error = NULL;
 
   gst_pylon_initialize ();
@@ -185,14 +186,24 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  gst_pylon_get_string_properties (&error);
+  cam_params = gst_pylon_get_string_properties (&error);
   if (error) {
     g_warning ("unable to parse camera properties: %s", error->message);
   }
 
+  cam_blurb = g_strdup_printf ("The camera to use.\n"
+      "\t\t\tAccording to the selected camera "
+      "different properties will be available.\n "
+      "\t\t\tThese properties can be accessed using the "
+      "\"cam::<property>\" syntax.\n"
+      "\t\t\tThe following list details the properties "
+      "for each camera\n%s", cam_params);
+
   g_object_class_install_property (gobject_class, PROP_CAM,
-      g_param_spec_object ("cam", "Camera",
-          "The camera currently selected.", G_TYPE_OBJECT, G_PARAM_READABLE));
+      g_param_spec_object ("cam", "Camera", cam_blurb, G_TYPE_OBJECT,
+          G_PARAM_READABLE));
+
+  g_free (cam_params);
 
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_pylon_src_get_caps);
   base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_pylon_src_fixate);

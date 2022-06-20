@@ -199,6 +199,5 @@ gst_child_inspector_properties_to_string (GObject * object, guint alignment,
 
   g_free (property_specs);
   props_ = g_string_free (props, FALSE);
-  GST_ERROR ("GRUNER:\n %s", props_);
   return props_;
 }
