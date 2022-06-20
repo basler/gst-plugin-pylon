@@ -41,14 +41,9 @@ static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
 static void gst_pylon_camera_class_init(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
-static void set_int_property(GenApi::INodeMap& nodemap, const GValue* value,
-                             const gchar* name);
-static void set_bool_property(GenApi::INodeMap& nodemap, const GValue* value,
-                              const gchar* name);
-static void set_float_property(GenApi::INodeMap& nodemap, const GValue* value,
-                               const gchar* name);
-static void set_str_property(GenApi::INodeMap& nodemap, const GValue* value,
-                             const gchar* name);
+template <typename F, typename P>
+static void set_pylon_property(GenApi::INodeMap& nodemap, F get_value,
+                               const GValue* value, const gchar* name);
 static void set_enum_property(GenApi::INodeMap& nodemap, const GValue* value,
                               const gchar* name);
 static gint get_int_property(GenApi::INodeMap& nodemap, const gchar* name);
@@ -130,28 +125,11 @@ static void gst_pylon_camera_class_init(
   gst_pylon_camera_install_properties(klass, camera);
 }
 
-static void set_int_property(GenApi::INodeMap& nodemap, const GValue* value,
-                             const gchar* name) {
-  Pylon::CIntegerParameter param(nodemap, name);
-  param.SetValue(g_value_get_int(value));
-}
-
-static void set_bool_property(GenApi::INodeMap& nodemap, const GValue* value,
-                              const gchar* name) {
-  Pylon::CBooleanParameter param(nodemap, name);
-  param.SetValue(g_value_get_boolean(value));
-}
-
-static void set_float_property(GenApi::INodeMap& nodemap, const GValue* value,
-                               const gchar* name) {
-  Pylon::CFloatParameter param(nodemap, name);
-  param.SetValue(g_value_get_float(value));
-}
-
-static void set_str_property(GenApi::INodeMap& nodemap, const GValue* value,
-                             const gchar* name) {
-  Pylon::CStringParameter param(nodemap, name);
-  param.SetValue(g_value_get_string(value));
+template <typename F, typename P>
+static void set_pylon_property(GenApi::INodeMap& nodemap, F get_value,
+                               const GValue* value, const gchar* name) {
+  P param(nodemap, name);
+  param.SetValue(get_value(value));
 }
 
 static void set_enum_property(GenApi::INodeMap& nodemap, const GValue* value,
@@ -198,16 +176,24 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
     GenApi::INodeMap& nodemap = klass->camera->GetNodeMap();
     switch (pspec->value_type) {
       case G_TYPE_INT:
-        set_int_property(nodemap, value, pspec->name);
+        typedef gint (*GGetInt)(const GValue*);
+        set_pylon_property<GGetInt, Pylon::CIntegerParameter>(
+            nodemap, g_value_get_int, value, pspec->name);
         break;
       case G_TYPE_BOOLEAN:
-        set_bool_property(nodemap, value, pspec->name);
+        typedef gboolean (*GGetBool)(const GValue*);
+        set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
+            nodemap, g_value_get_boolean, value, pspec->name);
         break;
       case G_TYPE_FLOAT:
-        set_float_property(nodemap, value, pspec->name);
+        typedef gfloat (*GGetFloat)(const GValue*);
+        set_pylon_property<GGetFloat, Pylon::CFloatParameter>(
+            nodemap, g_value_get_float, value, pspec->name);
         break;
       case G_TYPE_STRING:
-        set_str_property(nodemap, value, pspec->name);
+        typedef const gchar* (*GGetString)(const GValue*);
+        set_pylon_property<GGetString, Pylon::CStringParameter>(
+            nodemap, g_value_get_string, value, pspec->name);
         break;
       case G_TYPE_ENUM:
         set_enum_property(nodemap, value, pspec->name);
