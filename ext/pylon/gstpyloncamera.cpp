@@ -182,6 +182,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
         set_enum_property(nodemap, value, pspec->name);
         break;
       default:
+        g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
         std::string msg =
             "Unsupported GType: " + std::string(g_type_name(pspec->value_type));
         throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
@@ -232,6 +233,7 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
         g_value_set_int(value, get_enum_property(nodemap, pspec->name));
         break;
       default:
+        g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
         std::string msg =
             "Unsupported GType: " + std::string(g_type_name(pspec->value_type));
         throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
