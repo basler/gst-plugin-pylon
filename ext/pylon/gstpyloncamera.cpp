@@ -153,8 +153,6 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
   GstPylonCamera* self = (GstPylonCamera*)object;
   GstPylonCameraClass* klass = GST_PYLON_CAMERA_GET_CLASS(self);
 
-  GST_OBJECT_LOCK(self);
-
   try {
     GenApi::INodeMap& nodemap = klass->camera->GetNodeMap();
     switch (pspec->value_type) {
@@ -192,16 +190,12 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
               klass->camera->GetDeviceInfo().GetFullName().c_str(),
               e.GetDescription());
   }
-
-  GST_OBJECT_UNLOCK(self);
 }
 
 static void gst_pylon_camera_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec) {
   GstPylonCamera* self = (GstPylonCamera*)object;
   GstPylonCameraClass* klass = GST_PYLON_CAMERA_GET_CLASS(self);
-
-  GST_OBJECT_LOCK(self);
 
   try {
     GenApi::INodeMap& nodemap = klass->camera->GetNodeMap();
@@ -243,8 +237,6 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
               klass->camera->GetDeviceInfo().GetFullName().c_str(),
               e.GetDescription());
   }
-
-  GST_OBJECT_UNLOCK(self);
 }
 
 static void gst_pylon_camera_init(GstPylonCamera* self) {}
@@ -263,7 +255,7 @@ GType gst_pylon_camera_register(
       (GInstanceInitFunc)gst_pylon_camera_init,
   };
 
-  Pylon::String_t cam_name = camera.GetDeviceInfo().GetFullName();
+  Pylon::String_t cam_name = "_" + camera.GetDeviceInfo().GetFullName();
 
   /* Convert camera name to a valid string */
   gchar* type_name = g_strcanon(g_strdup(cam_name.c_str()), VALID_CHARS, '_');
