@@ -69,9 +69,8 @@ static GParamSpec *gst_pylon_make_spec_int(GenApi::INode *node) {
   Pylon::CIntegerParameter param(node);
 
   return g_param_spec_int(node->GetName(), node->GetDisplayName(),
-                          node->GetDescription(), param.GetMin(),
-                          param.GetMax(), param.GetValue(),
-                          gst_pylon_query_access(node));
+                          node->GetToolTip(), param.GetMin(), param.GetMax(),
+                          param.GetValue(), gst_pylon_query_access(node));
 }
 
 static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node) {
@@ -80,7 +79,7 @@ static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node) {
   Pylon::CBooleanParameter param(node);
 
   return g_param_spec_boolean(node->GetName(), node->GetDisplayName(),
-                              node->GetDescription(), param.GetValue(),
+                              node->GetToolTip(), param.GetValue(),
                               gst_pylon_query_access(node));
 }
 
@@ -90,9 +89,8 @@ static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node) {
   Pylon::CFloatParameter param(node);
 
   return g_param_spec_float(node->GetName(), node->GetDisplayName(),
-                            node->GetDescription(), param.GetMin(),
-                            param.GetMax(), param.GetValue(),
-                            gst_pylon_query_access(node));
+                            node->GetToolTip(), param.GetMin(), param.GetMax(),
+                            param.GetValue(), gst_pylon_query_access(node));
 }
 
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node) {
@@ -101,7 +99,7 @@ static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node) {
   Pylon::CStringParameter param(node);
 
   return g_param_spec_string(node->GetName(), node->GetDisplayName(),
-                             node->GetDescription(), param.GetValue(),
+                             node->GetToolTip(), param.GetValue(),
                              gst_pylon_query_access(node));
 }
 
@@ -111,7 +109,7 @@ static GParamSpec *gst_pylon_make_spec_enum(GenApi::INode *node) {
   Pylon::CEnumParameter param(node);
 
   return g_param_spec_int(node->GetName(), node->GetDisplayName(),
-                          node->GetDescription(), 0, G_MAXINT32,
+                          node->GetToolTip(), 0, G_MAXINT32,
                           param.GetIntValue(), gst_pylon_query_access(node));
 }
 

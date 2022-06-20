@@ -75,7 +75,7 @@ static void gst_pylon_camera_add_devicemeta(
     const Pylon::CBaslerUniversalInstantCamera &camera,
     gchar **camera_parameters, guint alignment);
 
-#define DEFAULT_ALIGNMENT 27
+#define DEFAULT_ALIGNMENT 35
 
 struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera camera;
@@ -548,7 +548,7 @@ static void gst_pylon_camera_add_devicemeta(
   GObject *camera_obj = G_OBJECT(g_object_new(camera_type, NULL));
 
   gchar *camera_name = g_strdup_printf(
-      "%*s:\n", alignment, camera.GetDeviceInfo().GetFullName().c_str());
+      "%*s:\n", alignment, camera.GetDeviceInfo().GetFriendlyName().c_str());
 
   gchar *parameters = gst_child_inspector_properties_to_string(
       camera_obj, alignment, camera_name);
