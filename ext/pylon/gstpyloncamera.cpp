@@ -287,10 +287,9 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
       case G_TYPE_STRING:
         g_value_set_string(
             value,
-            g_strdup(
-                get_pylon_property<GenICam::gcstring, Pylon::CStringParameter>(
-                    nodemap, pspec->name)
-                    .c_str()));
+            get_pylon_property<GenICam::gcstring, Pylon::CStringParameter>(
+                nodemap, pspec->name)
+                .c_str());
         break;
       case G_TYPE_ENUM:
         g_value_set_int(value, get_enum_property(nodemap, pspec->name));
