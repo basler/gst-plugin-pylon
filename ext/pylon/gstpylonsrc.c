@@ -52,7 +52,6 @@
 #include "gstpylonsrc.h"
 
 #include "gstpylon.h"
-#include "gstpyloncamera.h"
 
 #include <gst/video/video.h>
 
@@ -136,6 +135,9 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
   GstPushSrcClass *push_src_class = GST_PUSH_SRC_CLASS (klass);
+  GError *error = NULL;
+
+  gst_pylon_initialize ();
 
   /* Setting up pads and setting metadata should be moved to
      base_class_init if you intend to subclass this class. */
@@ -182,10 +184,15 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           PROP_DEVICE_USER_NAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
+
+  gst_pylon_get_string_properties (&error);
+  if (error) {
+    g_warning ("unable to parse camera properties: %s", error->message);
+  }
+
   g_object_class_install_property (gobject_class, PROP_CAM,
       g_param_spec_object ("cam", "Camera",
-          "The camera currently selected.", GST_TYPE_PYLON_CAMERA,
-          G_PARAM_READABLE));
+          "The camera currently selected.", G_TYPE_OBJECT, G_PARAM_READABLE));
 
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_pylon_src_get_caps);
   base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_pylon_src_fixate);
@@ -200,7 +207,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 
   push_src_class->create = GST_DEBUG_FUNCPTR (gst_pylon_src_create);
 
-  gst_pylon_initialize ();
+
 }
 
 static void

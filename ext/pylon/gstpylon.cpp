@@ -31,7 +31,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "gstchildinspector.h"
 #include "gstpylon.h"
+#include "gstpyloncamera.h"
 
 #include <map>
 
@@ -530,4 +532,32 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   }
 
   return TRUE;
+}
+
+gchar *gst_pylon_get_string_properties(GError **err) {
+  g_return_val_if_fail(err || *err == NULL, FALSE);
+
+  try {
+    Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
+    Pylon::DeviceInfoList_t device_list;
+
+    factory.EnumerateDevices(device_list);
+
+    for (const auto &device : device_list) {
+      Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
+                                                  Pylon::Cleanup_Delete);
+      camera.Open();
+      GType type = gst_pylon_camera_register(camera);
+      GObject *obj = G_OBJECT(g_object_new(type, NULL));
+      g_object_unref(obj);
+      camera.Close();
+    }
+
+  } catch (const Pylon::GenericException &e) {
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                e.GetDescription());
+    return NULL;
+  }
+
+  return NULL;
 }

@@ -46,6 +46,12 @@
 
 #include <pylon/PylonIncludes.h>
 
+#ifdef _MSC_VER  // MSVC
+#pragma warning(pop)
+#elif __GNUC__  // GCC, CLANG, MinWG
+#pragma GCC diagnostic pop
+#endif
+
 class GstPylonParamFactory {
  public:
   static GParamSpec *make_param(GenApi::INode *node);
