@@ -553,11 +553,15 @@ static void gst_pylon_append_camera_properties(
   gchar *parameters = gst_child_inspector_properties_to_string(
       camera_obj, alignment, camera_name);
 
-  if (NULL == *camera_parameters)
-    *camera_parameters = parameters;
-  else
+  if (NULL == *camera_parameters) {
+    *camera_parameters = g_strdup(parameters);
+  } else {
     *camera_parameters =
         g_strconcat(*camera_parameters, "\n", parameters, NULL);
+  }
+
+  g_free(camera_name);
+  g_free(parameters);
 
   g_object_unref(camera_obj);
 }
