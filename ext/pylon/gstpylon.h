@@ -56,6 +56,8 @@ gboolean gst_pylon_set_configuration (GstPylon * self, const GstCaps *conf,
     GError ** err);
 gchar *gst_pylon_get_string_properties (GError ** err);
 
+GObject *gst_pylon_get_camera (GstPylon *self);
+
 G_END_DECLS
 
 #endif

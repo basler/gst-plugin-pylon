@@ -95,6 +95,8 @@ static gboolean gst_pylon_src_query (GstBaseSrc * src, GstQuery * query);
 static void gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf);
 static GstFlowReturn gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf);
 
+static void gst_pylon_src_child_proxy_init (GstChildProxyInterface * iface);
+
 enum
 {
   PROP_0,
@@ -127,7 +129,9 @@ GST_STATIC_PAD_TEMPLATE ("src",
 
 G_DEFINE_TYPE_WITH_CODE (GstPylonSrc, gst_pylon_src, GST_TYPE_PUSH_SRC,
     GST_DEBUG_CATEGORY_INIT (gst_pylon_src_debug_category, "pylonsrc", 0,
-        "debug category for pylonsrc element"));
+        "debug category for pylonsrc element");
+    G_IMPLEMENT_INTERFACE (GST_TYPE_CHILD_PROXY, gst_pylon_src_child_proxy_init)
+    );
 
 static void
 gst_pylon_src_class_init (GstPylonSrcClass * klass)
@@ -668,4 +672,41 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
   self->offset++;
 
   return ret;
+}
+
+static GObject *
+gst_pylon_src_child_proxy_get_child_by_name (GstChildProxy *
+    child_proxy, const gchar * name)
+{
+  GstPylonSrc *self = GST_PYLON_SRC (child_proxy);
+  GObject *obj = NULL;
+
+  GST_DEBUG_OBJECT (self, "Looking for child \"%s\"", name);
+
+  g_return_val_if_fail (self->pylon, NULL);
+
+  if (!g_strcmp0 (name, "cam")) {
+    GST_OBJECT_LOCK (self);
+    obj = gst_pylon_get_camera (self->pylon);
+    GST_OBJECT_UNLOCK (self);
+  } else {
+    GST_ERROR_OBJECT (self, "No child named \"%s\". Use \"cam\" instead.",
+        name);
+  }
+
+  return obj;
+}
+
+static guint
+gst_pylon_src_child_proxy_get_children_count (GstChildProxy * child_proxy)
+{
+  /* There's only one camera active at a time */
+  return 1;
+}
+
+static void
+gst_pylon_src_child_proxy_init (GstChildProxyInterface * iface)
+{
+  iface->get_child_by_name = gst_pylon_src_child_proxy_get_child_by_name;
+  iface->get_children_count = gst_pylon_src_child_proxy_get_children_count;
 }
