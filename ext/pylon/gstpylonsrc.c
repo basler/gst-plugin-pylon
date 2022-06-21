@@ -487,9 +487,13 @@ gst_pylon_src_start (GstBaseSrc * src)
   GError *error = NULL;
   gboolean ret = TRUE;
 
+  if (self->pylon) {
+    return TRUE;
+  }
+
   GST_OBJECT_LOCK (self);
   GST_INFO_OBJECT (self,
-      "Attempting to start camera device with the following configuration:"
+      "Attempting to create camera device with the following configuration:"
       "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s",
       self->device_user_name, self->device_serial_number, self->device_index,
       self->user_set);
@@ -683,7 +687,11 @@ gst_pylon_src_child_proxy_get_child_by_name (GstChildProxy *
 
   GST_DEBUG_OBJECT (self, "Looking for child \"%s\"", name);
 
-  g_return_val_if_fail (self->pylon, NULL);
+  if (!gst_pylon_src_start (GST_BASE_SRC (self))) {
+    GST_ERROR_OBJECT (self,
+        "Please specify a camera before attempting to set Pylon device properties");
+    return NULL;
+  }
 
   if (!g_strcmp0 (name, "cam")) {
     GST_OBJECT_LOCK (self);
