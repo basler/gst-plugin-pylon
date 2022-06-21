@@ -603,8 +603,6 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   g_return_if_fail (self);
   g_return_if_fail (buf);
 
-  GST_LOG_OBJECT (self, "Setting buffer metadata");
-
   GST_OBJECT_LOCK (self);
   /* set duration */
   GST_BUFFER_DURATION (buf) = self->duration;
@@ -659,8 +657,6 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
   gboolean pylon_ret = TRUE;
   GstFlowReturn ret = GST_FLOW_OK;
 
-  GST_LOG_OBJECT (self, "Creating buffer");
-
   pylon_ret = gst_pylon_capture (self->pylon, buf, &error);
 
   if (pylon_ret == FALSE) {
@@ -674,6 +670,8 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
 
   gst_plyon_src_add_metadata (self, *buf);
   self->offset++;
+
+  GST_LOG_OBJECT (self, "Created buffer %" GST_PTR_FORMAT, *buf);
 
   return ret;
 }
