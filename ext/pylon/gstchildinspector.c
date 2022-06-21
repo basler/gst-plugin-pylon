@@ -20,6 +20,10 @@ typedef gchar *(*GstChildInspectorTypeToString) (GParamSpec * pspec,
 
 static gchar *gst_child_inspector_type_int_to_string (GParamSpec * pspec,
     GValue * value);
+static gchar *gst_child_inspector_type_bool_to_string (GParamSpec * pspec,
+    GValue * value);
+static gchar *gst_child_inspector_type_float_to_string (GParamSpec * pspec,
+    GValue * value);
 static gchar *gst_child_inspector_type_string_to_string (GParamSpec * pspec,
     GValue * value);
 
@@ -38,11 +42,16 @@ struct _GstChildInspectorType
 static GstChildInspectorFlag flags[] = {
   {G_PARAM_READABLE, "readable"},
   {G_PARAM_WRITABLE, "writable"},
+  {GST_PARAM_MUTABLE_READY, "changeable only in NULL or READY state"},
+  {GST_PARAM_MUTABLE_PLAYING,
+      "changeable in NULL, READY, PAUSED or PLAYING state"},
   {}
 };
 
 static GstChildInspectorType types[] = {
   {G_TYPE_INT, gst_child_inspector_type_int_to_string},
+  {G_TYPE_BOOLEAN, gst_child_inspector_type_bool_to_string},
+  {G_TYPE_FLOAT, gst_child_inspector_type_float_to_string},
   {G_TYPE_STRING, gst_child_inspector_type_string_to_string},
   {}
 };
@@ -61,6 +70,22 @@ gst_child_inspector_type_int_to_string (GParamSpec * pspec, GValue * value)
 
   return g_strdup_printf ("Integer. Range: %d - %d Default: %d",
       pint->minimum, pint->maximum, g_value_get_int (value));
+}
+
+static gchar *
+gst_child_inspector_type_float_to_string (GParamSpec * pspec, GValue * value)
+{
+  GParamSpecFloat *pint = G_PARAM_SPEC_FLOAT (pspec);
+
+  return g_strdup_printf ("Float. Range: %.2f - %.2f Default: %.2f",
+      pint->minimum, pint->maximum, g_value_get_float (value));
+}
+
+static gchar *
+gst_child_inspector_type_bool_to_string (GParamSpec * pspec, GValue * value)
+{
+  return g_strdup_printf ("Boolean. Default: %s",
+      g_value_get_boolean (value) ? "true" : "false");
 }
 
 static const gchar *
@@ -150,18 +175,14 @@ gst_child_inspector_property_to_string (GObject * object, GParamSpec * param,
   flags = gst_child_inspector_flags_to_string (param->flags);
 
   g_value_init (&value, param->value_type);
-  if (param->flags & G_PARAM_READABLE) {
-    g_object_get_property (object, param->name, &value);
-  } else {
-    g_param_value_set_default (param, &value);
-  }
+  g_param_value_set_default (param, &value);
 
   type = gst_child_inspector_type_to_string (param, &value);
   g_value_unset (&value);
 
-  prop = g_strdup_printf ("%*s%-20s: %s\n"
-      "%*s%-21.21s flags: %s\n"
-      "%*s%-21.21s %s",
+  prop = g_strdup_printf ("%*s%-30s: %s\n"
+      "%*s%-31.31s flags: %s\n"
+      "%*s%-31.31s %s",
       alignment, "", name, blurb,
       alignment, "", "", flags, alignment, "", "", type);
 
@@ -190,18 +211,14 @@ gst_child_inspector_properties_to_string (GObject * object, guint alignment,
       (G_OBJECT_GET_CLASS (object), &num_properties);
 
   props = g_string_new (title);
-  GST_ERROR ("GRUNER: found %d properties", num_properties);
   for (i = 0; i < num_properties; i++) {
-    GST_ERROR ("GRUNER");
     prop =
         gst_child_inspector_property_to_string (object, property_specs[i],
         alignment);
-    GST_ERROR ("GRUNER");
     g_string_append_printf (props, "\n%s", prop);
   }
 
   g_free (property_specs);
   props_ = g_string_free (props, FALSE);
-  GST_ERROR ("GRUNER: %s", props_);
   return props_;
 }

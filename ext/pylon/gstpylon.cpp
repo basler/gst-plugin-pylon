@@ -71,6 +71,11 @@ static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     GenApi::StringList_t genapi_formats);
 static std::string gst_pylon_query_default_set(
     const Pylon::CBaslerUniversalInstantCamera &camera);
+static void gst_pylon_append_camera_properties(
+    const Pylon::CBaslerUniversalInstantCamera &camera,
+    gchar **camera_parameters, guint alignment);
+
+static constexpr gint DEFAULT_ALIGNMENT = 35;
 
 struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera camera;
@@ -534,8 +539,37 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   return TRUE;
 }
 
+static void gst_pylon_append_camera_properties(
+    const Pylon::CBaslerUniversalInstantCamera &camera,
+    gchar **camera_parameters, guint alignment) {
+  g_return_if_fail(camera_parameters);
+
+  GType camera_type = gst_pylon_camera_register(camera);
+  GObject *camera_obj = G_OBJECT(g_object_new(camera_type, NULL));
+
+  gchar *camera_name = g_strdup_printf(
+      "%*s:\n", alignment, camera.GetDeviceInfo().GetFriendlyName().c_str());
+
+  gchar *parameters = gst_child_inspector_properties_to_string(
+      camera_obj, alignment, camera_name);
+
+  if (NULL == *camera_parameters) {
+    *camera_parameters = g_strdup(parameters);
+  } else {
+    *camera_parameters =
+        g_strconcat(*camera_parameters, "\n", parameters, NULL);
+  }
+
+  g_free(camera_name);
+  g_free(parameters);
+
+  g_object_unref(camera_obj);
+}
+
 gchar *gst_pylon_get_string_properties(GError **err) {
   g_return_val_if_fail(err || *err == NULL, FALSE);
+
+  gchar *camera_parameters = NULL;
 
   try {
     Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
@@ -547,9 +581,8 @@ gchar *gst_pylon_get_string_properties(GError **err) {
       Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
                                                   Pylon::Cleanup_Delete);
       camera.Open();
-      GType type = gst_pylon_camera_register(camera);
-      GObject *obj = G_OBJECT(g_object_new(type, NULL));
-      g_object_unref(obj);
+      gst_pylon_append_camera_properties(camera, &camera_parameters,
+                                         DEFAULT_ALIGNMENT);
       camera.Close();
     }
 
@@ -559,5 +592,5 @@ gchar *gst_pylon_get_string_properties(GError **err) {
     return NULL;
   }
 
-  return NULL;
+  return camera_parameters;
 }

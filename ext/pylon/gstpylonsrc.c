@@ -135,6 +135,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
   GstPushSrcClass *push_src_class = GST_PUSH_SRC_CLASS (klass);
+  gchar *cam_params, *cam_blurb = NULL;
   GError *error = NULL;
 
   gst_pylon_initialize ();
@@ -155,44 +156,54 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_DEVICE_USER_NAME,
       g_param_spec_string ("device-user-name", "Device user defined name",
-          "The user-defined name of the device to use. May be combined "
+          "The user-defined name of the device to use.\n \t\t\tMay be combined"
           "with other device selection properties to reduce the search.",
           PROP_DEVICE_USER_NAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_DEVICE_SERIAL_NUMBER,
       g_param_spec_string ("device-serial-number", "Device serial number",
-          "The serial number of the device to use. May be combined with "
+          "The serial number of the device to use.\n \t\t\tMay be combined with "
           "other device selection properties to reduce the search.",
           PROP_DEVICE_SERIAL_NUMBER_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_DEVICE_INDEX,
       g_param_spec_int ("device-index", "Device index",
-          "The index of the device to use. This index applies to the "
+          "The index of the device to use.\n \t\t\tThis index applies to the "
           "resulting device list after applying the other device selection "
-          "properties. The index is mandatory if multiple devices match "
+          "properties.\n \t\t\tThe index is mandatory if multiple devices match "
           "the given search criteria.", PROP_DEVICE_INDEX_MIN,
           PROP_DEVICE_INDEX_MAX, PROP_DEVICE_INDEX_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_USER_SET,
       g_param_spec_string ("user-set", "Device user configuration set",
-          "The user-defined configuration set to use. Leaving this property "
+          "The user-defined configuration set to use.\n \t\t\tLeaving this property "
           "unset, or using 'Auto' or 'Default' all result in selecting the "
           "default camera configuration.",
           PROP_DEVICE_USER_NAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  gst_pylon_get_string_properties (&error);
+  cam_params = gst_pylon_get_string_properties (&error);
   if (error) {
     g_warning ("unable to parse camera properties: %s", error->message);
   }
 
+  cam_blurb = g_strdup_printf ("The camera to use.\n"
+      "\t\t\tAccording to the selected camera "
+      "different properties will be available.\n "
+      "\t\t\tThese properties can be accessed using the "
+      "\"cam::<property>\" syntax.\n"
+      "\t\t\tThe following list details the properties "
+      "for each camera.\n%s", cam_params);
+
   g_object_class_install_property (gobject_class, PROP_CAM,
-      g_param_spec_object ("cam", "Camera",
-          "The camera currently selected.", G_TYPE_OBJECT, G_PARAM_READABLE));
+      g_param_spec_object ("cam", "Camera", cam_blurb, G_TYPE_OBJECT,
+          G_PARAM_READABLE));
+
+  g_free (cam_params);
 
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_pylon_src_get_caps);
   base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_pylon_src_fixate);
