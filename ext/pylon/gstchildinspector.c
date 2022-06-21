@@ -175,11 +175,7 @@ gst_child_inspector_property_to_string (GObject * object, GParamSpec * param,
   flags = gst_child_inspector_flags_to_string (param->flags);
 
   g_value_init (&value, param->value_type);
-  if (param->flags & G_PARAM_READABLE) {
-    g_object_get_property (object, param->name, &value);
-  } else {
-    g_param_value_set_default (param, &value);
-  }
+  g_param_value_set_default (param, &value);
 
   type = gst_child_inspector_type_to_string (param, &value);
   g_value_unset (&value);
