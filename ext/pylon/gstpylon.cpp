@@ -71,11 +71,11 @@ static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     GenApi::StringList_t genapi_formats);
 static std::string gst_pylon_query_default_set(
     const Pylon::CBaslerUniversalInstantCamera &camera);
-static void gst_pylon_camera_add_devicemeta(
+static void gst_pylon_append_camera_properties(
     const Pylon::CBaslerUniversalInstantCamera &camera,
     gchar **camera_parameters, guint alignment);
 
-#define DEFAULT_ALIGNMENT 35
+static constexpr gint DEFAULT_ALIGNMENT = 35;
 
 struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera camera;
@@ -539,7 +539,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   return TRUE;
 }
 
-static void gst_pylon_camera_add_devicemeta(
+static void gst_pylon_append_camera_properties(
     const Pylon::CBaslerUniversalInstantCamera &camera,
     gchar **camera_parameters, guint alignment) {
   g_return_if_fail(camera_parameters);
@@ -577,8 +577,8 @@ gchar *gst_pylon_get_string_properties(GError **err) {
       Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
                                                   Pylon::Cleanup_Delete);
       camera.Open();
-      gst_pylon_camera_add_devicemeta(camera, &camera_parameters,
-                                      DEFAULT_ALIGNMENT);
+      gst_pylon_append_camera_properties(camera, &camera_parameters,
+                                         DEFAULT_ALIGNMENT);
       camera.Close();
     }
 
