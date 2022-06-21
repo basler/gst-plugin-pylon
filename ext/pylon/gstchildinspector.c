@@ -84,7 +84,8 @@ gst_child_inspector_type_float_to_string (GParamSpec * pspec, GValue * value)
 static gchar *
 gst_child_inspector_type_bool_to_string (GParamSpec * pspec, GValue * value)
 {
-  return g_strdup_printf ("Boolean. Default: %d", g_value_get_boolean (value));
+  return g_strdup_printf ("Boolean. Default: %s",
+      g_value_get_boolean (value) ? "true" : "false");
 }
 
 static const gchar *
