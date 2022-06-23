@@ -95,6 +95,8 @@ static gboolean gst_pylon_src_query (GstBaseSrc * src, GstQuery * query);
 static void gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf);
 static GstFlowReturn gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf);
 
+static void gst_pylon_src_child_proxy_init (GstChildProxyInterface * iface);
+
 enum
 {
   PROP_0,
@@ -127,7 +129,9 @@ GST_STATIC_PAD_TEMPLATE ("src",
 
 G_DEFINE_TYPE_WITH_CODE (GstPylonSrc, gst_pylon_src, GST_TYPE_PUSH_SRC,
     GST_DEBUG_CATEGORY_INIT (gst_pylon_src_debug_category, "pylonsrc", 0,
-        "debug category for pylonsrc element"));
+        "debug category for pylonsrc element");
+    G_IMPLEMENT_INTERFACE (GST_TYPE_CHILD_PROXY, gst_pylon_src_child_proxy_init)
+    );
 
 static void
 gst_pylon_src_class_init (GstPylonSrcClass * klass)
@@ -483,9 +487,13 @@ gst_pylon_src_start (GstBaseSrc * src)
   GError *error = NULL;
   gboolean ret = TRUE;
 
+  if (self->pylon) {
+    return TRUE;
+  }
+
   GST_OBJECT_LOCK (self);
   GST_INFO_OBJECT (self,
-      "Attempting to start camera device with the following configuration:"
+      "Attempting to create camera device with the following configuration:"
       "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s",
       self->device_user_name, self->device_serial_number, self->device_index,
       self->user_set);
@@ -595,8 +603,6 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   g_return_if_fail (self);
   g_return_if_fail (buf);
 
-  GST_LOG_OBJECT (self, "Setting buffer metadata");
-
   GST_OBJECT_LOCK (self);
   /* set duration */
   GST_BUFFER_DURATION (buf) = self->duration;
@@ -651,8 +657,6 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
   gboolean pylon_ret = TRUE;
   GstFlowReturn ret = GST_FLOW_OK;
 
-  GST_LOG_OBJECT (self, "Creating buffer");
-
   pylon_ret = gst_pylon_capture (self->pylon, buf, &error);
 
   if (pylon_ret == FALSE) {
@@ -667,5 +671,48 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
   gst_plyon_src_add_metadata (self, *buf);
   self->offset++;
 
+  GST_LOG_OBJECT (self, "Created buffer %" GST_PTR_FORMAT, *buf);
+
   return ret;
+}
+
+static GObject *
+gst_pylon_src_child_proxy_get_child_by_name (GstChildProxy *
+    child_proxy, const gchar * name)
+{
+  GstPylonSrc *self = GST_PYLON_SRC (child_proxy);
+  GObject *obj = NULL;
+
+  GST_DEBUG_OBJECT (self, "Looking for child \"%s\"", name);
+
+  if (!gst_pylon_src_start (GST_BASE_SRC (self))) {
+    GST_ERROR_OBJECT (self,
+        "Please specify a camera before attempting to set Pylon device properties");
+    return NULL;
+  }
+
+  if (!g_strcmp0 (name, "cam")) {
+    GST_OBJECT_LOCK (self);
+    obj = gst_pylon_get_camera (self->pylon);
+    GST_OBJECT_UNLOCK (self);
+  } else {
+    GST_ERROR_OBJECT (self, "No child named \"%s\". Use \"cam\" instead.",
+        name);
+  }
+
+  return obj;
+}
+
+static guint
+gst_pylon_src_child_proxy_get_children_count (GstChildProxy * child_proxy)
+{
+  /* There's only one camera active at a time */
+  return 1;
+}
+
+static void
+gst_pylon_src_child_proxy_init (GstChildProxyInterface * iface)
+{
+  iface->get_child_by_name = gst_pylon_src_child_proxy_get_child_by_name;
+  iface->get_children_count = gst_pylon_src_child_proxy_get_children_count;
 }

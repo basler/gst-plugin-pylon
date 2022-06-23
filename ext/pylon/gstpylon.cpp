@@ -79,6 +79,7 @@ static constexpr gint DEFAULT_ALIGNMENT = 35;
 
 struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera camera;
+  GObject *gcamera;
 };
 
 void gst_pylon_initialize() { Pylon::PylonInitialize(); }
@@ -145,6 +146,8 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
 
     self->camera.Attach(factory.CreateDevice(device_info));
     self->camera.Open();
+
+    self->gcamera = gst_pylon_camera_new(self->camera);
 
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
@@ -225,6 +228,7 @@ void gst_pylon_free(GstPylon *self) {
   g_return_if_fail(self);
 
   self->camera.Close();
+  g_object_unref(self->gcamera);
 
   delete self;
 }
@@ -593,4 +597,10 @@ gchar *gst_pylon_get_string_properties(GError **err) {
   }
 
   return camera_parameters;
+}
+
+GObject *gst_pylon_get_camera(GstPylon *self) {
+  g_return_val_if_fail(self, NULL);
+
+  return G_OBJECT(g_object_ref(self->gcamera));
 }

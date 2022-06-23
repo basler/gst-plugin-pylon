@@ -36,10 +36,78 @@
 
 #include <queue>
 
+typedef struct _GstPylonCameraPrivate GstPylonCameraPrivate;
+struct _GstPylonCameraPrivate {
+  Pylon::CBaslerUniversalInstantCamera* camera;
+};
+
+/************************************************************
+ * Start of GObject definition
+ ***********************************************************/
+
+#define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
+
+static gchar* gst_pylon_camera_get_sanitized_name(
+    const Pylon::CBaslerUniversalInstantCamera& camera) {
+  Pylon::String_t cam_name = "_" + camera.GetDeviceInfo().GetFullName();
+
+  /* Convert camera name to a valid string */
+  return g_strcanon(g_strdup(cam_name.c_str()), VALID_CHARS, '_');
+}
+
+static void gst_pylon_camera_init(GstPylonCamera* self);
+static void gst_pylon_camera_class_init(
+    GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
+static gpointer gst_pylon_camera_parent_class = NULL;
+static gint GstPylonCamera_private_offset;
+static void gst_pylon_camera_class_intern_init(
+    gpointer klass, Pylon::CBaslerUniversalInstantCamera* camera) {
+  gst_pylon_camera_parent_class = g_type_class_peek_parent(klass);
+  if (GstPylonCamera_private_offset != 0)
+    g_type_class_adjust_private_offset(klass, &GstPylonCamera_private_offset);
+  gst_pylon_camera_class_init((GstPylonCameraClass*)klass, camera);
+}
+static inline gpointer gst_pylon_camera_get_instance_private(
+    GstPylonCamera* self) {
+  return (G_STRUCT_MEMBER_P(self, GstPylonCamera_private_offset));
+}
+
+GType gst_pylon_camera_register(
+    const Pylon::CBaslerUniversalInstantCamera& exemplar) {
+  GTypeInfo typeinfo = {
+      sizeof(GstPylonCameraClass),
+      NULL,
+      NULL,
+      (GClassInitFunc)gst_pylon_camera_class_intern_init,
+      NULL,
+      &exemplar,
+      sizeof(GstPylonCamera),
+      0,
+      (GInstanceInitFunc)gst_pylon_camera_init,
+  };
+
+  gchar* type_name = gst_pylon_camera_get_sanitized_name(exemplar);
+
+  GType type = g_type_from_name(type_name);
+  if (!type) {
+    type = g_type_register_static(G_TYPE_OBJECT, type_name, &typeinfo,
+                                  static_cast<GTypeFlags>(0));
+  }
+
+  g_free(type_name);
+
+  GstPylonCamera_private_offset =
+      g_type_add_instance_private(type, sizeof(GstPylonCameraPrivate));
+
+  return type;
+}
+
+/************************************************************
+ * End of GObject definition
+ ***********************************************************/
+
 /* prototypes */
 static void gst_pylon_camera_install_properties(
-    GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
-static void gst_pylon_camera_class_init(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
 template <typename F, typename P>
 static void set_pylon_property(GenApi::INodeMap& nodemap, F get_value,
@@ -54,8 +122,6 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
                                           GParamSpec* pspec);
 static void gst_pylon_camera_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec);
-
-#define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
 
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
@@ -112,16 +178,17 @@ static void gst_pylon_camera_install_properties(
 }
 
 static void gst_pylon_camera_class_init(
-    GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
+    GstPylonCameraClass* klass,
+    Pylon::CBaslerUniversalInstantCamera* exemplar) {
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
-
-  klass->camera = camera;
 
   oclass->set_property = gst_pylon_camera_set_property;
   oclass->get_property = gst_pylon_camera_get_property;
 
-  gst_pylon_camera_install_properties(klass, camera);
+  gst_pylon_camera_install_properties(klass, exemplar);
 }
+
+static void gst_pylon_camera_init(GstPylonCamera* self) {}
 
 template <typename F, typename P>
 static void set_pylon_property(GenApi::INodeMap& nodemap, F get_value,
@@ -151,10 +218,11 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
                                           const GValue* value,
                                           GParamSpec* pspec) {
   GstPylonCamera* self = (GstPylonCamera*)object;
-  GstPylonCameraClass* klass = GST_PYLON_CAMERA_GET_CLASS(self);
+  GstPylonCameraPrivate* priv =
+      (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
 
   try {
-    GenApi::INodeMap& nodemap = klass->camera->GetNodeMap();
+    GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
     switch (pspec->value_type) {
       case G_TYPE_INT:
         typedef gint (*GGetInt)(const GValue*);
@@ -187,7 +255,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
     }
   } catch (const Pylon::GenericException& e) {
     GST_ERROR("Unable to set pylon property \"%s\" on \"%s\": %s", pspec->name,
-              klass->camera->GetDeviceInfo().GetFullName().c_str(),
+              priv->camera->GetDeviceInfo().GetFullName().c_str(),
               e.GetDescription());
   }
 }
@@ -195,10 +263,11 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
 static void gst_pylon_camera_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec) {
   GstPylonCamera* self = (GstPylonCamera*)object;
-  GstPylonCameraClass* klass = GST_PYLON_CAMERA_GET_CLASS(self);
+  GstPylonCameraPrivate* priv =
+      (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
 
   try {
-    GenApi::INodeMap& nodemap = klass->camera->GetNodeMap();
+    GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
     switch (pspec->value_type) {
       case G_TYPE_INT:
         g_value_set_int(value,
@@ -218,10 +287,9 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
       case G_TYPE_STRING:
         g_value_set_string(
             value,
-            g_strdup(
-                get_pylon_property<GenICam::gcstring, Pylon::CStringParameter>(
-                    nodemap, pspec->name)
-                    .c_str()));
+            get_pylon_property<GenICam::gcstring, Pylon::CStringParameter>(
+                nodemap, pspec->name)
+                .c_str());
         break;
       case G_TYPE_ENUM:
         g_value_set_int(value, get_enum_property(nodemap, pspec->name));
@@ -234,39 +302,21 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
     }
   } catch (const Pylon::GenericException& e) {
     GST_ERROR("Unable to get pylon property \"%s\" on \"%s\": %s", pspec->name,
-              klass->camera->GetDeviceInfo().GetFullName().c_str(),
+              priv->camera->GetDeviceInfo().GetFullName().c_str(),
               e.GetDescription());
   }
 }
 
-static void gst_pylon_camera_init(GstPylonCamera* self) {}
-
-GType gst_pylon_camera_register(
-    const Pylon::CBaslerUniversalInstantCamera& camera) {
-  GTypeInfo typeinfo = {
-      sizeof(GstPylonCameraClass),
-      NULL,
-      NULL,
-      (GClassInitFunc)gst_pylon_camera_class_init,
-      NULL,
-      &camera,
-      sizeof(GstPylonCamera),
-      0,
-      (GInstanceInitFunc)gst_pylon_camera_init,
-  };
-
-  Pylon::String_t cam_name = "_" + camera.GetDeviceInfo().GetFullName();
-
-  /* Convert camera name to a valid string */
-  gchar* type_name = g_strcanon(g_strdup(cam_name.c_str()), VALID_CHARS, '_');
+GObject* gst_pylon_camera_new(Pylon::CBaslerUniversalInstantCamera& camera) {
+  gchar* type_name = gst_pylon_camera_get_sanitized_name(camera);
 
   GType type = g_type_from_name(type_name);
-  if (!type) {
-    type = g_type_register_static(G_TYPE_OBJECT, type_name, &typeinfo,
-                                  static_cast<GTypeFlags>(0));
-  }
+  GObject* obj = G_OBJECT(g_object_new(type, NULL));
+  GstPylonCamera* self = (GstPylonCamera*)obj;
+  GstPylonCameraPrivate* priv =
+      (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
 
-  g_free(type_name);
+  priv->camera = &camera;
 
-  return type;
+  return obj;
 }
