@@ -412,10 +412,20 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
   g_return_if_fail(self);
   g_return_if_fail(outvalue);
 
+  gdouble min_fps = 1;
+  gdouble max_fps = 1;
+
   GenApi::INodeMap &nodemap = self->camera.GetNodeMap();
-  Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
-  gdouble min_fps = framerate.GetMin();
-  gdouble max_fps = framerate.GetMax();
+
+  if (self->camera.GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
+    Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
+    min_fps = framerate.GetMin();
+    max_fps = framerate.GetMax();
+  } else {
+    Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
+    min_fps = framerate.GetMin();
+    max_fps = framerate.GetMax();
+  }
 
   gint min_fps_num = 0;
   gint min_fps_den = 0;
@@ -528,11 +538,19 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
     Pylon::CBooleanParameter framerate_enable(nodemap,
                                               "AcquisitionFrameRateEnable");
-    framerate_enable.SetValue(true);
 
-    Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
+    /* basler dart gen1 models have no framerate_enable feature */
+    framerate_enable.TrySetValue(true);
+
     gdouble div = 1.0 * gst_numerator / gst_denominator;
-    framerate.SetValue(div, Pylon::FloatValueCorrection_None);
+
+    if (self->camera.GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
+      Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
+      framerate.SetValue(div, Pylon::FloatValueCorrection_None);
+    } else {
+      Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
+      framerate.SetValue(div, Pylon::FloatValueCorrection_None);
+    }
 
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
