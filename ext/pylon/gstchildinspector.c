@@ -49,7 +49,7 @@ static GstChildInspectorFlag flags[] = {
 };
 
 static GstChildInspectorType types[] = {
-  {G_TYPE_INT, gst_child_inspector_type_int_to_string},
+  {G_TYPE_INT64, gst_child_inspector_type_int_to_string},
   {G_TYPE_BOOLEAN, gst_child_inspector_type_bool_to_string},
   {G_TYPE_FLOAT, gst_child_inspector_type_float_to_string},
   {G_TYPE_STRING, gst_child_inspector_type_string_to_string},
@@ -66,10 +66,11 @@ gst_child_inspector_type_string_to_string (GParamSpec * pspec, GValue * value)
 static gchar *
 gst_child_inspector_type_int_to_string (GParamSpec * pspec, GValue * value)
 {
-  GParamSpecInt *pint = G_PARAM_SPEC_INT (pspec);
+  GParamSpecInt64 *pint = G_PARAM_SPEC_INT64 (pspec);
 
-  return g_strdup_printf ("Integer. Range: %d - %d Default: %d",
-      pint->minimum, pint->maximum, g_value_get_int (value));
+  return g_strdup_printf ("Integer. Range: %" G_GINT64_FORMAT " - %"
+      G_GINT64_FORMAT " Default: %" G_GINT64_FORMAT, pint->minimum,
+      pint->maximum, g_value_get_int64 (value));
 }
 
 static gchar *
