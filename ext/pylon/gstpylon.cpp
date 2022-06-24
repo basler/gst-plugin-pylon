@@ -85,9 +85,9 @@ struct _GstPylon {
 typedef struct {
   std::string pfnc_name;
   std::string gst_name;
-} pixel_format_mapping_t;
+} PixelFormatMappingType;
 
-static pixel_format_mapping_t pixel_format_mapping[] = {
+static PixelFormatMappingType pixel_format_mapping[] = {
     {"Mono8", "GRAY8"}, {"RGB8Packed", "RGB"}, {"BGR8Packed", "BGR"},
     {"RGB8", "RGB"},    {"BGR8", "BGR"},       {"YCbCr422_8", "YUY2"}};
 
@@ -348,9 +348,8 @@ static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     std::vector<std::string> gst_fmts =
         gst_pylon_pfnc_to_gst(std::string(genapi_fmt));
 
-    for (auto &gst_fmt : gst_fmts) {
-      formats_list.push_back(gst_fmt);
-    }
+    /* Insert every matching gst format */
+    formats_list.insert(formats_list.end(), gst_fmts.begin(), gst_fmts.end());
   }
 
   return formats_list;
@@ -530,13 +529,8 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
     const std::vector<std::string> pfnc_formats =
         gst_pylon_gst_to_pfnc(gst_format);
-    if (pfnc_formats.empty()) {
-      throw Pylon::GenericException(
-          std::string("Unsupported GStreamer format: " + gst_format).c_str(),
-          __FILE__, __LINE__);
-    }
 
-    /* in case of ambiguous format mapping choose first */
+    /* In case of ambiguous format mapping choose first */
     bool fmt_valid = false;
     for (auto &fmt : pfnc_formats) {
       fmt_valid = pixelFormat.TrySetValue(fmt.c_str());
@@ -545,7 +539,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
     if (!fmt_valid) {
       throw Pylon::GenericException(
-          std::string("No matching PFNC format: " + gst_format).c_str(),
+          std::string("Unsupported GStreamer format: " + gst_format).c_str(),
           __FILE__, __LINE__);
     }
 
@@ -558,7 +552,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
     Pylon::CBooleanParameter framerate_enable(nodemap,
                                               "AcquisitionFrameRateEnable");
 
-    /* basler dart gen1 models have no framerate_enable feature */
+    /* Basler dart gen1 models have no framerate_enable feature */
     framerate_enable.TrySetValue(true);
 
     gdouble div = 1.0 * gst_numerator / gst_denominator;
