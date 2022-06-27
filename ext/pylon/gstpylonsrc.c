@@ -184,9 +184,9 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   g_object_class_install_property (gobject_class, PROP_USER_SET,
       g_param_spec_string ("user-set", "Device user configuration set",
           "The user-defined configuration set to use.\n \t\t\tLeaving this property "
-          "unset, or using 'Auto' or 'Default' all result in selecting the "
-          "default camera configuration.",
-          PROP_DEVICE_USER_NAME_DEFAULT,
+          "unset, or using 'Auto' result in selecting the "
+          "power-on default camera configuration.",
+          PROP_USER_SET_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
