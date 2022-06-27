@@ -62,11 +62,10 @@ static void gst_pylon_query_integer(GstPylon *self, GValue *outvalue,
 static void gst_pylon_query_width(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_height(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue);
-static std::string gst_pylon_translate_format(
-    const std::string &format,
-    const std::map<const std::string, const std::string> &map);
-static std::string gst_pylon_gst_to_pfnc(const std::string &gst_format);
-static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format);
+static std::vector<std::string> gst_pylon_gst_to_pfnc(
+    const std::string &gst_format);
+static std::vector<std::string> gst_pylon_pfnc_to_gst(
+    const std::string &genapi_format);
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     GenApi::StringList_t genapi_formats);
 static std::string gst_pylon_query_default_set(
@@ -81,6 +80,16 @@ struct _GstPylon {
   Pylon::CBaslerUniversalInstantCamera camera;
   GObject *gcamera;
 };
+
+/* pixel format definitions */
+typedef struct {
+  std::string pfnc_name;
+  std::string gst_name;
+} PixelFormatMappingType;
+
+static PixelFormatMappingType pixel_format_mapping[] = {
+    {"Mono8", "GRAY8"}, {"RGB8Packed", "RGB"}, {"BGR8Packed", "BGR"},
+    {"RGB8", "RGB"},    {"BGR8", "BGR"},       {"YCbCr422_8", "YUY2"}};
 
 void gst_pylon_initialize() { Pylon::PylonInitialize(); }
 
@@ -309,41 +318,38 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
   return TRUE;
 }
 
-static std::string gst_pylon_translate_format(
-    const std::string &in_format,
-    const std::map<const std::string, const std::string> &map) {
-  std::string out_format;
-  if (map.find(in_format) != map.end()) {
-    out_format = map.at(in_format);
+static std::vector<std::string> gst_pylon_gst_to_pfnc(
+    const std::string &gst_format) {
+  std::vector<std::string> out_formats;
+  for (auto &entry : pixel_format_mapping) {
+    if (entry.gst_name == gst_format) {
+      out_formats.push_back(entry.pfnc_name);
+    }
   }
-
-  return out_format;
+  return out_formats;
 }
 
-static std::string gst_pylon_gst_to_pfnc(const std::string &gst_format) {
-  static const std::map<const std::string, const std::string> formats_map = {
-      {"GRAY8", "Mono8"}, {"RGB", "RGB8Packed"}, {"BGR", "BGR8Packed"}};
-
-  return gst_pylon_translate_format(gst_format, formats_map);
-}
-
-static std::string gst_pylon_pfnc_to_gst(const std::string &genapi_format) {
-  static const std::map<const std::string, const std::string> formats_map = {
-      {"Mono8", "GRAY8"}, {"RGB8Packed", "RGB"}, {"BGR8Packed", "BGR"}};
-
-  return gst_pylon_translate_format(genapi_format, formats_map);
+static std::vector<std::string> gst_pylon_pfnc_to_gst(
+    const std::string &genapi_format) {
+  std::vector<std::string> out_formats;
+  for (auto &entry : pixel_format_mapping) {
+    if (entry.pfnc_name == genapi_format) {
+      out_formats.push_back(entry.gst_name);
+    }
+  }
+  return out_formats;
 }
 
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     GenApi::StringList_t genapi_formats) {
   std::vector<std::string> formats_list;
 
-  for (const auto &fmt : genapi_formats) {
-    std::string gst_fmt = gst_pylon_pfnc_to_gst(std::string(fmt));
+  for (const auto &genapi_fmt : genapi_formats) {
+    std::vector<std::string> gst_fmts =
+        gst_pylon_pfnc_to_gst(std::string(genapi_fmt));
 
-    if (!gst_fmt.empty()) {
-      formats_list.push_back(gst_fmt);
-    }
+    /* Insert every matching gst format */
+    formats_list.insert(formats_list.end(), gst_fmts.begin(), gst_fmts.end());
   }
 
   return formats_list;
@@ -490,6 +496,9 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
   GstStructure *st = gst_caps_get_structure(conf, 0);
 
+  GenApi::INodeMap &nodemap = self->camera.GetNodeMap();
+  Pylon::CEnumParameter pixelFormat(nodemap, "PixelFormat");
+
   try {
     const std::string gst_format = gst_structure_get_string(st, "format");
     if (gst_format.empty()) {
@@ -518,17 +527,21 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
           __LINE__);
     }
 
-    GenApi::INodeMap &nodemap = self->camera.GetNodeMap();
+    const std::vector<std::string> pfnc_formats =
+        gst_pylon_gst_to_pfnc(gst_format);
 
-    Pylon::CEnumParameter format(nodemap, "PixelFormat");
-    const std::string pfnc_format = gst_pylon_gst_to_pfnc(gst_format);
-    if (pfnc_format.empty()) {
+    /* In case of ambiguous format mapping choose first */
+    bool fmt_valid = false;
+    for (auto &fmt : pfnc_formats) {
+      fmt_valid = pixelFormat.TrySetValue(fmt.c_str());
+      if (fmt_valid) break;
+    }
+
+    if (!fmt_valid) {
       throw Pylon::GenericException(
           std::string("Unsupported GStreamer format: " + gst_format).c_str(),
           __FILE__, __LINE__);
     }
-
-    format.SetValue(gst_pylon_gst_to_pfnc(gst_format).c_str());
 
     Pylon::CIntegerParameter width(nodemap, "Width");
     width.SetValue(gst_width, Pylon::IntegerValueCorrection_None);
@@ -539,7 +552,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
     Pylon::CBooleanParameter framerate_enable(nodemap,
                                               "AcquisitionFrameRateEnable");
 
-    /* basler dart gen1 models have no framerate_enable feature */
+    /* Basler dart gen1 models have no framerate_enable feature */
     framerate_enable.TrySetValue(true);
 
     gdouble div = 1.0 * gst_numerator / gst_denominator;
