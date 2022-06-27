@@ -38,7 +38,7 @@
 
 typedef struct _GstPylonCameraPrivate GstPylonCameraPrivate;
 struct _GstPylonCameraPrivate {
-  Pylon::CBaslerUniversalInstantCamera* camera;
+  std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera;
 };
 
 /************************************************************
@@ -307,8 +307,9 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
   }
 }
 
-GObject* gst_pylon_camera_new(Pylon::CBaslerUniversalInstantCamera& camera) {
-  gchar* type_name = gst_pylon_camera_get_sanitized_name(camera);
+GObject* gst_pylon_camera_new(
+    std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera) {
+  gchar* type_name = gst_pylon_camera_get_sanitized_name(*camera);
 
   GType type = g_type_from_name(type_name);
   GObject* obj = G_OBJECT(g_object_new(type, NULL));
@@ -316,7 +317,7 @@ GObject* gst_pylon_camera_new(Pylon::CBaslerUniversalInstantCamera& camera) {
   GstPylonCameraPrivate* priv =
       (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
 
-  priv->camera = &camera;
+  priv->camera = camera;
 
   return obj;
 }

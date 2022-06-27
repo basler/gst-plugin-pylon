@@ -77,7 +77,8 @@ static void gst_pylon_append_camera_properties(
 static constexpr gint DEFAULT_ALIGNMENT = 35;
 
 struct _GstPylon {
-  Pylon::CBaslerUniversalInstantCamera camera;
+  std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera =
+      std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
   GObject *gcamera;
 };
 
