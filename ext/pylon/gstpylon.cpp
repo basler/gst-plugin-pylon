@@ -154,8 +154,8 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
 
     device_info = device_list.at(device_index);
 
-    self->camera.Attach(factory.CreateDevice(device_info));
-    self->camera.Open();
+    self->camera->Attach(factory.CreateDevice(device_info));
+    self->camera->Open();
 
     self->gcamera = gst_pylon_camera_new(self->camera);
 
@@ -193,7 +193,7 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
   g_return_val_if_fail(err || *err == NULL, FALSE);
 
   try {
-    if (!self->camera.UserSetSelector.IsWritable()) {
+    if (!self->camera->UserSetSelector.IsWritable()) {
       throw Pylon::GenericException(
           "The device does not support user configuration sets", __FILE__,
           __LINE__);
@@ -206,14 +206,14 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
 
     /* If auto or nothing is set, return default config */
     if ("Auto" == set || set.empty()) {
-      set = gst_pylon_query_default_set(self->camera);
+      set = gst_pylon_query_default_set(*self->camera);
     }
 
-    if (self->camera.UserSetSelector.CanSetValue(set.c_str())) {
-      self->camera.UserSetSelector.SetValue(set.c_str());
+    if (self->camera->UserSetSelector.CanSetValue(set.c_str())) {
+      self->camera->UserSetSelector.SetValue(set.c_str());
     } else {
       GenApi::StringList_t values;
-      self->camera.UserSetSelector.GetSettableValues(values);
+      self->camera->UserSetSelector.GetSettableValues(values);
       std::string msg = "Invalid user set, has to be one of the following:\n";
       msg += "Auto\n";
 
@@ -223,7 +223,7 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
       throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
 
-    self->camera.UserSetLoad.Execute();
+    self->camera->UserSetLoad.Execute();
 
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
@@ -237,7 +237,7 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
 void gst_pylon_free(GstPylon *self) {
   g_return_if_fail(self);
 
-  self->camera.Close();
+  self->camera->Close();
   g_object_unref(self->gcamera);
 
   delete self;
@@ -250,7 +250,7 @@ gboolean gst_pylon_start(GstPylon *self, GError **err) {
   g_return_val_if_fail(err || *err == NULL, FALSE);
 
   try {
-    self->camera.StartGrabbing();
+    self->camera->StartGrabbing();
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
@@ -267,7 +267,7 @@ gboolean gst_pylon_stop(GstPylon *self, GError **err) {
   g_return_val_if_fail(err || *err == NULL, FALSE);
 
   try {
-    self->camera.StopGrabbing();
+    self->camera->StopGrabbing();
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
@@ -294,8 +294,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
   gint timeout_ms = 5000;
   /* Catch the timeout exception if any */
   try {
-    self->camera.RetrieveResult(timeout_ms, ptr_grab_result,
-                                Pylon::TimeoutHandling_ThrowException);
+    self->camera->RetrieveResult(timeout_ms, ptr_grab_result,
+                                 Pylon::TimeoutHandling_ThrowException);
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
@@ -362,7 +362,7 @@ static void gst_pylon_query_format(GstPylon *self, GValue *outvalue) {
   g_return_if_fail(self);
   g_return_if_fail(outvalue);
 
-  GenApi::INodeMap &nodemap = self->camera.GetNodeMap();
+  GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
   Pylon::CEnumParameter pixelFormat(nodemap, "PixelFormat");
 
   GenApi::StringList_t genapi_formats;
@@ -391,7 +391,7 @@ static void gst_pylon_query_integer(GstPylon *self, GValue *outvalue,
   g_return_if_fail(self);
   g_return_if_fail(outvalue);
 
-  GenApi::INodeMap &nodemap = self->camera.GetNodeMap();
+  GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
   Pylon::CIntegerParameter param(nodemap, name.c_str());
 
   gint min = param.GetMin();
@@ -422,9 +422,9 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
   gdouble min_fps = 1;
   gdouble max_fps = 1;
 
-  GenApi::INodeMap &nodemap = self->camera.GetNodeMap();
+  GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
 
-  if (self->camera.GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
+  if (self->camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
     Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
     min_fps = framerate.GetMin();
     max_fps = framerate.GetMax();
@@ -464,8 +464,8 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
 
   try {
     /* Offsets are set to 0 to get the true image geometry */
-    self->camera.OffsetX.TrySetToMinimum();
-    self->camera.OffsetY.TrySetToMinimum();
+    self->camera->OffsetX.TrySetToMinimum();
+    self->camera->OffsetY.TrySetToMinimum();
 
     for (const auto &query : queries) {
       GstPylonQuery func = query.first;
@@ -497,7 +497,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
   GstStructure *st = gst_caps_get_structure(conf, 0);
 
-  GenApi::INodeMap &nodemap = self->camera.GetNodeMap();
+  GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
   Pylon::CEnumParameter pixelFormat(nodemap, "PixelFormat");
 
   try {
@@ -558,7 +558,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
     gdouble div = 1.0 * gst_numerator / gst_denominator;
 
-    if (self->camera.GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
+    if (self->camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
       Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
       framerate.SetValue(div, Pylon::FloatValueCorrection_None);
     } else {
