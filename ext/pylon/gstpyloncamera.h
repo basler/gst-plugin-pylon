@@ -64,7 +64,7 @@ struct _GstPylonCameraClass {
 };
 
 GType gst_pylon_camera_register (const Pylon::CBaslerUniversalInstantCamera &exemplar);
-GObject * gst_pylon_camera_new (Pylon::CBaslerUniversalInstantCamera &camera);
+GObject * gst_pylon_camera_new (std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera);
 
 G_END_DECLS
 
