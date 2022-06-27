@@ -122,6 +122,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
                                           GParamSpec* pspec);
 static void gst_pylon_camera_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec);
+static void gst_pylon_camera_finalize(GObject* self);
 
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
@@ -184,6 +185,7 @@ static void gst_pylon_camera_class_init(
 
   oclass->set_property = gst_pylon_camera_set_property;
   oclass->get_property = gst_pylon_camera_get_property;
+  oclass->finalize = gst_pylon_camera_finalize;
 
   gst_pylon_camera_install_properties(klass, exemplar);
 }
@@ -320,4 +322,14 @@ GObject* gst_pylon_camera_new(
   priv->camera = camera;
 
   return obj;
+}
+
+static void gst_pylon_camera_finalize(GObject* object) {
+  GstPylonCamera* self = (GstPylonCamera*)object;
+  GstPylonCameraPrivate* priv =
+      (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
+
+  priv->camera = NULL;
+
+  G_OBJECT_CLASS(gst_pylon_camera_parent_class)->finalize(object);
 }
