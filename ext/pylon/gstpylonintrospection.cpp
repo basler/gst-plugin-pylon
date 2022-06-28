@@ -108,6 +108,10 @@ static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node) {
 
 static GParamSpec *gst_pylon_make_spec_enum(
     GenApi::INode *node, Pylon::CBaslerUniversalInstantCamera *camera) {
+  /* When registering enums to the GType system, their string pointers
+     must remain valid throughout the application lifespan. To achieve this
+     we are saving all found enums into a static hash table
+  */
   static std::unordered_map<GType, std::vector<GEnumValue>> persistent_values;
 
   g_return_val_if_fail(node, NULL);
@@ -133,6 +137,8 @@ static GParamSpec *gst_pylon_make_spec_enum(
       auto value = static_cast<gint>(entry->GetValue());
       auto tooltip = entry->GetNode()->GetToolTip();
 
+      /* We need a copy of the strings so that they are persistent
+         throughout the application lifespan */
       GEnumValue ev = {.value = value,
                        .value_name = g_strdup(value_name.c_str()),
                        .value_nick = g_strdup(tooltip.c_str())};
