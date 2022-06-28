@@ -106,8 +106,6 @@ static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node) {
                              gst_pylon_query_access(node));
 }
 
-#define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
-
 static GParamSpec *gst_pylon_make_spec_enum(
     GenApi::INode *node, Pylon::CBaslerUniversalInstantCamera *camera) {
   static std::unordered_map<GType, std::vector<GEnumValue>> persistent_values;
@@ -117,10 +115,12 @@ static GParamSpec *gst_pylon_make_spec_enum(
 
   Pylon::CEnumParameter param(node);
 
-  gchar *name = g_strcanon(
+  gchar *full_name =
       g_strdup_printf("%s_%s", camera->GetDeviceInfo().GetFullName().c_str(),
-                      node->GetName().c_str()),
-      VALID_CHARS, '_');
+                      node->GetName().c_str());
+  gchar *name = GstPylonParamFactory::sanitize_name(full_name);
+  g_free(full_name);
+
   GType type = g_type_from_name(name);
 
   if (!type) {
@@ -181,4 +181,12 @@ GParamSpec *GstPylonParamFactory::make_param(
   }
 
   return spec;
+}
+
+#define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
+
+gchar *GstPylonParamFactory::sanitize_name(const gchar *name) {
+  g_return_val_if_fail(name, NULL);
+
+  return g_strcanon(g_strdup_printf("_%s", name), VALID_CHARS, '_');
 }

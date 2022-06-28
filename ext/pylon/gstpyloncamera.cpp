@@ -45,14 +45,12 @@ struct _GstPylonCameraPrivate {
  * Start of GObject definition
  ***********************************************************/
 
-#define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
-
 static gchar* gst_pylon_camera_get_sanitized_name(
     const Pylon::CBaslerUniversalInstantCamera& camera) {
-  Pylon::String_t cam_name = "_" + camera.GetDeviceInfo().GetFullName();
+  Pylon::String_t cam_name = camera.GetDeviceInfo().GetFullName();
 
   /* Convert camera name to a valid string */
-  return g_strcanon(g_strdup(cam_name.c_str()), VALID_CHARS, '_');
+  return GstPylonParamFactory::sanitize_name(cam_name.c_str());
 }
 
 static void gst_pylon_camera_init(GstPylonCamera* self);
