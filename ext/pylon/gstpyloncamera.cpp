@@ -153,7 +153,7 @@ static void gst_pylon_camera_install_properties(
       if (node->GetProperty("Streamable", value, attrib)) {
         if (GenICam::gcstring("Yes") == value) {
           try {
-            GParamSpec* pspec = GstPylonParamFactory::make_param(node);
+            GParamSpec* pspec = GstPylonParamFactory::make_param(node, camera);
             g_object_class_install_property(oclass, nprop, pspec);
             nprop++;
           } catch (const Pylon::GenericException& e) {

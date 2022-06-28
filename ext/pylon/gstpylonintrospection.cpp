@@ -40,7 +40,8 @@ static GParamSpec *gst_pylon_make_spec_int(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node);
-static GParamSpec *gst_pylon_make_spec_enum(GenApi::INode *node);
+static GParamSpec *gst_pylon_make_spec_enum(
+    GenApi::INode *node, Pylon::CBaslerUniversalInstantCamera *camera);
 static GParamFlags gst_pylon_query_access(GenApi::INode *node);
 
 static GParamFlags gst_pylon_query_access(GenApi::INode *node) {
@@ -107,14 +108,19 @@ static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node) {
 
 #define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
 
-static GParamSpec *gst_pylon_make_spec_enum(GenApi::INode *node) {
+static GParamSpec *gst_pylon_make_spec_enum(
+    GenApi::INode *node, Pylon::CBaslerUniversalInstantCamera *camera) {
   static std::unordered_map<GType, std::vector<GEnumValue>> persistent_values;
 
   g_return_val_if_fail(node, NULL);
+  g_return_val_if_fail(camera, NULL);
 
   Pylon::CEnumParameter param(node);
 
-  gchar *name = g_strcanon(g_strdup(node->GetName().c_str()), VALID_CHARS, '_');
+  gchar *name = g_strcanon(
+      g_strdup_printf("%s_%s", camera->GetDeviceInfo().GetFullName().c_str(),
+                      node->GetName().c_str()),
+      VALID_CHARS, '_');
   GType type = g_type_from_name(name);
 
   if (!type) {
@@ -147,7 +153,8 @@ static GParamSpec *gst_pylon_make_spec_enum(GenApi::INode *node) {
                            gst_pylon_query_access(node));
 }
 
-GParamSpec *GstPylonParamFactory::make_param(GenApi::INode *node) {
+GParamSpec *GstPylonParamFactory::make_param(
+    GenApi::INode *node, Pylon::CBaslerUniversalInstantCamera *camera) {
   g_return_val_if_fail(node, NULL);
 
   GParamSpec *spec = NULL;
@@ -165,7 +172,7 @@ GParamSpec *GstPylonParamFactory::make_param(GenApi::INode *node) {
     spec = gst_pylon_make_spec_str(node);
 
   } else if (GenApi::intfIEnumeration == node->GetPrincipalInterfaceType()) {
-    spec = gst_pylon_make_spec_enum(node);
+    spec = gst_pylon_make_spec_enum(node, camera);
 
   } else {
     std::string msg = "Unsupported node of type " +

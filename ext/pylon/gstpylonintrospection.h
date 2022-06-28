@@ -44,6 +44,7 @@
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #endif
 
+#include <pylon/BaslerUniversalInstantCamera.h>
 #include <pylon/PylonIncludes.h>
 
 #ifdef _MSC_VER  // MSVC
@@ -54,7 +55,8 @@
 
 class GstPylonParamFactory {
  public:
-  static GParamSpec *make_param(GenApi::INode *node);
+  static GParamSpec *make_param(GenApi::INode *node,
+                                Pylon::CBaslerUniversalInstantCamera *camera);
 };
 
 #endif
