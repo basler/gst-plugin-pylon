@@ -202,7 +202,7 @@ static void set_pylon_property(GenApi::INodeMap& nodemap, F get_value,
 static void set_enum_property(GenApi::INodeMap& nodemap, const GValue* value,
                               const gchar* name) {
   Pylon::CEnumParameter param(nodemap, name);
-  param.SetIntValue(g_value_get_int(value));
+  param.SetIntValue(g_value_get_enum(value));
 }
 
 template <typename T, typename P>
@@ -225,7 +225,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
 
   try {
     GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
-    switch (pspec->value_type) {
+    switch (g_type_fundamental(pspec->value_type)) {
       case G_TYPE_INT:
         typedef gint (*GGetInt)(const GValue*);
         set_pylon_property<GGetInt, Pylon::CIntegerParameter>(
@@ -294,7 +294,7 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
                 .c_str());
         break;
       case G_TYPE_ENUM:
-        g_value_set_int(value, get_enum_property(nodemap, pspec->name));
+        g_value_set_enum(value, get_enum_property(nodemap, pspec->name));
         break;
       default:
         g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
