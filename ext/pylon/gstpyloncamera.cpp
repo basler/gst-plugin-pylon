@@ -314,6 +314,8 @@ GObject* gst_pylon_camera_new(
   gchar* type_name = gst_pylon_camera_get_sanitized_name(*camera);
 
   GType type = g_type_from_name(type_name);
+  g_free(type_name);
+
   GObject* obj = G_OBJECT(g_object_new(type, NULL));
   GstPylonCamera* self = (GstPylonCamera*)obj;
   GstPylonCameraPrivate* priv =
