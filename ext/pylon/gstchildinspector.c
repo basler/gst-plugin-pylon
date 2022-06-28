@@ -217,6 +217,7 @@ gst_child_inspector_properties_to_string (GObject * object, guint alignment,
         gst_child_inspector_property_to_string (object, property_specs[i],
         alignment);
     g_string_append_printf (props, "\n%s", prop);
+    g_free (prop);
   }
 
   g_free (property_specs);
