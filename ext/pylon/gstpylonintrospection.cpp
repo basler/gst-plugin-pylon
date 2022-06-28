@@ -33,6 +33,8 @@
 
 #include "gstpylonintrospection.h"
 
+#include <unordered_map>
+
 /* prototypes */
 static GParamSpec *gst_pylon_make_spec_int(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node);
@@ -103,14 +105,46 @@ static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node) {
                              gst_pylon_query_access(node));
 }
 
+#define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
+
 static GParamSpec *gst_pylon_make_spec_enum(GenApi::INode *node) {
+  static std::unordered_map<GType, std::vector<GEnumValue>> persistent_values;
+
   g_return_val_if_fail(node, NULL);
 
   Pylon::CEnumParameter param(node);
 
-  return g_param_spec_int64(node->GetName(), node->GetDisplayName(),
-                            node->GetToolTip(), 0, G_MAXINT32,
-                            param.GetIntValue(), gst_pylon_query_access(node));
+  gchar *name = g_strcanon(g_strdup(node->GetName().c_str()), VALID_CHARS, '_');
+  GType type = g_type_from_name(name);
+
+  if (!type) {
+    std::vector<GEnumValue> enumvalues;
+    GenApi::StringList_t values;
+
+    param.GetSettableValues(values);
+    for (const auto &value_name : values) {
+      auto entry = param.GetEntryByName(value_name);
+      auto value = static_cast<gint>(entry->GetValue());
+      auto tooltip = entry->GetNode()->GetToolTip();
+
+      GEnumValue ev = {.value = value,
+                       .value_name = g_strdup(value_name.c_str()),
+                       .value_nick = g_strdup(tooltip.c_str())};
+      enumvalues.push_back(ev);
+    }
+
+    GEnumValue sentinel = {0};
+    enumvalues.push_back(sentinel);
+
+    type = g_enum_register_static(name, enumvalues.data());
+    persistent_values.insert({type, std::move(enumvalues)});
+  }
+
+  g_free(name);
+
+  return g_param_spec_enum(node->GetName(), node->GetDisplayName(),
+                           node->GetToolTip(), type, param.GetIntValue(),
+                           gst_pylon_query_access(node));
 }
 
 GParamSpec *GstPylonParamFactory::make_param(GenApi::INode *node) {
