@@ -133,8 +133,13 @@ gst_child_inspector_type_enum_to_string (GParamSpec * pspec, GValue * value,
   g_free (sdef);
 
   for (iter = penum->enum_class->values; iter->value_name; iter++) {
-    g_string_append_printf (desc, "\n%*s(%d): %-16s - %s", alignment + 35, "",
-        iter->value, iter->value_name, iter->value_nick);
+    if (iter->value_nick[0] == '\0') {
+      g_string_append_printf (desc, "\n%*s(%d): %-18s", alignment + 35, "",
+          iter->value, iter->value_name);
+    } else {
+      g_string_append_printf (desc, "\n%*s(%d): %-18s - %s", alignment + 35, "",
+          iter->value, iter->value_name, iter->value_nick);
+    }
   }
 
   return g_string_free (desc, FALSE);
