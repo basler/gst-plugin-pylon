@@ -151,7 +151,30 @@ static void gst_pylon_camera_install_properties(
       if (node->GetProperty("Streamable", value, attrib)) {
         if (GenICam::gcstring("Yes") == value) {
           try {
-            GParamSpec* pspec = GstPylonParamFactory::make_param(node, camera);
+            /* Follow the feature walker here to unroll the selector
+             * with each entry. Selector may be null for non-selected
+             * features. For example:
+             *  Integer: selector: ROIZoneSelector
+             *    ROIZoneSize-Zone0
+             *    ROIZoneSize-Zone1
+             *    ROIZoneSize-Zone2
+             *
+             * would make three calls:
+             *   INode * node = nodemap ("ROIZoneSize");
+             *   INode * selector = nodemap ("ROIZoneSelector");
+             *
+             *   guint64 selector_value = selector->GetValueByName ("Zone0");
+             *   make_param (node, selector, selector_value, camera);
+             *
+             *   selector_value = selector->GetValueByName ("Zone1");
+             *   make_param (node, selector, selector_value, camera);
+             *
+             *   selector_value = selector->GetValueByName ("Zone2");
+             *   make_param (node, selector, selector_value, camera);
+             */
+            GenApi::INode* selector = nullptr;
+            GParamSpec* pspec = GstPylonParamFactory::make_param(
+                node, selector, selector_value, camera);
             g_object_class_install_property(oclass, nprop, pspec);
             nprop++;
           } catch (const Pylon::GenericException& e) {
@@ -203,6 +226,18 @@ static void set_enum_property(GenApi::INodeMap& nodemap, const GValue* value,
   param.SetIntValue(g_value_get_enum(value));
 }
 
+static void set_selector_int64_property(GenApi::INodeMap& nodemap,
+                                        const GValue* value,
+                                        GenApi::INode* feature,
+                                        GenApi::INode* selector,
+                                        guint64 selector_value) {
+  Pylon::CEnumParameter selparam(selector);
+  Pylon::CIntegerParameter param(feature);
+
+  selparam.SetIntValue(selector_value);
+  param.SetValue(g_value_get_int64(value));
+}
+
 template <typename T, typename P>
 static T get_pylon_property(GenApi::INodeMap& nodemap, const gchar* name) {
   P param(nodemap, name);
@@ -223,28 +258,35 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
 
   try {
     GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
-    switch (g_type_fundamental(pspec->value_type)) {
-      case G_TYPE_INT64:
+    switch (g_type_fundamental(G_PARAM_SPEC_TYPE(pspec))) {
+      case G_TYPE_PARAM_INT64:
         typedef gint64 (*GGetInt64)(const GValue*);
         set_pylon_property<GGetInt64, Pylon::CIntegerParameter>(
             nodemap, g_value_get_int64, value, pspec->name);
         break;
-      case G_TYPE_BOOLEAN:
+      case GST_PYLON_TYPE_PARAM_SELECTOR_INT64: {
+        GstPylonParamSpecSelectorInt64* lspec =
+            GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
+        set_selector_int64_property(nodemap, value, lspec->feature,
+                                    lspec->selector, lspec->selector_value);
+        break;
+      }
+      case G_TYPE_PARAM_BOOLEAN:
         typedef gboolean (*GGetBool)(const GValue*);
         set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
             nodemap, g_value_get_boolean, value, pspec->name);
         break;
-      case G_TYPE_FLOAT:
+      case G_TYPE_PARAM_FLOAT:
         typedef gfloat (*GGetFloat)(const GValue*);
         set_pylon_property<GGetFloat, Pylon::CFloatParameter>(
             nodemap, g_value_get_float, value, pspec->name);
         break;
-      case G_TYPE_STRING:
+      case G_TYPE_PARAM_STRING:
         typedef const gchar* (*GGetString)(const GValue*);
         set_pylon_property<GGetString, Pylon::CStringParameter>(
             nodemap, g_value_get_string, value, pspec->name);
         break;
-      case G_TYPE_ENUM:
+      case G_TYPE_PARAM_ENUM:
         set_enum_property(nodemap, value, pspec->name);
         break;
       default:

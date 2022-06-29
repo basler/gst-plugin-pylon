@@ -37,6 +37,8 @@
 
 /* prototypes */
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INode *node);
+static GParamSpec *gst_pylon_make_spec_selector_int64(GenApi::INode *node,
+                                                      GenApi::INode *selector);
 static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node);
@@ -74,6 +76,20 @@ static GParamSpec *gst_pylon_make_spec_int64(GenApi::INode *node) {
   return g_param_spec_int64(node->GetName(), node->GetDisplayName(),
                             node->GetToolTip(), param.GetMin(), param.GetMax(),
                             param.GetValue(), gst_pylon_query_access(node));
+}
+
+static GParamSpec *gst_pylon_make_spec_selector_int64(GenApi::INode *node,
+                                                      GenApi::INode *selector,
+                                                      guint64 selector_value) {
+  g_return_val_if_fail(node, NULL);
+
+  Pylon::CEnumParameter selparam(selector);
+  Pylon::CIntegerParameter param(node);
+
+  return gst_pylon_param_spec_selector_int64(
+      node, selector, selector_value, node->GetDisplayName(),
+      node->GetToolTip(), param.GetMin(), param.GetMax(), param.GetValue(),
+      gst_pylon_query_access(node));
 }
 
 static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node) {
@@ -159,30 +175,39 @@ static GParamSpec *gst_pylon_make_spec_enum(
 }
 
 GParamSpec *GstPylonParamFactory::make_param(
-    GenApi::INode *node, Pylon::CBaslerUniversalInstantCamera *camera) {
-  g_return_val_if_fail(node, NULL);
+    GenApi::INode *node, GenApi::INode *selector, guint64 selector_value,
+    Pylon::CBaslerUniversalInstantCamera *camera) {
+  g_return_val_if_fail(node, {});
+  g_return_val_if_fail(camera, {});
 
   GParamSpec *spec = NULL;
+  Pylon::EInterfaceType iface = node->GetPrincipalInterfaceType();
 
-  if (GenApi::intfIInteger == node->GetPrincipalInterfaceType()) {
-    spec = gst_pylon_make_spec_int64(node);
-
-  } else if (GenApi::intfIBoolean == node->GetPrincipalInterfaceType()) {
-    spec = gst_pylon_make_spec_bool(node);
-
-  } else if (GenApi::intfIFloat == node->GetPrincipalInterfaceType()) {
-    spec = gst_pylon_make_spec_float(node);
-
-  } else if (GenApi::intfIString == node->GetPrincipalInterfaceType()) {
-    spec = gst_pylon_make_spec_str(node);
-
-  } else if (GenApi::intfIEnumeration == node->GetPrincipalInterfaceType()) {
-    spec = gst_pylon_make_spec_enum(node, camera);
-
-  } else {
-    std::string msg = "Unsupported node of type " +
-                      std::to_string(node->GetPrincipalInterfaceType());
-    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  switch (iface) {
+    case GenApi::intfIInteger:
+      if (!selector) {
+        spec = gst_pylon_make_spec_int64(node);
+      } else {
+        spec =
+            gst_pylon_make_spec_selector_int64(node, selector, selector_value);
+      }
+      break;
+    case GenApi::intfIBoolean:
+      spec = gst_pylon_make_spec_bool(node);
+      break;
+    case GenApi::intfIFloat:
+      spec = gst_pylon_make_spec_float(node);
+      break;
+    case GenApi::intfIString:
+      spec = gst_pylon_make_spec_str(node);
+      break;
+    case GenApi::intfIEnumeration:
+      spec = gst_pylon_make_spec_enum(node, camera);
+      break;
+    default:
+      std::string msg = "Unsupported node of type " +
+                        std::to_string(node->GetPrincipalInterfaceType());
+      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
   }
 
   return spec;
