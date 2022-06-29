@@ -225,8 +225,8 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
     GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
     switch (g_type_fundamental(pspec->value_type)) {
       case G_TYPE_INT64:
-        typedef gint64 (*GGetInt)(const GValue*);
-        set_pylon_property<GGetInt, Pylon::CIntegerParameter>(
+        typedef gint64 (*GGetInt64)(const GValue*);
+        set_pylon_property<GGetInt64, Pylon::CIntegerParameter>(
             nodemap, g_value_get_int64, value, pspec->name);
         break;
       case G_TYPE_BOOLEAN:
@@ -271,8 +271,8 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
     switch (g_type_fundamental(pspec->value_type)) {
       case G_TYPE_INT64:
         g_value_set_int64(value,
-                        get_pylon_property<gint, Pylon::CIntegerParameter>(
-                            nodemap, pspec->name));
+                          get_pylon_property<gint64, Pylon::CIntegerParameter>(
+                              nodemap, pspec->name));
         break;
       case G_TYPE_BOOLEAN:
         g_value_set_boolean(
