@@ -268,7 +268,7 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
 
   try {
     GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
-    switch (pspec->value_type) {
+    switch (g_type_fundamental(pspec->value_type)) {
       case G_TYPE_INT:
         g_value_set_int(value,
                         get_pylon_property<gint, Pylon::CIntegerParameter>(
