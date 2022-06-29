@@ -303,9 +303,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
   }
 
   if (ptr_grab_result->GrabSucceeded() == FALSE) {
-    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-                ptr_grab_result->GetErrorDescription().c_str());
-    return FALSE;
+    g_warning("Grab Failed: %s",
+              ptr_grab_result->GetErrorDescription().c_str());
   }
 
   gsize buffer_size = ptr_grab_result->GetBufferSize();
