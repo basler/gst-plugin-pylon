@@ -1,13 +1,34 @@
-/*  
- *  Copyright (C) 2019 RidgeRun, LLC (http://www.ridgerun.com)
- *  All Rights Reserved. 
+/* Copyright (C) 2022 Basler AG
  *
- *  The contents of this software are proprietary and confidential to RidgeRun, 
- *  LLC.  No part of this program may be photocopied, reproduced or translated 
- *  into another programming language without prior written consent of
- *  RidgeRun, LLC.  The user is free to modify the source code after obtaining 
- *  a software license from RidgeRun.  All source code changes must be provided 
- *  back to RidgeRun without any encumbrance. 
+ * Created by RidgeRun, LLC <support@ridgerun.com>
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *     1. Redistributions of source code must retain the above
+ *        copyright notice, this list of conditions and the following
+ *        disclaimer.
+ *     2. Redistributions in binary form must reproduce the above
+ *        copyright notice, this list of conditions and the following
+ *        disclaimer in the documentation and/or other materials
+ *        provided with the distribution.
+ *     3. Neither the name of the copyright holder nor the names of
+ *        its contributors may be used to endorse or promote products
+ *        derived from this software without specific prior written
+ *        permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "gstchildinspector.h"
@@ -16,16 +37,18 @@ typedef struct _GstChildInspectorFlag GstChildInspectorFlag;
 typedef struct _GstChildInspectorType GstChildInspectorType;
 
 typedef gchar *(*GstChildInspectorTypeToString) (GParamSpec * pspec,
-    GValue * value);
+    GValue * value, gint alignment);
 
 static gchar *gst_child_inspector_type_int_to_string (GParamSpec * pspec,
-    GValue * value);
+    GValue * value, gint alignment);
 static gchar *gst_child_inspector_type_bool_to_string (GParamSpec * pspec,
-    GValue * value);
+    GValue * value, gint alignment);
 static gchar *gst_child_inspector_type_float_to_string (GParamSpec * pspec,
-    GValue * value);
+    GValue * value, gint alignment);
 static gchar *gst_child_inspector_type_string_to_string (GParamSpec * pspec,
-    GValue * value);
+    GValue * value, gint alignment);
+static gchar *gst_child_inspector_type_enum_to_string (GParamSpec * pspec,
+    GValue * value, gint alignment);
 
 struct _GstChildInspectorFlag
 {
@@ -53,18 +76,21 @@ static GstChildInspectorType types[] = {
   {G_TYPE_BOOLEAN, gst_child_inspector_type_bool_to_string},
   {G_TYPE_FLOAT, gst_child_inspector_type_float_to_string},
   {G_TYPE_STRING, gst_child_inspector_type_string_to_string},
+  {G_TYPE_ENUM, gst_child_inspector_type_enum_to_string},
   {}
 };
 
 static gchar *
-gst_child_inspector_type_string_to_string (GParamSpec * pspec, GValue * value)
+gst_child_inspector_type_string_to_string (GParamSpec * pspec, GValue * value,
+    gint alignment)
 {
   return g_strdup_printf ("String. Default: \"%s\"",
       g_value_get_string (value));
 }
 
 static gchar *
-gst_child_inspector_type_int_to_string (GParamSpec * pspec, GValue * value)
+gst_child_inspector_type_int_to_string (GParamSpec * pspec, GValue * value,
+    gint alignment)
 {
   GParamSpecInt64 *pint = G_PARAM_SPEC_INT64 (pspec);
 
@@ -74,7 +100,8 @@ gst_child_inspector_type_int_to_string (GParamSpec * pspec, GValue * value)
 }
 
 static gchar *
-gst_child_inspector_type_float_to_string (GParamSpec * pspec, GValue * value)
+gst_child_inspector_type_float_to_string (GParamSpec * pspec, GValue * value,
+    gint alignment)
 {
   GParamSpecFloat *pint = G_PARAM_SPEC_FLOAT (pspec);
 
@@ -83,10 +110,39 @@ gst_child_inspector_type_float_to_string (GParamSpec * pspec, GValue * value)
 }
 
 static gchar *
-gst_child_inspector_type_bool_to_string (GParamSpec * pspec, GValue * value)
+gst_child_inspector_type_bool_to_string (GParamSpec * pspec, GValue * value,
+    gint alignment)
 {
   return g_strdup_printf ("Boolean. Default: %s",
       g_value_get_boolean (value) ? "true" : "false");
+}
+
+static gchar *
+gst_child_inspector_type_enum_to_string (GParamSpec * pspec, GValue * value,
+    gint alignment)
+{
+  GParamSpecEnum *penum = G_PARAM_SPEC_ENUM (pspec);
+  GType type = G_TYPE_FROM_CLASS (penum->enum_class);
+  gint def = g_value_get_enum (value);
+  gchar *sdef = g_enum_to_string (type, def);
+  GString *desc = g_string_new (NULL);
+  GEnumValue *iter = NULL;
+
+  g_string_append_printf (desc, "Enum \"%s\" Default: %d, \"%s\"",
+      g_type_name (type), def, sdef);
+  g_free (sdef);
+
+  for (iter = penum->enum_class->values; iter->value_name; iter++) {
+    if (iter->value_nick[0] == '\0') {
+      g_string_append_printf (desc, "\n%*s(%d): %-18s", alignment + 35, "",
+          iter->value, iter->value_name);
+    } else {
+      g_string_append_printf (desc, "\n%*s(%d): %-18s - %s", alignment + 35, "",
+          iter->value, iter->value_name, iter->value_nick);
+    }
+  }
+
+  return g_string_free (desc, FALSE);
 }
 
 static const gchar *
@@ -137,7 +193,8 @@ gst_child_inspector_flags_to_string (GParamFlags flags)
 }
 
 static gchar *
-gst_child_inspector_type_to_string (GParamSpec * pspec, GValue * value)
+gst_child_inspector_type_to_string (GParamSpec * pspec, GValue * value,
+    gint alignment)
 {
   GstChildInspectorType *current_type;
   const GType value_type = G_VALUE_TYPE (value);
@@ -147,8 +204,8 @@ gst_child_inspector_type_to_string (GParamSpec * pspec, GValue * value)
   g_return_val_if_fail (value, NULL);
 
   for (current_type = types; current_type->to_string; ++current_type) {
-    if (current_type->value == value_type) {
-      to_string = current_type->to_string (pspec, value);
+    if (g_type_is_a (value_type, current_type->value)) {
+      to_string = current_type->to_string (pspec, value, alignment);
       break;
     }
   }
@@ -178,7 +235,7 @@ gst_child_inspector_property_to_string (GObject * object, GParamSpec * param,
   g_value_init (&value, param->value_type);
   g_param_value_set_default (param, &value);
 
-  type = gst_child_inspector_type_to_string (param, &value);
+  type = gst_child_inspector_type_to_string (param, &value, alignment);
   g_value_unset (&value);
 
   prop = g_strdup_printf ("%*s%-30s: %s\n"

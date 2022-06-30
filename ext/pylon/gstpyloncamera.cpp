@@ -45,14 +45,12 @@ struct _GstPylonCameraPrivate {
  * Start of GObject definition
  ***********************************************************/
 
-#define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
-
 static gchar* gst_pylon_camera_get_sanitized_name(
     const Pylon::CBaslerUniversalInstantCamera& camera) {
-  Pylon::String_t cam_name = "_" + camera.GetDeviceInfo().GetFullName();
+  Pylon::String_t cam_name = camera.GetDeviceInfo().GetFullName();
 
   /* Convert camera name to a valid string */
-  return g_strcanon(g_strdup(cam_name.c_str()), VALID_CHARS, '_');
+  return GstPylonParamFactory::sanitize_name(cam_name.c_str());
 }
 
 static void gst_pylon_camera_init(GstPylonCamera* self);
@@ -153,7 +151,7 @@ static void gst_pylon_camera_install_properties(
       if (node->GetProperty("Streamable", value, attrib)) {
         if (GenICam::gcstring("Yes") == value) {
           try {
-            GParamSpec* pspec = GstPylonParamFactory::make_param(node);
+            GParamSpec* pspec = GstPylonParamFactory::make_param(node, camera);
             g_object_class_install_property(oclass, nprop, pspec);
             nprop++;
           } catch (const Pylon::GenericException& e) {
@@ -202,7 +200,7 @@ static void set_pylon_property(GenApi::INodeMap& nodemap, F get_value,
 static void set_enum_property(GenApi::INodeMap& nodemap, const GValue* value,
                               const gchar* name) {
   Pylon::CEnumParameter param(nodemap, name);
-  param.SetIntValue(g_value_get_int(value));
+  param.SetIntValue(g_value_get_enum(value));
 }
 
 template <typename T, typename P>
@@ -225,7 +223,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
 
   try {
     GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
-    switch (pspec->value_type) {
+    switch (g_type_fundamental(pspec->value_type)) {
       case G_TYPE_INT:
         typedef gint (*GGetInt)(const GValue*);
         set_pylon_property<GGetInt, Pylon::CIntegerParameter>(
@@ -270,7 +268,7 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
 
   try {
     GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
-    switch (pspec->value_type) {
+    switch (g_type_fundamental(pspec->value_type)) {
       case G_TYPE_INT:
         g_value_set_int(value,
                         get_pylon_property<gint, Pylon::CIntegerParameter>(
@@ -294,7 +292,7 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
                 .c_str());
         break;
       case G_TYPE_ENUM:
-        g_value_set_int(value, get_enum_property(nodemap, pspec->name));
+        g_value_set_enum(value, get_enum_property(nodemap, pspec->name));
         break;
       default:
         g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
