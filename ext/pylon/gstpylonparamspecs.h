@@ -61,15 +61,18 @@ G_BEGIN_DECLS
  * features controlled by a Selector
  */
 
-#define GST_PYLON_TYPE_PARAM_SELECTOR_INT64      (gst_pylon_param_spec_selector_int64_get_type ())
-#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_INT64(pspec) (G_TYPE_CHECK_INSTANCE_TYPE ((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_INT64))
-#define GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec)    (G_TYPE_CHECK_INSTANCE_CAST ((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_INT64, GstPylonParamSpecSelectorInt64))
+#define GST_PYLON_TYPE_PARAM_SELECTOR_INT64 \
+  (gst_pylon_param_spec_selector_int64_get_type())
+#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_INT64(pspec) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_INT64))
+#define GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec)                          \
+  (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_INT64, \
+                              GstPylonParamSpecSelectorInt64))
 
 /* --- get_type functions --- */
 
 GST_API
-GType  gst_pylon_param_spec_selector_int64_get_type (void);
-
+GType gst_pylon_param_spec_selector_int64_get_type(void);
 
 /* --- typedefs & structures --- */
 
@@ -82,26 +85,24 @@ typedef struct _GstPylonParamSpecSelectorInt64 GstPylonParamSpecSelectorInt64;
  * @selector_name: the name of the selector that controls the feature
  * @feature_name: the name of the feature controlled by the selector
  *
- * A GParamSpec derived structure that contains the meta data for Pylon int64eger
- * features controlled by a selector.
+ * A GParamSpec derived structure that contains the meta data for Pylon
+ * int64eger features controlled by a selector.
  */
 struct _GstPylonParamSpecSelectorInt64 {
   GParamSpec parent_instance;
-  GParamSpec * base;
-  GenApi::INode * feature;
-  GenApi::INode * selector;
+  GParamSpec* base;
+  GenApi::INode* feature;
+  GenApi::INode* selector;
   gint64 selector_value;
 };
 
 /* --- GParamSpec prototypes --- */
 
 GST_API
-GParamSpec * gst_pylon_param_spec_selector_int64 (const gchar * selector_name,
-						  const gchar * feature_name,
-						  const gchar * nick,
-						  const gchar * blurb,
-						  gint64 min, gint64 max,
-						  gint64 def, GParamFlags flags) G_GNUC_MALLOC;
+GParamSpec* gst_pylon_param_spec_selector_int64(
+    const gchar* selector_name, const gchar* feature_name, const gchar* nick,
+    const gchar* blurb, gint64 min, gint64 max, gint64 def,
+    GParamFlags flags) G_GNUC_MALLOC;
 
 G_END_DECLS
 

@@ -37,116 +37,102 @@
 
 #include "gstpylonparamspecs.h"
 
-static void
-_gst_pylon_param_selector_int64_init (GParamSpec * pspec)
-{
+static void _gst_pylon_param_selector_int64_init(GParamSpec *pspec) {
   GstPylonParamSpecSelectorInt64 *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_INT64 (pspec);
+      GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
 
   spec->feature = NULL;
   spec->selector = NULL;
-  spec->selector_value = G_GUINT64_CONSTANT (0);
+  spec->selector_value = G_GUINT64_CONSTANT(0);
   spec->base = NULL;
 }
 
-static void
-_gst_pylon_param_selector_int64_finalize (GParamSpec * pspec)
-{
+static void _gst_pylon_param_selector_int64_finalize(GParamSpec *pspec) {
   GstPylonParamSpecSelectorInt64 *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_INT64 (pspec);
+      GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
 
-  g_param_spec_unref (spec->base);
+  g_param_spec_unref(spec->base);
 }
 
-static void
-_gst_pylon_param_selector_int64_set_default (GParamSpec * pspec, GValue * value)
-{
+static void _gst_pylon_param_selector_int64_set_default(GParamSpec *pspec,
+                                                        GValue *value) {
   GstPylonParamSpecSelectorInt64 *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_INT64 (pspec);
+      GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
 
-  g_param_value_set_default (spec->base, value);
+  g_param_value_set_default(spec->base, value);
 }
 
-static gboolean
-_gst_pylon_param_selector_int64_validate (GParamSpec * pspec, GValue * value)
-{
+static gboolean _gst_pylon_param_selector_int64_validate(GParamSpec *pspec,
+                                                         GValue *value) {
   GstPylonParamSpecSelectorInt64 *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_INT64 (pspec);
+      GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
 
-  return g_param_value_validate (spec->base, value);
+  return g_param_value_validate(spec->base, value);
 }
 
-static gint
-_gst_pylon_param_selector_int64_values_cmp (GParamSpec * pspec,
-    const GValue * value1, const GValue * value2)
-{
+static gint _gst_pylon_param_selector_int64_values_cmp(GParamSpec *pspec,
+                                                       const GValue *value1,
+                                                       const GValue *value2) {
   GstPylonParamSpecSelectorInt64 *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_INT64 (pspec);
+      GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
 
-  return g_param_values_cmp (spec->base, value1, value2);
+  return g_param_values_cmp(spec->base, value1, value2);
 }
 
-GType
-gst_pylon_param_spec_selector_int64_get_type (void)
-{
+GType gst_pylon_param_spec_selector_int64_get_type(void) {
   static GType gst_pylon_selector_int64_type = 0;
 
   /* register GST_PYLON_TYPE_PARAM_SELECTOR_INT64 */
-  if (g_once_init_enter (&gst_pylon_selector_int64_type)) {
+  if (g_once_init_enter(&gst_pylon_selector_int64_type)) {
     GType type;
     static GParamSpecTypeInfo pspec_info = {
-      sizeof (GstPylonParamSpecSelectorInt64),  /* instance_size     */
-      0,                        /* n_preallocs       */
-      _gst_pylon_param_selector_int64_init,     /* instance_init     */
-      G_TYPE_INT64,             /* value_type        */
-      _gst_pylon_param_selector_int64_finalize, /* finalize          */
-      _gst_pylon_param_selector_int64_set_default,      /* value_set_default */
-      _gst_pylon_param_selector_int64_validate, /* value_validate    */
-      _gst_pylon_param_selector_int64_values_cmp,       /* values_cmp        */
+        sizeof(GstPylonParamSpecSelectorInt64),      /* instance_size     */
+        0,                                           /* n_preallocs       */
+        _gst_pylon_param_selector_int64_init,        /* instance_init     */
+        G_TYPE_INT64,                                /* value_type        */
+        _gst_pylon_param_selector_int64_finalize,    /* finalize          */
+        _gst_pylon_param_selector_int64_set_default, /* value_set_default */
+        _gst_pylon_param_selector_int64_validate,    /* value_validate    */
+        _gst_pylon_param_selector_int64_values_cmp,  /* values_cmp        */
     };
 
     type =
-        g_param_type_register_static ("GstPylonParamSelectorInt64",
-        &pspec_info);
-    g_once_init_leave (&gst_pylon_selector_int64_type, type);
+        g_param_type_register_static("GstPylonParamSelectorInt64", &pspec_info);
+    g_once_init_leave(&gst_pylon_selector_int64_type, type);
   }
 
   return gst_pylon_selector_int64_type;
 }
 
-GParamSpec *
-gst_pylon_param_spec_selector_int64 (GenApi::INode * selector,
-    GenApi::INode * feature,
-    guint64 selector_value,
-    const gchar * nick,
-    const gchar * blurb, gint64 min, gint64 max, gint64 def, GParamFlags flags)
-{
+GParamSpec *gst_pylon_param_spec_selector_int64(
+    GenApi::INode *selector, GenApi::INode *feature, guint64 selector_value,
+    const gchar *nick, const gchar *blurb, gint64 min, gint64 max, gint64 def,
+    GParamFlags flags) {
   GstPylonParamSpecSelectorInt64 *spec;
   gchar *name = NULL;
 
-  g_return_val_if_fail (selector_name, NULL);
-  g_return_val_if_fail (feature_name, NULL);
+  g_return_val_if_fail(selector_name, NULL);
+  g_return_val_if_fail(feature_name, NULL);
 
-  g_return_val_if_fail (def >= min && def <= max, NULL);
+  g_return_val_if_fail(def >= min && def <= max, NULL);
 
   /* Build the property name based on the selector and the feature.
      Since this is no longer a static string, we need to ensure that
      the STATIC_NAME flag is not set */
-  name =
-      g_strdup_printf ("%s-%s", feature->GetName ().c_str (),
-      selector->GetEntry (selector_value)->GetSymbolic ().c_str ());
+  name = g_strdup_printf(
+      "%s-%s", feature->GetName().c_str(),
+      selector->GetEntry(selector_value)->GetSymbolic().c_str());
   flags &= ~G_PARAM_STATIC_NAME;
 
-  spec =
-      g_param_spec_internal (GST_PYLON_TYPE_PARAM_SELECTOR_INT64, name, nick,
-      blurb, flags);
+  spec = g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_INT64, name, nick,
+                               blurb, flags);
 
   spec->selector = selector;
   spec->feature = feature;
   spec->selector_value = selector_value;
 
-  spec->base = g_param_spec_int64 (name, nick, blurb, min, max, def, flags);
-  g_free (name);
+  spec->base = g_param_spec_int64(name, nick, blurb, min, max, def, flags);
+  g_free(name);
 
-  return G_PARAM_SPEC (spec);
+  return G_PARAM_SPEC(spec);
 }
