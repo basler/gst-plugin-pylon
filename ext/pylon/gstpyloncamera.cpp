@@ -164,8 +164,6 @@ static void handle_node(GenApi::INode* node,
       /* This feature has "is selected" */
       std::vector<std::vector<std::string>> selector_values;
       for (auto const& s : selectors) {
-        printf("selector: %s\n", s->GetNode()->GetName().c_str());
-
         /* Add selector enum values */
         std::vector<std::string> enum_values;
         if (auto enum_node = dynamic_cast<GenApi::IEnumeration*>(s)) {
@@ -271,12 +269,7 @@ static void gst_pylon_camera_install_properties(
              *
              * dynamic_cast<ISelector*>(node) -> necesary for selector node.
              */
-            int selector_value = 0;  // temporal
-            GenApi::INode* selector = nullptr;
-            GParamSpec* pspec = GstPylonParamFactory::make_param(
-                node, selector, selector_value, camera);
-            g_object_class_install_property(oclass, nprop, pspec);
-            nprop++;
+            handle_node(node, camera, oclass, nprop);
           } catch (const Pylon::GenericException& e) {
             GST_DEBUG("Unable to install property \"%s\" on \"%s\": %s",
                       node->GetDisplayName().c_str(),

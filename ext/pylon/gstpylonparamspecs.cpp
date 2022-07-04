@@ -106,7 +106,7 @@ GType gst_pylon_param_spec_selector_int64_get_type(void) {
 
 /* TODO: change selector to ISelector */
 GParamSpec *gst_pylon_param_spec_selector_int64(
-    GenApi::INode *selector, GenApi::INode *feature, guint64 selector_value,
+    GenApi::INode *feature, GenApi::INode *selector, guint64 selector_value,
     const gchar *nick, const gchar *blurb, gint64 min, gint64 max, gint64 def,
     GParamFlags flags) {
   GstPylonParamSpecSelectorInt64 *spec;
