@@ -32,13 +32,15 @@
  */
 
 #include "gstpylonintrospection.h"
+#include "gstpylonparamspecs.h"
 
 #include <unordered_map>
 
 /* prototypes */
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_selector_int64(GenApi::INode *node,
-                                                      GenApi::INode *selector);
+                                                      GenApi::INode *selector,
+                                                      guint64 selector_value);
 static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node);
@@ -177,11 +179,11 @@ static GParamSpec *gst_pylon_make_spec_enum(
 GParamSpec *GstPylonParamFactory::make_param(
     GenApi::INode *node, GenApi::INode *selector, guint64 selector_value,
     Pylon::CBaslerUniversalInstantCamera *camera) {
-  g_return_val_if_fail(node, {});
-  g_return_val_if_fail(camera, {});
+  g_return_val_if_fail(node, NULL);
+  g_return_val_if_fail(camera, NULL);
 
   GParamSpec *spec = NULL;
-  Pylon::EInterfaceType iface = node->GetPrincipalInterfaceType();
+  GenApi::EInterfaceType iface = node->GetPrincipalInterfaceType();
 
   switch (iface) {
     case GenApi::intfIInteger:

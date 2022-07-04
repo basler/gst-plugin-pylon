@@ -33,6 +33,7 @@
 
 #include "gstpyloncamera.h"
 #include "gstpylonintrospection.h"
+#include "gstpylonparamspecs.h"
 
 #include <queue>
 
@@ -171,7 +172,10 @@ static void gst_pylon_camera_install_properties(
              *
              *   selector_value = selector->GetValueByName ("Zone2");
              *   make_param (node, selector, selector_value, camera);
+             *
+             * dynamic_cast<ISelector*>(node) -> necesary for selector node.
              */
+            int selector_value = 0;  // temporal
             GenApi::INode* selector = nullptr;
             GParamSpec* pspec = GstPylonParamFactory::make_param(
                 node, selector, selector_value, camera);
@@ -264,13 +268,12 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
         set_pylon_property<GGetInt64, Pylon::CIntegerParameter>(
             nodemap, g_value_get_int64, value, pspec->name);
         break;
-      case GST_PYLON_TYPE_PARAM_SELECTOR_INT64: {
+      case GST_PYLON_TYPE_PARAM_SELECTOR_INT64:
         GstPylonParamSpecSelectorInt64* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
         set_selector_int64_property(nodemap, value, lspec->feature,
                                     lspec->selector, lspec->selector_value);
         break;
-      }
       case G_TYPE_PARAM_BOOLEAN:
         typedef gboolean (*GGetBool)(const GValue*);
         set_pylon_property<GGetBool, Pylon::CBooleanParameter>(

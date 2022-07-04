@@ -104,34 +104,40 @@ GType gst_pylon_param_spec_selector_int64_get_type(void) {
   return gst_pylon_selector_int64_type;
 }
 
+/* TODO: change selector to ISelector */
 GParamSpec *gst_pylon_param_spec_selector_int64(
     GenApi::INode *selector, GenApi::INode *feature, guint64 selector_value,
     const gchar *nick, const gchar *blurb, gint64 min, gint64 max, gint64 def,
     GParamFlags flags) {
   GstPylonParamSpecSelectorInt64 *spec;
   gchar *name = NULL;
+  gint _flags = static_cast<gint>(flags);
 
-  g_return_val_if_fail(selector_name, NULL);
-  g_return_val_if_fail(feature_name, NULL);
+  g_return_val_if_fail(selector, NULL);
+  g_return_val_if_fail(feature, NULL);
 
   g_return_val_if_fail(def >= min && def <= max, NULL);
 
   /* Build the property name based on the selector and the feature.
      Since this is no longer a static string, we need to ensure that
      the STATIC_NAME flag is not set */
-  name = g_strdup_printf(
-      "%s-%s", feature->GetName().c_str(),
-      selector->GetEntry(selector_value)->GetSymbolic().c_str());
-  flags &= ~G_PARAM_STATIC_NAME;
 
-  spec = g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_INT64, name, nick,
-                               blurb, flags);
+  Pylon::CEnumParameter param(selector);
+
+  name = g_strdup_printf("%s-%s", feature->GetName().c_str(),
+                         param.GetEntry(selector_value)->GetSymbolic().c_str());
+  _flags &= ~G_PARAM_STATIC_NAME;
+
+  spec = static_cast<GstPylonParamSpecSelectorInt64 *>(
+      g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_INT64, name, nick,
+                            blurb, static_cast<GParamFlags>(_flags)));
 
   spec->selector = selector;
   spec->feature = feature;
   spec->selector_value = selector_value;
 
-  spec->base = g_param_spec_int64(name, nick, blurb, min, max, def, flags);
+  spec->base = g_param_spec_int64(name, nick, blurb, min, max, def,
+                                  static_cast<GParamFlags>(_flags));
   g_free(name);
 
   return G_PARAM_SPEC(spec);

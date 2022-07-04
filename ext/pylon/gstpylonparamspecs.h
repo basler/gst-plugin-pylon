@@ -100,8 +100,8 @@ struct _GstPylonParamSpecSelectorInt64 {
 
 GST_API
 GParamSpec* gst_pylon_param_spec_selector_int64(
-    const gchar* selector_name, const gchar* feature_name, const gchar* nick,
-    const gchar* blurb, gint64 min, gint64 max, gint64 def,
+    GenApi::INode* selector, GenApi::INode* feature, guint64 selector_value,
+    const gchar* nick, const gchar* blurb, gint64 min, gint64 max, gint64 def,
     GParamFlags flags) G_GNUC_MALLOC;
 
 G_END_DECLS
