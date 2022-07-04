@@ -35,6 +35,7 @@
 #include "gstpylonintrospection.h"
 #include "gstpylonparamspecs.h"
 
+#include <numeric>
 #include <queue>
 
 typedef struct _GstPylonCameraPrivate GstPylonCameraPrivate;
@@ -106,6 +107,12 @@ GType gst_pylon_camera_register(
  ***********************************************************/
 
 /* prototypes */
+template <class Type>
+static std::vector<std::vector<Type>> cartesian(
+    std::vector<std::vector<Type>>& v);
+static void handle_node(GenApi::INode* node,
+                        Pylon::CBaslerUniversalInstantCamera* camera,
+                        GObjectClass* oclass, gint& nprop);
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
 template <typename F, typename P>
@@ -122,6 +129,95 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
 static void gst_pylon_camera_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec);
 static void gst_pylon_camera_finalize(GObject* self);
+
+template <class Type>
+static std::vector<std::vector<Type>> cartesian(
+    std::vector<std::vector<Type>>& v) {
+  std::vector<std::vector<Type>> result;
+  auto product = [](long long a, std::vector<Type>& b) { return a * b.size(); };
+  const long long N = accumulate(v.begin(), v.end(), 1LL, product);
+  std::vector<Type> u(v.size());
+  for (long long n = 0; n < N; ++n) {
+    lldiv_t q{n, 0};
+    for (long long i = v.size() - 1; 0 <= i; --i) {
+      q = div(q.quot, v[i].size());
+      u[i] = v[i][q.rem];
+    }
+    result.push_back(u);
+  }
+  return result;
+}
+
+static void handle_node(GenApi::INode* node,
+                        Pylon::CBaslerUniversalInstantCamera* camera,
+                        GObjectClass* oclass, gint& nprop) {
+  GenApi::INode* selector_node = NULL;
+  guint64 selector_value = 0;
+
+  g_return_if_fail(node);
+  g_return_if_fail(camera);
+
+  if (auto sel_node = dynamic_cast<GenApi::ISelector*>(node)) {
+    GenApi::FeatureList_t selectors;
+    sel_node->GetSelectingFeatures(selectors);
+    if (selectors.size()) {
+      /* This feature has "is selected" */
+      std::vector<std::vector<std::string>> selector_values;
+      for (auto const& s : selectors) {
+        printf("selector: %s\n", s->GetNode()->GetName().c_str());
+
+        /* Add selector enum values */
+        std::vector<std::string> enum_values;
+        if (auto enum_node = dynamic_cast<GenApi::IEnumeration*>(s)) {
+          GenApi::NodeList_t enum_entries;
+          enum_node->GetEntries(enum_entries);
+          for (auto const& e : enum_entries) {
+            auto enum_name = std::string(e->GetName());
+
+            enum_values.push_back(
+                enum_name.substr(enum_name.find_last_of("_") + 1));
+          }
+          /* Found values */
+          if (enum_values.size()) {
+            selector_values.push_back(enum_values);
+          }
+        } else {
+          GST_DEBUG("%s is not an enumerator selector, ignoring!",
+                    node->GetDisplayName().c_str());
+        }
+      }
+
+      /* Output node for all selector permutations
+       *
+       * Support for features that have more than one selector
+       * is pending.
+       */
+      auto selector_permutations = cartesian(selector_values);
+      for (auto const& sel_pair : selector_permutations) {
+        if (sel_pair.size()) {
+          selector_node = selectors.at(0)->GetNode();
+          Pylon::CEnumParameter param(selector_node);
+          selector_value =
+              param.GetEntryByName(sel_pair.at(0).c_str())->GetValue();
+          GParamSpec* pspec = GstPylonParamFactory::make_param(
+              node, selector_node, selector_value, camera);
+          g_object_class_install_property(oclass, nprop, pspec);
+          nprop++;
+        }
+      }
+    } else {
+      // "direct" unselected features
+      GParamSpec* pspec = GstPylonParamFactory::make_param(
+          node, selector_node, selector_value, camera);
+      g_object_class_install_property(oclass, nprop, pspec);
+      nprop++;
+    }
+
+  } else {
+    std::string msg = std::string(node->GetName()) + " is an invalid node";
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
+}
 
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
