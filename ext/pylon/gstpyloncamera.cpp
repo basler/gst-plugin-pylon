@@ -259,44 +259,38 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
   GstPylonCamera* self = (GstPylonCamera*)object;
   GstPylonCameraPrivate* priv =
       (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
+  GType feature_type = g_type_fundamental(G_PARAM_SPEC_TYPE(pspec));
 
   try {
     GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
-    switch (g_type_fundamental(G_PARAM_SPEC_TYPE(pspec))) {
-      case G_TYPE_PARAM_INT64:
-        typedef gint64 (*GGetInt64)(const GValue*);
-        set_pylon_property<GGetInt64, Pylon::CIntegerParameter>(
-            nodemap, g_value_get_int64, value, pspec->name);
-        break;
-      case GST_PYLON_TYPE_PARAM_SELECTOR_INT64:
-        GstPylonParamSpecSelectorInt64* lspec =
-            GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
-        set_selector_int64_property(nodemap, value, lspec->feature,
-                                    lspec->selector, lspec->selector_value);
-        break;
-      case G_TYPE_PARAM_BOOLEAN:
-        typedef gboolean (*GGetBool)(const GValue*);
-        set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
-            nodemap, g_value_get_boolean, value, pspec->name);
-        break;
-      case G_TYPE_PARAM_FLOAT:
-        typedef gfloat (*GGetFloat)(const GValue*);
-        set_pylon_property<GGetFloat, Pylon::CFloatParameter>(
-            nodemap, g_value_get_float, value, pspec->name);
-        break;
-      case G_TYPE_PARAM_STRING:
-        typedef const gchar* (*GGetString)(const GValue*);
-        set_pylon_property<GGetString, Pylon::CStringParameter>(
-            nodemap, g_value_get_string, value, pspec->name);
-        break;
-      case G_TYPE_PARAM_ENUM:
-        set_enum_property(nodemap, value, pspec->name);
-        break;
-      default:
-        g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
-        std::string msg =
-            "Unsupported GType: " + std::string(g_type_name(pspec->value_type));
-        throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    if (G_TYPE_PARAM_INT64 == feature_type) {
+      typedef gint64 (*GGetInt64)(const GValue*);
+      set_pylon_property<GGetInt64, Pylon::CIntegerParameter>(
+          nodemap, g_value_get_int64, value, pspec->name);
+    } else if (GST_PYLON_TYPE_PARAM_SELECTOR_INT64 == feature_type) {
+      GstPylonParamSpecSelectorInt64* lspec =
+          GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
+      set_selector_int64_property(nodemap, value, lspec->feature,
+                                  lspec->selector, lspec->selector_value);
+    } else if (G_TYPE_PARAM_BOOLEAN == feature_type) {
+      typedef gboolean (*GGetBool)(const GValue*);
+      set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
+          nodemap, g_value_get_boolean, value, pspec->name);
+    } else if (G_TYPE_PARAM_FLOAT == feature_type) {
+      typedef gfloat (*GGetFloat)(const GValue*);
+      set_pylon_property<GGetFloat, Pylon::CFloatParameter>(
+          nodemap, g_value_get_float, value, pspec->name);
+    } else if (G_TYPE_PARAM_STRING == feature_type) {
+      typedef const gchar* (*GGetString)(const GValue*);
+      set_pylon_property<GGetString, Pylon::CStringParameter>(
+          nodemap, g_value_get_string, value, pspec->name);
+    } else if (G_TYPE_PARAM_ENUM == feature_type) {
+      set_enum_property(nodemap, value, pspec->name);
+    } else {
+      g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
+      std::string msg =
+          "Unsupported GType: " + std::string(g_type_name(pspec->value_type));
+      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
   } catch (const Pylon::GenericException& e) {
     GST_ERROR("Unable to set pylon property \"%s\" on \"%s\": %s", pspec->name,
