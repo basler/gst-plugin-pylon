@@ -84,16 +84,33 @@ G_BEGIN_DECLS
   (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_BOOL, \
                               GstPylonParamSpecSelectorBool))
 
+/**
+ * GstPylonParamSelectorStr:
+ *
+ * A fundamental type that describes a #GParamSpec Pylon
+ * features controlled by a Selector
+ */
+
+#define GST_PYLON_TYPE_PARAM_SELECTOR_STR \
+  (gst_pylon_param_spec_selector_str_get_type())
+#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_STR(pspec) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_STR))
+#define GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec)                          \
+  (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_STR, \
+                              GstPylonParamSpecSelectorStr))
+
 /* --- get_type functions --- */
 
 GST_API
 GType gst_pylon_param_spec_selector_int64_get_type(void);
 GType gst_pylon_param_spec_selector_bool_get_type(void);
+GType gst_pylon_param_spec_selector_str_get_type(void);
 
 /* --- typedefs & structures --- */
 
 typedef struct _GstPylonParamSpecSelectorInt64 GstPylonParamSpecSelectorInt64;
 typedef struct _GstPylonParamSpecSelectorBool GstPylonParamSpecSelectorBool;
+typedef struct _GstPylonParamSpecSelectorStr GstPylonParamSpecSelectorStr;
 
 /**
  * GstPylonParamSpecSelectorInt64:
@@ -110,13 +127,13 @@ struct _GstPylonParamSpecSelectorInt64 {
   GParamSpec* base;
   GenApi::INode* feature;
   GenApi::INode* selector;
-  gint64 selector_value;
+  guint64 selector_value;
 };
 
 /**
  * GstPylonParamSpecSelectorBool:
  * @parent_instance: super class
- * @base: an existing bool param spec to rely on
+ * @base: an existing boolean param spec to rely on
  * @selector_name: the name of the selector that controls the feature
  * @feature_name: the name of the feature controlled by the selector
  *
@@ -128,7 +145,25 @@ struct _GstPylonParamSpecSelectorBool {
   GParamSpec* base;
   GenApi::INode* feature;
   GenApi::INode* selector;
-  gboolean selector_value;
+  guint64 selector_value;
+};
+
+/**
+ * GstPylonParamSpecSelectorStr:
+ * @parent_instance: super class
+ * @base: an existing string param spec to rely on
+ * @selector_name: the name of the selector that controls the feature
+ * @feature_name: the name of the feature controlled by the selector
+ *
+ * A GParamSpec derived structure that contains the meta data for Pylon
+ * string features controlled by a selector.
+ */
+struct _GstPylonParamSpecSelectorStr {
+  GParamSpec parent_instance;
+  GParamSpec* base;
+  GenApi::INode* feature;
+  GenApi::INode* selector;
+  guint64 selector_value;
 };
 
 /* --- GParamSpec prototypes --- */
@@ -144,6 +179,10 @@ GParamSpec* gst_pylon_param_spec_selector_bool(GenApi::INode* selector,
                                                const gchar* nick,
                                                const gchar* blurb, gboolean def,
                                                GParamFlags flags) G_GNUC_MALLOC;
+GParamSpec* gst_pylon_param_spec_selector_str(
+    GenApi::INode* feature, GenApi::INode* selector, guint64 selector_value,
+    const gchar* nick, const gchar* blurb, const gchar* def,
+    GParamFlags flags) G_GNUC_MALLOC;
 
 G_END_DECLS
 

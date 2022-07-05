@@ -407,6 +407,13 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
       typedef const gchar* (*GGetString)(const GValue*);
       set_pylon_property<GGetString, Pylon::CStringParameter>(
           nodemap, g_value_get_string, value, pspec->name);
+    } else if (GST_PYLON_TYPE_PARAM_SELECTOR_STR == feature_type) {
+      GstPylonParamSpecSelectorStr* lspec =
+          GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
+      typedef const gchar* (*GGetString)(const GValue*);
+      set_pylon_selector_property<GGetString, Pylon::CStringParameter>(
+          nodemap, g_value_get_string, value, lspec->feature, lspec->selector,
+          lspec->selector_value);
     } else if (G_TYPE_PARAM_ENUM == feature_type) {
       set_enum_property(nodemap, value, pspec->name);
     } else {

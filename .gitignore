@@ -13,3 +13,6 @@ Build
 /build
 /_build
 /subprojects
+
+# vscode
+/ext/pylon/.vscode/
