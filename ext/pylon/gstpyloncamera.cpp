@@ -110,9 +110,11 @@ GType gst_pylon_camera_register(
 template <class Type>
 static std::vector<std::vector<Type>> cartesian(
     std::vector<std::vector<Type>>& v);
-static void handle_node(GenApi::INode* node,
-                        Pylon::CBaslerUniversalInstantCamera* camera,
-                        GObjectClass* oclass, gint& nprop);
+static std::vector<GParamSpec*> handle_node(
+    GenApi::INode* node, Pylon::CBaslerUniversalInstantCamera* camera,
+    GObjectClass* oclass, gint& nprop);
+static void gst_pylon_camera_install_specs(std::vector<GParamSpec*> specs_list,
+                                           GObjectClass* oclass, gint& nprop);
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
 template <typename F, typename P>
@@ -148,14 +150,15 @@ static std::vector<std::vector<Type>> cartesian(
   return result;
 }
 
-static void handle_node(GenApi::INode* node,
-                        Pylon::CBaslerUniversalInstantCamera* camera,
-                        GObjectClass* oclass, gint& nprop) {
+static std::vector<GParamSpec*> handle_node(
+    GenApi::INode* node, Pylon::CBaslerUniversalInstantCamera* camera,
+    GObjectClass* oclass, gint& nprop) {
   GenApi::INode* selector_node = NULL;
   guint64 selector_value = 0;
+  std::vector<GParamSpec*> specs_list;
 
-  g_return_if_fail(node);
-  g_return_if_fail(camera);
+  g_return_val_if_fail(node, specs_list);
+  g_return_val_if_fail(camera, specs_list);
 
   if (auto sel_node = dynamic_cast<GenApi::ISelector*>(node)) {
     GenApi::FeatureList_t selectors;
@@ -197,23 +200,36 @@ static void handle_node(GenApi::INode* node,
           Pylon::CEnumParameter param(selector_node);
           selector_value =
               param.GetEntryByName(sel_pair.at(0).c_str())->GetValue();
-          GParamSpec* pspec = GstPylonParamFactory::make_param(
-              node, selector_node, selector_value, camera);
-          g_object_class_install_property(oclass, nprop, pspec);
-          nprop++;
+          specs_list.push_back(GstPylonParamFactory::make_param(
+              node, selector_node, selector_value, camera));
         }
       }
     } else {
-      // "direct" unselected features
-      GParamSpec* pspec = GstPylonParamFactory::make_param(
-          node, selector_node, selector_value, camera);
-      g_object_class_install_property(oclass, nprop, pspec);
-      nprop++;
+      /* "Direct" unselected features */
+      specs_list.push_back(GstPylonParamFactory::make_param(
+          node, selector_node, selector_value, camera));
     }
+    return specs_list;
 
   } else {
     std::string msg = std::string(node->GetName()) + " is an invalid node";
     throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
+}
+
+static void gst_pylon_camera_install_specs(std::vector<GParamSpec*> specs_list,
+                                           GObjectClass* oclass, gint& nprop) {
+  g_return_if_fail(oclass);
+
+  if (!specs_list.empty()) {
+    for (const auto& pspec : specs_list) {
+      g_object_class_install_property(oclass, nprop, pspec);
+      nprop++;
+    }
+  } else {
+    throw Pylon::GenericException(
+        "Could not install GParamSpecs, no GParamSpecs were created", __FILE__,
+        __LINE__);
   }
 }
 
@@ -269,7 +285,9 @@ static void gst_pylon_camera_install_properties(
              *
              * dynamic_cast<ISelector*>(node) -> necesary for selector node.
              */
-            handle_node(node, camera, oclass, nprop);
+            std::vector<GParamSpec*> specs_list =
+                handle_node(node, camera, oclass, nprop);
+            gst_pylon_camera_install_specs(specs_list, oclass, nprop);
           } catch (const Pylon::GenericException& e) {
             GST_DEBUG("Unable to install property \"%s\" on \"%s\": %s",
                       node->GetDisplayName().c_str(),
