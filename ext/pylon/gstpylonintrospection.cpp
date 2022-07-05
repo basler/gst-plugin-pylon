@@ -42,6 +42,9 @@ static GParamSpec *gst_pylon_make_spec_selector_int64(GenApi::INode *node,
                                                       GenApi::INode *selector,
                                                       guint64 selector_value);
 static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node);
+static GParamSpec *gst_pylon_make_spec_selector_bool(GenApi::INode *node,
+                                                     GenApi::INode *selector,
+                                                     guint64 selector_value);
 static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_enum(
@@ -85,7 +88,6 @@ static GParamSpec *gst_pylon_make_spec_selector_int64(GenApi::INode *node,
                                                       guint64 selector_value) {
   g_return_val_if_fail(node, NULL);
 
-  Pylon::CEnumParameter selparam(selector);
   Pylon::CIntegerParameter param(node);
 
   return gst_pylon_param_spec_selector_int64(
@@ -102,6 +104,18 @@ static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node) {
   return g_param_spec_boolean(node->GetName(), node->GetDisplayName(),
                               node->GetToolTip(), param.GetValue(),
                               gst_pylon_query_access(node));
+}
+
+static GParamSpec *gst_pylon_make_spec_selector_bool(GenApi::INode *node,
+                                                     GenApi::INode *selector,
+                                                     guint64 selector_value) {
+  g_return_val_if_fail(node, NULL);
+
+  Pylon::CBooleanParameter param(node);
+
+  return gst_pylon_param_spec_selector_bool(
+      node, selector, selector_value, node->GetDisplayName(),
+      node->GetToolTip(), param.GetValue(), gst_pylon_query_access(node));
 }
 
 static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node) {
@@ -195,7 +209,12 @@ GParamSpec *GstPylonParamFactory::make_param(
       }
       break;
     case GenApi::intfIBoolean:
-      spec = gst_pylon_make_spec_bool(node);
+      if (!selector) {
+        spec = gst_pylon_make_spec_bool(node);
+      } else {
+        spec =
+            gst_pylon_make_spec_selector_bool(node, selector, selector_value);
+      }
       break;
     case GenApi::intfIFloat:
       spec = gst_pylon_make_spec_float(node);

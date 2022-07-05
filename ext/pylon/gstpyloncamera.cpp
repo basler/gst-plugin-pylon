@@ -392,6 +392,13 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
       typedef gboolean (*GGetBool)(const GValue*);
       set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
           nodemap, g_value_get_boolean, value, pspec->name);
+    } else if (GST_PYLON_TYPE_PARAM_SELECTOR_BOOL == feature_type) {
+      GstPylonParamSpecSelectorBool* lspec =
+          GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
+      typedef gboolean (*GGetBool)(const GValue*);
+      set_pylon_selector_property<GGetBool, Pylon::CBooleanParameter>(
+          nodemap, g_value_get_boolean, value, lspec->feature, lspec->selector,
+          lspec->selector_value);
     } else if (G_TYPE_PARAM_FLOAT == feature_type) {
       typedef gfloat (*GGetFloat)(const GValue*);
       set_pylon_property<GGetFloat, Pylon::CFloatParameter>(

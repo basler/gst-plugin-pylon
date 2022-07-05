@@ -69,14 +69,31 @@ G_BEGIN_DECLS
   (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_INT64, \
                               GstPylonParamSpecSelectorInt64))
 
+/**
+ * GstPylonParamSelectorBool:
+ *
+ * A fundamental type that describes a #GParamSpec Pylon
+ * features controlled by a Selector
+ */
+
+#define GST_PYLON_TYPE_PARAM_SELECTOR_BOOL \
+  (gst_pylon_param_spec_selector_bool_get_type())
+#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_BOOL(pspec) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_BOOL))
+#define GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec)                          \
+  (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_BOOL, \
+                              GstPylonParamSpecSelectorBool))
+
 /* --- get_type functions --- */
 
 GST_API
 GType gst_pylon_param_spec_selector_int64_get_type(void);
+GType gst_pylon_param_spec_selector_bool_get_type(void);
 
 /* --- typedefs & structures --- */
 
 typedef struct _GstPylonParamSpecSelectorInt64 GstPylonParamSpecSelectorInt64;
+typedef struct _GstPylonParamSpecSelectorBool GstPylonParamSpecSelectorBool;
 
 /**
  * GstPylonParamSpecSelectorInt64:
@@ -96,6 +113,24 @@ struct _GstPylonParamSpecSelectorInt64 {
   gint64 selector_value;
 };
 
+/**
+ * GstPylonParamSpecSelectorBool:
+ * @parent_instance: super class
+ * @base: an existing bool param spec to rely on
+ * @selector_name: the name of the selector that controls the feature
+ * @feature_name: the name of the feature controlled by the selector
+ *
+ * A GParamSpec derived structure that contains the meta data for Pylon
+ * boolean features controlled by a selector.
+ */
+struct _GstPylonParamSpecSelectorBool {
+  GParamSpec parent_instance;
+  GParamSpec* base;
+  GenApi::INode* feature;
+  GenApi::INode* selector;
+  gboolean selector_value;
+};
+
 /* --- GParamSpec prototypes --- */
 
 GST_API
@@ -103,6 +138,12 @@ GParamSpec* gst_pylon_param_spec_selector_int64(
     GenApi::INode* selector, GenApi::INode* feature, guint64 selector_value,
     const gchar* nick, const gchar* blurb, gint64 min, gint64 max, gint64 def,
     GParamFlags flags) G_GNUC_MALLOC;
+GParamSpec* gst_pylon_param_spec_selector_bool(GenApi::INode* selector,
+                                               GenApi::INode* feature,
+                                               guint64 selector_value,
+                                               const gchar* nick,
+                                               const gchar* blurb, gboolean def,
+                                               GParamFlags flags) G_GNUC_MALLOC;
 
 G_END_DECLS
 
