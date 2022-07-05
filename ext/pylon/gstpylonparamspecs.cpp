@@ -111,7 +111,7 @@ GParamSpec *gst_pylon_param_spec_selector_int64(
     GParamFlags flags) {
   GstPylonParamSpecSelectorInt64 *spec;
   gchar *name = NULL;
-  gint _flags = static_cast<gint>(flags);
+  gint int_flags = static_cast<gint>(flags);
 
   g_return_val_if_fail(selector, NULL);
   g_return_val_if_fail(feature, NULL);
@@ -126,18 +126,18 @@ GParamSpec *gst_pylon_param_spec_selector_int64(
 
   name = g_strdup_printf("%s-%s", feature->GetName().c_str(),
                          param.GetEntry(selector_value)->GetSymbolic().c_str());
-  _flags &= ~G_PARAM_STATIC_NAME;
+  int_flags &= ~G_PARAM_STATIC_NAME;
 
   spec = static_cast<GstPylonParamSpecSelectorInt64 *>(
       g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_INT64, name, nick,
-                            blurb, static_cast<GParamFlags>(_flags)));
+                            blurb, static_cast<GParamFlags>(int_flags)));
 
   spec->selector = selector;
   spec->feature = feature;
   spec->selector_value = selector_value;
 
   spec->base = g_param_spec_int64(name, nick, blurb, min, max, def,
-                                  static_cast<GParamFlags>(_flags));
+                                  static_cast<GParamFlags>(int_flags));
   g_free(name);
 
   return G_PARAM_SPEC(spec);
