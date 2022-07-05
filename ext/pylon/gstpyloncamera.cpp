@@ -122,6 +122,12 @@ static void set_pylon_property(GenApi::INodeMap& nodemap, F get_value,
                                const GValue* value, const gchar* name);
 static void set_enum_property(GenApi::INodeMap& nodemap, const GValue* value,
                               const gchar* name);
+template <typename F, typename P>
+static void set_pylon_selector_property(GenApi::INodeMap& nodemap, F get_value,
+                                        const GValue* value,
+                                        GenApi::INode* feature,
+                                        GenApi::INode* selector,
+                                        guint64 selector_value);
 template <typename T, typename P>
 static T get_pylon_property(GenApi::INodeMap& nodemap, const gchar* name);
 static gint get_enum_property(GenApi::INodeMap& nodemap, const gchar* name);
@@ -337,16 +343,17 @@ static void set_enum_property(GenApi::INodeMap& nodemap, const GValue* value,
   param.SetIntValue(g_value_get_enum(value));
 }
 
-static void set_selector_int64_property(GenApi::INodeMap& nodemap,
+template <typename F, typename P>
+static void set_pylon_selector_property(GenApi::INodeMap& nodemap, F get_value,
                                         const GValue* value,
                                         GenApi::INode* feature,
                                         GenApi::INode* selector,
                                         guint64 selector_value) {
   Pylon::CEnumParameter selparam(selector);
-  Pylon::CIntegerParameter param(feature);
-
   selparam.SetIntValue(selector_value);
-  param.SetValue(g_value_get_int64(value));
+
+  set_pylon_property<F, P>(nodemap, get_value, value,
+                           feature->GetName().c_str());
 }
 
 template <typename T, typename P>
@@ -377,8 +384,10 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
     } else if (GST_PYLON_TYPE_PARAM_SELECTOR_INT64 == feature_type) {
       GstPylonParamSpecSelectorInt64* lspec =
           GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
-      set_selector_int64_property(nodemap, value, lspec->feature,
-                                  lspec->selector, lspec->selector_value);
+      typedef gint64 (*GGetInt64)(const GValue*);
+      set_pylon_selector_property<GGetInt64, Pylon::CIntegerParameter>(
+          nodemap, g_value_get_int64, value, lspec->feature, lspec->selector,
+          lspec->selector_value);
     } else if (G_TYPE_PARAM_BOOLEAN == feature_type) {
       typedef gboolean (*GGetBool)(const GValue*);
       set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
