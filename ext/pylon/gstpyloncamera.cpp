@@ -113,8 +113,9 @@ static std::vector<std::vector<Type>> cartesian(
 static std::vector<GParamSpec*> handle_node(
     GenApi::INode* node, Pylon::CBaslerUniversalInstantCamera* camera,
     GObjectClass* oclass, gint& nprop);
-static void gst_pylon_camera_install_specs(std::vector<GParamSpec*> specs_list,
-                                           GObjectClass* oclass, gint& nprop);
+static void gst_pylon_camera_install_specs(
+    const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
+    gint& nprop);
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
 template <typename F, typename P>
@@ -127,7 +128,7 @@ static void set_pylon_selector_property(GenApi::INodeMap& nodemap, F get_value,
                                         const GValue* value,
                                         GenApi::INode* feature,
                                         GenApi::INode* selector,
-                                        guint64 selector_value);
+                                        guint64& selector_value);
 template <typename T, typename P>
 static T get_pylon_property(GenApi::INodeMap& nodemap, const gchar* name);
 static gint get_enum_property(GenApi::INodeMap& nodemap, const gchar* name);
@@ -223,8 +224,9 @@ static std::vector<GParamSpec*> handle_node(
   }
 }
 
-static void gst_pylon_camera_install_specs(std::vector<GParamSpec*> specs_list,
-                                           GObjectClass* oclass, gint& nprop) {
+static void gst_pylon_camera_install_specs(
+    const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
+    gint& nprop) {
   g_return_if_fail(oclass);
 
   if (!specs_list.empty()) {
@@ -348,7 +350,10 @@ static void set_pylon_selector_property(GenApi::INodeMap& nodemap, F get_value,
                                         const GValue* value,
                                         GenApi::INode* feature,
                                         GenApi::INode* selector,
-                                        guint64 selector_value) {
+                                        guint64& selector_value) {
+  g_return_if_fail(feature);
+  g_return_if_fail(selector);
+
   Pylon::CEnumParameter selparam(selector);
   selparam.SetIntValue(selector_value);
 
@@ -403,6 +408,13 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
       typedef gfloat (*GGetFloat)(const GValue*);
       set_pylon_property<GGetFloat, Pylon::CFloatParameter>(
           nodemap, g_value_get_float, value, pspec->name);
+    } else if (GST_PYLON_TYPE_PARAM_SELECTOR_FLOAT == feature_type) {
+      GstPylonParamSpecSelectorFloat* lspec =
+          GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
+      typedef gfloat (*GGetFloat)(const GValue*);
+      set_pylon_selector_property<GGetFloat, Pylon::CFloatParameter>(
+          nodemap, g_value_get_float, value, lspec->feature, lspec->selector,
+          lspec->selector_value);
     } else if (G_TYPE_PARAM_STRING == feature_type) {
       typedef const gchar* (*GGetString)(const GValue*);
       set_pylon_property<GGetString, Pylon::CStringParameter>(

@@ -46,6 +46,9 @@ static GParamSpec *gst_pylon_make_spec_selector_bool(GenApi::INode *node,
                                                      GenApi::INode *selector,
                                                      guint64 selector_value);
 static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node);
+static GParamSpec *gst_pylon_make_spec_selector_float(GenApi::INode *node,
+                                                      GenApi::INode *selector,
+                                                      guint64 selector_value);
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_selector_str(GenApi::INode *node,
                                                     GenApi::INode *selector,
@@ -129,6 +132,19 @@ static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node) {
   return g_param_spec_float(node->GetName(), node->GetDisplayName(),
                             node->GetToolTip(), param.GetMin(), param.GetMax(),
                             param.GetValue(), gst_pylon_query_access(node));
+}
+
+static GParamSpec *gst_pylon_make_spec_selector_float(GenApi::INode *node,
+                                                      GenApi::INode *selector,
+                                                      guint64 selector_value) {
+  g_return_val_if_fail(node, NULL);
+
+  Pylon::CFloatParameter param(node);
+
+  return gst_pylon_param_spec_selector_float(
+      node, selector, selector_value, node->GetDisplayName(),
+      node->GetToolTip(), param.GetMin(), param.GetMax(), param.GetValue(),
+      gst_pylon_query_access(node));
 }
 
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node) {
@@ -232,7 +248,12 @@ GParamSpec *GstPylonParamFactory::make_param(
       }
       break;
     case GenApi::intfIFloat:
-      spec = gst_pylon_make_spec_float(node);
+      if (!selector) {
+        spec = gst_pylon_make_spec_float(node);
+      } else {
+        spec =
+            gst_pylon_make_spec_selector_float(node, selector, selector_value);
+      }
       break;
     case GenApi::intfIString:
       if (!selector) {
