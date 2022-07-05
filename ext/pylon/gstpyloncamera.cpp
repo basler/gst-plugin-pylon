@@ -199,10 +199,13 @@ static std::vector<GParamSpec*> handle_node(
        *
        * Support for features that have more than one selector
        * is pending.
+       *
+       * Enum selectors ignored for now.
        */
       auto selector_permutations = cartesian(selector_values);
       for (auto const& sel_pair : selector_permutations) {
-        if (sel_pair.size()) {
+        if (sel_pair.size() &&
+            node->GetPrincipalInterfaceType() != GenApi::intfIEnumeration) {
           selector_node = selectors.at(0)->GetNode();
           Pylon::CEnumParameter param(selector_node);
           selector_value =
@@ -270,29 +273,6 @@ static void gst_pylon_camera_install_properties(
       if (node->GetProperty("Streamable", value, attrib)) {
         if (GenICam::gcstring("Yes") == value) {
           try {
-            /* Follow the feature walker here to unroll the selector
-             * with each entry. Selector may be null for non-selected
-             * features. For example:
-             *  Integer: selector: ROIZoneSelector
-             *    ROIZoneSize-Zone0
-             *    ROIZoneSize-Zone1
-             *    ROIZoneSize-Zone2
-             *
-             * would make three calls:
-             *   INode * node = nodemap ("ROIZoneSize");
-             *   INode * selector = nodemap ("ROIZoneSelector");
-             *
-             *   guint64 selector_value = selector->GetValueByName ("Zone0");
-             *   make_param (node, selector, selector_value, camera);
-             *
-             *   selector_value = selector->GetValueByName ("Zone1");
-             *   make_param (node, selector, selector_value, camera);
-             *
-             *   selector_value = selector->GetValueByName ("Zone2");
-             *   make_param (node, selector, selector_value, camera);
-             *
-             * dynamic_cast<ISelector*>(node) -> necesary for selector node.
-             */
             std::vector<GParamSpec*> specs_list =
                 handle_node(node, camera, oclass, nprop);
             gst_pylon_camera_install_specs(specs_list, oclass, nprop);
@@ -428,6 +408,11 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
           lspec->selector_value);
     } else if (G_TYPE_PARAM_ENUM == feature_type) {
       set_enum_property(nodemap, value, pspec->name);
+    } else if (GST_PYLON_TYPE_PARAM_SELECTOR_ENUM == feature_type) {
+      GstPylonParamSpecSelectorEnum* lspec =
+          GST_PYLON_PARAM_SPEC_SELECTOR_ENUM(pspec);
+      set_enum_property(nodemap, value, lspec->selector->GetName().c_str());
+      set_enum_property(nodemap, value, lspec->feature->GetName().c_str());
     } else {
       g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
       std::string msg =

@@ -114,6 +114,21 @@ G_BEGIN_DECLS
   (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_STR, \
                               GstPylonParamSpecSelectorStr))
 
+/**
+ * GstPylonParamSelectorEnum:
+ *
+ * A fundamental type that describes a #GParamSpec Pylon
+ * features controlled by a Selector
+ */
+
+#define GST_PYLON_TYPE_PARAM_SELECTOR_ENUM \
+  (gst_pylon_param_spec_selector_enum_get_type())
+#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_ENUM(pspec) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_ENUM))
+#define GST_PYLON_PARAM_SPEC_SELECTOR_ENUM(pspec)                          \
+  (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_ENUM, \
+                              GstPylonParamSpecSelectorEnum))
+
 /* --- get_type functions --- */
 
 GST_API
@@ -121,6 +136,7 @@ GType gst_pylon_param_spec_selector_int64_get_type(void);
 GType gst_pylon_param_spec_selector_bool_get_type(void);
 GType gst_pylon_param_spec_selector_float_get_type(void);
 GType gst_pylon_param_spec_selector_str_get_type(void);
+GType gst_pylon_param_spec_selector_enum_get_type(void);
 
 /* --- typedefs & structures --- */
 
@@ -128,6 +144,7 @@ typedef struct _GstPylonParamSpecSelectorInt64 GstPylonParamSpecSelectorInt64;
 typedef struct _GstPylonParamSpecSelectorBool GstPylonParamSpecSelectorBool;
 typedef struct _GstPylonParamSpecSelectorFloat GstPylonParamSpecSelectorFloat;
 typedef struct _GstPylonParamSpecSelectorStr GstPylonParamSpecSelectorStr;
+typedef struct _GstPylonParamSpecSelectorEnum GstPylonParamSpecSelectorEnum;
 
 /**
  * GstPylonParamSpecSelectorInt64:
@@ -201,6 +218,24 @@ struct _GstPylonParamSpecSelectorStr {
   guint64 selector_value;
 };
 
+/**
+ * GstPylonParamSpecSelectorEnum:
+ * @parent_instance: super class
+ * @base: an existing enumaration param spec to rely on
+ * @selector_name: the name of the selector that controls the feature
+ * @feature_name: the name of the feature controlled by the selector
+ *
+ * A GParamSpec derived structure that contains the meta data for Pylon
+ * string features controlled by a selector.
+ */
+struct _GstPylonParamSpecSelectorEnum {
+  GParamSpec parent_instance;
+  GParamSpec* base;
+  GenApi::INode* feature;
+  GenApi::INode* selector;
+  guint64 selector_value;
+};
+
 /* --- GParamSpec prototypes --- */
 
 GST_API
@@ -221,6 +256,10 @@ GParamSpec* gst_pylon_param_spec_selector_float(
 GParamSpec* gst_pylon_param_spec_selector_str(
     GenApi::INode* feature, GenApi::INode* selector, guint64 selector_value,
     const gchar* nick, const gchar* blurb, const gchar* def,
+    GParamFlags flags) G_GNUC_MALLOC;
+GParamSpec* gst_pylon_param_spec_selector_enum(
+    GenApi::INode* feature, GenApi::INode* selector, guint64 selector_value,
+    const gchar* nick, const gchar* blurb, GType type, gint64 def,
     GParamFlags flags) G_GNUC_MALLOC;
 
 G_END_DECLS
