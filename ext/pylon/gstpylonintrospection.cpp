@@ -190,7 +190,7 @@ static GType gst_pylon_make_enum_type(
   gchar *full_name =
       g_strdup_printf("%s_%s", camera->GetDeviceInfo().GetFullName().c_str(),
                       node->GetName().c_str());
-  gchar *name = GstPylonParamFactory::sanitize_name(full_name);
+  gchar *name = gst_pylon_param_spec_sanitize_name(full_name);
   g_free(full_name);
 
   GType type = g_type_from_name(name);
@@ -247,7 +247,7 @@ static GParamSpec *gst_pylon_make_spec_selector_enum(
   GType type = gst_pylon_make_enum_type(node, camera);
 
   return gst_pylon_param_spec_selector_enum(
-      node, selector, selector_value, node->GetDisplayName(),
+      camera, node, selector, selector_value, node->GetDisplayName(),
       node->GetToolTip(), type, param.GetIntValue(),
       gst_pylon_query_access(node));
 }
@@ -308,12 +308,4 @@ GParamSpec *GstPylonParamFactory::make_param(
   }
 
   return spec;
-}
-
-#define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
-
-gchar *GstPylonParamFactory::sanitize_name(const gchar *name) {
-  g_return_val_if_fail(name, NULL);
-
-  return g_strcanon(g_strdup_printf("_%s", name), VALID_CHARS, '_');
 }

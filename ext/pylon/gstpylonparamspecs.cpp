@@ -37,6 +37,14 @@
 
 #include "gstpylonparamspecs.h"
 
+#define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
+
+gchar *gst_pylon_param_spec_sanitize_name(const gchar *name) {
+  g_return_val_if_fail(name, NULL);
+
+  return g_strcanon(g_strdup_printf("_%s", name), VALID_CHARS, '_');
+}
+
 /* --- Selector int64 type functions --- */
 
 static void _gst_pylon_param_selector_int64_init(GParamSpec *pspec) {
@@ -454,8 +462,7 @@ GParamSpec *gst_pylon_param_spec_selector_str(
 /* --- Selector enumeration type functions --- */
 
 static void _gst_pylon_param_selector_enum_init(GParamSpec *pspec) {
-  GstPylonParamSpecSelectorEnum *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_ENUM(pspec);
+  GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
 
   spec->feature = NULL;
   spec->selector = NULL;
@@ -464,24 +471,21 @@ static void _gst_pylon_param_selector_enum_init(GParamSpec *pspec) {
 }
 
 static void _gst_pylon_param_selector_enum_finalize(GParamSpec *pspec) {
-  GstPylonParamSpecSelectorEnum *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_ENUM(pspec);
+  GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
 
   g_param_spec_unref(spec->base);
 }
 
 static void _gst_pylon_param_selector_enum_set_default(GParamSpec *pspec,
                                                        GValue *value) {
-  GstPylonParamSpecSelectorEnum *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_ENUM(pspec);
+  GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
 
   g_param_value_set_default(spec->base, value);
 }
 
 static gboolean _gst_pylon_param_selector_enum_validate(GParamSpec *pspec,
                                                         GValue *value) {
-  GstPylonParamSpecSelectorEnum *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_ENUM(pspec);
+  GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
 
   return g_param_value_validate(spec->base, value);
 }
@@ -489,14 +493,20 @@ static gboolean _gst_pylon_param_selector_enum_validate(GParamSpec *pspec,
 static gint _gst_pylon_param_selector_enum_values_cmp(GParamSpec *pspec,
                                                       const GValue *value1,
                                                       const GValue *value2) {
-  GstPylonParamSpecSelectorEnum *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_ENUM(pspec);
+  GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
 
   return g_param_values_cmp(spec->base, value1, value2);
 }
 
-GType gst_pylon_param_spec_selector_enum_get_type(void) {
+GType gst_pylon_param_spec_selector_enum_register(
+    Pylon::CBaslerUniversalInstantCamera *camera, gchar *feature_name,
+    GType enum_feature_type) {
   static GType gst_pylon_selector_enum_type = 0;
+
+  gchar *full_name = g_strdup_printf(
+      "%s_%s", camera->GetDeviceInfo().GetFullName().c_str(), feature_name);
+  gchar *name = gst_pylon_param_spec_sanitize_name(full_name);
+  g_free(full_name);
 
   /* register GST_PYLON_TYPE_PARAM_SELECTOR_ENUM */
   if (g_once_init_enter(&gst_pylon_selector_enum_type)) {
@@ -505,27 +515,24 @@ GType gst_pylon_param_spec_selector_enum_get_type(void) {
         sizeof(GstPylonParamSpecSelectorEnum),      /* instance_size     */
         0,                                          /* n_preallocs       */
         _gst_pylon_param_selector_enum_init,        /* instance_init     */
-        G_TYPE_ENUM,                                /* value_type        */
+        enum_feature_type,                          /* value_type        */
         _gst_pylon_param_selector_enum_finalize,    /* finalize          */
         _gst_pylon_param_selector_enum_set_default, /* value_set_default */
         _gst_pylon_param_selector_enum_validate,    /* value_validate    */
         _gst_pylon_param_selector_enum_values_cmp,  /* values_cmp        */
     };
 
-    type =
-        g_param_type_register_static("GstPylonParamSelectorEnum", &pspec_info);
+    type = g_param_type_register_static(name, &pspec_info);
     g_once_init_leave(&gst_pylon_selector_enum_type, type);
   }
 
   return gst_pylon_selector_enum_type;
 }
 
-GParamSpec *gst_pylon_param_spec_selector_enum(GenApi::INode *feature,
-                                               GenApi::INode *selector,
-                                               guint64 selector_value,
-                                               const gchar *nick,
-                                               const gchar *blurb, GType type,
-                                               gint64 def, GParamFlags flags) {
+GParamSpec *gst_pylon_param_spec_selector_enum(
+    Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *feature,
+    GenApi::INode *selector, guint64 selector_value, const gchar *nick,
+    const gchar *blurb, GType type, gint64 def, GParamFlags flags) {
   GstPylonParamSpecSelectorEnum *spec;
   gchar *name = NULL;
   gint int_flags = static_cast<gint>(flags);
@@ -542,9 +549,9 @@ GParamSpec *gst_pylon_param_spec_selector_enum(GenApi::INode *feature,
                          param.GetEntry(selector_value)->GetSymbolic().c_str());
   int_flags &= ~G_PARAM_STATIC_NAME;
 
-  spec = static_cast<GstPylonParamSpecSelectorEnum *>(
-      g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_ENUM, name, nick,
-                            blurb, static_cast<GParamFlags>(int_flags)));
+  spec = static_cast<GstPylonParamSpecSelectorEnum *>(g_param_spec_internal(
+      gst_pylon_param_spec_selector_enum_register(camera, name, type), name,
+      nick, blurb, static_cast<GParamFlags>(int_flags)));
 
   spec->selector = selector;
   spec->feature = feature;

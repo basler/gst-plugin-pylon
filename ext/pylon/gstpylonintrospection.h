@@ -58,8 +58,6 @@ class GstPylonParamFactory {
   static GParamSpec *make_param(GenApi::INode *node, GenApi::INode *selector,
                                 guint64 selector_value,
                                 Pylon::CBaslerUniversalInstantCamera *camera);
-
-  static gchar *sanitize_name(const gchar *name);
 };
 
 #endif
