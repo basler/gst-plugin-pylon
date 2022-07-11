@@ -40,9 +40,9 @@ endif
 
 
 pylon_sources = [
-  'gstchildinspector.cpp',
   'gstpylonsrc.c',
   'gstpylonplugin.c',
+  'gstchildinspector.cpp',
   'gstpyloncamera.cpp',
   'gstpylon.cpp',
   'gstpylonintrospection.cpp',

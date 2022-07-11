@@ -32,6 +32,7 @@
  */
 
 #include "gstchildinspector.h"
+#include "gstpylonparamspecs.h"
 
 typedef struct _GstChildInspectorFlag GstChildInspectorFlag;
 typedef struct _GstChildInspectorType GstChildInspectorType;
@@ -92,7 +93,17 @@ static gchar *gst_child_inspector_type_string_to_string(GParamSpec *pspec,
 static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
                                                        GValue *value,
                                                        gint alignment) {
-  GParamSpecInt64 *pint = G_PARAM_SPEC_INT64(pspec);
+  GParamSpecInt64 *pint = NULL;
+  GType pspec_type = G_PARAM_SPEC_TYPE(pspec);
+
+  /* Check whether pspec corresponds to a selector or not */
+  if (G_TYPE_PARAM_INT64 == pspec_type) {
+    pint = G_PARAM_SPEC_INT64(pspec);
+  } else {
+    GstPylonParamSpecSelectorInt64 *spec =
+        GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
+    pint = G_PARAM_SPEC_INT64(spec->base);
+  }
 
   return g_strdup_printf("Integer. Range: %" G_GINT64_FORMAT
                          " - %" G_GINT64_FORMAT " Default: %" G_GINT64_FORMAT,
@@ -103,10 +114,20 @@ static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
 static gchar *gst_child_inspector_type_float_to_string(GParamSpec *pspec,
                                                        GValue *value,
                                                        gint alignment) {
-  GParamSpecFloat *pint = G_PARAM_SPEC_FLOAT(pspec);
+  GParamSpecFloat *pfloat = NULL;
+  GType pspec_type = G_PARAM_SPEC_TYPE(pspec);
+
+  /* Check whether pspec corresponds to a selector or not */
+  if (G_TYPE_PARAM_FLOAT == pspec_type) {
+    pfloat = G_PARAM_SPEC_FLOAT(pspec);
+  } else {
+    GstPylonParamSpecSelectorFloat *spec =
+        GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
+    pfloat = G_PARAM_SPEC_FLOAT(spec->base);
+  }
 
   return g_strdup_printf("Float. Range: %.2f - %.2f Default: %.2f",
-                         pint->minimum, pint->maximum,
+                         pfloat->minimum, pfloat->maximum,
                          g_value_get_float(value));
 }
 
@@ -120,7 +141,18 @@ static gchar *gst_child_inspector_type_bool_to_string(GParamSpec *pspec,
 static gchar *gst_child_inspector_type_enum_to_string(GParamSpec *pspec,
                                                       GValue *value,
                                                       gint alignment) {
-  GParamSpecEnum *penum = G_PARAM_SPEC_ENUM(pspec);
+  GParamSpecEnum *penum = NULL;
+  GType pspec_type = G_PARAM_SPEC_TYPE(pspec);
+
+  /* Check whether pspec corresponds to a selector or not */
+  if (G_TYPE_PARAM_ENUM == pspec_type) {
+    penum = G_PARAM_SPEC_ENUM(pspec);
+  } else {
+    GstPylonParamSpecSelectorEnum *spec =
+        (GstPylonParamSpecSelectorEnum *)pspec;
+    penum = G_PARAM_SPEC_ENUM(spec->base);
+  }
+
   GType type = G_TYPE_FROM_CLASS(penum->enum_class);
   gint def = g_value_get_enum(value);
   gchar *sdef = g_enum_to_string(type, def);
@@ -171,7 +203,8 @@ static gchar *gst_child_inspector_flags_to_string(GParamFlags flags) {
 
     /* Filter the desired bit */
     bit_flag = bit_flags & (1 << i);
-    serial_flag = gst_child_inspector_flag_to_string(bit_flag);
+    serial_flag =
+        gst_child_inspector_flag_to_string(static_cast<GParamFlags>(bit_flag));
 
     /* Is this a flag we want to serialize? */
     if (serial_flag) {
