@@ -100,7 +100,7 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
   GstPylon *self = new GstPylon;
 
   g_return_val_if_fail(self, NULL);
-  g_return_val_if_fail(err || *err == NULL, NULL);
+  g_return_val_if_fail(err && *err == NULL, NULL);
 
   try {
     Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
@@ -190,7 +190,7 @@ static std::string gst_pylon_query_default_set(
 gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
                                    GError **err) {
   g_return_val_if_fail(self, FALSE);
-  g_return_val_if_fail(err || *err == NULL, FALSE);
+  g_return_val_if_fail(err && *err == NULL, FALSE);
 
   try {
     if (!self->camera->UserSetSelector.IsWritable()) {
@@ -247,7 +247,7 @@ gboolean gst_pylon_start(GstPylon *self, GError **err) {
   gboolean ret = TRUE;
 
   g_return_val_if_fail(self, FALSE);
-  g_return_val_if_fail(err || *err == NULL, FALSE);
+  g_return_val_if_fail(err && *err == NULL, FALSE);
 
   try {
     self->camera->StartGrabbing();
@@ -264,7 +264,7 @@ gboolean gst_pylon_stop(GstPylon *self, GError **err) {
   gboolean ret = TRUE;
 
   g_return_val_if_fail(self, FALSE);
-  g_return_val_if_fail(err || *err == NULL, FALSE);
+  g_return_val_if_fail(err && *err == NULL, FALSE);
 
   try {
     self->camera->StopGrabbing();
@@ -288,7 +288,7 @@ static void free_ptr_grab_result(gpointer data) {
 gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(buf, FALSE);
-  g_return_val_if_fail(err || *err == NULL, FALSE);
+  g_return_val_if_fail(err && *err == NULL, FALSE);
 
   Pylon::CBaslerUniversalGrabResultPtr ptr_grab_result;
   gint timeout_ms = 5000;
@@ -449,7 +449,7 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
 
 GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
   g_return_val_if_fail(self, NULL);
-  g_return_val_if_fail(err || *err == NULL, NULL);
+  g_return_val_if_fail(err && *err == NULL, NULL);
 
   /* Build gst caps */
   GstCaps *caps = gst_caps_new_empty();
@@ -493,7 +493,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
                                      GError **err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(conf, FALSE);
-  g_return_val_if_fail(err || *err == NULL, FALSE);
+  g_return_val_if_fail(err && *err == NULL, FALSE);
 
   GstStructure *st = gst_caps_get_structure(conf, 0);
 
@@ -603,7 +603,7 @@ static void gst_pylon_append_camera_properties(
 }
 
 gchar *gst_pylon_get_string_properties(GError **err) {
-  g_return_val_if_fail(err || *err == NULL, FALSE);
+  g_return_val_if_fail(err && *err == NULL, NULL);
 
   gchar *camera_parameters = NULL;
 
