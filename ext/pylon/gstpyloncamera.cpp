@@ -282,7 +282,7 @@ static void gst_pylon_camera_install_properties(
           } catch (const Pylon::GenericException& e) {
             GST_DEBUG("Unable to install property \"%s\" on \"%s\": %s",
                       node->GetDisplayName().c_str(),
-                      camera->GetDeviceInfo().GetFullName().c_str(),
+                      camera->GetDeviceInfo().GetFriendlyName().c_str(),
                       e.GetDescription());
           }
         }
@@ -446,7 +446,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
     }
   } catch (const Pylon::GenericException& e) {
     GST_ERROR("Unable to set pylon property \"%s\" on \"%s\": %s", pspec->name,
-              priv->camera->GetDeviceInfo().GetFullName().c_str(),
+              priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
               e.GetDescription());
   }
 }
@@ -495,7 +495,7 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
     }
   } catch (const Pylon::GenericException& e) {
     GST_ERROR("Unable to get pylon property \"%s\" on \"%s\": %s", pspec->name,
-              priv->camera->GetDeviceInfo().GetFullName().c_str(),
+              priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
               e.GetDescription());
   }
 }
