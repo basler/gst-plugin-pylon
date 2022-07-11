@@ -39,7 +39,7 @@ typedef struct _GstChildInspectorType GstChildInspectorType;
 typedef gchar *(*GstChildInspectorTypeToString) (GParamSpec * pspec,
     GValue * value, gint alignment);
 
-static gchar *gst_child_inspector_type_int_to_string (GParamSpec * pspec,
+static gchar *gst_child_inspector_type_int64_to_string (GParamSpec * pspec,
     GValue * value, gint alignment);
 static gchar *gst_child_inspector_type_bool_to_string (GParamSpec * pspec,
     GValue * value, gint alignment);
@@ -72,7 +72,7 @@ static GstChildInspectorFlag flags[] = {
 };
 
 static GstChildInspectorType types[] = {
-  {G_TYPE_INT64, gst_child_inspector_type_int_to_string},
+  {G_TYPE_INT64, gst_child_inspector_type_int64_to_string},
   {G_TYPE_BOOLEAN, gst_child_inspector_type_bool_to_string},
   {G_TYPE_FLOAT, gst_child_inspector_type_float_to_string},
   {G_TYPE_STRING, gst_child_inspector_type_string_to_string},
@@ -89,7 +89,7 @@ gst_child_inspector_type_string_to_string (GParamSpec * pspec, GValue * value,
 }
 
 static gchar *
-gst_child_inspector_type_int_to_string (GParamSpec * pspec, GValue * value,
+gst_child_inspector_type_int64_to_string (GParamSpec * pspec, GValue * value,
     gint alignment)
 {
   GParamSpecInt64 *pint = G_PARAM_SPEC_INT64 (pspec);

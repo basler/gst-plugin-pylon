@@ -36,7 +36,7 @@
 #include <unordered_map>
 
 /* prototypes */
-static GParamSpec *gst_pylon_make_spec_int(GenApi::INode *node);
+static GParamSpec *gst_pylon_make_spec_int64(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node);
@@ -66,7 +66,7 @@ static GParamFlags gst_pylon_query_access(GenApi::INode *node) {
   return static_cast<GParamFlags>(flags);
 }
 
-static GParamSpec *gst_pylon_make_spec_int(GenApi::INode *node) {
+static GParamSpec *gst_pylon_make_spec_int64(GenApi::INode *node) {
   g_return_val_if_fail(node, NULL);
 
   Pylon::CIntegerParameter param(node);
@@ -166,7 +166,7 @@ GParamSpec *GstPylonParamFactory::make_param(
   GParamSpec *spec = NULL;
 
   if (GenApi::intfIInteger == node->GetPrincipalInterfaceType()) {
-    spec = gst_pylon_make_spec_int(node);
+    spec = gst_pylon_make_spec_int64(node);
 
   } else if (GenApi::intfIBoolean == node->GetPrincipalInterfaceType()) {
     spec = gst_pylon_make_spec_bool(node);
