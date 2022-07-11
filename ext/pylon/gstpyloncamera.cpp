@@ -365,7 +365,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
   GstPylonCameraPrivate* priv =
       (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
   GType pspec_type = G_PARAM_SPEC_TYPE(pspec);
-  GType value_type = G_VALUE_TYPE(value);
+  GType value_type = g_type_fundamental(G_VALUE_TYPE(value));
 
   try {
     GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();

@@ -526,6 +526,8 @@ GType gst_pylon_param_spec_selector_enum_register(
     g_once_init_leave(&gst_pylon_selector_enum_type, type);
   }
 
+  g_free(name);
+
   return gst_pylon_selector_enum_type;
 }
 
