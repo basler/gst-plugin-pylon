@@ -232,7 +232,13 @@ subdir('docs')
 
 configure_file(output : 'config.h', configuration : cdata)
 
-run_command(python3, '-c', 'import shutil; shutil.copy("hooks/pre-commit.hook", ".git/hooks/pre-commit")', check : true)
+# install hooks if git workspace available
+fs = import('fs')
+if fs.is_dir(join_paths(meson.source_root(),'.git'))
+  message('install git commit hooks')
+  run_command(python3, '-c', 'import shutil; shutil.copy("hooks/pre-commit.hook", ".git/hooks/pre-commit")', check : true)
+endif
+
 
 if meson.version().version_compare('>= 0.54')
   plugin_names = []
