@@ -34,7 +34,11 @@ if version.version_compare ('<' + target_version)
   )
 else
   pylon_dep = dependency('pylon', method : 'cmake', cmake_module_path : 'cmake')
-  pylon_rpath = ''
+  pylon_rpath = get_option('pylon-rpath')
+  if pylon_rpath == ''
+    pylon_rpath = '/opt/pylon/lib'
+  endif
+
 endif
 
 
