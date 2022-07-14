@@ -157,7 +157,7 @@ static std::vector<GParamSpec*> handle_node(
       std::vector<std::string> enum_values;
       guint max_selectors = 1;
       if (selectors.size() > max_selectors) {
-        std::string msg = std::string(node->GetDisplayName()) +
+        std::string msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
                           " has more than one selector, ignoring!";
         throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
       } else {
@@ -172,7 +172,7 @@ static std::vector<GParamSpec*> handle_node(
                 enum_name.substr(enum_name.find_last_of("_") + 1));
           }
         } else {
-          std::string msg = std::string(node->GetDisplayName()) +
+          std::string msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
                             " is not an enumerator selector, ignoring!";
           throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
         }
@@ -246,7 +246,7 @@ static void gst_pylon_camera_install_properties(
                 handle_node(node, camera, oclass, nprop);
             gst_pylon_camera_install_specs(specs_list, oclass, nprop);
           } catch (const Pylon::GenericException& e) {
-            GST_DEBUG("Unable to install property \"%s\" on \"%s\": %s",
+            GST_FIXME("Unable to install property \"%s\" on \"%s\": %s",
                       node->GetDisplayName().c_str(),
                       camera->GetDeviceInfo().GetFriendlyName().c_str(),
                       e.GetDescription());
