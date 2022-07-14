@@ -501,17 +501,17 @@ static gint _gst_pylon_param_selector_enum_values_cmp(GParamSpec *pspec,
 GType gst_pylon_param_spec_selector_enum_register(
     Pylon::CBaslerUniversalInstantCamera *camera, gchar *feature_name,
     GType enum_feature_type) {
-  static GType gst_pylon_selector_enum_type = 0;
+  GType selector_type = G_TYPE_INVALID;
 
   gchar *full_name = g_strdup_printf(
       "%s_%s", camera->GetDeviceInfo().GetFullName().c_str(), feature_name);
   gchar *name = gst_pylon_param_spec_sanitize_name(full_name);
   g_free(full_name);
 
+  selector_type = g_type_from_name(name);
   /* register GST_PYLON_TYPE_PARAM_SELECTOR_ENUM */
-  if (g_once_init_enter(&gst_pylon_selector_enum_type)) {
-    GType type;
-    static GParamSpecTypeInfo pspec_info = {
+  if (0 == selector_type) {
+    GParamSpecTypeInfo pspec_info = {
         sizeof(GstPylonParamSpecSelectorEnum),      /* instance_size     */
         0,                                          /* n_preallocs       */
         _gst_pylon_param_selector_enum_init,        /* instance_init     */
@@ -522,13 +522,12 @@ GType gst_pylon_param_spec_selector_enum_register(
         _gst_pylon_param_selector_enum_values_cmp,  /* values_cmp        */
     };
 
-    type = g_param_type_register_static(name, &pspec_info);
-    g_once_init_leave(&gst_pylon_selector_enum_type, type);
+    selector_type = g_param_type_register_static(name, &pspec_info);
   }
 
   g_free(name);
 
-  return gst_pylon_selector_enum_type;
+  return selector_type;
 }
 
 GParamSpec *gst_pylon_param_spec_selector_enum(
