@@ -429,12 +429,16 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
 
   if (self->camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
     Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
-    min_fps = framerate.GetMin();
-    max_fps = framerate.GetMax();
+    if (framerate.IsReadable()) {
+      min_fps = framerate.GetMin();
+      max_fps = framerate.GetMax();
+    }
   } else {
     Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
-    min_fps = framerate.GetMin();
-    max_fps = framerate.GetMax();
+    if (framerate.IsReadable()) {
+      min_fps = framerate.GetMin();
+      max_fps = framerate.GetMax();
+    }
   }
 
   gint min_fps_num = 0;
