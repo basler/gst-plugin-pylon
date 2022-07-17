@@ -193,6 +193,16 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
+  /* Basler dart MIPI cameras don't support usersets and will always
+   * connect in a default set
+   */
+  if (!self->camera->UserSetSelector.IsValid()) {
+    g_info(
+        "Usersets are not supported on this device. Skip active reset to "
+        "defaults");
+    return TRUE;
+  }
+
   try {
     if (!self->camera->UserSetSelector.IsWritable()) {
       throw Pylon::GenericException(
