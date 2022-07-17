@@ -58,6 +58,10 @@ gchar *gst_pylon_get_string_properties (GError ** err);
 
 GObject *gst_pylon_get_camera (GstPylon *self);
 
+GST_DEBUG_CATEGORY_EXTERN (gst_pylon_src_debug_category);
+#define GST_CAT_DEFAULT gst_pylon_src_debug_category
+
+
 G_END_DECLS
 
 #endif
