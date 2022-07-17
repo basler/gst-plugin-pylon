@@ -442,6 +442,9 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
     if (framerate.IsReadable()) {
       min_fps = framerate.GetMin();
       max_fps = framerate.GetMax();
+    } else {
+      min_fps = 60;
+      max_fps = 60;
     }
   } else {
     Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
@@ -451,17 +454,26 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
     }
   }
 
-  gint min_fps_num = 0;
-  gint min_fps_den = 0;
-  gst_util_double_to_fraction(min_fps, &min_fps_num, &min_fps_den);
+  if (min_fps < max_fps) {
+    gint min_fps_num = 0;
+    gint min_fps_den = 0;
+    gst_util_double_to_fraction(min_fps, &min_fps_num, &min_fps_den);
 
-  gint max_fps_num = 0;
-  gint max_fps_den = 0;
-  gst_util_double_to_fraction(max_fps, &max_fps_num, &max_fps_den);
+    gint max_fps_num = 0;
+    gint max_fps_den = 0;
+    gst_util_double_to_fraction(max_fps, &max_fps_num, &max_fps_den);
 
-  g_value_init(outvalue, GST_TYPE_FRACTION_RANGE);
-  gst_value_set_fraction_range_full(outvalue, min_fps_num, min_fps_den,
-                                    max_fps_num, max_fps_den);
+    g_value_init(outvalue, GST_TYPE_FRACTION_RANGE);
+    gst_value_set_fraction_range_full(outvalue, min_fps_num, min_fps_den,
+                                      max_fps_num, max_fps_den);
+  } else {
+    gint fps_num = 0;
+    gint fps_den = 0;
+
+    gst_util_double_to_fraction(max_fps, &fps_num, &fps_den);
+    g_value_init(outvalue, GST_TYPE_FRACTION);
+    gst_value_set_fraction(outvalue, fps_num, fps_den);
+  }
 }
 
 GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
@@ -577,10 +589,10 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
     if (self->camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
       Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
-      framerate.SetValue(div, Pylon::FloatValueCorrection_None);
+      framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
     } else {
       Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
-      framerate.SetValue(div, Pylon::FloatValueCorrection_None);
+      framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
     }
 
   } catch (const Pylon::GenericException &e) {
