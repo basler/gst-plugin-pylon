@@ -61,6 +61,8 @@ static void _gst_pylon_param_selector_int64_finalize(GParamSpec *pspec) {
   GstPylonParamSpecSelectorInt64 *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
 
+  g_free(spec->feature);
+  g_free(spec->selector);
   g_param_spec_unref(spec->base);
 }
 
@@ -167,6 +169,8 @@ static void _gst_pylon_param_selector_bool_finalize(GParamSpec *pspec) {
   GstPylonParamSpecSelectorBool *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
 
+  g_free(spec->feature);
+  g_free(spec->selector);
   g_param_spec_unref(spec->base);
 }
 
@@ -271,6 +275,8 @@ static void _gst_pylon_param_selector_float_finalize(GParamSpec *pspec) {
   GstPylonParamSpecSelectorFloat *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
 
+  g_free(spec->feature);
+  g_free(spec->selector);
   g_param_spec_unref(spec->base);
 }
 
@@ -376,6 +382,8 @@ static void _gst_pylon_param_selector_str_init(GParamSpec *pspec) {
 static void _gst_pylon_param_selector_str_finalize(GParamSpec *pspec) {
   GstPylonParamSpecSelectorStr *spec = GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
 
+  g_free(spec->feature);
+  g_free(spec->selector);
   g_param_spec_unref(spec->base);
 }
 
@@ -475,6 +483,8 @@ static void _gst_pylon_param_selector_enum_init(GParamSpec *pspec) {
 static void _gst_pylon_param_selector_enum_finalize(GParamSpec *pspec) {
   GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
 
+  g_free(spec->feature);
+  g_free(spec->selector);
   g_param_spec_unref(spec->base);
 }
 

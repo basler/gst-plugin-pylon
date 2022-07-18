@@ -373,7 +373,6 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
       } else {
         GstPylonParamSpecSelectorFloat* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
-        std::cout << "NAME " << lspec->feature << std::endl;
         typedef gfloat (*GGetFloat)(const GValue*);
         gst_pylon_camera_set_pylon_selector<GGetFloat, Pylon::CFloatParameter>(
             nodemap, g_value_get_float, value, lspec->feature, lspec->selector,

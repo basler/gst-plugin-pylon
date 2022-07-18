@@ -165,10 +165,10 @@ static gchar *gst_child_inspector_type_enum_to_string(GParamSpec *pspec,
 
   for (iter = penum->enum_class->values; iter->value_name; iter++) {
     if (iter->value_nick[0] == '\0') {
-      g_string_append_printf(desc, "\n%*s(%d): %-18s", alignment + 35, "",
+      g_string_append_printf(desc, "\n%*s(%d): %-18s", alignment + 40, "",
                              iter->value, iter->value_name);
     } else {
-      g_string_append_printf(desc, "\n%*s(%d): %-18s - %s", alignment + 35, "",
+      g_string_append_printf(desc, "\n%*s(%d): %-18s - %s", alignment + 40, "",
                              iter->value, iter->value_name, iter->value_nick);
     }
   }
@@ -267,9 +267,9 @@ gchar *gst_child_inspector_property_to_string(GObject *object,
   g_value_unset(&value);
 
   prop = g_strdup_printf(
-      "%*s%-30s: %s\n"
-      "%*s%-31.31s flags: %s\n"
-      "%*s%-31.31s %s",
+      "%*s%-35s: %s\n"
+      "%*s%-36.36s flags: %s\n"
+      "%*s%-36.36s %s",
       alignment, "", name, blurb, alignment, "", "", flags, alignment, "", "",
       type);
 

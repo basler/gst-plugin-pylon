@@ -147,8 +147,8 @@ typedef struct _GstPylonParamSpecSelectorEnum GstPylonParamSpecSelectorEnum;
 struct _GstPylonParamSpecSelectorInt64 {
   GParamSpec parent_instance;
   GParamSpec* base;
-  const gchar* feature;
-  const gchar* selector;
+  gchar* feature;
+  gchar* selector;
   guint64 selector_value;
 };
 
@@ -165,8 +165,8 @@ struct _GstPylonParamSpecSelectorInt64 {
 struct _GstPylonParamSpecSelectorBool {
   GParamSpec parent_instance;
   GParamSpec* base;
-  const gchar* feature;
-  const gchar* selector;
+  gchar* feature;
+  gchar* selector;
   guint64 selector_value;
 };
 
@@ -183,8 +183,8 @@ struct _GstPylonParamSpecSelectorBool {
 struct _GstPylonParamSpecSelectorFloat {
   GParamSpec parent_instance;
   GParamSpec* base;
-  const gchar* feature;
-  const gchar* selector;
+  gchar* feature;
+  gchar* selector;
   guint64 selector_value;
 };
 
@@ -201,8 +201,8 @@ struct _GstPylonParamSpecSelectorFloat {
 struct _GstPylonParamSpecSelectorStr {
   GParamSpec parent_instance;
   GParamSpec* base;
-  const gchar* feature;
-  const gchar* selector;
+  gchar* feature;
+  gchar* selector;
   guint64 selector_value;
 };
 
@@ -219,8 +219,8 @@ struct _GstPylonParamSpecSelectorStr {
 struct _GstPylonParamSpecSelectorEnum {
   GParamSpec parent_instance;
   GParamSpec* base;
-  const gchar* feature;
-  const gchar* selector;
+  gchar* feature;
+  gchar* selector;
   guint64 selector_value;
 };
 
