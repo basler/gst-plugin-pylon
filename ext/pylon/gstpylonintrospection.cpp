@@ -139,9 +139,8 @@ static GParamSpec *gst_pylon_make_spec_enum(
 
       /* We need a copy of the strings so that they are persistent
          throughout the application lifespan */
-      GEnumValue ev = {.value = value,
-                       .value_name = g_strdup(value_name.c_str()),
-                       .value_nick = g_strdup(tooltip.c_str())};
+      GEnumValue ev = {value, g_strdup(value_name.c_str()),
+                       g_strdup(tooltip.c_str())};
       enumvalues.push_back(ev);
     }
 
