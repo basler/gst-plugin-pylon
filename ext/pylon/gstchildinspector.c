@@ -68,7 +68,7 @@ static GstChildInspectorFlag flags[] = {
   {GST_PARAM_MUTABLE_READY, "changeable only in NULL or READY state"},
   {GST_PARAM_MUTABLE_PLAYING,
       "changeable in NULL, READY, PAUSED or PLAYING state"},
-  {}
+  {0, NULL}
 };
 
 static GstChildInspectorType types[] = {
@@ -77,7 +77,7 @@ static GstChildInspectorType types[] = {
   {G_TYPE_FLOAT, gst_child_inspector_type_float_to_string},
   {G_TYPE_STRING, gst_child_inspector_type_string_to_string},
   {G_TYPE_ENUM, gst_child_inspector_type_enum_to_string},
-  {}
+  {0, NULL}
 };
 
 static gchar *
