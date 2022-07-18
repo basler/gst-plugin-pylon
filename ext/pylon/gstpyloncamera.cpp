@@ -126,7 +126,7 @@ static void gst_pylon_camera_set_enum_property(GenApi::INodeMap& nodemap,
 template <typename F, typename P>
 static void gst_pylon_camera_set_pylon_selector(
     GenApi::INodeMap& nodemap, F get_value, const GValue* value,
-    GenApi::INode* feature, GenApi::INode* selector, guint64& selector_value);
+    const gchar* feature, const gchar* selector, guint64& selector_value);
 template <typename T, typename P>
 static T gst_pylon_camera_get_pylon_property(GenApi::INodeMap& nodemap,
                                              const gchar* name);
@@ -298,17 +298,17 @@ static void gst_pylon_camera_set_enum_property(GenApi::INodeMap& nodemap,
 }
 
 template <typename F, typename P>
-static void gst_pylon_camera_set_pylon_selector(
-    GenApi::INodeMap& nodemap, F get_value, const GValue* value,
-    GenApi::INode* feature, GenApi::INode* selector, guint64& selector_value) {
-  g_return_if_fail(feature);
-  g_return_if_fail(selector);
-
-  Pylon::CEnumParameter selparam(selector);
+static void gst_pylon_camera_set_pylon_selector(GenApi::INodeMap& nodemap,
+                                                F get_value,
+                                                const GValue* value,
+                                                const gchar* feature_name,
+                                                const gchar* selector_name,
+                                                guint64& selector_value) {
+  Pylon::CEnumParameter selparam(nodemap, selector_name);
   selparam.SetIntValue(selector_value);
 
   gst_pylon_camera_set_pylon_property<F, P>(nodemap, get_value, value,
-                                            feature->GetName().c_str());
+                                            feature_name);
 }
 
 template <typename T, typename P>
@@ -373,6 +373,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
       } else {
         GstPylonParamSpecSelectorFloat* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
+        std::cout << "NAME " << lspec->feature << std::endl;
         typedef gfloat (*GGetFloat)(const GValue*);
         gst_pylon_camera_set_pylon_selector<GGetFloat, Pylon::CFloatParameter>(
             nodemap, g_value_get_float, value, lspec->feature, lspec->selector,
@@ -399,10 +400,8 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
       } else {
         GstPylonParamSpecSelectorEnum* lspec =
             (GstPylonParamSpecSelectorEnum*)pspec;
-        gst_pylon_camera_set_enum_property(nodemap, value,
-                                           lspec->selector->GetName().c_str());
-        gst_pylon_camera_set_enum_property(nodemap, value,
-                                           lspec->feature->GetName().c_str());
+        gst_pylon_camera_set_enum_property(nodemap, value, lspec->selector);
+        gst_pylon_camera_set_enum_property(nodemap, value, lspec->feature);
       }
     } else {
       g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));

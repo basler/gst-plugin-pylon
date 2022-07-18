@@ -115,24 +115,24 @@ GType gst_pylon_param_spec_selector_int64_get_type(void) {
 }
 
 GParamSpec *gst_pylon_param_spec_selector_int64(
-    GenApi::INode *feature, GenApi::INode *selector, guint64 selector_value,
-    const gchar *nick, const gchar *blurb, gint64 min, gint64 max, gint64 def,
-    GParamFlags flags) {
+    Pylon::CBaslerUniversalInstantCamera *camera, const gchar *feature_name,
+    const gchar *selector_name, guint64 selector_value, const gchar *nick,
+    const gchar *blurb, gint64 min, gint64 max, gint64 def, GParamFlags flags) {
   GstPylonParamSpecSelectorInt64 *spec;
   gchar *name = NULL;
   gint int_flags = static_cast<gint>(flags);
 
-  g_return_val_if_fail(selector, NULL);
-  g_return_val_if_fail(feature, NULL);
+  g_return_val_if_fail(camera, NULL);
 
   g_return_val_if_fail(def >= min && def <= max, NULL);
 
-  Pylon::CEnumParameter param(selector);
+  GenApi::INodeMap &nodemap = camera->GetNodeMap();
+  Pylon::CEnumParameter param(nodemap, selector_name);
 
   /* Build the property name based on the selector and the feature.
     Since this is no longer a static string, we need to ensure that
     the STATIC_NAME flag is not set */
-  name = g_strdup_printf("%s-%s", feature->GetName().c_str(),
+  name = g_strdup_printf("%s-%s", feature_name,
                          param.GetEntry(selector_value)->GetSymbolic().c_str());
   int_flags &= ~G_PARAM_STATIC_NAME;
 
@@ -140,8 +140,8 @@ GParamSpec *gst_pylon_param_spec_selector_int64(
       g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_INT64, name, nick,
                             blurb, static_cast<GParamFlags>(int_flags)));
 
-  spec->selector = selector;
-  spec->feature = feature;
+  spec->selector = g_strdup(selector_name);
+  spec->feature = g_strdup(feature_name);
   spec->selector_value = selector_value;
 
   spec->base = g_param_spec_int64(name, nick, blurb, min, max, def,
@@ -221,21 +221,22 @@ GType gst_pylon_param_spec_selector_bool_get_type(void) {
 }
 
 GParamSpec *gst_pylon_param_spec_selector_bool(
-    GenApi::INode *feature, GenApi::INode *selector, guint64 selector_value,
-    const gchar *nick, const gchar *blurb, gboolean def, GParamFlags flags) {
+    Pylon::CBaslerUniversalInstantCamera *camera, const gchar *feature_name,
+    const gchar *selector_name, guint64 selector_value, const gchar *nick,
+    const gchar *blurb, gboolean def, GParamFlags flags) {
   GstPylonParamSpecSelectorBool *spec;
   gchar *name = NULL;
   gint int_flags = static_cast<gint>(flags);
 
-  g_return_val_if_fail(selector, NULL);
-  g_return_val_if_fail(feature, NULL);
+  g_return_val_if_fail(camera, NULL);
 
-  Pylon::CEnumParameter param(selector);
+  GenApi::INodeMap &nodemap = camera->GetNodeMap();
+  Pylon::CEnumParameter param(nodemap, selector_name);
 
   /* Build the property name based on the selector and the feature.
      Since this is no longer a static string, we need to ensure that
      the STATIC_NAME flag is not set */
-  name = g_strdup_printf("%s-%s", feature->GetName().c_str(),
+  name = g_strdup_printf("%s-%s", feature_name,
                          param.GetEntry(selector_value)->GetSymbolic().c_str());
   int_flags &= ~G_PARAM_STATIC_NAME;
 
@@ -243,8 +244,8 @@ GParamSpec *gst_pylon_param_spec_selector_bool(
       g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_BOOL, name, nick,
                             blurb, static_cast<GParamFlags>(int_flags)));
 
-  spec->selector = selector;
-  spec->feature = feature;
+  spec->selector = g_strdup(selector_name);
+  spec->feature = g_strdup(feature_name);
   spec->selector_value = selector_value;
 
   spec->base = g_param_spec_boolean(name, nick, blurb, def,
@@ -324,24 +325,25 @@ GType gst_pylon_param_spec_selector_float_get_type(void) {
 }
 
 GParamSpec *gst_pylon_param_spec_selector_float(
-    GenApi::INode *feature, GenApi::INode *selector, guint64 selector_value,
-    const gchar *nick, const gchar *blurb, gdouble min, gdouble max,
-    gdouble def, GParamFlags flags) {
+    Pylon::CBaslerUniversalInstantCamera *camera, const gchar *feature_name,
+    const gchar *selector_name, guint64 selector_value, const gchar *nick,
+    const gchar *blurb, gdouble min, gdouble max, gdouble def,
+    GParamFlags flags) {
   GstPylonParamSpecSelectorFloat *spec;
   gchar *name = NULL;
   gint int_flags = static_cast<gint>(flags);
 
-  g_return_val_if_fail(selector, NULL);
-  g_return_val_if_fail(feature, NULL);
+  g_return_val_if_fail(camera, NULL);
 
   g_return_val_if_fail(def >= min && def <= max, NULL);
 
-  Pylon::CEnumParameter param(selector);
+  GenApi::INodeMap &nodemap = camera->GetNodeMap();
+  Pylon::CEnumParameter param(nodemap, selector_name);
 
   /* Build the property name based on the selector and the feature.
     Since this is no longer a static string, we need to ensure that
     the STATIC_NAME flag is not set */
-  name = g_strdup_printf("%s-%s", feature->GetName().c_str(),
+  name = g_strdup_printf("%s-%s", feature_name,
                          param.GetEntry(selector_value)->GetSymbolic().c_str());
   int_flags &= ~G_PARAM_STATIC_NAME;
 
@@ -349,8 +351,8 @@ GParamSpec *gst_pylon_param_spec_selector_float(
       g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_FLOAT, name, nick,
                             blurb, static_cast<GParamFlags>(int_flags)));
 
-  spec->selector = selector;
-  spec->feature = feature;
+  spec->selector = g_strdup(selector_name);
+  spec->feature = g_strdup(feature_name);
   spec->selector_value = selector_value;
 
   spec->base = g_param_spec_float(name, nick, blurb, min, max, def,
@@ -425,22 +427,22 @@ GType gst_pylon_param_spec_selector_str_get_type(void) {
 }
 
 GParamSpec *gst_pylon_param_spec_selector_str(
-    GenApi::INode *feature, GenApi::INode *selector, guint64 selector_value,
-    const gchar *nick, const gchar *blurb, const gchar *def,
-    GParamFlags flags) {
+    Pylon::CBaslerUniversalInstantCamera *camera, const gchar *feature_name,
+    const gchar *selector_name, guint64 selector_value, const gchar *nick,
+    const gchar *blurb, const gchar *def, GParamFlags flags) {
   GstPylonParamSpecSelectorStr *spec;
   gchar *name = NULL;
   gint int_flags = static_cast<gint>(flags);
 
-  g_return_val_if_fail(selector, NULL);
-  g_return_val_if_fail(feature, NULL);
+  g_return_val_if_fail(camera, NULL);
 
-  Pylon::CEnumParameter param(selector);
+  GenApi::INodeMap &nodemap = camera->GetNodeMap();
+  Pylon::CEnumParameter param(nodemap, selector_name);
 
   /* Build the property name based on the selector and the feature.
      Since this is no longer a static string, we need to ensure that
      the STATIC_NAME flag is not set */
-  name = g_strdup_printf("%s-%s", feature->GetName().c_str(),
+  name = g_strdup_printf("%s-%s", feature_name,
                          param.GetEntry(selector_value)->GetSymbolic().c_str());
   int_flags &= ~G_PARAM_STATIC_NAME;
 
@@ -448,8 +450,8 @@ GParamSpec *gst_pylon_param_spec_selector_str(
       g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_STR, name, nick,
                             blurb, static_cast<GParamFlags>(int_flags)));
 
-  spec->selector = selector;
-  spec->feature = feature;
+  spec->selector = g_strdup(selector_name);
+  spec->feature = g_strdup(feature_name);
   spec->selector_value = selector_value;
 
   spec->base = g_param_spec_string(name, nick, blurb, def,
@@ -499,7 +501,7 @@ static gint _gst_pylon_param_selector_enum_values_cmp(GParamSpec *pspec,
 }
 
 GType gst_pylon_param_spec_selector_enum_register(
-    Pylon::CBaslerUniversalInstantCamera *camera, gchar *feature_name,
+    Pylon::CBaslerUniversalInstantCamera *camera, const gchar *feature_name,
     GType enum_feature_type) {
   GType selector_type = G_TYPE_INVALID;
 
@@ -531,22 +533,22 @@ GType gst_pylon_param_spec_selector_enum_register(
 }
 
 GParamSpec *gst_pylon_param_spec_selector_enum(
-    Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *feature,
-    GenApi::INode *selector, guint64 selector_value, const gchar *nick,
+    Pylon::CBaslerUniversalInstantCamera *camera, const gchar *feature_name,
+    const gchar *selector_name, guint64 selector_value, const gchar *nick,
     const gchar *blurb, GType type, gint64 def, GParamFlags flags) {
   GstPylonParamSpecSelectorEnum *spec;
   gchar *name = NULL;
   gint int_flags = static_cast<gint>(flags);
 
-  g_return_val_if_fail(selector, NULL);
-  g_return_val_if_fail(feature, NULL);
+  g_return_val_if_fail(camera, NULL);
 
-  Pylon::CEnumParameter param(selector);
+  GenApi::INodeMap &nodemap = camera->GetNodeMap();
+  Pylon::CEnumParameter param(nodemap, selector_name);
 
   /* Build the property name based on the selector and the feature.
     Since this is no longer a static string, we need to ensure that
     the STATIC_NAME flag is not set */
-  name = g_strdup_printf("%s-%s", feature->GetName().c_str(),
+  name = g_strdup_printf("%s-%s", feature_name,
                          param.GetEntry(selector_value)->GetSymbolic().c_str());
   int_flags &= ~G_PARAM_STATIC_NAME;
 
@@ -554,8 +556,8 @@ GParamSpec *gst_pylon_param_spec_selector_enum(
       gst_pylon_param_spec_selector_enum_register(camera, name, type), name,
       nick, blurb, static_cast<GParamFlags>(int_flags)));
 
-  spec->selector = selector;
-  spec->feature = feature;
+  spec->selector = g_strdup(selector_name);
+  spec->feature = g_strdup(feature_name);
   spec->selector_value = selector_value;
 
   spec->base = g_param_spec_enum(name, nick, blurb, type, def,

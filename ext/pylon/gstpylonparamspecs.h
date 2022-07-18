@@ -123,7 +123,7 @@ GType gst_pylon_param_spec_selector_bool_get_type(void);
 GType gst_pylon_param_spec_selector_float_get_type(void);
 GType gst_pylon_param_spec_selector_str_get_type(void);
 GType gst_pylon_param_spec_selector_enum_register(
-    Pylon::CBaslerUniversalInstantCamera* camera, gchar* feature_name,
+    Pylon::CBaslerUniversalInstantCamera* camera, const gchar* feature_name,
     GType enum_feature_type);
 
 /* --- typedefs & structures --- */
@@ -147,8 +147,8 @@ typedef struct _GstPylonParamSpecSelectorEnum GstPylonParamSpecSelectorEnum;
 struct _GstPylonParamSpecSelectorInt64 {
   GParamSpec parent_instance;
   GParamSpec* base;
-  GenApi::INode* feature;
-  GenApi::INode* selector;
+  const gchar* feature;
+  const gchar* selector;
   guint64 selector_value;
 };
 
@@ -165,8 +165,8 @@ struct _GstPylonParamSpecSelectorInt64 {
 struct _GstPylonParamSpecSelectorBool {
   GParamSpec parent_instance;
   GParamSpec* base;
-  GenApi::INode* feature;
-  GenApi::INode* selector;
+  const gchar* feature;
+  const gchar* selector;
   guint64 selector_value;
 };
 
@@ -183,8 +183,8 @@ struct _GstPylonParamSpecSelectorBool {
 struct _GstPylonParamSpecSelectorFloat {
   GParamSpec parent_instance;
   GParamSpec* base;
-  GenApi::INode* feature;
-  GenApi::INode* selector;
+  const gchar* feature;
+  const gchar* selector;
   guint64 selector_value;
 };
 
@@ -201,8 +201,8 @@ struct _GstPylonParamSpecSelectorFloat {
 struct _GstPylonParamSpecSelectorStr {
   GParamSpec parent_instance;
   GParamSpec* base;
-  GenApi::INode* feature;
-  GenApi::INode* selector;
+  const gchar* feature;
+  const gchar* selector;
   guint64 selector_value;
 };
 
@@ -219,8 +219,8 @@ struct _GstPylonParamSpecSelectorStr {
 struct _GstPylonParamSpecSelectorEnum {
   GParamSpec parent_instance;
   GParamSpec* base;
-  GenApi::INode* feature;
-  GenApi::INode* selector;
+  const gchar* feature;
+  const gchar* selector;
   guint64 selector_value;
 };
 
@@ -228,26 +228,26 @@ struct _GstPylonParamSpecSelectorEnum {
 
 GST_API
 GParamSpec* gst_pylon_param_spec_selector_int64(
-    GenApi::INode* selector, GenApi::INode* feature, guint64 selector_value,
-    const gchar* nick, const gchar* blurb, gint64 min, gint64 max, gint64 def,
+    Pylon::CBaslerUniversalInstantCamera* camera, const gchar* selector_name,
+    const gchar* feature_name, guint64 selector_value, const gchar* nick,
+    const gchar* blurb, gint64 min, gint64 max, gint64 def,
     GParamFlags flags) G_GNUC_MALLOC;
-GParamSpec* gst_pylon_param_spec_selector_bool(GenApi::INode* selector,
-                                               GenApi::INode* feature,
-                                               guint64 selector_value,
-                                               const gchar* nick,
-                                               const gchar* blurb, gboolean def,
-                                               GParamFlags flags) G_GNUC_MALLOC;
+GParamSpec* gst_pylon_param_spec_selector_bool(
+    Pylon::CBaslerUniversalInstantCamera* camera, const gchar* selector_name,
+    const gchar* feature_name, guint64 selector_value, const gchar* nick,
+    const gchar* blurb, gboolean def, GParamFlags flags) G_GNUC_MALLOC;
 GParamSpec* gst_pylon_param_spec_selector_float(
-    GenApi::INode* feature, GenApi::INode* selector, guint64 selector_value,
-    const gchar* nick, const gchar* blurb, gdouble min, gdouble max,
-    gdouble def, GParamFlags flags) G_GNUC_MALLOC;
-GParamSpec* gst_pylon_param_spec_selector_str(
-    GenApi::INode* feature, GenApi::INode* selector, guint64 selector_value,
-    const gchar* nick, const gchar* blurb, const gchar* def,
+    Pylon::CBaslerUniversalInstantCamera* camera, const gchar* feature_name,
+    const gchar* selector_name, guint64 selector_value, const gchar* nick,
+    const gchar* blurb, gdouble min, gdouble max, gdouble def,
     GParamFlags flags) G_GNUC_MALLOC;
+GParamSpec* gst_pylon_param_spec_selector_str(
+    Pylon::CBaslerUniversalInstantCamera* camera, const gchar* feature_name,
+    const gchar* selector_name, guint64 selector_value, const gchar* nick,
+    const gchar* blurb, const gchar* def, GParamFlags flags) G_GNUC_MALLOC;
 GParamSpec* gst_pylon_param_spec_selector_enum(
-    Pylon::CBaslerUniversalInstantCamera* camera, GenApi::INode* feature,
-    GenApi::INode* selector, guint64 selector_value, const gchar* nick,
+    Pylon::CBaslerUniversalInstantCamera* camera, const gchar* feature_name,
+    const gchar* selector_name, guint64 selector_value, const gchar* nick,
     const gchar* blurb, GType type, gint64 def,
     GParamFlags flags) G_GNUC_MALLOC;
 
