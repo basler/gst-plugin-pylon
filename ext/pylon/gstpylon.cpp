@@ -89,8 +89,9 @@ typedef struct {
 } PixelFormatMappingType;
 
 static PixelFormatMappingType pixel_format_mapping[] = {
-    {"Mono8", "GRAY8"}, {"RGB8Packed", "RGB"}, {"BGR8Packed", "BGR"},
-    {"RGB8", "RGB"},    {"BGR8", "BGR"},       {"YCbCr422_8", "YUY2"}};
+    {"Mono8", "GRAY8"},       {"RGB8Packed", "RGB"}, {"BGR8Packed", "BGR"},
+    {"RGB8", "RGB"},          {"BGR8", "BGR"},       {"YCbCr422_8", "YUY2"},
+    {"YUV422_8_UYVY", "UYVY"}};
 
 void gst_pylon_initialize() { Pylon::PylonInitialize(); }
 
