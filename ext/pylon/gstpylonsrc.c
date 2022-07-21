@@ -433,7 +433,11 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   gst_structure_get_fraction (st, "framerate", &numerator, &denominator);
 
   GST_OBJECT_LOCK (self);
-  self->duration = gst_util_uint64_scale (GST_SECOND, denominator, numerator);
+  if (numerator != 0) {
+    self->duration = gst_util_uint64_scale (GST_SECOND, denominator, numerator);
+  } else {
+    self->duration = GST_CLOCK_TIME_NONE;
+  }
   GST_OBJECT_UNLOCK (self);
 
   ret = gst_pylon_stop (self->pylon, &error);
