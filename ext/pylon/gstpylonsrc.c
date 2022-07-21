@@ -1,6 +1,5 @@
 /* Copyright (C) 2022 Basler AG
  *
- * Created by RidgeRun, LLC <support@ridgerun.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -150,8 +149,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 
   gst_element_class_set_static_metadata (GST_ELEMENT_CLASS (klass),
       "Basler/Pylon source element", "Source/Video/Hardware",
-      "Source element for Basler cameras",
-      "Michael Gruner <michael.gruner@ridgerun.com>");
+      "Source element for Basler cameras", "Basler AG <support.europe@baslerweb.com>");
 
   gobject_class->set_property = gst_pylon_src_set_property;
   gobject_class->get_property = gst_pylon_src_get_property;
