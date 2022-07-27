@@ -152,50 +152,58 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   g_return_val_if_fail(node, specs_list);
   g_return_val_if_fail(camera, specs_list);
 
-  if (auto sel_node = dynamic_cast<GenApi::ISelector*>(node)) {
-    GenApi::FeatureList_t selectors;
-    sel_node->GetSelectingFeatures(selectors);
-    if (!selectors.empty()) {
-      /* This feature has "is selected" */
-      std::vector<std::string> enum_values;
-      guint max_selectors = 1;
-      if (selectors.size() > max_selectors) {
-        std::string msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
-                          " has more than one selector, ignoring!";
-        throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
-      } else {
-        /* Add selector enum values */
-        auto selector = selectors.at(0);
-        if (auto enum_node = dynamic_cast<GenApi::IEnumeration*>(selector)) {
-          GenApi::NodeList_t enum_entries;
-          enum_node->GetEntries(enum_entries);
-          for (auto const& e : enum_entries) {
-            auto enum_name = std::string(e->GetName());
-            enum_values.push_back(
-                enum_name.substr(enum_name.find_last_of("_") + 1));
-          }
-        } else {
-          std::string msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
-                            " is not an enumerator selector, ignoring!";
-          throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
-        }
-        for (auto const& sel_pair : enum_values) {
-          selector_node = selector->GetNode();
-          Pylon::CEnumParameter param(selector_node);
-          selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
-          specs_list.push_back(GstPylonParamFactory::make_param(
-              node, selector_node, selector_value, camera));
-        }
-      }
-    } else {
-      /* "Direct" unselected features */
-      specs_list.push_back(GstPylonParamFactory::make_param(
-          node, selector_node, selector_value, camera));
-    }
-  } else {
+  auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
+  if (!sel_node) {
     std::string msg = std::string(node->GetName()) + " is an invalid node";
     throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
   }
+
+  /* If the feature has no selectors then it is a "direct" feature, it does not
+   * depend on any other selector
+   */
+  GenApi::FeatureList_t selectors;
+  sel_node->GetSelectingFeatures(selectors);
+  if (selectors.empty()) {
+    specs_list.push_back(GstPylonParamFactory::make_param(
+        node, selector_node, selector_value, camera));
+    return specs_list;
+  }
+
+  /* At the time being features with multiple selectors are not supported */
+  guint max_selectors = 1;
+  if (selectors.size() > max_selectors) {
+    std::string msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
+                      " has more than " + std::to_string(max_selectors) +
+                      " selectors, ignoring!";
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
+
+  /* At the time being only features with enum selectors are supported */
+  auto selector = selectors.at(0);
+  auto enum_node = dynamic_cast<GenApi::IEnumeration*>(selector);
+  if (!enum_node) {
+    std::string msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
+                      " is not an enumerator selector, ignoring!";
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
+
+  /* Add selector enum values */
+  std::vector<std::string> enum_values;
+  GenApi::NodeList_t enum_entries;
+  enum_node->GetEntries(enum_entries);
+  for (auto const& e : enum_entries) {
+    auto enum_name = std::string(e->GetName());
+    enum_values.push_back(enum_name.substr(enum_name.find_last_of("_") + 1));
+  }
+
+  for (auto const& sel_pair : enum_values) {
+    selector_node = selector->GetNode();
+    Pylon::CEnumParameter param(selector_node);
+    selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
+    specs_list.push_back(GstPylonParamFactory::make_param(
+        node, selector_node, selector_value, camera));
+  }
+
   return specs_list;
 }
 
