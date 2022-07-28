@@ -32,6 +32,7 @@
  */
 
 #include "gstchildinspector.h"
+
 #include "gstpylonparamspecs.h"
 
 typedef struct _GstChildInspectorFlag GstChildInspectorFlag;
@@ -55,6 +56,12 @@ static gchar *gst_child_inspector_type_string_to_string(GParamSpec *pspec,
 static gchar *gst_child_inspector_type_enum_to_string(GParamSpec *pspec,
                                                       GValue *value,
                                                       gint alignment);
+static gchar *gst_child_inspector_type_selector_int64_to_string(
+    GParamSpec *pspec, GValue *value, gint alignment);
+static gchar *gst_child_inspector_type_selector_float_to_string(
+    GParamSpec *pspec, GValue *value, gint alignment);
+static gchar *gst_child_inspector_type_selector_enum_to_string(
+    GParamSpec *pspec, GValue *value, gint alignment);
 
 struct _GstChildInspectorFlag {
   gint value;
@@ -63,26 +70,33 @@ struct _GstChildInspectorFlag {
 
 struct _GstChildInspectorType {
   GType value;
-  GstChildInspectorTypeToString to_string;
+  GType pspec;
+  GstChildInspectorTypeToString type_to_string;
+  GstChildInspectorTypeToString selector_to_string;
 };
 
 static GstChildInspectorFlag flags[] = {
-  {G_PARAM_READABLE, "readable"},
-  {G_PARAM_WRITABLE, "writable"},
-  {GST_PARAM_MUTABLE_READY, "changeable only in NULL or READY state"},
-  {GST_PARAM_MUTABLE_PLAYING,
-      "changeable in NULL, READY, PAUSED or PLAYING state"},
-  {0, NULL}
-};
+    {G_PARAM_READABLE, "readable"},
+    {G_PARAM_WRITABLE, "writable"},
+    {GST_PARAM_MUTABLE_READY, "changeable only in NULL or READY state"},
+    {GST_PARAM_MUTABLE_PLAYING,
+     "changeable in NULL, READY, PAUSED or PLAYING state"},
+    {0, NULL}};
 
 static GstChildInspectorType types[] = {
-  {G_TYPE_INT64, gst_child_inspector_type_int64_to_string},
-  {G_TYPE_BOOLEAN, gst_child_inspector_type_bool_to_string},
-  {G_TYPE_FLOAT, gst_child_inspector_type_float_to_string},
-  {G_TYPE_STRING, gst_child_inspector_type_string_to_string},
-  {G_TYPE_ENUM, gst_child_inspector_type_enum_to_string},
-  {0, NULL}
-};
+    {G_TYPE_INT64, G_TYPE_PARAM_INT64, gst_child_inspector_type_int64_to_string,
+     gst_child_inspector_type_selector_int64_to_string},
+    {G_TYPE_BOOLEAN, G_TYPE_PARAM_BOOLEAN,
+     gst_child_inspector_type_bool_to_string,
+     gst_child_inspector_type_bool_to_string},
+    {G_TYPE_FLOAT, G_TYPE_PARAM_FLOAT, gst_child_inspector_type_float_to_string,
+     gst_child_inspector_type_selector_float_to_string},
+    {G_TYPE_STRING, G_TYPE_PARAM_STRING,
+     gst_child_inspector_type_string_to_string,
+     gst_child_inspector_type_string_to_string},
+    {G_TYPE_ENUM, G_TYPE_PARAM_ENUM, gst_child_inspector_type_enum_to_string,
+     gst_child_inspector_type_selector_enum_to_string},
+    {0, 0, NULL, NULL}};
 
 static gchar *gst_child_inspector_type_string_to_string(GParamSpec *pspec,
                                                         GValue *value,
@@ -93,17 +107,7 @@ static gchar *gst_child_inspector_type_string_to_string(GParamSpec *pspec,
 static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
                                                        GValue *value,
                                                        gint alignment) {
-  GParamSpecInt64 *pint = NULL;
-  GType pspec_type = G_PARAM_SPEC_TYPE(pspec);
-
-  /* Check whether pspec corresponds to a selector or not */
-  if (G_TYPE_PARAM_INT64 == pspec_type) {
-    pint = G_PARAM_SPEC_INT64(pspec);
-  } else {
-    GstPylonParamSpecSelectorInt64 *spec =
-        GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
-    pint = G_PARAM_SPEC_INT64(spec->base);
-  }
+  GParamSpecInt64 *pint = G_PARAM_SPEC_INT64(pspec);
 
   return g_strdup_printf("Integer. Range: %" G_GINT64_FORMAT
                          " - %" G_GINT64_FORMAT " Default: %" G_GINT64_FORMAT,
@@ -114,17 +118,7 @@ static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
 static gchar *gst_child_inspector_type_float_to_string(GParamSpec *pspec,
                                                        GValue *value,
                                                        gint alignment) {
-  GParamSpecFloat *pfloat = NULL;
-  GType pspec_type = G_PARAM_SPEC_TYPE(pspec);
-
-  /* Check whether pspec corresponds to a selector or not */
-  if (G_TYPE_PARAM_FLOAT == pspec_type) {
-    pfloat = G_PARAM_SPEC_FLOAT(pspec);
-  } else {
-    GstPylonParamSpecSelectorFloat *spec =
-        GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
-    pfloat = G_PARAM_SPEC_FLOAT(spec->base);
-  }
+  GParamSpecFloat *pfloat = G_PARAM_SPEC_FLOAT(pspec);
 
   return g_strdup_printf("Float. Range: %.2f - %.2f Default: %.2f",
                          pfloat->minimum, pfloat->maximum,
@@ -141,18 +135,57 @@ static gchar *gst_child_inspector_type_bool_to_string(GParamSpec *pspec,
 static gchar *gst_child_inspector_type_enum_to_string(GParamSpec *pspec,
                                                       GValue *value,
                                                       gint alignment) {
-  GParamSpecEnum *penum = NULL;
-  GType pspec_type = G_PARAM_SPEC_TYPE(pspec);
+  GParamSpecEnum *penum = G_PARAM_SPEC_ENUM(pspec);
+  GType type = G_TYPE_FROM_CLASS(penum->enum_class);
+  gint def = g_value_get_enum(value);
+  gchar *sdef = g_enum_to_string(type, def);
+  GString *desc = g_string_new(NULL);
+  GEnumValue *iter = NULL;
 
-  /* Check whether pspec corresponds to a selector or not */
-  if (G_TYPE_PARAM_ENUM == pspec_type) {
-    penum = G_PARAM_SPEC_ENUM(pspec);
-  } else {
-    GstPylonParamSpecSelectorEnum *spec =
-        (GstPylonParamSpecSelectorEnum *)pspec;
-    penum = G_PARAM_SPEC_ENUM(spec->base);
+  g_string_append_printf(desc, "Enum \"%s\" Default: %d, \"%s\"",
+                         g_type_name(type), def, sdef);
+  g_free(sdef);
+
+  for (iter = penum->enum_class->values; iter->value_name; iter++) {
+    if (iter->value_nick[0] == '\0') {
+      g_string_append_printf(desc, "\n%*s(%d): %-18s", alignment + 40, "",
+                             iter->value, iter->value_name);
+    } else {
+      g_string_append_printf(desc, "\n%*s(%d): %-18s - %s", alignment + 40, "",
+                             iter->value, iter->value_name, iter->value_nick);
+    }
   }
 
+  return g_string_free(desc, FALSE);
+}
+
+static gchar *gst_child_inspector_type_selector_int64_to_string(
+    GParamSpec *pspec, GValue *value, gint alignment) {
+  GstPylonParamSpecSelectorInt64 *spec =
+      GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
+  GParamSpecInt64 *pint = G_PARAM_SPEC_INT64(spec->base);
+
+  return g_strdup_printf("Integer. Range: %" G_GINT64_FORMAT
+                         " - %" G_GINT64_FORMAT " Default: %" G_GINT64_FORMAT,
+                         pint->minimum, pint->maximum,
+                         g_value_get_int64(value));
+}
+
+static gchar *gst_child_inspector_type_selector_float_to_string(
+    GParamSpec *pspec, GValue *value, gint alignment) {
+  GstPylonParamSpecSelectorFloat *spec =
+      GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
+  GParamSpecFloat *pfloat = G_PARAM_SPEC_FLOAT(spec->base);
+
+  return g_strdup_printf("Float. Range: %.2f - %.2f Default: %.2f",
+                         pfloat->minimum, pfloat->maximum,
+                         g_value_get_float(value));
+}
+
+static gchar *gst_child_inspector_type_selector_enum_to_string(
+    GParamSpec *pspec, GValue *value, gint alignment) {
+  GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
+  GParamSpecEnum *penum = G_PARAM_SPEC_ENUM(spec->base);
   GType type = G_TYPE_FROM_CLASS(penum->enum_class);
   gint def = g_value_get_enum(value);
   gchar *sdef = g_enum_to_string(type, def);
@@ -225,14 +258,19 @@ static gchar *gst_child_inspector_type_to_string(GParamSpec *pspec,
                                                  gint alignment) {
   GstChildInspectorType *current_type;
   const GType value_type = G_VALUE_TYPE(value);
+  const GType param_type = G_PARAM_SPEC_TYPE(pspec);
   gchar *to_string = NULL;
 
   g_return_val_if_fail(pspec, NULL);
   g_return_val_if_fail(value, NULL);
 
-  for (current_type = types; current_type->to_string; ++current_type) {
+  for (current_type = types; current_type->type_to_string; ++current_type) {
     if (g_type_is_a(value_type, current_type->value)) {
-      to_string = current_type->to_string(pspec, value, alignment);
+      if (g_type_is_a(param_type, current_type->pspec)) {
+        to_string = current_type->type_to_string(pspec, value, alignment);
+      } else {
+        to_string = current_type->selector_to_string(pspec, value, alignment);
+      }
       break;
     }
   }
