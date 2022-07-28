@@ -41,6 +41,9 @@ typedef struct _GstChildInspectorType GstChildInspectorType;
 typedef gchar *(*GstChildInspectorTypeToString)(GParamSpec *pspec,
                                                 GValue *value, gint alignment);
 
+static GString *gst_child_inspector_build_string_for_enum(GParamSpecEnum *penum,
+                                                          GValue *value,
+                                                          gint alignment);
 static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
                                                        GValue *value,
                                                        gint alignment);
@@ -98,6 +101,31 @@ static GstChildInspectorType types[] = {
      gst_child_inspector_type_selector_enum_to_string},
     {0, 0, NULL, NULL}};
 
+static GString *gst_child_inspector_build_string_for_enum(GParamSpecEnum *penum,
+                                                          GValue *value,
+                                                          gint alignment) {
+  GType type = G_TYPE_FROM_CLASS(penum->enum_class);
+  gint def = g_value_get_enum(value);
+  gchar *sdef = g_enum_to_string(type, def);
+  GString *desc = g_string_new(NULL);
+  GEnumValue *iter = NULL;
+
+  g_string_append_printf(desc, "Enum \"%s\" Default: %d, \"%s\"",
+                         g_type_name(type), def, sdef);
+  g_free(sdef);
+
+  for (iter = penum->enum_class->values; iter->value_name; iter++) {
+    if (iter->value_nick[0] == '\0') {
+      g_string_append_printf(desc, "\n%*s(%d): %-18s", alignment + 40, "",
+                             iter->value, iter->value_name);
+    } else {
+      g_string_append_printf(desc, "\n%*s(%d): %-18s - %s", alignment + 40, "",
+                             iter->value, iter->value_name, iter->value_nick);
+    }
+  }
+  return desc;
+}
+
 static gchar *gst_child_inspector_type_string_to_string(GParamSpec *pspec,
                                                         GValue *value,
                                                         gint alignment) {
@@ -136,27 +164,9 @@ static gchar *gst_child_inspector_type_enum_to_string(GParamSpec *pspec,
                                                       GValue *value,
                                                       gint alignment) {
   GParamSpecEnum *penum = G_PARAM_SPEC_ENUM(pspec);
-  GType type = G_TYPE_FROM_CLASS(penum->enum_class);
-  gint def = g_value_get_enum(value);
-  gchar *sdef = g_enum_to_string(type, def);
-  GString *desc = g_string_new(NULL);
-  GEnumValue *iter = NULL;
-
-  g_string_append_printf(desc, "Enum \"%s\" Default: %d, \"%s\"",
-                         g_type_name(type), def, sdef);
-  g_free(sdef);
-
-  for (iter = penum->enum_class->values; iter->value_name; iter++) {
-    if (iter->value_nick[0] == '\0') {
-      g_string_append_printf(desc, "\n%*s(%d): %-18s", alignment + 40, "",
-                             iter->value, iter->value_name);
-    } else {
-      g_string_append_printf(desc, "\n%*s(%d): %-18s - %s", alignment + 40, "",
-                             iter->value, iter->value_name, iter->value_nick);
-    }
-  }
-
-  return g_string_free(desc, FALSE);
+  return g_string_free(
+      gst_child_inspector_build_string_for_enum(penum, value, alignment),
+      FALSE);
 }
 
 static gchar *gst_child_inspector_type_selector_int64_to_string(
@@ -186,27 +196,10 @@ static gchar *gst_child_inspector_type_selector_enum_to_string(
     GParamSpec *pspec, GValue *value, gint alignment) {
   GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
   GParamSpecEnum *penum = G_PARAM_SPEC_ENUM(spec->base);
-  GType type = G_TYPE_FROM_CLASS(penum->enum_class);
-  gint def = g_value_get_enum(value);
-  gchar *sdef = g_enum_to_string(type, def);
-  GString *desc = g_string_new(NULL);
-  GEnumValue *iter = NULL;
 
-  g_string_append_printf(desc, "Enum \"%s\" Default: %d, \"%s\"",
-                         g_type_name(type), def, sdef);
-  g_free(sdef);
-
-  for (iter = penum->enum_class->values; iter->value_name; iter++) {
-    if (iter->value_nick[0] == '\0') {
-      g_string_append_printf(desc, "\n%*s(%d): %-18s", alignment + 40, "",
-                             iter->value, iter->value_name);
-    } else {
-      g_string_append_printf(desc, "\n%*s(%d): %-18s - %s", alignment + 40, "",
-                             iter->value, iter->value_name, iter->value_nick);
-    }
-  }
-
-  return g_string_free(desc, FALSE);
+  return g_string_free(
+      gst_child_inspector_build_string_for_enum(penum, value, alignment),
+      FALSE);
 }
 
 static const gchar *gst_child_inspector_flag_to_string(GParamFlags flag) {
