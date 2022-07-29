@@ -40,12 +40,13 @@ endif
 
 
 pylon_sources = [
-  'gstchildinspector.c',
   'gstpylonsrc.c',
   'gstpylonplugin.c',
+  'gstchildinspector.cpp',
   'gstpyloncamera.cpp',
   'gstpylon.cpp',
-  'gstpylonintrospection.cpp'
+  'gstpylonintrospection.cpp',
+  'gstpylonparamspecs.cpp'
 ]
 
 gstpylon = library('gstpylon',

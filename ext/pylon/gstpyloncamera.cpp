@@ -32,8 +32,11 @@
  */
 
 #include "gstpyloncamera.h"
-#include "gstpylonintrospection.h"
 
+#include "gstpylonintrospection.h"
+#include "gstpylonparamspecs.h"
+
+#include <numeric>
 #include <queue>
 
 typedef struct _GstPylonCameraPrivate GstPylonCameraPrivate;
@@ -50,7 +53,7 @@ static gchar* gst_pylon_camera_get_sanitized_name(
   Pylon::String_t cam_name = camera.GetDeviceInfo().GetFullName();
 
   /* Convert camera name to a valid string */
-  return GstPylonParamFactory::sanitize_name(cam_name.c_str());
+  return gst_pylon_param_spec_sanitize_name(cam_name.c_str());
 }
 
 static void gst_pylon_camera_init(GstPylonCamera* self);
@@ -105,22 +108,122 @@ GType gst_pylon_camera_register(
  ***********************************************************/
 
 /* prototypes */
+static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
+    GenApi::INode* node, Pylon::CBaslerUniversalInstantCamera* camera);
+static void gst_pylon_camera_install_specs(
+    const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
+    gint& nprop);
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
 template <typename F, typename P>
-static void set_pylon_property(GenApi::INodeMap& nodemap, F get_value,
-                               const GValue* value, const gchar* name);
-static void set_enum_property(GenApi::INodeMap& nodemap, const GValue* value,
-                              const gchar* name);
+static void gst_pylon_camera_set_pylon_property(GenApi::INodeMap& nodemap,
+                                                F get_value,
+                                                const GValue* value,
+                                                const gchar* name);
+static void gst_pylon_camera_set_enum_property(GenApi::INodeMap& nodemap,
+                                               const GValue* value,
+                                               const gchar* name);
+template <typename F, typename P>
+static void gst_pylon_camera_set_pylon_selector(
+    GenApi::INodeMap& nodemap, F get_value, const GValue* value,
+    const gchar* feature, const gchar* selector, guint64& selector_value);
+static void gst_pylon_camera_set_enum_selector(GenApi::INodeMap& nodemap,
+                                               const GValue* value,
+                                               const gchar* feature_name,
+                                               const gchar* selector_name,
+                                               guint64& selector_value);
 template <typename T, typename P>
-static T get_pylon_property(GenApi::INodeMap& nodemap, const gchar* name);
-static gint get_enum_property(GenApi::INodeMap& nodemap, const gchar* name);
+static T gst_pylon_camera_get_pylon_property(GenApi::INodeMap& nodemap,
+                                             const gchar* name);
+static gint gst_pylon_camera_get_enum_property(GenApi::INodeMap& nodemap,
+                                               const gchar* name);
 static void gst_pylon_camera_set_property(GObject* object, guint property_id,
                                           const GValue* value,
                                           GParamSpec* pspec);
 static void gst_pylon_camera_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec);
 static void gst_pylon_camera_finalize(GObject* self);
+
+static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
+    GenApi::INode* node, Pylon::CBaslerUniversalInstantCamera* camera) {
+  GenApi::INode* selector_node = NULL;
+  guint64 selector_value = 0;
+  std::vector<GParamSpec*> specs_list;
+
+  g_return_val_if_fail(node, specs_list);
+  g_return_val_if_fail(camera, specs_list);
+
+  auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
+  if (!sel_node) {
+    std::string msg = std::string(node->GetName()) + " is an invalid node";
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
+
+  /* If the feature has no selectors then it is a "direct" feature, it does not
+   * depend on any other selector
+   */
+  GenApi::FeatureList_t selectors;
+  sel_node->GetSelectingFeatures(selectors);
+  if (selectors.empty()) {
+    specs_list.push_back(GstPylonParamFactory::make_param(
+        node, selector_node, selector_value, camera));
+    return specs_list;
+  }
+
+  /* At the time being features with multiple selectors are not supported */
+  guint max_selectors = 1;
+  if (selectors.size() > max_selectors) {
+    std::string msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
+                      " has more than " + std::to_string(max_selectors) +
+                      " selectors, ignoring!";
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
+
+  /* At the time being only features with enum selectors are supported */
+  auto selector = selectors.at(0);
+  auto enum_node = dynamic_cast<GenApi::IEnumeration*>(selector);
+  if (!enum_node) {
+    std::string msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
+                      " is not an enumerator selector, ignoring!";
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
+
+  /* Add selector enum values */
+  std::vector<std::string> enum_values;
+  GenApi::NodeList_t enum_entries;
+  enum_node->GetEntries(enum_entries);
+  for (auto const& e : enum_entries) {
+    auto enum_name = std::string(e->GetName());
+    enum_values.push_back(enum_name.substr(enum_name.find_last_of("_") + 1));
+  }
+
+  for (auto const& sel_pair : enum_values) {
+    selector_node = selector->GetNode();
+    Pylon::CEnumParameter param(selector_node);
+    selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
+    specs_list.push_back(GstPylonParamFactory::make_param(
+        node, selector_node, selector_value, camera));
+  }
+
+  return specs_list;
+}
+
+static void gst_pylon_camera_install_specs(
+    const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
+    gint& nprop) {
+  g_return_if_fail(oclass);
+
+  if (!specs_list.empty()) {
+    for (const auto& pspec : specs_list) {
+      g_object_class_install_property(oclass, nprop, pspec);
+      nprop++;
+    }
+  } else {
+    throw Pylon::GenericException(
+        "Could not install GParamSpecs, no GParamSpecs were created", __FILE__,
+        __LINE__);
+  }
+}
 
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
@@ -151,13 +254,13 @@ static void gst_pylon_camera_install_properties(
       if (node->GetProperty("Streamable", value, attrib)) {
         if (GenICam::gcstring("Yes") == value) {
           try {
-            GParamSpec* pspec = GstPylonParamFactory::make_param(node, camera);
-            g_object_class_install_property(oclass, nprop, pspec);
-            nprop++;
+            std::vector<GParamSpec*> specs_list =
+                gst_pylon_camera_handle_node(node, camera);
+            gst_pylon_camera_install_specs(specs_list, oclass, nprop);
           } catch (const Pylon::GenericException& e) {
-            GST_DEBUG("Unable to install property \"%s\" on \"%s\": %s",
+            GST_FIXME("Unable to install property \"%s\" on \"%s\": %s",
                       node->GetDisplayName().c_str(),
-                      camera->GetDeviceInfo().GetFullName().c_str(),
+                      camera->GetDeviceInfo().GetFriendlyName().c_str(),
                       e.GetDescription());
           }
         }
@@ -191,25 +294,55 @@ static void gst_pylon_camera_class_init(
 static void gst_pylon_camera_init(GstPylonCamera* self) {}
 
 template <typename F, typename P>
-static void set_pylon_property(GenApi::INodeMap& nodemap, F get_value,
-                               const GValue* value, const gchar* name) {
+static void gst_pylon_camera_set_pylon_property(GenApi::INodeMap& nodemap,
+                                                F get_value,
+                                                const GValue* value,
+                                                const gchar* name) {
   P param(nodemap, name);
   param.SetValue(get_value(value));
 }
 
-static void set_enum_property(GenApi::INodeMap& nodemap, const GValue* value,
-                              const gchar* name) {
+static void gst_pylon_camera_set_enum_property(GenApi::INodeMap& nodemap,
+                                               const GValue* value,
+                                               const gchar* name) {
   Pylon::CEnumParameter param(nodemap, name);
   param.SetIntValue(g_value_get_enum(value));
 }
 
+template <typename F, typename P>
+static void gst_pylon_camera_set_pylon_selector(GenApi::INodeMap& nodemap,
+                                                F get_value,
+                                                const GValue* value,
+                                                const gchar* feature_name,
+                                                const gchar* selector_name,
+                                                guint64& selector_value) {
+  Pylon::CEnumParameter selparam(nodemap, selector_name);
+  selparam.SetIntValue(selector_value);
+
+  gst_pylon_camera_set_pylon_property<F, P>(nodemap, get_value, value,
+                                            feature_name);
+}
+
+static void gst_pylon_camera_set_enum_selector(GenApi::INodeMap& nodemap,
+                                               const GValue* value,
+                                               const gchar* feature_name,
+                                               const gchar* selector_name,
+                                               guint64& selector_value) {
+  Pylon::CEnumParameter selparam(nodemap, selector_name);
+  selparam.SetIntValue(selector_value);
+
+  gst_pylon_camera_set_enum_property(nodemap, value, feature_name);
+}
+
 template <typename T, typename P>
-static T get_pylon_property(GenApi::INodeMap& nodemap, const gchar* name) {
+static T gst_pylon_camera_get_pylon_property(GenApi::INodeMap& nodemap,
+                                             const gchar* name) {
   P param(nodemap, name);
   return param.GetValue();
 }
 
-static gint get_enum_property(GenApi::INodeMap& nodemap, const gchar* name) {
+static gint gst_pylon_camera_get_enum_property(GenApi::INodeMap& nodemap,
+                                               const gchar* name) {
   Pylon::CEnumParameter param(nodemap, name);
   return param.GetIntValue();
 }
@@ -220,42 +353,87 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
   GstPylonCamera* self = (GstPylonCamera*)object;
   GstPylonCameraPrivate* priv =
       (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
+  GType value_type = g_type_fundamental(G_VALUE_TYPE(value));
 
   try {
     GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
-    switch (g_type_fundamental(pspec->value_type)) {
-      case G_TYPE_INT64:
+    if (G_TYPE_INT64 == value_type) {
+      /* The value accepted by the pspec is an INT64, it can be an int
+       * feature or an int selector. */
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
+        GstPylonParamSpecSelectorInt64* lspec =
+            GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
         typedef gint64 (*GGetInt64)(const GValue*);
-        set_pylon_property<GGetInt64, Pylon::CIntegerParameter>(
+        gst_pylon_camera_set_pylon_selector<GGetInt64,
+                                            Pylon::CIntegerParameter>(
+            nodemap, g_value_get_int64, value, lspec->feature, lspec->selector,
+            lspec->selector_value);
+      } else {
+        typedef gint64 (*GGetInt64)(const GValue*);
+        gst_pylon_camera_set_pylon_property<GGetInt64,
+                                            Pylon::CIntegerParameter>(
             nodemap, g_value_get_int64, value, pspec->name);
-        break;
-      case G_TYPE_BOOLEAN:
+      }
+    } else if (G_TYPE_BOOLEAN == value_type) {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
+        GstPylonParamSpecSelectorBool* lspec =
+            GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
         typedef gboolean (*GGetBool)(const GValue*);
-        set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
+        gst_pylon_camera_set_pylon_selector<GGetBool, Pylon::CBooleanParameter>(
+            nodemap, g_value_get_boolean, value, lspec->feature,
+            lspec->selector, lspec->selector_value);
+      } else {
+        typedef gboolean (*GGetBool)(const GValue*);
+        gst_pylon_camera_set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
             nodemap, g_value_get_boolean, value, pspec->name);
-        break;
-      case G_TYPE_FLOAT:
+      }
+    } else if (G_TYPE_FLOAT == value_type) {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
+        GstPylonParamSpecSelectorFloat* lspec =
+            GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
         typedef gfloat (*GGetFloat)(const GValue*);
-        set_pylon_property<GGetFloat, Pylon::CFloatParameter>(
+        gst_pylon_camera_set_pylon_selector<GGetFloat, Pylon::CFloatParameter>(
+            nodemap, g_value_get_float, value, lspec->feature, lspec->selector,
+            lspec->selector_value);
+      } else {
+        typedef gfloat (*GGetFloat)(const GValue*);
+        gst_pylon_camera_set_pylon_property<GGetFloat, Pylon::CFloatParameter>(
             nodemap, g_value_get_float, value, pspec->name);
-        break;
-      case G_TYPE_STRING:
+      }
+    } else if (G_TYPE_STRING == value_type) {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
+        GstPylonParamSpecSelectorStr* lspec =
+            GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
         typedef const gchar* (*GGetString)(const GValue*);
-        set_pylon_property<GGetString, Pylon::CStringParameter>(
+        gst_pylon_camera_set_pylon_selector<GGetString,
+                                            Pylon::CStringParameter>(
+            nodemap, g_value_get_string, value, lspec->feature, lspec->selector,
+            lspec->selector_value);
+      } else {
+        typedef const gchar* (*GGetString)(const GValue*);
+        gst_pylon_camera_set_pylon_property<GGetString,
+                                            Pylon::CStringParameter>(
             nodemap, g_value_get_string, value, pspec->name);
-        break;
-      case G_TYPE_ENUM:
-        set_enum_property(nodemap, value, pspec->name);
-        break;
-      default:
-        g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
-        std::string msg =
-            "Unsupported GType: " + std::string(g_type_name(pspec->value_type));
-        throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+      }
+    } else if (G_TYPE_ENUM == value_type) {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
+        GstPylonParamSpecSelectorEnum* lspec =
+            (GstPylonParamSpecSelectorEnum*)pspec;
+        gst_pylon_camera_set_enum_selector(nodemap, value, lspec->feature,
+                                           lspec->selector,
+                                           lspec->selector_value);
+      } else {
+        gst_pylon_camera_set_enum_property(nodemap, value, pspec->name);
+      }
+    } else {
+      g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
+      std::string msg =
+          "Unsupported GType: " + std::string(g_type_name(pspec->value_type));
+      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
   } catch (const Pylon::GenericException& e) {
     GST_ERROR("Unable to set pylon property \"%s\" on \"%s\": %s", pspec->name,
-              priv->camera->GetDeviceInfo().GetFullName().c_str(),
+              priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
               e.GetDescription());
   }
 }
@@ -270,29 +448,31 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
     GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
     switch (g_type_fundamental(pspec->value_type)) {
       case G_TYPE_INT64:
-        g_value_set_int64(value,
-                          get_pylon_property<gint64, Pylon::CIntegerParameter>(
-                              nodemap, pspec->name));
+        g_value_set_int64(
+            value, gst_pylon_camera_get_pylon_property<
+                       gint64, Pylon::CIntegerParameter>(nodemap, pspec->name));
         break;
       case G_TYPE_BOOLEAN:
-        g_value_set_boolean(
-            value, get_pylon_property<gboolean, Pylon::CBooleanParameter>(
-                       nodemap, pspec->name));
+        g_value_set_boolean(value, gst_pylon_camera_get_pylon_property<
+                                       gboolean, Pylon::CBooleanParameter>(
+                                       nodemap, pspec->name));
         break;
       case G_TYPE_FLOAT:
-        g_value_set_float(value,
-                          get_pylon_property<gfloat, Pylon::CFloatParameter>(
-                              nodemap, pspec->name));
+        g_value_set_float(
+            value,
+            gst_pylon_camera_get_pylon_property<gfloat, Pylon::CFloatParameter>(
+                nodemap, pspec->name));
         break;
       case G_TYPE_STRING:
         g_value_set_string(
-            value,
-            get_pylon_property<GenICam::gcstring, Pylon::CStringParameter>(
-                nodemap, pspec->name)
-                .c_str());
+            value, gst_pylon_camera_get_pylon_property<GenICam::gcstring,
+                                                       Pylon::CStringParameter>(
+                       nodemap, pspec->name)
+                       .c_str());
         break;
       case G_TYPE_ENUM:
-        g_value_set_enum(value, get_enum_property(nodemap, pspec->name));
+        g_value_set_enum(
+            value, gst_pylon_camera_get_enum_property(nodemap, pspec->name));
         break;
       default:
         g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
@@ -302,7 +482,7 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
     }
   } catch (const Pylon::GenericException& e) {
     GST_ERROR("Unable to get pylon property \"%s\" on \"%s\": %s", pspec->name,
-              priv->camera->GetDeviceInfo().GetFullName().c_str(),
+              priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
               e.GetDescription());
   }
 }
