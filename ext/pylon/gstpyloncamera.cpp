@@ -32,6 +32,7 @@
  */
 
 #include "gstpyloncamera.h"
+
 #include "gstpylonintrospection.h"
 #include "gstpylonparamspecs.h"
 
@@ -352,7 +353,6 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
   GstPylonCamera* self = (GstPylonCamera*)object;
   GstPylonCameraPrivate* priv =
       (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
-  GType pspec_type = G_PARAM_SPEC_TYPE(pspec);
   GType value_type = g_type_fundamental(G_VALUE_TYPE(value));
 
   try {
@@ -360,12 +360,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
     if (G_TYPE_INT64 == value_type) {
       /* The value accepted by the pspec is an INT64, it can be an int
        * feature or an int selector. */
-      if (G_TYPE_PARAM_INT64 == pspec_type) {
-        typedef gint64 (*GGetInt64)(const GValue*);
-        gst_pylon_camera_set_pylon_property<GGetInt64,
-                                            Pylon::CIntegerParameter>(
-            nodemap, g_value_get_int64, value, pspec->name);
-      } else {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec)) {
         GstPylonParamSpecSelectorInt64* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
         typedef gint64 (*GGetInt64)(const GValue*);
@@ -373,40 +368,40 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
                                             Pylon::CIntegerParameter>(
             nodemap, g_value_get_int64, value, lspec->feature, lspec->selector,
             lspec->selector_value);
+      } else {
+        typedef gint64 (*GGetInt64)(const GValue*);
+        gst_pylon_camera_set_pylon_property<GGetInt64,
+                                            Pylon::CIntegerParameter>(
+            nodemap, g_value_get_int64, value, pspec->name);
       }
     } else if (G_TYPE_BOOLEAN == value_type) {
-      if (G_TYPE_PARAM_BOOLEAN == pspec_type) {
-        typedef gboolean (*GGetBool)(const GValue*);
-        gst_pylon_camera_set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
-            nodemap, g_value_get_boolean, value, pspec->name);
-      } else {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec)) {
         GstPylonParamSpecSelectorBool* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
         typedef gboolean (*GGetBool)(const GValue*);
         gst_pylon_camera_set_pylon_selector<GGetBool, Pylon::CBooleanParameter>(
             nodemap, g_value_get_boolean, value, lspec->feature,
             lspec->selector, lspec->selector_value);
+      } else {
+        typedef gboolean (*GGetBool)(const GValue*);
+        gst_pylon_camera_set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
+            nodemap, g_value_get_boolean, value, pspec->name);
       }
     } else if (G_TYPE_FLOAT == value_type) {
-      if (G_TYPE_PARAM_FLOAT == pspec_type) {
-        typedef gfloat (*GGetFloat)(const GValue*);
-        gst_pylon_camera_set_pylon_property<GGetFloat, Pylon::CFloatParameter>(
-            nodemap, g_value_get_float, value, pspec->name);
-      } else {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec)) {
         GstPylonParamSpecSelectorFloat* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
         typedef gfloat (*GGetFloat)(const GValue*);
         gst_pylon_camera_set_pylon_selector<GGetFloat, Pylon::CFloatParameter>(
             nodemap, g_value_get_float, value, lspec->feature, lspec->selector,
             lspec->selector_value);
+      } else {
+        typedef gfloat (*GGetFloat)(const GValue*);
+        gst_pylon_camera_set_pylon_property<GGetFloat, Pylon::CFloatParameter>(
+            nodemap, g_value_get_float, value, pspec->name);
       }
     } else if (G_TYPE_STRING == value_type) {
-      if (G_TYPE_PARAM_STRING == pspec_type) {
-        typedef const gchar* (*GGetString)(const GValue*);
-        gst_pylon_camera_set_pylon_property<GGetString,
-                                            Pylon::CStringParameter>(
-            nodemap, g_value_get_string, value, pspec->name);
-      } else {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec)) {
         GstPylonParamSpecSelectorStr* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
         typedef const gchar* (*GGetString)(const GValue*);
@@ -414,16 +409,21 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
                                             Pylon::CStringParameter>(
             nodemap, g_value_get_string, value, lspec->feature, lspec->selector,
             lspec->selector_value);
+      } else {
+        typedef const gchar* (*GGetString)(const GValue*);
+        gst_pylon_camera_set_pylon_property<GGetString,
+                                            Pylon::CStringParameter>(
+            nodemap, g_value_get_string, value, pspec->name);
       }
     } else if (G_TYPE_ENUM == value_type) {
-      if (G_TYPE_PARAM_ENUM == pspec_type) {
-        gst_pylon_camera_set_enum_property(nodemap, value, pspec->name);
-      } else {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec)) {
         GstPylonParamSpecSelectorEnum* lspec =
             (GstPylonParamSpecSelectorEnum*)pspec;
         gst_pylon_camera_set_enum_selector(nodemap, value, lspec->feature,
                                            lspec->selector,
                                            lspec->selector_value);
+      } else {
+        gst_pylon_camera_set_enum_property(nodemap, value, pspec->name);
       }
     } else {
       g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
