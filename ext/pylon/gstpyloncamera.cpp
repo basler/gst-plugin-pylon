@@ -360,7 +360,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
     if (G_TYPE_INT64 == value_type) {
       /* The value accepted by the pspec is an INT64, it can be an int
        * feature or an int selector. */
-      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec)) {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
         GstPylonParamSpecSelectorInt64* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
         typedef gint64 (*GGetInt64)(const GValue*);
@@ -375,7 +375,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
             nodemap, g_value_get_int64, value, pspec->name);
       }
     } else if (G_TYPE_BOOLEAN == value_type) {
-      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec)) {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
         GstPylonParamSpecSelectorBool* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
         typedef gboolean (*GGetBool)(const GValue*);
@@ -388,7 +388,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
             nodemap, g_value_get_boolean, value, pspec->name);
       }
     } else if (G_TYPE_FLOAT == value_type) {
-      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec)) {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
         GstPylonParamSpecSelectorFloat* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
         typedef gfloat (*GGetFloat)(const GValue*);
@@ -401,7 +401,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
             nodemap, g_value_get_float, value, pspec->name);
       }
     } else if (G_TYPE_STRING == value_type) {
-      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec)) {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
         GstPylonParamSpecSelectorStr* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
         typedef const gchar* (*GGetString)(const GValue*);
@@ -416,7 +416,7 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
             nodemap, g_value_get_string, value, pspec->name);
       }
     } else if (G_TYPE_ENUM == value_type) {
-      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec)) {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
         GstPylonParamSpecSelectorEnum* lspec =
             (GstPylonParamSpecSelectorEnum*)pspec;
         gst_pylon_camera_set_enum_selector(nodemap, value, lspec->feature,

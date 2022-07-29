@@ -251,7 +251,7 @@ static gchar *gst_child_inspector_type_to_string(GParamSpec *pspec,
 
   for (current_type = types; current_type->type_to_string; ++current_type) {
     if (g_type_is_a(value_type, current_type->value)) {
-      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec)) {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
         to_string = current_type->selector_to_string(pspec, value, alignment);
       } else {
         to_string = current_type->type_to_string(pspec, value, alignment);
