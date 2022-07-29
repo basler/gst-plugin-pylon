@@ -237,8 +237,8 @@ static const gchar *gst_child_inspector_flag_to_string(GParamFlags flag) {
 }
 
 static gchar *gst_child_inspector_flags_to_string(GParamFlags flags) {
-  guint32 bit_flags;
-  gint i;
+  guint32 bit_flags = 0;
+  gint i = 0;
   gchar *serial_flags = NULL;
 
   /* Walk through all the bits in the flags */
@@ -269,7 +269,7 @@ static gchar *gst_child_inspector_flags_to_string(GParamFlags flags) {
 static gchar *gst_child_inspector_type_to_string(GParamSpec *pspec,
                                                  GValue *value,
                                                  gint alignment) {
-  GstChildInspectorType *current_type;
+  GstChildInspectorType *current_type = NULL;
   const GType value_type = G_VALUE_TYPE(value);
   gchar *to_string = NULL;
 
@@ -296,11 +296,11 @@ gchar *gst_child_inspector_property_to_string(GObject *object,
   GValue value = {
       0,
   };
-  const gchar *name;
-  const gchar *blurb;
+  const gchar *name = NULL;
+  const gchar *blurb = NULL;
   gchar *flags = NULL;
-  gchar *type;
-  gchar *prop;
+  gchar *type = NULL;
+  gchar *prop = NULL;
 
   g_return_val_if_fail(param, NULL);
   g_return_val_if_fail(G_IS_OBJECT(object), NULL);
@@ -331,8 +331,8 @@ gchar *gst_child_inspector_property_to_string(GObject *object,
 
 gchar *gst_child_inspector_properties_to_string(GObject *object,
                                                 guint alignment, gchar *title) {
-  GParamSpec **property_specs;
-  guint num_properties, i;
+  GParamSpec **property_specs = NULL;
+  guint num_properties, i = 0;
   GString *props = NULL;
   gchar *prop = NULL;
 
