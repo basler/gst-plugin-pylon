@@ -205,9 +205,15 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     enum_values.push_back(enum_name.substr(enum_name.find_last_of("_") + 1));
   }
 
+  selector_node = selector->GetNode();
+  Pylon::CEnumParameter param(selector_node);
+
+  /* Treat features that have just one selector value as unselected */
+  if (1 == enum_values.size()) {
+    selector_node = NULL;
+  }
+
   for (auto const& sel_pair : enum_values) {
-    selector_node = selector->GetNode();
-    Pylon::CEnumParameter param(selector_node);
     selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
     specs_list.push_back(GstPylonParamFactory::make_param(
         node, selector_node, selector_value, camera));
