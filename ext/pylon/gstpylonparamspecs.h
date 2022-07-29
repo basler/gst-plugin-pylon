@@ -57,7 +57,7 @@ G_BEGIN_DECLS
 
 /* Set flag for features with selectors */
 #define GST_PYLON_PARAM_IS_SELECTOR (1 << (G_PARAM_USER_SHIFT + 1))
-#define GST_PYLON_PARAM_FLAG_IS_SET(pspec, flag) ((pspec)->flags & flag)
+#define GST_PYLON_PARAM_FLAG_IS_SET(pspec, flag) ((pspec)->flags & (flag))
 
 /**
  * GstPylonParamSelectorInt64:
