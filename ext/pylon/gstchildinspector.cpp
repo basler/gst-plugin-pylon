@@ -73,7 +73,6 @@ struct _GstChildInspectorFlag {
 
 struct _GstChildInspectorType {
   GType value;
-  GType pspec;
   GstChildInspectorTypeToString type_to_string;
   GstChildInspectorTypeToString selector_to_string;
 };
@@ -87,19 +86,17 @@ static GstChildInspectorFlag flags[] = {
     {0, NULL}};
 
 static GstChildInspectorType types[] = {
-    {G_TYPE_INT64, G_TYPE_PARAM_INT64, gst_child_inspector_type_int64_to_string,
+    {G_TYPE_INT64, gst_child_inspector_type_int64_to_string,
      gst_child_inspector_type_selector_int64_to_string},
-    {G_TYPE_BOOLEAN, G_TYPE_PARAM_BOOLEAN,
-     gst_child_inspector_type_bool_to_string,
+    {G_TYPE_BOOLEAN, gst_child_inspector_type_bool_to_string,
      gst_child_inspector_type_bool_to_string},
-    {G_TYPE_FLOAT, G_TYPE_PARAM_FLOAT, gst_child_inspector_type_float_to_string,
+    {G_TYPE_FLOAT, gst_child_inspector_type_float_to_string,
      gst_child_inspector_type_selector_float_to_string},
-    {G_TYPE_STRING, G_TYPE_PARAM_STRING,
-     gst_child_inspector_type_string_to_string,
+    {G_TYPE_STRING, gst_child_inspector_type_string_to_string,
      gst_child_inspector_type_string_to_string},
-    {G_TYPE_ENUM, G_TYPE_PARAM_ENUM, gst_child_inspector_type_enum_to_string,
+    {G_TYPE_ENUM, gst_child_inspector_type_enum_to_string,
      gst_child_inspector_type_selector_enum_to_string},
-    {0, 0, NULL, NULL}};
+    {0, NULL, NULL}};
 
 static GString *gst_child_inspector_build_string_for_enum(GParamSpecEnum *penum,
                                                           GValue *value,
@@ -251,7 +248,6 @@ static gchar *gst_child_inspector_type_to_string(GParamSpec *pspec,
                                                  gint alignment) {
   GstChildInspectorType *current_type;
   const GType value_type = G_VALUE_TYPE(value);
-  const GType param_type = G_PARAM_SPEC_TYPE(pspec);
   gchar *to_string = NULL;
 
   g_return_val_if_fail(pspec, NULL);
@@ -259,10 +255,10 @@ static gchar *gst_child_inspector_type_to_string(GParamSpec *pspec,
 
   for (current_type = types; current_type->type_to_string; ++current_type) {
     if (g_type_is_a(value_type, current_type->value)) {
-      if (g_type_is_a(param_type, current_type->pspec)) {
-        to_string = current_type->type_to_string(pspec, value, alignment);
-      } else {
+      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec)) {
         to_string = current_type->selector_to_string(pspec, value, alignment);
+      } else {
+        to_string = current_type->type_to_string(pspec, value, alignment);
       }
       break;
     }

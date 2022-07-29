@@ -138,6 +138,8 @@ GParamSpec *gst_pylon_param_spec_selector_int64(
                          param.GetEntry(selector_value)->GetSymbolic().c_str());
   int_flags &= ~G_PARAM_STATIC_NAME;
 
+  int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
+
   spec = static_cast<GstPylonParamSpecSelectorInt64 *>(
       g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_INT64, name, nick,
                             blurb, static_cast<GParamFlags>(int_flags)));
@@ -243,6 +245,8 @@ GParamSpec *gst_pylon_param_spec_selector_bool(
   name = g_strdup_printf("%s-%s", feature_name,
                          param.GetEntry(selector_value)->GetSymbolic().c_str());
   int_flags &= ~G_PARAM_STATIC_NAME;
+
+  int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
 
   spec = static_cast<GstPylonParamSpecSelectorBool *>(
       g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_BOOL, name, nick,
@@ -353,6 +357,8 @@ GParamSpec *gst_pylon_param_spec_selector_float(
                          param.GetEntry(selector_value)->GetSymbolic().c_str());
   int_flags &= ~G_PARAM_STATIC_NAME;
 
+  int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
+
   spec = static_cast<GstPylonParamSpecSelectorFloat *>(
       g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_FLOAT, name, nick,
                             blurb, static_cast<GParamFlags>(int_flags)));
@@ -453,6 +459,8 @@ GParamSpec *gst_pylon_param_spec_selector_str(
   name = g_strdup_printf("%s-%s", feature_name,
                          param.GetEntry(selector_value)->GetSymbolic().c_str());
   int_flags &= ~G_PARAM_STATIC_NAME;
+
+  int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
 
   spec = static_cast<GstPylonParamSpecSelectorStr *>(
       g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_STR, name, nick,
@@ -561,6 +569,8 @@ GParamSpec *gst_pylon_param_spec_selector_enum(
   name = g_strdup_printf("%s-%s", feature_name,
                          param.GetEntry(selector_value)->GetSymbolic().c_str());
   int_flags &= ~G_PARAM_STATIC_NAME;
+
+  int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
 
   spec = static_cast<GstPylonParamSpecSelectorEnum *>(g_param_spec_internal(
       gst_pylon_param_spec_selector_enum_register(camera, name, type), name,
