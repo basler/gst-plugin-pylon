@@ -101,6 +101,9 @@ static GstChildInspectorType types[] = {
 static GString *gst_child_inspector_build_string_for_enum(GParamSpecEnum *penum,
                                                           GValue *value,
                                                           gint alignment) {
+  g_return_val_if_fail(penum, NULL);
+  g_return_val_if_fail(value, NULL);
+
   GType type = G_TYPE_FROM_CLASS(penum->enum_class);
   gint def = g_value_get_enum(value);
   gchar *sdef = g_enum_to_string(type, def);
@@ -126,12 +129,18 @@ static GString *gst_child_inspector_build_string_for_enum(GParamSpecEnum *penum,
 static gchar *gst_child_inspector_type_string_to_string(GParamSpec *pspec,
                                                         GValue *value,
                                                         gint alignment) {
+  g_return_val_if_fail(pspec, NULL);
+  g_return_val_if_fail(value, NULL);
+
   return g_strdup_printf("String. Default: \"%s\"", g_value_get_string(value));
 }
 
 static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
                                                        GValue *value,
                                                        gint alignment) {
+  g_return_val_if_fail(pspec, NULL);
+  g_return_val_if_fail(value, NULL);
+
   GParamSpecInt64 *pint = G_PARAM_SPEC_INT64(pspec);
 
   return g_strdup_printf("Integer64. Range: %" G_GINT64_FORMAT
@@ -143,6 +152,9 @@ static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
 static gchar *gst_child_inspector_type_float_to_string(GParamSpec *pspec,
                                                        GValue *value,
                                                        gint alignment) {
+  g_return_val_if_fail(pspec, NULL);
+  g_return_val_if_fail(value, NULL);
+
   GParamSpecFloat *pfloat = G_PARAM_SPEC_FLOAT(pspec);
 
   return g_strdup_printf("Float. Range: %.2f - %.2f Default: %.2f",
@@ -153,6 +165,9 @@ static gchar *gst_child_inspector_type_float_to_string(GParamSpec *pspec,
 static gchar *gst_child_inspector_type_bool_to_string(GParamSpec *pspec,
                                                       GValue *value,
                                                       gint alignment) {
+  g_return_val_if_fail(pspec, NULL);
+  g_return_val_if_fail(value, NULL);
+
   return g_strdup_printf("Boolean. Default: %s",
                          g_value_get_boolean(value) ? "true" : "false");
 }
@@ -160,6 +175,9 @@ static gchar *gst_child_inspector_type_bool_to_string(GParamSpec *pspec,
 static gchar *gst_child_inspector_type_enum_to_string(GParamSpec *pspec,
                                                       GValue *value,
                                                       gint alignment) {
+  g_return_val_if_fail(pspec, NULL);
+  g_return_val_if_fail(value, NULL);
+
   GParamSpecEnum *penum = G_PARAM_SPEC_ENUM(pspec);
   return g_string_free(
       gst_child_inspector_build_string_for_enum(penum, value, alignment),
@@ -168,6 +186,9 @@ static gchar *gst_child_inspector_type_enum_to_string(GParamSpec *pspec,
 
 static gchar *gst_child_inspector_type_selector_int64_to_string(
     GParamSpec *pspec, GValue *value, gint alignment) {
+  g_return_val_if_fail(pspec, NULL);
+  g_return_val_if_fail(value, NULL);
+
   GstPylonParamSpecSelectorInt64 *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
   GParamSpecInt64 *pint = G_PARAM_SPEC_INT64(spec->base);
@@ -178,6 +199,9 @@ static gchar *gst_child_inspector_type_selector_int64_to_string(
 
 static gchar *gst_child_inspector_type_selector_float_to_string(
     GParamSpec *pspec, GValue *value, gint alignment) {
+  g_return_val_if_fail(pspec, NULL);
+  g_return_val_if_fail(value, NULL);
+
   GstPylonParamSpecSelectorFloat *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
   GParamSpecFloat *pfloat = G_PARAM_SPEC_FLOAT(spec->base);
@@ -188,6 +212,9 @@ static gchar *gst_child_inspector_type_selector_float_to_string(
 
 static gchar *gst_child_inspector_type_selector_enum_to_string(
     GParamSpec *pspec, GValue *value, gint alignment) {
+  g_return_val_if_fail(pspec, NULL);
+  g_return_val_if_fail(value, NULL);
+
   GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
   GParamSpecEnum *penum = G_PARAM_SPEC_ENUM(spec->base);
 

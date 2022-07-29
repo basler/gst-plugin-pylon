@@ -48,6 +48,8 @@ gchar *gst_pylon_param_spec_sanitize_name(const gchar *name) {
 /* --- Selector int64 type functions --- */
 
 static void _gst_pylon_param_selector_int64_init(GParamSpec *pspec) {
+  g_return_if_fail(pspec);
+
   GstPylonParamSpecSelectorInt64 *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
 
@@ -58,6 +60,8 @@ static void _gst_pylon_param_selector_int64_init(GParamSpec *pspec) {
 }
 
 static void _gst_pylon_param_selector_int64_finalize(GParamSpec *pspec) {
+  g_return_if_fail(pspec);
+
   GstPylonParamSpecSelectorInt64 *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
 
@@ -68,6 +72,9 @@ static void _gst_pylon_param_selector_int64_finalize(GParamSpec *pspec) {
 
 static void _gst_pylon_param_selector_int64_set_default(GParamSpec *pspec,
                                                         GValue *value) {
+  g_return_if_fail(pspec);
+  g_return_if_fail(value);
+
   GstPylonParamSpecSelectorInt64 *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
 
@@ -76,6 +83,9 @@ static void _gst_pylon_param_selector_int64_set_default(GParamSpec *pspec,
 
 static gboolean _gst_pylon_param_selector_int64_validate(GParamSpec *pspec,
                                                          GValue *value) {
+  g_return_val_if_fail(pspec, FALSE);
+  g_return_val_if_fail(value, FALSE);
+
   GstPylonParamSpecSelectorInt64 *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
 
@@ -85,6 +95,10 @@ static gboolean _gst_pylon_param_selector_int64_validate(GParamSpec *pspec,
 static gint _gst_pylon_param_selector_int64_values_cmp(GParamSpec *pspec,
                                                        const GValue *value1,
                                                        const GValue *value2) {
+  g_return_val_if_fail(pspec, 0);
+  g_return_val_if_fail(value1, 0);
+  g_return_val_if_fail(value2, 0);
+
   GstPylonParamSpecSelectorInt64 *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
 
@@ -158,6 +172,8 @@ GParamSpec *gst_pylon_param_spec_selector_int64(
 /* --- Selector boolean type functions --- */
 
 static void _gst_pylon_param_selector_bool_init(GParamSpec *pspec) {
+  g_return_if_fail(pspec);
+
   GstPylonParamSpecSelectorBool *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
 
@@ -168,6 +184,8 @@ static void _gst_pylon_param_selector_bool_init(GParamSpec *pspec) {
 }
 
 static void _gst_pylon_param_selector_bool_finalize(GParamSpec *pspec) {
+  g_return_if_fail(pspec);
+
   GstPylonParamSpecSelectorBool *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
 
@@ -178,6 +196,9 @@ static void _gst_pylon_param_selector_bool_finalize(GParamSpec *pspec) {
 
 static void _gst_pylon_param_selector_bool_set_default(GParamSpec *pspec,
                                                        GValue *value) {
+  g_return_if_fail(pspec);
+  g_return_if_fail(value);
+
   GstPylonParamSpecSelectorBool *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
 
@@ -186,6 +207,9 @@ static void _gst_pylon_param_selector_bool_set_default(GParamSpec *pspec,
 
 static gboolean _gst_pylon_param_selector_bool_validate(GParamSpec *pspec,
                                                         GValue *value) {
+  g_return_val_if_fail(pspec, FALSE);
+  g_return_val_if_fail(value, FALSE);
+
   GstPylonParamSpecSelectorBool *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
 
@@ -195,6 +219,10 @@ static gboolean _gst_pylon_param_selector_bool_validate(GParamSpec *pspec,
 static gint _gst_pylon_param_selector_bool_values_cmp(GParamSpec *pspec,
                                                       const GValue *value1,
                                                       const GValue *value2) {
+  g_return_val_if_fail(pspec, 0);
+  g_return_val_if_fail(value1, 0);
+  g_return_val_if_fail(value2, 0);
+
   GstPylonParamSpecSelectorBool *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
 
@@ -266,6 +294,8 @@ GParamSpec *gst_pylon_param_spec_selector_bool(
 /* --- Selector float type functions --- */
 
 static void _gst_pylon_param_selector_float_init(GParamSpec *pspec) {
+  g_return_if_fail(pspec);
+
   GstPylonParamSpecSelectorFloat *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
 
@@ -276,6 +306,8 @@ static void _gst_pylon_param_selector_float_init(GParamSpec *pspec) {
 }
 
 static void _gst_pylon_param_selector_float_finalize(GParamSpec *pspec) {
+  g_return_if_fail(pspec);
+
   GstPylonParamSpecSelectorFloat *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
 
@@ -286,6 +318,9 @@ static void _gst_pylon_param_selector_float_finalize(GParamSpec *pspec) {
 
 static void _gst_pylon_param_selector_float_set_default(GParamSpec *pspec,
                                                         GValue *value) {
+  g_return_if_fail(pspec);
+  g_return_if_fail(value);
+
   GstPylonParamSpecSelectorFloat *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
 
@@ -294,6 +329,9 @@ static void _gst_pylon_param_selector_float_set_default(GParamSpec *pspec,
 
 static gboolean _gst_pylon_param_selector_float_validate(GParamSpec *pspec,
                                                          GValue *value) {
+  g_return_val_if_fail(pspec, FALSE);
+  g_return_val_if_fail(value, __FLT64X_HAS_DENORM__);
+
   GstPylonParamSpecSelectorFloat *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
 
@@ -303,6 +341,10 @@ static gboolean _gst_pylon_param_selector_float_validate(GParamSpec *pspec,
 static gint _gst_pylon_param_selector_float_values_cmp(GParamSpec *pspec,
                                                        const GValue *value1,
                                                        const GValue *value2) {
+  g_return_val_if_fail(pspec, 0);
+  g_return_val_if_fail(value1, 0);
+  g_return_val_if_fail(value2, 0);
+
   GstPylonParamSpecSelectorFloat *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
 
@@ -377,6 +419,8 @@ GParamSpec *gst_pylon_param_spec_selector_float(
 /* --- Selector string type functions --- */
 
 static void _gst_pylon_param_selector_str_init(GParamSpec *pspec) {
+  g_return_if_fail(pspec);
+
   GstPylonParamSpecSelectorStr *spec = GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
 
   spec->feature = NULL;
@@ -386,6 +430,8 @@ static void _gst_pylon_param_selector_str_init(GParamSpec *pspec) {
 }
 
 static void _gst_pylon_param_selector_str_finalize(GParamSpec *pspec) {
+  g_return_if_fail(pspec);
+
   GstPylonParamSpecSelectorStr *spec = GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
 
   g_free(spec->feature);
@@ -395,6 +441,9 @@ static void _gst_pylon_param_selector_str_finalize(GParamSpec *pspec) {
 
 static void _gst_pylon_param_selector_str_set_default(GParamSpec *pspec,
                                                       GValue *value) {
+  g_return_if_fail(pspec);
+  g_return_if_fail(value);
+
   GstPylonParamSpecSelectorStr *spec = GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
 
   g_param_value_set_default(spec->base, value);
@@ -402,6 +451,9 @@ static void _gst_pylon_param_selector_str_set_default(GParamSpec *pspec,
 
 static gboolean _gst_pylon_param_selector_str_validate(GParamSpec *pspec,
                                                        GValue *value) {
+  g_return_val_if_fail(pspec, FALSE);
+  g_return_val_if_fail(value, FALSE);
+
   GstPylonParamSpecSelectorStr *spec = GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
 
   return g_param_value_validate(spec->base, value);
@@ -410,6 +462,10 @@ static gboolean _gst_pylon_param_selector_str_validate(GParamSpec *pspec,
 static gint _gst_pylon_param_selector_str_values_cmp(GParamSpec *pspec,
                                                      const GValue *value1,
                                                      const GValue *value2) {
+  g_return_val_if_fail(pspec, 0);
+  g_return_val_if_fail(value1, 0);
+  g_return_val_if_fail(value2, 0);
+
   GstPylonParamSpecSelectorStr *spec = GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
 
   return g_param_values_cmp(spec->base, value1, value2);
@@ -480,6 +536,8 @@ GParamSpec *gst_pylon_param_spec_selector_str(
 /* --- Selector enumeration type functions --- */
 
 static void _gst_pylon_param_selector_enum_init(GParamSpec *pspec) {
+  g_return_if_fail(pspec);
+
   GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
 
   spec->feature = NULL;
@@ -489,6 +547,8 @@ static void _gst_pylon_param_selector_enum_init(GParamSpec *pspec) {
 }
 
 static void _gst_pylon_param_selector_enum_finalize(GParamSpec *pspec) {
+  g_return_if_fail(pspec);
+
   GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
 
   g_free(spec->feature);
@@ -498,6 +558,9 @@ static void _gst_pylon_param_selector_enum_finalize(GParamSpec *pspec) {
 
 static void _gst_pylon_param_selector_enum_set_default(GParamSpec *pspec,
                                                        GValue *value) {
+  g_return_if_fail(pspec);
+  g_return_if_fail(value);
+
   GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
 
   g_param_value_set_default(spec->base, value);
@@ -505,6 +568,9 @@ static void _gst_pylon_param_selector_enum_set_default(GParamSpec *pspec,
 
 static gboolean _gst_pylon_param_selector_enum_validate(GParamSpec *pspec,
                                                         GValue *value) {
+  g_return_val_if_fail(pspec, FALSE);
+  g_return_val_if_fail(value, FALSE);
+
   GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
 
   return g_param_value_validate(spec->base, value);
@@ -513,6 +579,10 @@ static gboolean _gst_pylon_param_selector_enum_validate(GParamSpec *pspec,
 static gint _gst_pylon_param_selector_enum_values_cmp(GParamSpec *pspec,
                                                       const GValue *value1,
                                                       const GValue *value2) {
+  g_return_val_if_fail(pspec, 0);
+  g_return_val_if_fail(value1, 0);
+  g_return_val_if_fail(value2, 0);
+
   GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
 
   return g_param_values_cmp(spec->base, value1, value2);
