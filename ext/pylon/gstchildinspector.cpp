@@ -134,7 +134,7 @@ static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
                                                        gint alignment) {
   GParamSpecInt64 *pint = G_PARAM_SPEC_INT64(pspec);
 
-  return g_strdup_printf("Integer. Range: %" G_GINT64_FORMAT
+  return g_strdup_printf("Integer64. Range: %" G_GINT64_FORMAT
                          " - %" G_GINT64_FORMAT " Default: %" G_GINT64_FORMAT,
                          pint->minimum, pint->maximum,
                          g_value_get_int64(value));
@@ -172,10 +172,8 @@ static gchar *gst_child_inspector_type_selector_int64_to_string(
       GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
   GParamSpecInt64 *pint = G_PARAM_SPEC_INT64(spec->base);
 
-  return g_strdup_printf("Integer. Range: %" G_GINT64_FORMAT
-                         " - %" G_GINT64_FORMAT " Default: %" G_GINT64_FORMAT,
-                         pint->minimum, pint->maximum,
-                         g_value_get_int64(value));
+  return gst_child_inspector_type_int64_to_string(G_PARAM_SPEC(pint), value,
+                                                  alignment);
 }
 
 static gchar *gst_child_inspector_type_selector_float_to_string(
@@ -184,9 +182,8 @@ static gchar *gst_child_inspector_type_selector_float_to_string(
       GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
   GParamSpecFloat *pfloat = G_PARAM_SPEC_FLOAT(spec->base);
 
-  return g_strdup_printf("Float. Range: %.2f - %.2f Default: %.2f",
-                         pfloat->minimum, pfloat->maximum,
-                         g_value_get_float(value));
+  return gst_child_inspector_type_float_to_string(G_PARAM_SPEC(pfloat), value,
+                                                  alignment);
 }
 
 static gchar *gst_child_inspector_type_selector_enum_to_string(
@@ -194,9 +191,8 @@ static gchar *gst_child_inspector_type_selector_enum_to_string(
   GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
   GParamSpecEnum *penum = G_PARAM_SPEC_ENUM(spec->base);
 
-  return g_string_free(
-      gst_child_inspector_build_string_for_enum(penum, value, alignment),
-      FALSE);
+  return gst_child_inspector_type_enum_to_string(G_PARAM_SPEC(penum), value,
+                                                 alignment);
 }
 
 static const gchar *gst_child_inspector_flag_to_string(GParamFlags flag) {
