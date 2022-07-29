@@ -32,6 +32,7 @@
  */
 
 #include "gstpylonintrospection.h"
+
 #include "gstpylonparamspecs.h"
 
 #include <unordered_map>
@@ -54,17 +55,20 @@ static GParamSpec *gst_pylon_make_spec_selector_str(
     Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *node,
     GenApi::INode *selector, guint64 selector_value);
 static GType gst_pylon_make_enum_type(
-    GenApi::INode *node, Pylon::CBaslerUniversalInstantCamera *camera);
+    Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_enum(
-    GenApi::INode *node, Pylon::CBaslerUniversalInstantCamera *camera);
+    Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_selector_enum(
-    GenApi::INode *node, Pylon::CBaslerUniversalInstantCamera *camera,
+    Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *node,
     GenApi::INode *selector, guint64 selector_value);
 static GParamFlags gst_pylon_query_access(GenApi::INode *node);
 
 static GParamFlags gst_pylon_query_access(GenApi::INode *node) {
-  Pylon::CParameter param(node);
   gint flags = 0;
+
+  g_return_val_if_fail(node, static_cast<GParamFlags>(flags));
+
+  Pylon::CParameter param(node);
 
   if (param.IsReadable()) {
     flags |= G_PARAM_READABLE;
@@ -97,7 +101,9 @@ static GParamSpec *gst_pylon_make_spec_int64(GenApi::INode *node) {
 static GParamSpec *gst_pylon_make_spec_selector_int64(
     Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *node,
     GenApi::INode *selector, guint64 selector_value) {
+  g_return_val_if_fail(camera, NULL);
   g_return_val_if_fail(node, NULL);
+  g_return_val_if_fail(selector, NULL);
 
   Pylon::CIntegerParameter param(node);
 
@@ -120,7 +126,9 @@ static GParamSpec *gst_pylon_make_spec_bool(GenApi::INode *node) {
 static GParamSpec *gst_pylon_make_spec_selector_bool(
     Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *node,
     GenApi::INode *selector, guint64 selector_value) {
+  g_return_val_if_fail(camera, NULL);
   g_return_val_if_fail(node, NULL);
+  g_return_val_if_fail(selector, NULL);
 
   Pylon::CBooleanParameter param(node);
 
@@ -143,7 +151,9 @@ static GParamSpec *gst_pylon_make_spec_float(GenApi::INode *node) {
 static GParamSpec *gst_pylon_make_spec_selector_float(
     Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *node,
     GenApi::INode *selector, guint64 selector_value) {
+  g_return_val_if_fail(camera, NULL);
   g_return_val_if_fail(node, NULL);
+  g_return_val_if_fail(selector, NULL);
 
   Pylon::CFloatParameter param(node);
 
@@ -166,7 +176,9 @@ static GParamSpec *gst_pylon_make_spec_str(GenApi::INode *node) {
 static GParamSpec *gst_pylon_make_spec_selector_str(
     Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *node,
     GenApi::INode *selector, guint64 selector_value) {
+  g_return_val_if_fail(camera, NULL);
   g_return_val_if_fail(node, NULL);
+  g_return_val_if_fail(selector, NULL);
 
   Pylon::CStringParameter param(node);
 
@@ -177,7 +189,7 @@ static GParamSpec *gst_pylon_make_spec_selector_str(
 }
 
 static GType gst_pylon_make_enum_type(
-    GenApi::INode *node, Pylon::CBaslerUniversalInstantCamera *camera) {
+    Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *node) {
   /* When registering enums to the GType system, their string pointers
      must remain valid throughout the application lifespan. To achieve this
      we are saving all found enums into a static hash table
@@ -227,12 +239,12 @@ static GType gst_pylon_make_enum_type(
 }
 
 static GParamSpec *gst_pylon_make_spec_enum(
-    GenApi::INode *node, Pylon::CBaslerUniversalInstantCamera *camera) {
+    Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *node) {
   g_return_val_if_fail(node, NULL);
   g_return_val_if_fail(camera, NULL);
 
   Pylon::CEnumParameter param(node);
-  GType type = gst_pylon_make_enum_type(node, camera);
+  GType type = gst_pylon_make_enum_type(camera, node);
 
   return g_param_spec_enum(node->GetName(), node->GetDisplayName(),
                            node->GetToolTip(), type, param.GetIntValue(),
@@ -240,13 +252,14 @@ static GParamSpec *gst_pylon_make_spec_enum(
 }
 
 static GParamSpec *gst_pylon_make_spec_selector_enum(
-    GenApi::INode *node, Pylon::CBaslerUniversalInstantCamera *camera,
+    Pylon::CBaslerUniversalInstantCamera *camera, GenApi::INode *node,
     GenApi::INode *selector, guint64 selector_value) {
-  g_return_val_if_fail(node, NULL);
   g_return_val_if_fail(camera, NULL);
+  g_return_val_if_fail(node, NULL);
+  g_return_val_if_fail(selector, NULL);
 
   Pylon::CEnumParameter param(node);
-  GType type = gst_pylon_make_enum_type(node, camera);
+  GType type = gst_pylon_make_enum_type(camera, node);
 
   return gst_pylon_param_spec_selector_enum(
       camera, node->GetName(), selector->GetName(), selector_value,
@@ -298,9 +311,9 @@ GParamSpec *GstPylonParamFactory::make_param(
       break;
     case GenApi::intfIEnumeration:
       if (!selector) {
-        spec = gst_pylon_make_spec_enum(node, camera);
+        spec = gst_pylon_make_spec_enum(camera, node);
       } else {
-        spec = gst_pylon_make_spec_selector_enum(node, camera, selector,
+        spec = gst_pylon_make_spec_selector_enum(camera, node, selector,
                                                  selector_value);
       }
       break;
