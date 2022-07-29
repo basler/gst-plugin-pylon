@@ -36,8 +36,8 @@
 #include "gstpylonintrospection.h"
 #include "gstpylonparamspecs.h"
 
-#include <numeric>
 #include <queue>
+#include <unordered_set>
 
 typedef struct _GstPylonCameraPrivate GstPylonCameraPrivate;
 struct _GstPylonCameraPrivate {
@@ -144,6 +144,14 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec);
 static void gst_pylon_camera_finalize(GObject* self);
 
+static std::unordered_set<std::string> propfilter_set = {
+    "Width",
+    "Height",
+    "PixelFormat",
+    "AcquisitionFrameRateEnable",
+    "AcquisitionFrameRate",
+    "AcquisitionFrameRateAbs"};
+
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, Pylon::CBaslerUniversalInstantCamera* camera) {
   GenApi::INode* selector_node = NULL;
@@ -243,10 +251,13 @@ static void gst_pylon_camera_install_properties(
     auto node = worklist.front();
     worklist.pop();
 
-    /* Only handle real features, excluding selectors */
+    /* Only handle real features that are not in the filter set and are not
+     * selectors */
     auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
     if (node->IsFeature() && (node->GetVisibility() != GenApi::Invisible) &&
-        sel_node && !sel_node->IsSelector()) {
+        sel_node && !sel_node->IsSelector() &&
+        propfilter_set.find(std::string(node->GetName())) ==
+            propfilter_set.end()) {
       GenICam::gcstring value;
       GenICam::gcstring attrib;
 
