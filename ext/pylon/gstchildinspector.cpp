@@ -269,12 +269,12 @@ static gchar *gst_child_inspector_flags_to_string(GParamFlags flags) {
 static gchar *gst_child_inspector_type_to_string(GParamSpec *pspec,
                                                  GValue *value,
                                                  gint alignment) {
+  g_return_val_if_fail(pspec, NULL);
+  g_return_val_if_fail(value, NULL);
+
   GstChildInspectorType *current_type = NULL;
   const GType value_type = G_VALUE_TYPE(value);
   gchar *to_string = NULL;
-
-  g_return_val_if_fail(pspec, NULL);
-  g_return_val_if_fail(value, NULL);
 
   for (current_type = types; current_type->type_to_string; ++current_type) {
     if (g_type_is_a(value_type, current_type->value)) {
@@ -293,9 +293,7 @@ static gchar *gst_child_inspector_type_to_string(GParamSpec *pspec,
 gchar *gst_child_inspector_property_to_string(GObject *object,
                                               GParamSpec *param,
                                               guint alignment) {
-  GValue value = {
-      0,
-  };
+  GValue value G_VALUE_INIT;
   const gchar *name = NULL;
   const gchar *blurb = NULL;
   gchar *flags = NULL;
