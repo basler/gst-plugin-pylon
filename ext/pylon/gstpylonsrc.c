@@ -335,6 +335,9 @@ static GstCaps *
 gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
 {
   GstPylonSrc *self = GST_PYLON_SRC (src);
+  GstStructure *st = NULL;
+  gint numerator = 0;
+  gint denominator = 0;
   GstCaps *outcaps = NULL;
   GError *error = NULL;
 
@@ -350,6 +353,15 @@ gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter)
 
   if (outcaps == NULL && error) {
     goto log_gst_error;
+  }
+
+  st = gst_caps_get_structure (outcaps, 0);
+  gst_structure_get_fraction (st, "framerate", &numerator, &denominator);
+
+  if (0 == numerator) {
+    GST_INFO_OBJECT (self,
+        "Feature AcquisitionFrameRate not available. Fallback to "
+        "framerate 0/1");
   }
 
   GST_DEBUG_OBJECT (self, "Camera returned caps %" GST_PTR_FORMAT, outcaps);
@@ -433,7 +445,11 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   gst_structure_get_fraction (st, "framerate", &numerator, &denominator);
 
   GST_OBJECT_LOCK (self);
-  self->duration = gst_util_uint64_scale (GST_SECOND, denominator, numerator);
+  if (numerator != 0) {
+    self->duration = gst_util_uint64_scale (GST_SECOND, denominator, numerator);
+  } else {
+    self->duration = GST_CLOCK_TIME_NONE;
+  }
   GST_OBJECT_UNLOCK (self);
 
   ret = gst_pylon_stop (self->pylon, &error);
