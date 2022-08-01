@@ -452,10 +452,6 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
                                       max_fps_num, max_fps_den);
   } else {
     /* Fallback framerate 0, if camera does not supply any value */
-    GST_INFO_OBJECT(self,
-                    "Feature AcquisitionFrameRate not available. Fallback to "
-                    "framerate 0/1");
-
     g_value_init(outvalue, GST_TYPE_FRACTION);
     gst_value_set_fraction(outvalue, 0, 1);
   }
