@@ -31,8 +31,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gstchildinspector.h"
 #include "gstpylon.h"
+
+#include "gstchildinspector.h"
 #include "gstpyloncamera.h"
 
 #include <map>
@@ -196,12 +197,8 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
   try {
     if (!self->camera->UserSetSelector.IsWritable()) {
       return true;
-      /* workaround for embedded devices
-      throw Pylon::GenericException(
-          "The device does not support user configuration sets", __FILE__,
-          __LINE__);
-      */
     }
+
     std::string set;
     if (user_set) {
       set = std::string(user_set);
