@@ -75,14 +75,14 @@ static GParamFlags gst_pylon_query_access(
   g_return_val_if_fail(node, static_cast<GParamFlags>(flags));
 
   Pylon::CParameter param(node);
-  gboolean writable_during_stream = FALSE;
+  gboolean is_writable = FALSE;
 
   if (param.IsReadable()) {
     flags |= G_PARAM_READABLE;
   }
   if (param.IsWritable()) {
     flags |= G_PARAM_WRITABLE;
-    writable_during_stream = TRUE;
+    is_writable = TRUE;
   }
 
   GenApi::INodeMap &nodemap = camera->GetNodeMap();
@@ -92,7 +92,7 @@ static GParamFlags gst_pylon_query_access(
    * writable after setting TLParamsLocked to 1. */
   tl_params_locked.SetValue(1);
 
-  if (writable_during_stream && param.IsWritable()) {
+  if (is_writable && param.IsWritable()) {
     flags |= GST_PARAM_MUTABLE_PLAYING;
   } else {
     flags |= GST_PARAM_MUTABLE_READY;
