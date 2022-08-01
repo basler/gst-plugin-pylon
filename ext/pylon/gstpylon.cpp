@@ -421,24 +421,21 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
 
   gdouble min_fps = 1;
   gdouble max_fps = 1;
+  Pylon::CFloatParameter framerate;
   bool has_acquisition_framerate = false;
 
   GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
 
   if (self->camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
-    Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
-    if (framerate.IsReadable()) {
-      min_fps = framerate.GetMin();
-      max_fps = framerate.GetMax();
-      has_acquisition_framerate = true;
-    }
+    framerate.Attach(nodemap, "AcquisitionFrameRate");
   } else {
-    Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
-    if (framerate.IsReadable()) {
-      min_fps = framerate.GetMin();
-      max_fps = framerate.GetMax();
-      has_acquisition_framerate = true;
-    }
+    framerate.Attach(nodemap, "AcquisitionFrameRateAbs");
+  }
+
+  if (framerate.IsReadable()) {
+    min_fps = framerate.GetMin();
+    max_fps = framerate.GetMax();
+    has_acquisition_framerate = true;
   }
 
   if (has_acquisition_framerate) {
@@ -454,7 +451,7 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
     gst_value_set_fraction_range_full(outvalue, min_fps_num, min_fps_den,
                                       max_fps_num, max_fps_den);
   } else {
-    /* fallback framerate 0, if camera does not supply any value */
+    /* Fallback framerate 0, if camera does not supply any value */
     GST_INFO_OBJECT(self,
                     "Feature AcquisitionFrameRate not available. Fallback to "
                     "framerate 0/1");
