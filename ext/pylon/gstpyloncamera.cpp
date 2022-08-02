@@ -109,7 +109,7 @@ GType gst_pylon_camera_register(
 
 /* prototypes */
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
-    GenApi::INode* node, Pylon::CBaslerUniversalInstantCamera* camera);
+    GenApi::INode* node, GenApi::INodeMap& nodemap);
 static void gst_pylon_camera_install_specs(
     const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
     gint& nprop);
@@ -153,13 +153,12 @@ static std::unordered_set<std::string> propfilter_set = {
     "AcquisitionFrameRateAbs"};
 
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
-    GenApi::INode* node, Pylon::CBaslerUniversalInstantCamera* camera) {
+    GenApi::INode* node, GenApi::INodeMap& nodemap) {
   GenApi::INode* selector_node = NULL;
   guint64 selector_value = 0;
   std::vector<GParamSpec*> specs_list;
 
   g_return_val_if_fail(node, specs_list);
-  g_return_val_if_fail(camera, specs_list);
 
   auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
   if (!sel_node) {
@@ -174,7 +173,7 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   sel_node->GetSelectingFeatures(selectors);
   if (selectors.empty()) {
     specs_list.push_back(GstPylonParamFactory::make_param(
-        node, selector_node, selector_value, camera));
+        node, selector_node, selector_value, nodemap));
     return specs_list;
   }
 
@@ -216,7 +215,7 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   for (auto const& sel_pair : enum_values) {
     selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
     specs_list.push_back(GstPylonParamFactory::make_param(
-        node, selector_node, selector_value, camera));
+        node, selector_node, selector_value, nodemap));
   }
 
   return specs_list;
@@ -272,7 +271,7 @@ static void gst_pylon_camera_install_properties(
         if (GenICam::gcstring("Yes") == value) {
           try {
             std::vector<GParamSpec*> specs_list =
-                gst_pylon_camera_handle_node(node, camera);
+                gst_pylon_camera_handle_node(node, nodemap);
             gst_pylon_camera_install_specs(specs_list, oclass, nprop);
           } catch (const Pylon::GenericException& e) {
             GST_FIXME("Unable to install property \"%s\" on \"%s\": %s",
