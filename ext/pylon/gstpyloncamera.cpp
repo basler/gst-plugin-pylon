@@ -33,11 +33,9 @@
 
 #include "gstpyloncamera.h"
 
+#include "gstpylonfeaturewalker.h"
 #include "gstpylonintrospection.h"
 #include "gstpylonparamspecs.h"
-
-#include <queue>
-#include <unordered_set>
 
 typedef struct _GstPylonCameraPrivate GstPylonCameraPrivate;
 struct _GstPylonCameraPrivate {
@@ -108,11 +106,6 @@ GType gst_pylon_camera_register(
  ***********************************************************/
 
 /* prototypes */
-static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
-    GenApi::INode* node, GenApi::INodeMap& nodemap);
-static void gst_pylon_camera_install_specs(
-    const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
-    gint& nprop);
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
 template <typename F, typename P>
@@ -144,100 +137,6 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec);
 static void gst_pylon_camera_finalize(GObject* self);
 
-static std::unordered_set<std::string> propfilter_set = {
-    "Width",
-    "Height",
-    "PixelFormat",
-    "AcquisitionFrameRateEnable",
-    "AcquisitionFrameRate",
-    "AcquisitionFrameRateAbs"};
-
-static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
-    GenApi::INode* node, GenApi::INodeMap& nodemap) {
-  GenApi::INode* selector_node = NULL;
-  guint64 selector_value = 0;
-  std::vector<GParamSpec*> specs_list;
-
-  g_return_val_if_fail(node, specs_list);
-
-  auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
-  if (!sel_node) {
-    std::string msg = std::string(node->GetName()) + " is an invalid node";
-    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
-  }
-
-  /* If the feature has no selectors then it is a "direct" feature, it does not
-   * depend on any other selector
-   */
-  GenApi::FeatureList_t selectors;
-  sel_node->GetSelectingFeatures(selectors);
-  if (selectors.empty()) {
-    specs_list.push_back(GstPylonParamFactory::make_param(
-        nodemap, node, selector_node, selector_value));
-    return specs_list;
-  }
-
-  /* At the time being features with multiple selectors are not supported */
-  guint max_selectors = 1;
-  if (selectors.size() > max_selectors) {
-    std::string msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
-                      " has more than " + std::to_string(max_selectors) +
-                      " selectors, ignoring!";
-    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
-  }
-
-  /* At the time being only features with enum selectors are supported */
-  auto selector = selectors.at(0);
-  auto enum_node = dynamic_cast<GenApi::IEnumeration*>(selector);
-  if (!enum_node) {
-    std::string msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
-                      " is not an enumerator selector, ignoring!";
-    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
-  }
-
-  /* Add selector enum values */
-  std::vector<std::string> enum_values;
-  GenApi::NodeList_t enum_entries;
-  enum_node->GetEntries(enum_entries);
-  for (auto const& e : enum_entries) {
-    auto enum_name = std::string(e->GetName());
-    enum_values.push_back(enum_name.substr(enum_name.find_last_of("_") + 1));
-  }
-
-  selector_node = selector->GetNode();
-  Pylon::CEnumParameter param(selector_node);
-
-  /* Treat features that have just one selector value as unselected */
-  if (1 == enum_values.size()) {
-    selector_node = NULL;
-  }
-
-  for (auto const& sel_pair : enum_values) {
-    selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
-    specs_list.push_back(GstPylonParamFactory::make_param(
-        nodemap, node, selector_node, selector_value));
-  }
-
-  return specs_list;
-}
-
-static void gst_pylon_camera_install_specs(
-    const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
-    gint& nprop) {
-  g_return_if_fail(oclass);
-
-  if (!specs_list.empty()) {
-    for (const auto& pspec : specs_list) {
-      g_object_class_install_property(oclass, nprop, pspec);
-      nprop++;
-    }
-  } else {
-    throw Pylon::GenericException(
-        "Could not install GParamSpecs, no GParamSpecs were created", __FILE__,
-        __LINE__);
-  }
-}
-
 static void gst_pylon_camera_install_properties(
     GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
   g_return_if_fail(klass);
@@ -245,54 +144,8 @@ static void gst_pylon_camera_install_properties(
 
   GenApi::INodeMap& nodemap = camera->GetNodeMap();
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
-  gint nprop = 1;
 
-  GenApi::INode* root_node = nodemap.GetNode("Root");
-  auto worklist = std::queue<GenApi::INode*>();
-
-  worklist.push(root_node);
-
-  while (!worklist.empty()) {
-    auto node = worklist.front();
-    worklist.pop();
-
-    /* Only handle real features that are not in the filter set and are not
-     * selectors */
-    auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
-    if (node->IsFeature() && (node->GetVisibility() != GenApi::Invisible) &&
-        sel_node && !sel_node->IsSelector() &&
-        propfilter_set.find(std::string(node->GetName())) ==
-            propfilter_set.end()) {
-      GenICam::gcstring value;
-      GenICam::gcstring attrib;
-
-      /* Handle only features with the 'Streamable' flag */
-      if (node->GetProperty("Streamable", value, attrib)) {
-        if (GenICam::gcstring("Yes") == value) {
-          try {
-            std::vector<GParamSpec*> specs_list =
-                gst_pylon_camera_handle_node(node, nodemap);
-            gst_pylon_camera_install_specs(specs_list, oclass, nprop);
-          } catch (const Pylon::GenericException& e) {
-            GST_FIXME("Unable to install property \"%s\" on \"%s\": %s",
-                      node->GetDisplayName().c_str(),
-                      camera->GetDeviceInfo().GetFriendlyName().c_str(),
-                      e.GetDescription());
-          }
-        }
-      }
-    }
-
-    /* Walk down all categories */
-    auto category_node = dynamic_cast<GenApi::ICategory*>(node);
-    if (category_node) {
-      GenApi::FeatureList_t features;
-      category_node->GetFeatures(features);
-      for (auto const& f : features) {
-        worklist.push(f->GetNode());
-      }
-    }
-  }
+  GstPylonFeatureWalker::walk_through_features(oclass, nodemap);
 }
 
 static void gst_pylon_camera_class_init(

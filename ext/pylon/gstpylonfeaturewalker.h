@@ -54,7 +54,7 @@
 
 class GstPylonFeatureWalker {
  public:
-  static void walk_through_features(GObjectClass* klass,
+  static void walk_through_features(GObjectClass* oclass,
                                     GenApi::INodeMap& nodemap);
 };
 
