@@ -766,9 +766,13 @@ gst_pylon_src_child_proxy_get_child_by_name (GstChildProxy *
     GST_OBJECT_LOCK (self);
     obj = gst_pylon_get_camera (self->pylon);
     GST_OBJECT_UNLOCK (self);
+  } else if (!g_strcmp0 (name, "stream")) {
+    GST_OBJECT_LOCK (self);
+    obj = gst_pylon_get_stream_grabber (self->pylon);
+    GST_OBJECT_UNLOCK (self);
   } else {
-    GST_ERROR_OBJECT (self, "No child named \"%s\". Use \"cam\" instead.",
-        name);
+    GST_ERROR_OBJECT (self,
+        "No child named \"%s\". Use \"cam\" or \"stream\"  instead.", name);
   }
 
   return obj;
@@ -777,8 +781,8 @@ gst_pylon_src_child_proxy_get_child_by_name (GstChildProxy *
 static guint
 gst_pylon_src_child_proxy_get_children_count (GstChildProxy * child_proxy)
 {
-  /* There's only one camera active at a time */
-  return 1;
+  /* There's only one camera and one stream grabber active at a time */
+  return 2;
 }
 
 static void

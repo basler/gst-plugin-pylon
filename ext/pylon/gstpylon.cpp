@@ -34,6 +34,7 @@
 
 #include "gstchildinspector.h"
 #include "gstpyloncamera.h"
+#include "gstpylonstreamgrabber.h"
 
 #include <map>
 
@@ -80,6 +81,7 @@ struct _GstPylon {
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera =
       std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
   GObject *gcamera;
+  GObject *gstream_grabber;
 };
 
 /* pixel format definitions */
@@ -161,6 +163,7 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     self->camera->Open();
 
     self->gcamera = gst_pylon_camera_new(self->camera);
+    self->gstream_grabber = gst_pylon_stream_grabber_new(self->camera);
 
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
@@ -646,4 +649,10 @@ GObject *gst_pylon_get_camera(GstPylon *self) {
   g_return_val_if_fail(self, NULL);
 
   return G_OBJECT(g_object_ref(self->gcamera));
+}
+
+GObject *gst_pylon_get_stream_grabber(GstPylon *self) {
+  g_return_val_if_fail(self, NULL);
+
+  return G_OBJECT(g_object_ref(self->gstream_grabber));
 }

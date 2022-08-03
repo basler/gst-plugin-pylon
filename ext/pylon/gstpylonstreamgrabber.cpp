@@ -48,10 +48,11 @@ struct _GstPylonStreamGrabberPrivate {
 
 static gchar* gst_pylon_stream_grabber_get_sanitized_name(
     const Pylon::CBaslerUniversalInstantCamera& camera) {
-  Pylon::String_t cam_name = camera.GetDeviceInfo().GetFullName();
+  Pylon::String_t stream_grabber_name =
+      camera.GetDeviceInfo().GetFullName() + "_StreamGrabber";
 
-  /* Convert camera name to a valid string */
-  return gst_pylon_param_spec_sanitize_name(cam_name.c_str());
+  /* Convert stream grabber name to a valid string */
+  return gst_pylon_param_spec_sanitize_name(stream_grabber_name.c_str());
 }
 
 static void gst_pylon_stream_grabber_init(GstPylonStreamGrabber* self);
@@ -146,7 +147,7 @@ static void gst_pylon_stream_grabber_install_properties(
   g_return_if_fail(klass);
   g_return_if_fail(camera);
 
-  GenApi::INodeMap& nodemap = camera->GetNodeMap();
+  GenApi::INodeMap& nodemap = stream_grabber->GetNodeMap();
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
   GstPylonFeatureWalker::install_properties(oclass, nodemap);
