@@ -224,10 +224,10 @@ static GType gst_pylon_make_enum_type(GenApi::INodeMap &nodemap,
   g_return_val_if_fail(node, G_TYPE_INVALID);
 
   Pylon::CEnumParameter param(node);
+  Pylon::CStringParameter model_name(nodemap, "DeviceModelName");
 
-  gchar *full_name =
-      g_strdup_printf("%s_%s", camera->GetDeviceInfo().GetFullName().c_str(),
-                      node->GetName().c_str());
+  gchar *full_name = g_strdup_printf("%s_%s", model_name.GetValue().c_str(),
+                                     node->GetName().c_str());
   gchar *name = gst_pylon_param_spec_sanitize_name(full_name);
   g_free(full_name);
 

@@ -580,9 +580,10 @@ GType gst_pylon_param_spec_selector_enum_register(GenApi::INodeMap &nodemap,
                                                   const gchar *feature_name,
                                                   GType enum_feature_type) {
   GType selector_type = G_TYPE_INVALID;
+  Pylon::CStringParameter model_name(nodemap, "DeviceModelName");
 
-  gchar *full_name = g_strdup_printf(
-      "%s_%s", camera->GetDeviceInfo().GetFullName().c_str(), feature_name);
+  gchar *full_name =
+      g_strdup_printf("%s_%s", model_name.GetValue().c_str(), feature_name);
   gchar *name = gst_pylon_param_spec_sanitize_name(full_name);
   g_free(full_name);
 
@@ -628,7 +629,7 @@ GParamSpec *gst_pylon_param_spec_selector_enum(
   int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
 
   spec = static_cast<GstPylonParamSpecSelectorEnum *>(g_param_spec_internal(
-      gst_pylon_param_spec_selector_enum_register(camera, name, type), name,
+      gst_pylon_param_spec_selector_enum_register(nodemap, name, type), name,
       nick, blurb, static_cast<GParamFlags>(int_flags)));
 
   spec->selector = g_strdup(selector_name);
