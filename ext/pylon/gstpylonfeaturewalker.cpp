@@ -146,6 +146,7 @@ void GstPylonFeatureWalker::walk_through_features(GObjectClass* oclass,
   gint nprop = 1;
   GenApi::INode* root_node = nodemap.GetNode("Root");
   auto worklist = std::queue<GenApi::INode*>();
+  Pylon::CStringParameter model_name(nodemap, "DeviceModelName");
 
   worklist.push(root_node);
 
@@ -173,8 +174,7 @@ void GstPylonFeatureWalker::walk_through_features(GObjectClass* oclass,
           } catch (const Pylon::GenericException& e) {
             GST_FIXME("Unable to install property \"%s\" on device \"%s\": %s",
                       node->GetDisplayName().c_str(),
-                      camera->GetDeviceInfo().GetFriendlyName().c_str(),
-                      e.GetDescription());
+                      model_name.GetValue().c_str(), e.GetDescription());
           }
         }
       }
