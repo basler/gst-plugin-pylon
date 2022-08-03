@@ -616,7 +616,7 @@ static void gst_pylon_append_camera_properties(
   g_object_unref(camera_obj);
 }
 
-gchar *gst_pylon_get_string_properties(GError **err) {
+gchar *gst_pylon_camera_get_string_properties(GError **err) {
   g_return_val_if_fail(err && *err == NULL, NULL);
 
   gchar *camera_parameters = NULL;

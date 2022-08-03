@@ -69,6 +69,7 @@ struct _GstPylonSrc
   gint device_index;
   gchar *user_set;
   GObject *cam;
+  GObject *stream;
 };
 
 /* prototypes */
@@ -103,7 +104,8 @@ enum
   PROP_DEVICE_SERIAL_NUMBER,
   PROP_DEVICE_INDEX,
   PROP_USER_SET,
-  PROP_CAM
+  PROP_CAM,
+  PROP_STREAM
 };
 
 #define PROP_DEVICE_USER_NAME_DEFAULT NULL
@@ -113,6 +115,7 @@ enum
 #define PROP_DEVICE_INDEX_MAX G_MAXINT32
 #define PROP_USER_SET_DEFAULT NULL
 #define PROP_CAM_DEFAULT NULL
+#define PROP_STREAM_DEFAULT NULL
 
 /* pad templates */
 
@@ -139,7 +142,8 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
   GstPushSrcClass *push_src_class = GST_PUSH_SRC_CLASS (klass);
   gchar *cam_params, *cam_blurb = NULL;
-  const gchar *prolog = NULL;
+  gchar *stream_params, *stream_blurb = NULL;
+  const gchar *cam_prolog, *stream_prolog = NULL;
   GError *error = NULL;
 
   gst_pylon_initialize ();
@@ -190,25 +194,43 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  cam_params = gst_pylon_get_string_properties (&error);
+  cam_params = gst_pylon_camera_get_string_properties (&error);
+  stream_params = gst_pylon_camera_get_string_properties (&error);
+
   if (NULL == cam_params) {
-    prolog = "No valid cameras where found connected to the system.";
+    cam_prolog = "No valid cameras where found connected to the system.";
+    stream_prolog = cam_prolog;
     cam_params = g_strdup ("");
+    stream_params = g_strdup ("");
   } else {
-    prolog = "The following list details the properties for each camera.\n";
+    cam_prolog = "The following list details the properties for each camera.\n";
+    stream_prolog =
+        "The following list details the properties for each stream grabber.\n";
   }
 
   cam_blurb = g_strdup_printf ("The camera to use.\n"
       "\t\t\tAccording to the selected camera "
       "different properties will be available.\n "
       "\t\t\tThese properties can be accessed using the "
-      "\"cam::<property>\" syntax.\n" "\t\t\t%s%s", prolog, cam_params);
+      "\"cam::<property>\" syntax.\n" "\t\t\t%s%s", cam_prolog, cam_params);
 
   g_object_class_install_property (gobject_class, PROP_CAM,
       g_param_spec_object ("cam", "Camera", cam_blurb, G_TYPE_OBJECT,
           G_PARAM_READABLE));
 
+  stream_blurb = g_strdup_printf ("The stream grabber to use.\n"
+      "\t\t\tAccording to the selected stream grabber "
+      "different properties will be available.\n "
+      "\t\t\tThese properties can be accessed using the "
+      "\"stream::<property>\" syntax.\n" "\t\t\t%s%s", stream_prolog,
+      stream_params);
+
+  g_object_class_install_property (gobject_class, PROP_STREAM,
+      g_param_spec_object ("stream", "Stream Grabber", stream_blurb,
+          G_TYPE_OBJECT, G_PARAM_READABLE));
+
   g_free (cam_params);
+  g_free (stream_params);
 
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_pylon_src_get_caps);
   base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_pylon_src_fixate);
@@ -237,6 +259,7 @@ gst_pylon_src_init (GstPylonSrc * self)
   self->device_index = PROP_DEVICE_INDEX_DEFAULT;
   self->user_set = PROP_USER_SET_DEFAULT;
   self->cam = PROP_CAM_DEFAULT;
+  self->cam = PROP_STREAM_DEFAULT;
   gst_video_info_init (&self->video_info);
 
   gst_base_src_set_live (base, TRUE);
@@ -303,6 +326,9 @@ gst_pylon_src_get_property (GObject * object, guint property_id,
     case PROP_CAM:
       g_value_set_object (value, self->cam);
       break;
+    case PROP_STREAM:
+      g_value_set_object (value, self->stream);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -330,6 +356,11 @@ gst_pylon_src_finalize (GObject * object)
   if (self->cam) {
     g_object_unref (self->cam);
     self->cam = NULL;
+  }
+
+  if (self->stream) {
+    g_object_unref (self->stream);
+    self->stream = NULL;
   }
 
   G_OBJECT_CLASS (gst_pylon_src_parent_class)->finalize (object);
