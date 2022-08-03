@@ -290,12 +290,11 @@ static GParamSpec *gst_pylon_make_spec_selector_enum(GenApi::INodeMap &nodemap,
       gst_pylon_query_access(nodemap, node));
 }
 
-GParamSpec *GstPylonParamFactory::make_param(GenApi::INode *node,
+GParamSpec *GstPylonParamFactory::make_param(GenApi::INodeMap &nodemap,
+                                             GenApi::INode *node,
                                              GenApi::INode *selector,
-                                             guint64 selector_value,
-                                             GenApi::INodeMap &nodemap) {
+                                             guint64 selector_value) {
   g_return_val_if_fail(node, NULL);
-  g_return_val_if_fail(selector, NULL);
 
   GParamSpec *spec = NULL;
   GenApi::EInterfaceType iface = node->GetPrincipalInterfaceType();

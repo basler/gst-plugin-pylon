@@ -173,7 +173,7 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   sel_node->GetSelectingFeatures(selectors);
   if (selectors.empty()) {
     specs_list.push_back(GstPylonParamFactory::make_param(
-        node, selector_node, selector_value, nodemap));
+        nodemap, node, selector_node, selector_value));
     return specs_list;
   }
 
@@ -215,7 +215,7 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   for (auto const& sel_pair : enum_values) {
     selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
     specs_list.push_back(GstPylonParamFactory::make_param(
-        node, selector_node, selector_value, nodemap));
+        nodemap, node, selector_node, selector_value));
   }
 
   return specs_list;
