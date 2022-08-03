@@ -31,8 +31,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_FEATUREWALKER_H_
-#define _GST_PYLON_FEATUREWALKER_H_
+#ifndef _GST_PYLON_FEATURE_WALKER_H_
+#define _GST_PYLON_FEATURE_WALKER_H_
 
 #include <gst/gst.h>
 
@@ -54,7 +54,7 @@
 
 class GstPylonFeatureWalker {
  public:
-  static void walk_through_features(GObjectClass* oclass,
+  static void install_properties(GObjectClass* oclass,
                                     GenApi::INodeMap& nodemap);
 };
 

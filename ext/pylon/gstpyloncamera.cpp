@@ -145,7 +145,7 @@ static void gst_pylon_camera_install_properties(
   GenApi::INodeMap& nodemap = camera->GetNodeMap();
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
-  GstPylonFeatureWalker::walk_through_features(oclass, nodemap);
+  GstPylonFeatureWalker::install_properties(oclass, nodemap);
 }
 
 static void gst_pylon_camera_class_init(

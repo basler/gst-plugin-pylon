@@ -139,8 +139,8 @@ static void gst_pylon_camera_install_specs(
   }
 }
 
-void GstPylonFeatureWalker::walk_through_features(GObjectClass* oclass,
-                                                  GenApi::INodeMap& nodemap) {
+void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
+                                               GenApi::INodeMap& nodemap) {
   g_return_if_fail(oclass);
 
   gint nprop = 1;
