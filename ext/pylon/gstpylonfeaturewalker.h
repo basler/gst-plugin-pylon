@@ -31,8 +31,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_INTROSPECTION_H_
-#define _GST_PYLON_INTROSPECTION_H_
+#ifndef _GST_PYLON_FEATURE_WALKER_H_
+#define _GST_PYLON_FEATURE_WALKER_H_
 
 #include <gst/gst.h>
 
@@ -44,7 +44,6 @@
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #endif
 
-#include <pylon/BaslerUniversalInstantCamera.h>
 #include <pylon/PylonIncludes.h>
 
 #ifdef _MSC_VER  // MSVC
@@ -53,11 +52,10 @@
 #pragma GCC diagnostic pop
 #endif
 
-class GstPylonParamFactory {
+class GstPylonFeatureWalker {
  public:
-  static GParamSpec *make_param(GenApi::INodeMap &nodemap, GenApi::INode *node,
-                                GenApi::INode *selector,
-                                guint64 selector_value);
+  static void install_properties(GObjectClass* oclass,
+                                    GenApi::INodeMap& nodemap);
 };
 
 #endif
