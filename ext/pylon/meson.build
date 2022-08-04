@@ -1,47 +1,25 @@
 # gst-plugin-pylon
 # this plugin has to link against the basler pylon runtime libraries
 # 
-# workaround for cmake parser bug meson < 0.61.0
-# this temporary workaround allows to support e.g. yocto < kirgard
-target_version = '0.61.0'
-version = meson.version()
-if version.version_compare ('<' + target_version)
 
-  pylon_path = get_option('pylon-path')
-  if pylon_path == ''
-    pylon_path = '/opt/pylon'
+# import PYLON_ROOT environment into meson
+pylon_path = run_command(python3, '-c', 'import os; print(os.environ.get("PYLON_ROOT"))', check: false).stdout().strip()
+
+# detect pylon 7.x
+pylon_dep = dependency('pylon', method : 'cmake', modules : ['pylon::PylonBase', 'pylon::GCBase', 'pylon::GenApi', 'pylon::PylonUtility'], version : '>=7.1', required: false)
+if pylon_dep.found() 
+  # patch rpath on linux
+  if target_machine.system() == 'linux'
+    pylon_link_args = ['-Wl,--enable-new-dtags', '-Wl,-rpath,' + pylon_path / 'lib']
+  else
+    pylon_link_args = []
   endif
-
-  pylon_rpath = get_option('pylon-rpath')
-  if pylon_rpath == ''
-    pylon_rpath = pylon_path + '/lib'
-  endif
-
-  pylon_config = find_program ('pylon-config', dirs: pylon_path + '/bin/', required : false, disabler : true)
-  if not pylon_config.found()
-    error('Pylon SDK not found, is it installed? If you installed it in alternative location you may specify it using -Dpylon-path=')
-  endif
-
-  message('Pylon path: ' + pylon_path)
-  message('Pylon rpath: ' + pylon_rpath)
-
-  pylon_c_args = run_command(pylon_config, '--cflags', check : true).stdout().strip().split()
-  pylon_link_args = run_command(pylon_config, '--libs', check : true).stdout().strip().split()
-
-  pylon_dep = declare_dependency (
-    compile_args : pylon_c_args,
-    link_args : pylon_link_args
-  )
 else
-  pylon_dep = dependency('pylon', method : 'cmake', cmake_module_path : 'cmake')
-  pylon_rpath = get_option('pylon-rpath')
-  if pylon_rpath == ''
-    pylon_rpath = '/opt/pylon/lib'
-  endif
-
+    message('fallback to detect pylon 6.x')
+    pylon_dep = dependency('pylon', method : 'cmake', cmake_module_path: 'cmake', required: true)
+    # runtime path is properly defined by cmake
+    pylon_link_args = [] 
 endif
-
-
 
 pylon_sources = [
   'gstpylonsrc.c',
@@ -57,14 +35,13 @@ pylon_sources = [
 gstpylon = library('gstpylon',
   pylon_sources,
   c_args : gst_plugin_pylon_args,
-  link_args : noseh_link_args,
+  link_args : [noseh_link_args, pylon_link_args],
   include_directories : [configinc],
   dependencies : [gstbase_dep, gstvideo_dep, pylon_dep],
   install : true,
-  install_dir : plugins_install_dir,
-  install_rpath : pylon_rpath
+  install_dir : plugins_install_dir
 )
-
 
 pkgconfig.generate(gstpylon, install_dir : plugins_pkgconfig_install_dir)
 plugins += [gstpylon]
+

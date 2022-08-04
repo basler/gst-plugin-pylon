@@ -250,8 +250,14 @@ Specify the path to pkgconfig configuration files for GStreamer and the pkg-conf
 
 ```bash
 set PKG_CONFIG_PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%lib\pkgconfig
-set PATH=%PATH%;%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin`
+set PATH=%PATH%;%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin
 ```
+
+The build process relies on CMAKE_PREFIX_PATH pointing to Basler pylon cmake support files. This is normally set by the Basler pylon installer.
+```bash
+set CMAKE_PREFIX_PATH=C:\Program Files\Basler\pylon 7\Development\CMake\pylon\
+```
+
 
 Then the plugin can be compiled and installed using Ninja:
 
