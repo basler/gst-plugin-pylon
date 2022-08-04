@@ -324,7 +324,7 @@ static void _gst_pylon_param_selector_float_set_default(GParamSpec *pspec,
 static gboolean _gst_pylon_param_selector_float_validate(GParamSpec *pspec,
                                                          GValue *value) {
   g_return_val_if_fail(pspec, FALSE);
-  g_return_val_if_fail(value, __FLT64X_HAS_DENORM__);
+  g_return_val_if_fail(value, FALSE);
 
   GstPylonParamSpecSelectorFloat *spec =
       GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
