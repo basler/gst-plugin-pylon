@@ -227,6 +227,8 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 static void
 gst_pylon_src_init (GstPylonSrc * self)
 {
+  GstBaseSrc *base = GST_BASE_SRC (self);
+
   self->pylon = NULL;
   self->offset = G_GUINT64_CONSTANT (0);
   self->duration = GST_CLOCK_TIME_NONE;
@@ -236,6 +238,9 @@ gst_pylon_src_init (GstPylonSrc * self)
   self->user_set = PROP_USER_SET_DEFAULT;
   self->cam = PROP_CAM_DEFAULT;
   gst_video_info_init (&self->video_info);
+
+  gst_base_src_set_live (base, TRUE);
+  gst_base_src_set_format (base, GST_FORMAT_TIME);
 }
 
 static void
