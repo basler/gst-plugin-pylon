@@ -536,7 +536,8 @@ gst_pylon_src_start (GstBaseSrc * src)
     goto log_gst_error;
   }
 
-  self->offset = 0;
+  self->offset = G_GUINT64_CONSTANT(0);
+  self->duration = GST_CLOCK_TIME_NONE;
 
   goto out;
 
@@ -600,10 +601,41 @@ static gboolean
 gst_pylon_src_query (GstBaseSrc * src, GstQuery * query)
 {
   GstPylonSrc *self = GST_PYLON_SRC (src);
+  gboolean res = FALSE;
 
-  GST_LOG_OBJECT (self, "query");
+  switch (GST_QUERY_TYPE (query)) {
+    case GST_QUERY_LATENCY:{
+      GstClockTime min_latency = GST_CLOCK_TIME_NONE;
+      GstClockTime max_latency = GST_CLOCK_TIME_NONE;
 
-  return GST_BASE_SRC_CLASS (gst_pylon_src_parent_class)->query (src, query);
+      if (GST_CLOCK_TIME_NONE == self->duration) {
+        GST_WARNING_OBJECT (src,
+            "Can't report latency since framerate is not fixated yet");
+        goto done;
+      }
+
+      /* FIXME: we are assuming we cannot hold more than one
+	 buffer. Eventually we want to have Pylon::StartGrabbing's
+	 MaxNumImages extend the max_latency.
+      */
+      max_latency = min_latency = self->duration;
+
+      GST_DEBUG_OBJECT (self,
+          "report latency min %" GST_TIME_FORMAT " max %" GST_TIME_FORMAT,
+          GST_TIME_ARGS (min_latency), GST_TIME_ARGS (max_latency));
+
+      gst_query_set_latency (query, TRUE, min_latency, max_latency);
+
+      res = TRUE;
+      break;
+    }
+    default:
+      res = GST_BASE_SRC_CLASS (gst_pylon_src_parent_class)->query (src, query);
+      break;
+  }
+
+done:
+  return res;
 }
 
 /* add time metadata to buffer */
