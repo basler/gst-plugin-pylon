@@ -617,25 +617,22 @@ gchar *gst_pylon_get_string_properties(GError **err) {
 
   gchar *camera_parameters = NULL;
 
-  try {
-    Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
-    Pylon::DeviceInfoList_t device_list;
+  Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
+  Pylon::DeviceInfoList_t device_list;
 
-    factory.EnumerateDevices(device_list);
+  factory.EnumerateDevices(device_list);
 
-    for (const auto &device : device_list) {
+  for (const auto &device : device_list) {
+    try {
       Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
                                                   Pylon::Cleanup_Delete);
       camera.Open();
       gst_pylon_append_camera_properties(camera, &camera_parameters,
                                          DEFAULT_ALIGNMENT);
       camera.Close();
+    } catch (const Pylon::GenericException &e) {
+      continue;
     }
-
-  } catch (const Pylon::GenericException &e) {
-    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-                e.GetDescription());
-    return NULL;
   }
 
   return camera_parameters;

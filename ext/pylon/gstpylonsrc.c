@@ -190,9 +190,6 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           GST_PARAM_MUTABLE_READY));
 
   cam_params = gst_pylon_get_string_properties (&error);
-  if (error) {
-    g_warning ("unable to parse camera properties: %s", error->message);
-  }
 
   cam_blurb = g_strdup_printf ("The camera to use.\n"
       "\t\t\tAccording to the selected camera "
