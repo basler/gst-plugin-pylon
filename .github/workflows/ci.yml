@@ -1,0 +1,251 @@
+# basic compile and test workflow for gst-plugin-pylon
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+  pull_request:
+    branches: ["main"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      is_release_build: ${{ env.RELEASE_BUILD == '1' }}
+    steps:
+      - name: Installer list
+        run: |
+          tee pylon-installer.txt <<"EOF"
+          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.1.0.25066_x86_64_setup.tar.gz
+          ${PYLON_DOWNLOAD_URL_BASE}/pylon_6.3.0.23157_x86_64_setup.tar.gz
+          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.1.0.25066_aarch64_setup.tar.gz
+          ${PYLON_DOWNLOAD_URL_BASE_62}/pylon_6.2.0.21487_aarch64_setup.tar.gz
+          ${PYLON_DOWNLOAD_URL_BASE}/Basler_pylon_7.1.0.25066.exe
+          ${PYLON_DOWNLOAD_URL_BASE}/pylon-6.2.0.21487.dmg
+          EOF
+      - uses: actions/cache@v2
+        id: cache
+        with:
+          path: pylon-installer
+          key: pylon-installer-${{ hashFiles('pylon-installer.txt') }}
+
+      - name: Fetch installers
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          PYLON_DOWNLOAD_URL_BASE: ${{ secrets.PYLON_DOWNLOAD_URL_BASE }}
+          PYLON_DOWNLOAD_URL_BASE_62: ${{ secrets.PYLON_DOWNLOAD_URL_BASE_62 }}
+        run: |
+          mkdir pylon-installer && cd pylon-installer
+          while read line; do
+            url=$(eval echo "$line")
+            echo "download $url"
+            curl -sSfL -O "$url"
+          done <../pylon-installer.txt
+          echo "Download result"
+          ls -l
+          md5sum *
+      - uses: actions/upload-artifact@v2
+        with:
+          name: pylon-installer
+          path: pylon-installer
+
+      - name: Check for release build
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "Build release for $GITHUB_REF"
+          echo "RELEASE_BUILD=1" >> $GITHUB_ENV
+
+  build_windows_x86_64:
+    needs: prepare
+    strategy:
+      matrix:
+        os: [windows-latest]
+        py_version: [7.1.0.25066 ]
+      fail-fast: false
+    runs-on: ${{ matrix.os }} 
+    name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}-x86_64
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v2
+        with:
+          name: pylon-installer
+          path: pylon-installer
+      - uses: seanmiddleditch/gha-setup-vsdevenv@master
+      - name: install pylon
+        run: |
+          Start-Process .\pylon-installer\Basler_pylon_${{ matrix.py_version }}.exe -Wait -ArgumentList '/quiet /install=SDKs;Cpp_Runtime;CamEmu_Support' 
+
+      - name: install meson
+        run: |
+          pip install meson ninja
+
+      - name: install gstreamer
+        run: |
+          Invoke-WebRequest https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi -outfile gstreamer.msi
+          Invoke-WebRequest https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-devel-msvc-x86_64-1.20.3.msi -outfile gstreamer-dev.msi
+          Start-Process msiexec.exe -Wait -ArgumentList '/I gstreamer.msi  /quiet'
+          Start-Process msiexec.exe -Wait -ArgumentList '/I gstreamer-dev.msi  /quiet'
+
+      - name: compile
+        run: |
+          # access to pkg-config 
+          $env:GSTREAMER_1_0_ROOT_MSVC_X86_64 = "C:\gstreamer\1.0\msvc_x86_64\"
+          $env:CMAKE_PREFIX_PATH = "C:\Program Files\Basler\pylon 7\Development\CMake\pylon\"
+          $env:Path = "$env:GSTREAMER_1_0_ROOT_MSVC_X86_64\bin;" + $env:Path
+          $env:PKG_CONFIG_PATH = "$env:GSTREAMER_1_0_ROOT_MSVC_X86_64\lib\pkgconfig"
+          
+          meson build --prefix="$env:GSTREAMER_1_0_ROOT_MSVC_X86_64"
+          ninja -C build
+          ninja -C build install
+
+      - name: test
+        run: |
+          $env:PYLON_CAMEMU="1"
+          $env:GSTREAMER_1_0_ROOT_MSVC_X86_64 = "C:\gstreamer\1.0\msvc_x86_64\"
+          $env:Path = "C:\Program Files\Basler\pylon 7\Runtime\x64\;$env:GSTREAMER_1_0_ROOT_MSVC_X86_64\bin;" + $env:Path
+          gst-inspect-1.0.exe pylonsrc
+          gst-launch-1.0.exe pylonsrc num-buffers=10 ! fakesink
+
+
+  build_linux_aarch64:
+    needs: prepare
+    strategy:
+      matrix:
+        os: [ubuntu18.04, ubuntu20.04, ubuntu22.04]
+        py_version: [7.1.0.25066, 6.2.0.21487 ]
+      fail-fast: false
+    runs-on: ubuntu-18.04
+    name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}-aarch64
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v2
+        with:
+          name: pylon-installer
+          path: pylon-installer
+      - uses: uraimo/run-on-arch-action@v2
+        name: build and test aarch64
+        id: runcmd
+        with:
+          arch: aarch64
+          distro: ${{ matrix.os }}
+          # Create an artifacts directory
+          setup: |
+            mkdir -p "${PWD}/artifacts"          
+          dockerRunArgs: |
+            --volume "${PWD}/pylon-installer:/pylon-installer"         
+      
+          run: |
+            uname -a
+        
+            # install pylon
+            PYLON_TGZ=$(readlink -m /pylon-installer/pylon_${{ matrix.py_version }}_aarch64_setup.tar.gz)
+            mkdir pylon_tmp
+            pushd pylon_tmp
+            tar -xf $PYLON_TGZ
+            mkdir -p /opt/pylon
+            tar -C /opt/pylon -xzf pylon_${{ matrix.py_version }}_aarch64.tar.gz
+            popd
+
+            # install required environment
+            apt-get update
+            # remove conflicting package
+            dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && apt-get remove -y libunwind-14-dev
+            # install required build tools
+            apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools
+            pip3 install pip --upgrade
+            pip3 install meson ninja
+
+            # compile gcc
+            export PYLON_ROOT=/opt/pylon
+            meson builddir_gcc --prefix $PWD/install_gcc
+            ninja -C builddir_gcc
+            ninja -C builddir_gcc install
+
+            # compile clang
+            export PYLON_ROOT=/opt/pylon
+            meson builddir_clang --prefix $PWD/install_clang
+            ninja -C builddir_clang
+            ninja -C builddir_clang install
+
+            # run tests gcc
+            export GST_PLUGIN_PATH=$PWD/install_gcc/lib/aarch64-linux-gnu/gstreamer-1.0
+            export PYLON_CAMEMU=1
+            gst-inspect-1.0 pylonsrc
+            gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
+
+            # run tests clang
+            export GST_PLUGIN_PATH=$PWD/install_clang/lib/aarch64-linux-gnu/gstreamer-1.0
+            export PYLON_CAMEMU=1
+            gst-inspect-1.0 pylonsrc
+            gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
+
+  build_linux_x86_64:
+    needs: prepare
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, ubuntu-20.04, ubuntu-22.04]
+        py_version: [7.1.0.25066, 6.3.0.23157 ]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}-x64
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: pylon-installer
+          path: pylon-installer
+
+      - name: install pylon
+        run: |
+          PYLON_TGZ=$(readlink -m pylon-installer/pylon_${{ matrix.py_version }}_x86_64_setup.tar.gz)
+          mkdir pylon_tmp
+          pushd pylon_tmp
+          tar -xf $PYLON_TGZ
+          sudo mkdir -p /opt/pylon
+          sudo tar -C /opt/pylon -xzf pylon_${{ matrix.py_version }}_x86_64.tar.gz
+          popd
+
+      - name: install required environment
+        run: |
+          sudo apt-get update
+          # remove conflicting package
+          sudo dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && sudo apt-get remove -y libunwind-14-dev
+          # install required build tools
+          sudo apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools
+          pip3 install pip --upgrade
+          pip3 install meson ninja
+
+      - name: compile gcc
+        run: |
+          export PYLON_ROOT=/opt/pylon
+          meson builddir_gcc --prefix $PWD/install_gcc
+          ninja -C builddir_gcc
+          ninja -C builddir_gcc install
+
+      - name: compile clang
+        run: |
+          export PYLON_ROOT=/opt/pylon
+          meson builddir_clang --prefix $PWD/install_clang
+          ninja -C builddir_clang
+          ninja -C builddir_clang install
+
+      - name: run tests gcc
+        run: |
+          export GST_PLUGIN_PATH=$PWD/install_gcc/lib/x86_64-linux-gnu/gstreamer-1.0
+          export PYLON_CAMEMU=1
+          gst-inspect-1.0 pylonsrc
+          gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
+
+      - name: run tests clang
+        run: |
+          export GST_PLUGIN_PATH=$PWD/install_clang/lib/x86_64-linux-gnu/gstreamer-1.0
+          export PYLON_CAMEMU=1
+          gst-inspect-1.0 pylonsrc
+          gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
+
