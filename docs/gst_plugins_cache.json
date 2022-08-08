@@ -3,7 +3,7 @@
         "description": "Official GStreamer plug-in for Basler cameras",
         "elements": {
             "pylonsrc": {
-                "author": "Basler AG",
+                "author": "Basler AG <support.europe@baslerweb.com>",
                 "description": "Source element for Basler cameras",
                 "hierarchy": [
                     "GstPylonSrc",
