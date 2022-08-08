@@ -195,6 +195,10 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
 
   try {
     if (!self->camera->UserSetSelector.IsWritable()) {
+      GST_INFO(
+          "UserSet feature not available"
+          " camera will start in internal default state");
+
       return true;
     }
 
@@ -421,7 +425,6 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
   gdouble min_fps = 1;
   gdouble max_fps = 1;
   Pylon::CFloatParameter framerate;
-  bool has_acquisition_framerate = false;
 
   GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
 
@@ -434,10 +437,7 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
   if (framerate.IsReadable()) {
     min_fps = framerate.GetMin();
     max_fps = framerate.GetMax();
-    has_acquisition_framerate = true;
-  }
 
-  if (has_acquisition_framerate) {
     gint min_fps_num = 0;
     gint min_fps_den = 0;
     gst_util_double_to_fraction(min_fps, &min_fps_num, &min_fps_den);
@@ -453,6 +453,9 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
     /* Fallback framerate 0, if camera does not supply any value */
     g_value_init(outvalue, GST_TYPE_FRACTION);
     gst_value_set_fraction(outvalue, 0, 1);
+    GST_INFO(
+        "AcquisitionFramerate feature not available"
+        " camera will report 0/1 as supported framerate");
   }
 }
 
