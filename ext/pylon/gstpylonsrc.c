@@ -1,6 +1,5 @@
 /* Copyright (C) 2022 Basler AG
  *
- * Created by RidgeRun, LLC <support@ridgerun.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -151,7 +150,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   gst_element_class_set_static_metadata (GST_ELEMENT_CLASS (klass),
       "Basler/Pylon source element", "Source/Video/Hardware",
       "Source element for Basler cameras",
-      "Michael Gruner <michael.gruner@ridgerun.com>");
+      "Basler AG <support.europe@baslerweb.com>");
 
   gobject_class->set_property = gst_pylon_src_set_property;
   gobject_class->get_property = gst_pylon_src_get_property;
@@ -533,7 +532,7 @@ gst_pylon_src_start (GstBaseSrc * src)
     goto log_gst_error;
   }
 
-  self->offset = G_GUINT64_CONSTANT(0);
+  self->offset = G_GUINT64_CONSTANT (0);
   self->duration = GST_CLOCK_TIME_NONE;
 
   goto out;
@@ -612,9 +611,9 @@ gst_pylon_src_query (GstBaseSrc * src, GstQuery * query)
       }
 
       /* FIXME: we are assuming we cannot hold more than one
-	 buffer. Eventually we want to have Pylon::StartGrabbing's
-	 MaxNumImages extend the max_latency.
-      */
+         buffer. Eventually we want to have Pylon::StartGrabbing's
+         MaxNumImages extend the max_latency.
+       */
       max_latency = min_latency = self->duration;
 
       GST_DEBUG_OBJECT (self,

@@ -1,9 +1,9 @@
 {
     "pylon": {
-        "description": "FIXME plugin description",
+        "description": "Official GStreamer plug-in for Basler cameras",
         "elements": {
             "pylonsrc": {
-                "author": "Michael Gruner <michael.gruner@ridgerun.com>",
+                "author": "Basler AG <support.europe@baslerweb.com>",
                 "description": "Source element for Basler cameras",
                 "hierarchy": [
                     "GstPylonSrc",
@@ -26,11 +26,11 @@
             }
         },
         "filename": "gstpylon",
-        "license": "LGPL",
+        "license": "BSD",
         "other-types": {},
         "package": "GStreamer Pylon Plug-in",
         "source": "gst-plugin-pylon",
         "tracers": {},
-        "url": "Unknown package origin"
+        "url": "https://github.com/basler/gst-plugin-pylon"
     }
 }
