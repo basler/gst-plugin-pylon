@@ -195,9 +195,9 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
 
   try {
     if (!self->camera->UserSetSelector.IsWritable()) {
-      GST_INFO_OBJECT(self,
-                      "UserSet feature not available"
-                      " camera will start in internal default state");
+      GST_INFO(
+          "UserSet feature not available"
+          " camera will start in internal default state");
 
       return true;
     }
@@ -453,9 +453,9 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
     /* Fallback framerate 0, if camera does not supply any value */
     g_value_init(outvalue, GST_TYPE_FRACTION);
     gst_value_set_fraction(outvalue, 0, 1);
-    GST_INFO_OBJECT(self,
-                    "AcquisitionFramerate feature not available"
-                    " camera will report 0/1 as supported framerate");
+    GST_INFO(
+        "AcquisitionFramerate feature not available"
+        " camera will report 0/1 as supported framerate");
   }
 }
 
