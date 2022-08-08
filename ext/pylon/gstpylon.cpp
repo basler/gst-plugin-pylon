@@ -250,8 +250,6 @@ gboolean gst_pylon_start(GstPylon *self, GError **err) {
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
   try {
-    /* workaround for queue management issue #24
-     */
     self->camera->StartGrabbing(Pylon::GrabStrategy_LatestImageOnly);
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
