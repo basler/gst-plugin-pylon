@@ -19,9 +19,9 @@ test_defines = [
 pluginsdirs = []
 if gst_dep.type_name() == 'pkgconfig'
   pbase = dependency('gstreamer-plugins-base-' + api_version, required: true)
-  pluginsdirs = [gst_dep.get_pkgconfig_variable('pluginsdir'),
-                 pbase.get_pkgconfig_variable('pluginsdir')]
-  gst_plugin_scanner_dir = gst_dep.get_pkgconfig_variable('pluginscannerdir')
+  pluginsdirs = [gst_dep.get_variable(pkgconfig : 'pluginsdir'),
+                 pbase.get_variable(pkgconfig : 'pluginsdir')]
+  gst_plugin_scanner_dir = gst_dep.get_variable(pkgconfig : 'pluginscannerdir')
 else
   gst_plugin_scanner_dir = subproject('gstreamer').get_variable('gst_scanner_dir')
 endif
@@ -47,8 +47,8 @@ foreach t : pylon_tests
     env.set('GST_STATE_IGNORE_ELEMENTS', state_ignore_elements)
     env.set('CK_DEFAULT_TIMEOUT', '20')
     env.set('GST_PLUGIN_LOADING_WHITELIST', 'gstreamer', 'gst-plugins-base',
-        'gst-plugin-pylon@' + meson.build_root())
-    env.set('GST_PLUGIN_PATH_1_0', [meson.build_root()] + pluginsdirs)
+        'gst-plugin-pylon@' + meson.global_build_root())
+    env.set('GST_PLUGIN_PATH_1_0', [meson.global_build_root()] + pluginsdirs)
     env.set('GSETTINGS_BACKEND', 'memory')
 
     env.set('GST_REGISTRY', join_paths(meson.current_build_dir(), '@0@.registry'.format(test_name)))
