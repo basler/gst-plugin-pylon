@@ -74,7 +74,8 @@ struct _GstPylonSrc
 /* prototypes */
 
 
-static void gst_pylon_src_set_property (GObject * object,
+static void
+gst_pylon_src_set_property (GObject * object,
     guint property_id, const GValue * value, GParamSpec * pspec);
 static void gst_pylon_src_get_property (GObject * object,
     guint property_id, GValue * value, GParamSpec * pspec);
@@ -201,8 +202,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
       "\t\t\tAccording to the selected camera "
       "different properties will be available.\n "
       "\t\t\tThese properties can be accessed using the "
-      "\"cam::<property>\" syntax.\n"
-      "\t\t\t%s%s", prolog, cam_params);
+      "\"cam::<property>\" syntax.\n" "\t\t\t%s%s", prolog, cam_params);
 
   g_object_class_install_property (gobject_class, PROP_CAM,
       g_param_spec_object ("cam", "Camera", cam_blurb, G_TYPE_OBJECT,

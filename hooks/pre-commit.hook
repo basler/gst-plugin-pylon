@@ -25,7 +25,7 @@ for file in `git diff-index --cached --name-only HEAD --diff-filter=ACMR| grep -
     if [ $found_cpp = 0 ] ; then
       INDENT="hooks/cpp-format"
     else
-      INDENT="hooks/gst-format"
+      INDENT="hooks/gst-indent"
     fi
 
     eval ${INDENT} $newfile 2>> /dev/null
