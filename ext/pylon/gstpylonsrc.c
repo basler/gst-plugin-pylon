@@ -138,6 +138,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
   GstPushSrcClass *push_src_class = GST_PUSH_SRC_CLASS (klass);
   gchar *cam_params, *cam_blurb = NULL;
+  const gchar *prolog = NULL;
   GError *error = NULL;
 
   gst_pylon_initialize ();
@@ -189,14 +190,19 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           GST_PARAM_MUTABLE_READY));
 
   cam_params = gst_pylon_get_string_properties (&error);
+  if (NULL == cam_params) {
+    prolog = "No valid cameras where found connected to the system.";
+    cam_params = g_strdup ("");
+  } else {
+    prolog = "The following list details the properties for each camera.\n";
+  }
 
   cam_blurb = g_strdup_printf ("The camera to use.\n"
       "\t\t\tAccording to the selected camera "
       "different properties will be available.\n "
       "\t\t\tThese properties can be accessed using the "
       "\"cam::<property>\" syntax.\n"
-      "\t\t\tThe following list details the properties "
-      "for each camera.\n%s", cam_params);
+      "\t\t\t%s%s", prolog, cam_params);
 
   g_object_class_install_property (gobject_class, PROP_CAM,
       g_param_spec_object ("cam", "Camera", cam_blurb, G_TYPE_OBJECT,
@@ -216,8 +222,6 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   base_src_class->query = GST_DEBUG_FUNCPTR (gst_pylon_src_query);
 
   push_src_class->create = GST_DEBUG_FUNCPTR (gst_pylon_src_create);
-
-
 }
 
 static void
