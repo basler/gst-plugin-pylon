@@ -1,9 +1,3 @@
-# Pylon specific options
-option('pylon-path', type : 'string', yield : true,
-       description : 'The path to Pylon installation dir (defaults to "/opt/pylon")')
-option('pylon-rpath', type : 'string', yield : true,
-       description : 'The path to Pylon runtime library dir, useful for cross-compilation (defaults to "${pylon_path}/lib/")')
-
 # Common feature options
 option('examples', type : 'feature', value : 'auto', yield : true)
 option('tests', type : 'feature', value : 'auto', yield : true)

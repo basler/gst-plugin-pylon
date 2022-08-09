@@ -160,7 +160,7 @@ Configure a hardware trigger on Line1 for the trigger FrameStart:
 
 # Building
 
-This plugin is build using the [meson](https://mesonbuild.com/) build system.
+This plugin is build using the [meson](https://mesonbuild.com/) build system. The meson version has to be >= 0.61.
 
 As a first step install Basler pylon according to your platform. Downloads are available at: [Basler software downloads](https://www.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware;language=all;version=all)
 
@@ -194,6 +194,13 @@ sudo -H python3 -m pip install meson
 # GStreamer
 sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake
 ```
+
+The build process relies on `PYLON_ROOT` pointing to the Basler pylon install directory.
+
+```bash
+# for pylon in default location
+export PYLON_ROOT=/opt/pylon
+``
 
 Then proceed to configure the project. Check `meson_options.txt` for a
 list of configuration options. On Debian-based systems, make sure you
@@ -250,8 +257,14 @@ Specify the path to pkgconfig configuration files for GStreamer and the pkg-conf
 
 ```bash
 set PKG_CONFIG_PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%lib\pkgconfig
-set PATH=%PATH%;%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin`
+set PATH=%PATH%;%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin
 ```
+
+The build process relies on CMAKE_PREFIX_PATH pointing to Basler pylon cmake support files. This is normally set by the Basler pylon installer.
+```bash
+set CMAKE_PREFIX_PATH=C:\Program Files\Basler\pylon 7\Development\CMake\pylon\
+```
+
 
 Then the plugin can be compiled and installed using Ninja:
 

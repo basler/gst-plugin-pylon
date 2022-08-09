@@ -10,7 +10,7 @@ if meson.is_cross_build()
 endif
 
 required_hotdoc_extensions = ['gi-extension', 'gst-extension']
-plugins_cache_generator = find_program(join_paths(gst_dep.get_pkgconfig_variable('libexecdir'), 'gstreamer-' + api_version, 'gst-plugins-doc-cache-generator'),
+plugins_cache_generator = find_program(join_paths(gst_dep.get_variable(pkgconfig : 'libexecdir'), 'gstreamer-' + api_version, 'gst-plugins-doc-cache-generator'),
     required: false)
 
 plugins_cache = join_paths(meson.current_source_dir(), 'gst_plugins_cache.json')
