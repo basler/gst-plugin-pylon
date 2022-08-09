@@ -1,6 +1,6 @@
 project('gst-plugin-pylon', 'c', 'cpp',
   version : '0.2.0',
-  meson_version : '>= 0.54',
+  meson_version : '>= 0.61',
   default_options : [ 'warning_level=1',
                       'buildtype=debugoptimized' ])
 
