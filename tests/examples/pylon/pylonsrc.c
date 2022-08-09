@@ -50,6 +50,26 @@ sig_handler (GMainLoop * loop)
   return TRUE;
 }
 
+static gboolean
+toggle_pattern (GstElement * pylonsrc)
+{
+  gint pattern = 0;
+  GstChildProxy *cp = NULL;
+
+  g_return_val_if_fail (pylonsrc, FALSE);
+
+  cp = GST_CHILD_PROXY (pylonsrc);
+
+  gst_child_proxy_get (cp, "cam::TestImageSelector", &pattern, NULL);
+
+  /* Toggle test image pattern */
+  pattern = 1 == pattern ? 2 : 1;
+
+  gst_child_proxy_set (cp, "cam::TestImageSelector", pattern, NULL);
+
+  return TRUE;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -89,6 +109,8 @@ main (int argc, char **argv)
 
   loop = g_main_loop_new (NULL, FALSE);
   g_unix_signal_add (SIGINT, G_SOURCE_FUNC (sig_handler), loop);
+
+  g_timeout_add_seconds (1, G_SOURCE_FUNC (toggle_pattern), pylonsrc);
 
   g_main_loop_run (loop);
 
