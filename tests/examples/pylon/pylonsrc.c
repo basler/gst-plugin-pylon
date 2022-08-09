@@ -64,7 +64,7 @@ static gboolean
 toggle_pattern (Context * ctx)
 {
   gint pattern = 0;
-  const gchar *name_list[] = { "Testimage1", "Testimage2" };
+  const gchar *name_list[] = { "Off", "Testimage1", "Testimage2" };
   const gchar *name = NULL;
   GstChildProxy *cp = NULL;
 
@@ -77,8 +77,8 @@ toggle_pattern (Context * ctx)
   gst_child_proxy_get (cp, "cam::TestImageSelector", &pattern, NULL);
 
   /* Toggle test image pattern */
-  pattern = 1 == pattern ? 2 : 1;
-  name = name_list[pattern - 1];
+  pattern = (pattern + 1) % 3;
+  name = name_list[pattern];
 
   gst_child_proxy_set (cp, "cam::TestImageSelector", pattern, NULL);
   g_object_set (ctx->overlay, "text", name, NULL);
@@ -138,7 +138,7 @@ main (int argc, char **argv)
   gint ret = EXIT_FAILURE;
   const gchar *desc =
       "pylonsrc device-serial-number=0815-0000 name=" PYLONSRC_NAME
-      " ! textoverlay auto-resize=true text=Testimage1 name=" OVERLAY_NAME
+      " ! textoverlay auto-resize=true text=Testimage2 name=" OVERLAY_NAME
       " ! queue ! videoconvert ! autovideosink";
 
   /* Make sure we have an emulator running */
@@ -167,7 +167,7 @@ main (int argc, char **argv)
   }
 
   ctx.loop = g_main_loop_new (NULL, FALSE);
-  g_unix_signal_add (SIGINT, (GSourceFunc)sig_handler, &ctx);
+  g_unix_signal_add (SIGINT, (GSourceFunc) sig_handler, &ctx);
 
   /* Add a bus listener to receive errors, warnings and other notifications
    * from the pipeline
@@ -183,7 +183,7 @@ main (int argc, char **argv)
   }
 
   /* Add a periodic callback to change a camera property */
-  g_timeout_add_seconds (1, (GSourceFunc)toggle_pattern, &ctx);
+  g_timeout_add_seconds (1, (GSourceFunc) toggle_pattern, &ctx);
 
   /* Run until an interrupt is received */
   g_main_loop_run (ctx.loop);
