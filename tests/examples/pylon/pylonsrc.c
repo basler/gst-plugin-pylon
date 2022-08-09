@@ -117,6 +117,7 @@ main (int argc, char **argv)
   GstElement *pipe = NULL;
   GstElement *pylonsrc = NULL;
   GstBus *bus = NULL;
+  guint bus_watch = 0;
   GError *error = NULL;
   const gchar *desc =
       "pylonsrc device-serial-number=0815-0000 name=" PYLONSRC_NAME
@@ -143,7 +144,7 @@ main (int argc, char **argv)
    * from the pipeline
    */
   bus = gst_pipeline_get_bus (GST_PIPELINE (pipe));
-  gst_bus_add_watch (bus, (GstBusFunc) bus_callback, loop);
+  bus_watch = gst_bus_add_watch (bus, (GstBusFunc) bus_callback, loop);
   gst_object_unref (bus);
 
   pylonsrc = gst_bin_get_by_name (GST_BIN (pipe), PYLONSRC_NAME);
@@ -175,8 +176,11 @@ free_pylonsrc:
   gst_object_unref (pylonsrc);
 
 free_pipe:
+  g_source_remove (bus_watch);
   gst_object_unref (pipe);
 
 out:
+  gst_deinit ();
+
   return ret;
 }
