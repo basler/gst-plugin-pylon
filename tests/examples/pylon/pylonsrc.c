@@ -167,7 +167,7 @@ main (int argc, char **argv)
   }
 
   ctx.loop = g_main_loop_new (NULL, FALSE);
-  g_unix_signal_add (SIGINT, G_SOURCE_FUNC (sig_handler), &ctx);
+  g_unix_signal_add (SIGINT, (GSourceFunc)sig_handler, &ctx);
 
   /* Add a bus listener to receive errors, warnings and other notifications
    * from the pipeline
@@ -183,7 +183,7 @@ main (int argc, char **argv)
   }
 
   /* Add a periodic callback to change a camera property */
-  g_timeout_add_seconds (1, G_SOURCE_FUNC (toggle_pattern), &ctx);
+  g_timeout_add_seconds (1, (GSourceFunc)toggle_pattern, &ctx);
 
   /* Run until an interrupt is received */
   g_main_loop_run (ctx.loop);
