@@ -160,7 +160,7 @@ Configure a hardware trigger on Line1 for the trigger FrameStart:
 
 # Building
 
-This plugin is build using the [meson](https://mesonbuild.com/) build system.
+This plugin is build using the [meson](https://mesonbuild.com/) build system. The meson version has to be >= 0.61.
 
 As a first step install Basler pylon according to your platform. Downloads are available at: [Basler software downloads](https://www.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware;language=all;version=all)
 
