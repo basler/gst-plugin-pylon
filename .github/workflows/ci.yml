@@ -28,14 +28,8 @@ jobs:
           ${PYLON_DOWNLOAD_URL_BASE}/Basler_pylon_7.1.0.25066.exe
           ${PYLON_DOWNLOAD_URL_BASE}/pylon-6.2.0.21487.dmg
           EOF
-      - uses: actions/cache@v2
-        id: cache
-        with:
-          path: pylon-installer
-          key: pylon-installer-${{ hashFiles('pylon-installer.txt') }}
 
       - name: Fetch installers
-        if: steps.cache.outputs.cache-hit != 'true'
         env:
           PYLON_DOWNLOAD_URL_BASE: ${{ secrets.PYLON_DOWNLOAD_URL_BASE }}
           PYLON_DOWNLOAD_URL_BASE_62: ${{ secrets.PYLON_DOWNLOAD_URL_BASE_62 }}
