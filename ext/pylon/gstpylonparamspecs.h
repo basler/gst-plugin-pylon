@@ -119,7 +119,6 @@ G_BEGIN_DECLS
 
 /* --- get_type functions --- */
 
-GST_API
 GType gst_pylon_param_spec_selector_int64_get_type(void);
 GType gst_pylon_param_spec_selector_bool_get_type(void);
 GType gst_pylon_param_spec_selector_float_get_type(void);
@@ -228,7 +227,6 @@ struct _GstPylonParamSpecSelectorEnum {
 
 /* --- GParamSpec prototypes --- */
 
-GST_API
 GParamSpec* gst_pylon_param_spec_selector_int64(
     GenApi::INodeMap& nodemap, const gchar* selector_name,
     const gchar* feature_name, guint64 selector_value, const gchar* nick,
