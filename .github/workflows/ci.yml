@@ -243,3 +243,22 @@ jobs:
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
 
+
+
+
+  cleanup:
+    if: always()
+    needs: [
+            prepare,
+            build_linux_x86_64,
+            build_linux_aarch64,
+            build_windows_x86_64
+    ]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: geekyeggo/delete-artifact@v1
+      continue-on-error: true
+      with:
+        name: pylon-installer
+
+
