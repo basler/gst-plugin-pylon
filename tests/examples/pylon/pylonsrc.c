@@ -35,7 +35,10 @@
  */
 
 #include <gst/gst.h>
+#ifdef G_OS_UNIX
 #include <glib-unix.h>
+#endif
+#include <stdlib.h>
 
 #define PYLONSRC_NAME "src"
 #define OVERLAY_NAME "overlay"
@@ -48,6 +51,7 @@ struct _Context
   GstElement *overlay;
 };
 
+#ifdef G_OS_UNIX
 static gboolean
 sig_handler (Context * ctx)
 {
@@ -59,6 +63,7 @@ sig_handler (Context * ctx)
 
   return TRUE;
 }
+#endif
 
 static gboolean
 toggle_pattern (Context * ctx)
@@ -167,7 +172,9 @@ main (int argc, char **argv)
   }
 
   ctx.loop = g_main_loop_new (NULL, FALSE);
+#ifdef G_OS_UNIX
   g_unix_signal_add (SIGINT, (GSourceFunc) sig_handler, &ctx);
+#endif
 
   /* Add a bus listener to receive errors, warnings and other notifications
    * from the pipeline
