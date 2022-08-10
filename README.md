@@ -1,9 +1,9 @@
 # gst-plugin-pylon
 
-> The official GStreamer source plug-in for Basler cameras powered by Basler pylon
+> The official GStreamer source plug-in for Basler cameras powered by Basler pylon Camera Software Suite
 
 
-This plugin allows to use any Basler camera (supported by Basler pylon) as source element in a GStreamer pipeline.
+This plugin allows to use any Basler 2D camera (supported by Basler pylon Camera Software Suite) as source element in a GStreamer pipeline.
 
 All camera features are available in the plugin by dynamic runtime mapping to gstreamer properties.
 
