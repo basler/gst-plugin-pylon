@@ -82,16 +82,19 @@ For the pixel format check the format supported for your camera on https://docs.
 The mapping of the camera pixel format names to the gstreamer format names is:
 
 ```
-|Pylon          | GSTREAMER  |
-|---------------|------------|
-| Mono8         |  GRAY8     |
-| RGB8Packed    |  RGB       |
-| RGB8          |  RGB       |
-| BGR8Packed    |  BGR       |
-| BGR8          |  BGR       |
-| YCbCr422_8    |  YUY2      |
-| YUV422_8      |  YUY2      |
-| YUV422_8_UYVY |  UYVY      |
+|Pylon              | GSTREAMER  |
+|-------------------|------------|
+| Mono8             |  GRAY8     |
+| RGB8Packed        |  RGB       |
+| RGB8              |  RGB       |
+| BGR8Packed        |  BGR       |
+| BGR8              |  BGR       |
+| YCbCr422_8        |  YUY2      |
+| YUV422_8          |  YUY2      |
+| YUV422_YUYV_Packed|  YUY2 
+| YUV422_8_UYVY     |  UYVY      |
+| YUV422Packed      |  UYVY      |
+
 
 ```
 
