@@ -95,6 +95,7 @@ jobs:
           
           meson build --prefix="$env:GSTREAMER_1_0_ROOT_MSVC_X86_64"
           ninja -C build
+          ninja -C build test
           ninja -C build install
 
       - name: test
@@ -158,12 +159,14 @@ jobs:
             export PYLON_ROOT=/opt/pylon
             meson builddir_gcc --prefix $PWD/install_gcc
             ninja -C builddir_gcc
+            ninja -C builddir_gcc test
             ninja -C builddir_gcc install
 
             # compile clang
             export PYLON_ROOT=/opt/pylon
             meson builddir_clang --prefix $PWD/install_clang
             ninja -C builddir_clang
+            ninja -C builddir_clang test
             ninja -C builddir_clang install
 
             # run tests gcc
@@ -220,6 +223,7 @@ jobs:
           export PYLON_ROOT=/opt/pylon
           meson builddir_gcc --prefix $PWD/install_gcc
           ninja -C builddir_gcc
+          ninja -C builddir_gcc test
           ninja -C builddir_gcc install
 
       - name: compile clang
@@ -227,6 +231,7 @@ jobs:
           export PYLON_ROOT=/opt/pylon
           meson builddir_clang --prefix $PWD/install_clang
           ninja -C builddir_clang
+          ninja -C builddir_clang test
           ninja -C builddir_clang install
 
       - name: run tests gcc
