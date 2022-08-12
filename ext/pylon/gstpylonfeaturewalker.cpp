@@ -98,10 +98,15 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   /* Add selector enum values */
   std::vector<std::string> enum_values;
   GenApi::NodeList_t enum_entries;
+  /* calculate prefix length to strip */
+  const auto prefix_str = std::string("EnumEntry_") +
+                          enum_node->GetNode()->GetName().c_str() +
+                          std::string("_");
+  auto prefix_len = prefix_str.length();    
   enum_node->GetEntries(enum_entries);
   for (auto const& e : enum_entries) {
     auto enum_name = std::string(e->GetName());
-    enum_values.push_back(enum_name.substr(enum_name.find_last_of("_") + 1));
+    enum_values.push_back(enum_name.substr(prefix_len));
   }
 
   selector_node = selector->GetNode();
