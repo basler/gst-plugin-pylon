@@ -225,7 +225,7 @@ static void gst_pylon_stream_grabber_set_property(GObject* object,
   GType value_type = g_type_fundamental(G_VALUE_TYPE(value));
 
   try {
-    GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
+    GenApi::INodeMap& nodemap = priv->camera->GetStreamGrabberNodeMap();
     if (G_TYPE_INT64 == value_type) {
       /* The value accepted by the pspec is an INT64, it can be an int
        * feature or an int selector. */
@@ -320,7 +320,7 @@ static void gst_pylon_stream_grabber_get_property(GObject* object,
       gst_pylon_stream_grabber_get_instance_private(self);
 
   try {
-    GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
+    GenApi::INodeMap& nodemap = priv->camera->GetStreamGrabberNodeMap();
     switch (g_type_fundamental(pspec->value_type)) {
       case G_TYPE_INT64:
         g_value_set_int64(
