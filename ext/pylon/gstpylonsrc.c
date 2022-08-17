@@ -195,7 +195,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           GST_PARAM_MUTABLE_READY));
 
   cam_params = gst_pylon_camera_get_string_properties (&error);
-  stream_params = gst_pylon_camera_get_string_properties (&error);
+  stream_params = gst_pylon_stream_grabber_get_string_properties (&error);
 
   if (NULL == cam_params) {
     cam_prolog = "No valid cameras where found connected to the system.";

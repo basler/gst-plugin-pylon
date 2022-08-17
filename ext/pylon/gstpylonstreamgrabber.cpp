@@ -147,7 +147,7 @@ static void gst_pylon_stream_grabber_install_properties(
   g_return_if_fail(klass);
   g_return_if_fail(camera);
 
-  GenApi::INodeMap& nodemap = stream_grabber->GetNodeMap();
+  GenApi::INodeMap& nodemap = camera->GetStreamGrabberNodeMap();
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
   GstPylonFeatureWalker::install_properties(oclass, nodemap);
