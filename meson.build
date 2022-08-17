@@ -202,7 +202,13 @@ configinc = include_directories('.')
 #libsinc = include_directories('gst-libs')
 
 # Disable compiler warnings for unused variables and args if gst debug system is disabled
- gst_debug_disabled = cc.has_header_symbol('gst/gstconfig.h', 'GST_DISABLE_GST_DEBUG', dependencies: gst_dep)
+if gst_dep.type_name() == 'internal'
+  gst_debug_disabled = not subproject('gstreamer').get_variable('gst_debug')
+else
+  # We can't check that in the case of subprojects as we won't
+  # be able to build against an internal dependency (which is not built yet)
+  gst_debug_disabled = cc.has_header_symbol('gst/gstconfig.h', 'GST_DISABLE_GST_DEBUG', dependencies: gst_dep)
+endif
 
 if gst_debug_disabled
   message('GStreamer debug system is disabled')

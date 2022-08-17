@@ -9,9 +9,14 @@ if meson.is_cross_build()
     subdir_done()
 endif
 
-required_hotdoc_extensions = ['gi-extension', 'gst-extension']
-plugins_cache_generator = find_program(join_paths(gst_dep.get_variable(pkgconfig : 'libexecdir'), 'gstreamer-' + api_version, 'gst-plugins-doc-cache-generator'),
-    required: false)
+required_hotdoc_extensions = ['gst-extension']
+if gst_dep.type_name() == 'internal'
+    gst_proj = subproject('gstreamer')
+    plugins_cache_generator = gst_proj.get_variable('plugins_cache_generator')
+else
+    plugins_cache_generator = find_program(join_paths(gst_dep.get_variable('libexecdir'), 'gstreamer-' + api_version, 'gst-plugins-doc-cache-generator'),
+        required: false)
+endif
 
 plugins_cache = join_paths(meson.current_source_dir(), 'gst_plugins_cache.json')
 if plugins.length() == 0
