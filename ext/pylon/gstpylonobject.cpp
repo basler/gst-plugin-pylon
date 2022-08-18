@@ -39,6 +39,7 @@
 typedef struct _GstPylonObjectPrivate GstPylonObjectPrivate;
 struct _GstPylonObjectPrivate {
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera;
+  GenApi::INodeMap& nodemap;
 };
 
 /************************************************************
@@ -54,24 +55,24 @@ static gchar* gst_pylon_object_get_sanitized_name(
 }
 
 static void gst_pylon_object_init(GstPylonObject* self);
-static void gst_pylon_object_class_init(
-    GstPylonObjectClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
+static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
+                                        GenApi::INodeMap* nodemap);
 static gpointer gst_pylon_object_parent_class = NULL;
 static gint GstPylonObject_private_offset;
-static void gst_pylon_object_class_intern_init(
-    gpointer klass, Pylon::CBaslerUniversalInstantCamera* camera) {
+static void gst_pylon_object_class_intern_init(gpointer klass,
+                                               GenApi::INodeMap* nodemap) {
   gst_pylon_object_parent_class = g_type_class_peek_parent(klass);
   if (GstPylonObject_private_offset != 0)
     g_type_class_adjust_private_offset(klass, &GstPylonObject_private_offset);
-  gst_pylon_object_class_init((GstPylonObjectClass*)klass, camera);
+  gst_pylon_object_class_init((GstPylonObjectClass*)klass, nodemap);
 }
 static inline gpointer gst_pylon_object_get_instance_private(
     GstPylonObject* self) {
   return (G_STRUCT_MEMBER_P(self, GstPylonObject_private_offset));
 }
 
-GType gst_pylon_object_register(
-    const Pylon::CBaslerUniversalInstantCamera& exemplar) {
+GType gst_pylon_object_register(Pylon::String_t device_name,
+                                GenApi::INodeMap& exemplar) {
   GTypeInfo typeinfo = {
       sizeof(GstPylonObjectClass),
       NULL,
@@ -84,7 +85,8 @@ GType gst_pylon_object_register(
       (GInstanceInitFunc)gst_pylon_object_init,
   };
 
-  gchar* type_name = gst_pylon_object_get_sanitized_name(exemplar);
+  /* Convert camera name to a valid string */
+  gchar* type_name = gst_pylon_param_spec_sanitize_name(device_name.c_str());
 
   GType type = g_type_from_name(type_name);
   if (!type) {
@@ -105,8 +107,8 @@ GType gst_pylon_object_register(
  ***********************************************************/
 
 /* prototypes */
-static void gst_pylon_object_install_properties(
-    GstPylonObjectClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
+static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
+                                                GenApi::INodeMap* nodemap);
 template <typename F, typename P>
 static void gst_pylon_object_set_pylon_property(GenApi::INodeMap& nodemap,
                                                 F get_value,
@@ -136,20 +138,18 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec);
 static void gst_pylon_object_finalize(GObject* self);
 
-static void gst_pylon_object_install_properties(
-    GstPylonObjectClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
+static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
+                                                GenApi::INodeMap* nodemap) {
   g_return_if_fail(klass);
-  g_return_if_fail(camera);
+  g_return_if_fail(nodemap);
 
-  GenApi::INodeMap& nodemap = camera->GetNodeMap();
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
-  GstPylonFeatureWalker::install_properties(oclass, nodemap);
+  GstPylonFeatureWalker::install_properties(oclass, *nodemap);
 }
 
-static void gst_pylon_object_class_init(
-    GstPylonObjectClass* klass,
-    Pylon::CBaslerUniversalInstantCamera* exemplar) {
+static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
+                                        GenApi::INodeMap* exemplar) {
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
   oclass->set_property = gst_pylon_object_set_property;

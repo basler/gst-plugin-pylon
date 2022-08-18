@@ -72,8 +72,8 @@ static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
 static std::string gst_pylon_query_default_set(
     const Pylon::CBaslerUniversalInstantCamera &camera);
 static void gst_pylon_append_camera_properties(
-    const Pylon::CBaslerUniversalInstantCamera &camera,
-    gchar **camera_parameters, guint alignment);
+    Pylon::CBaslerUniversalInstantCamera *camera, gchar **camera_parameters,
+    guint alignment);
 static void gst_pylon_append_stream_grabber_properties(
     const Pylon::CBaslerUniversalInstantCamera &camera,
     gchar **stream_grabber_parameters, guint alignment);
@@ -596,15 +596,18 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 }
 
 static void gst_pylon_append_camera_properties(
-    const Pylon::CBaslerUniversalInstantCamera &camera,
-    gchar **camera_parameters, guint alignment) {
+    Pylon::CBaslerUniversalInstantCamera *camera, gchar **camera_parameters,
+    guint alignment) {
   g_return_if_fail(camera_parameters);
 
-  GType camera_type = gst_pylon_object_register(camera);
+  GenApi::INodeMap &nodemap = camera->GetNodeMap();
+  Pylon::String_t cam_name = camera->GetDeviceInfo().GetFullName();
+
+  GType camera_type = gst_pylon_object_register(cam_name, nodemap);
   GObject *camera_obj = G_OBJECT(g_object_new(camera_type, NULL));
 
   gchar *camera_name = g_strdup_printf(
-      "%*s:\n", alignment, camera.GetDeviceInfo().GetFriendlyName().c_str());
+      "%*s:\n", alignment, camera->GetDeviceInfo().GetFriendlyName().c_str());
 
   gchar *parameters = gst_child_inspector_properties_to_string(
       camera_obj, alignment, camera_name);
@@ -666,7 +669,7 @@ gchar *gst_pylon_camera_get_string_properties(GError **err) {
       Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
                                                   Pylon::Cleanup_Delete);
       camera.Open();
-      gst_pylon_append_camera_properties(camera, &camera_parameters,
+      gst_pylon_append_camera_properties(&camera, &camera_parameters,
                                          DEFAULT_ALIGNMENT);
       camera.Close();
     } catch (const Pylon::GenericException &e) {
