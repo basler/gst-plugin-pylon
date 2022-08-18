@@ -35,7 +35,6 @@
 
 #include <gst/gst.h>
 
-
 #ifdef _MSC_VER  // MSVC
 #pragma warning(push)
 #pragma warning(disable : 4265)
@@ -63,7 +62,9 @@ struct _GstPylonObjectClass {
 };
 
 GType gst_pylon_object_register (Pylon::String_t device_name, GenApi::INodeMap& nodemap);
-GObject * gst_pylon_object_new (std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera);
+GObject* gst_pylon_object_new(
+    std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
+    Pylon::String_t device_name, GenApi::INodeMap* nodemap);
 
 G_END_DECLS
 

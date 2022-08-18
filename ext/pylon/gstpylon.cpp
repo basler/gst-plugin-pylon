@@ -165,7 +165,11 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     self->camera->Attach(factory.CreateDevice(device_info));
     self->camera->Open();
 
-    self->gcamera = gst_pylon_object_new(self->camera);
+    Pylon::String_t cam_name = self->camera->GetDeviceInfo().GetFullName();
+
+    GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
+    self->gcamera = gst_pylon_object_new(self->camera, cam_name, &nodemap);
+
     self->gstream_grabber = gst_pylon_stream_grabber_new(self->camera);
 
   } catch (const Pylon::GenericException &e) {
