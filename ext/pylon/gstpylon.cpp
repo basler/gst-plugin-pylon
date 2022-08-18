@@ -34,7 +34,6 @@
 
 #include "gstchildinspector.h"
 #include "gstpylonobject.h"
-#include "gstpylonstreamgrabber.h"
 
 #include <map>
 
