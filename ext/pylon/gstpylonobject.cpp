@@ -30,14 +30,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gstpyloncamera.h"
+#include "gstpylonobject.h"
 
 #include "gstpylonfeaturewalker.h"
 #include "gstpylonintrospection.h"
 #include "gstpylonparamspecs.h"
 
-typedef struct _GstPylonCameraPrivate GstPylonCameraPrivate;
-struct _GstPylonCameraPrivate {
+typedef struct _GstPylonObjectPrivate GstPylonObjectPrivate;
+struct _GstPylonObjectPrivate {
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera;
 };
 
@@ -45,7 +45,7 @@ struct _GstPylonCameraPrivate {
  * Start of GObject definition
  ***********************************************************/
 
-static gchar* gst_pylon_camera_get_sanitized_name(
+static gchar* gst_pylon_object_get_sanitized_name(
     const Pylon::CBaslerUniversalInstantCamera& camera) {
   Pylon::String_t cam_name = camera.GetDeviceInfo().GetFullName();
 
@@ -53,38 +53,38 @@ static gchar* gst_pylon_camera_get_sanitized_name(
   return gst_pylon_param_spec_sanitize_name(cam_name.c_str());
 }
 
-static void gst_pylon_camera_init(GstPylonCamera* self);
-static void gst_pylon_camera_class_init(
-    GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
-static gpointer gst_pylon_camera_parent_class = NULL;
-static gint GstPylonCamera_private_offset;
-static void gst_pylon_camera_class_intern_init(
+static void gst_pylon_object_init(GstPylonObject* self);
+static void gst_pylon_object_class_init(
+    GstPylonObjectClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
+static gpointer gst_pylon_object_parent_class = NULL;
+static gint GstPylonObject_private_offset;
+static void gst_pylon_object_class_intern_init(
     gpointer klass, Pylon::CBaslerUniversalInstantCamera* camera) {
-  gst_pylon_camera_parent_class = g_type_class_peek_parent(klass);
-  if (GstPylonCamera_private_offset != 0)
-    g_type_class_adjust_private_offset(klass, &GstPylonCamera_private_offset);
-  gst_pylon_camera_class_init((GstPylonCameraClass*)klass, camera);
+  gst_pylon_object_parent_class = g_type_class_peek_parent(klass);
+  if (GstPylonObject_private_offset != 0)
+    g_type_class_adjust_private_offset(klass, &GstPylonObject_private_offset);
+  gst_pylon_object_class_init((GstPylonObjectClass*)klass, camera);
 }
-static inline gpointer gst_pylon_camera_get_instance_private(
-    GstPylonCamera* self) {
-  return (G_STRUCT_MEMBER_P(self, GstPylonCamera_private_offset));
+static inline gpointer gst_pylon_object_get_instance_private(
+    GstPylonObject* self) {
+  return (G_STRUCT_MEMBER_P(self, GstPylonObject_private_offset));
 }
 
-GType gst_pylon_camera_register(
+GType gst_pylon_object_register(
     const Pylon::CBaslerUniversalInstantCamera& exemplar) {
   GTypeInfo typeinfo = {
-      sizeof(GstPylonCameraClass),
+      sizeof(GstPylonObjectClass),
       NULL,
       NULL,
-      (GClassInitFunc)gst_pylon_camera_class_intern_init,
+      (GClassInitFunc)gst_pylon_object_class_intern_init,
       NULL,
       &exemplar,
-      sizeof(GstPylonCamera),
+      sizeof(GstPylonObject),
       0,
-      (GInstanceInitFunc)gst_pylon_camera_init,
+      (GInstanceInitFunc)gst_pylon_object_init,
   };
 
-  gchar* type_name = gst_pylon_camera_get_sanitized_name(exemplar);
+  gchar* type_name = gst_pylon_object_get_sanitized_name(exemplar);
 
   GType type = g_type_from_name(type_name);
   if (!type) {
@@ -94,8 +94,8 @@ GType gst_pylon_camera_register(
 
   g_free(type_name);
 
-  GstPylonCamera_private_offset =
-      g_type_add_instance_private(type, sizeof(GstPylonCameraPrivate));
+  GstPylonObject_private_offset =
+      g_type_add_instance_private(type, sizeof(GstPylonObjectPrivate));
 
   return type;
 }
@@ -105,39 +105,39 @@ GType gst_pylon_camera_register(
  ***********************************************************/
 
 /* prototypes */
-static void gst_pylon_camera_install_properties(
-    GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
+static void gst_pylon_object_install_properties(
+    GstPylonObjectClass* klass, Pylon::CBaslerUniversalInstantCamera* camera);
 template <typename F, typename P>
-static void gst_pylon_camera_set_pylon_property(GenApi::INodeMap& nodemap,
+static void gst_pylon_object_set_pylon_property(GenApi::INodeMap& nodemap,
                                                 F get_value,
                                                 const GValue* value,
                                                 const gchar* name);
-static void gst_pylon_camera_set_enum_property(GenApi::INodeMap& nodemap,
+static void gst_pylon_object_set_enum_property(GenApi::INodeMap& nodemap,
                                                const GValue* value,
                                                const gchar* name);
 template <typename F, typename P>
-static void gst_pylon_camera_set_pylon_selector(
+static void gst_pylon_object_set_pylon_selector(
     GenApi::INodeMap& nodemap, F get_value, const GValue* value,
     const gchar* feature, const gchar* selector, guint64& selector_value);
-static void gst_pylon_camera_set_enum_selector(GenApi::INodeMap& nodemap,
+static void gst_pylon_object_set_enum_selector(GenApi::INodeMap& nodemap,
                                                const GValue* value,
                                                const gchar* feature_name,
                                                const gchar* selector_name,
                                                guint64& selector_value);
 template <typename T, typename P>
-static T gst_pylon_camera_get_pylon_property(GenApi::INodeMap& nodemap,
+static T gst_pylon_object_get_pylon_property(GenApi::INodeMap& nodemap,
                                              const gchar* name);
-static gint gst_pylon_camera_get_enum_property(GenApi::INodeMap& nodemap,
+static gint gst_pylon_object_get_enum_property(GenApi::INodeMap& nodemap,
                                                const gchar* name);
-static void gst_pylon_camera_set_property(GObject* object, guint property_id,
+static void gst_pylon_object_set_property(GObject* object, guint property_id,
                                           const GValue* value,
                                           GParamSpec* pspec);
-static void gst_pylon_camera_get_property(GObject* object, guint property_id,
+static void gst_pylon_object_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec);
-static void gst_pylon_camera_finalize(GObject* self);
+static void gst_pylon_object_finalize(GObject* self);
 
-static void gst_pylon_camera_install_properties(
-    GstPylonCameraClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
+static void gst_pylon_object_install_properties(
+    GstPylonObjectClass* klass, Pylon::CBaslerUniversalInstantCamera* camera) {
   g_return_if_fail(klass);
   g_return_if_fail(camera);
 
@@ -147,22 +147,22 @@ static void gst_pylon_camera_install_properties(
   GstPylonFeatureWalker::install_properties(oclass, nodemap);
 }
 
-static void gst_pylon_camera_class_init(
-    GstPylonCameraClass* klass,
+static void gst_pylon_object_class_init(
+    GstPylonObjectClass* klass,
     Pylon::CBaslerUniversalInstantCamera* exemplar) {
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
-  oclass->set_property = gst_pylon_camera_set_property;
-  oclass->get_property = gst_pylon_camera_get_property;
-  oclass->finalize = gst_pylon_camera_finalize;
+  oclass->set_property = gst_pylon_object_set_property;
+  oclass->get_property = gst_pylon_object_get_property;
+  oclass->finalize = gst_pylon_object_finalize;
 
-  gst_pylon_camera_install_properties(klass, exemplar);
+  gst_pylon_object_install_properties(klass, exemplar);
 }
 
-static void gst_pylon_camera_init(GstPylonCamera* self) {}
+static void gst_pylon_object_init(GstPylonObject* self) {}
 
 template <typename F, typename P>
-static void gst_pylon_camera_set_pylon_property(GenApi::INodeMap& nodemap,
+static void gst_pylon_object_set_pylon_property(GenApi::INodeMap& nodemap,
                                                 F get_value,
                                                 const GValue* value,
                                                 const gchar* name) {
@@ -170,7 +170,7 @@ static void gst_pylon_camera_set_pylon_property(GenApi::INodeMap& nodemap,
   param.SetValue(get_value(value));
 }
 
-static void gst_pylon_camera_set_enum_property(GenApi::INodeMap& nodemap,
+static void gst_pylon_object_set_enum_property(GenApi::INodeMap& nodemap,
                                                const GValue* value,
                                                const gchar* name) {
   Pylon::CEnumParameter param(nodemap, name);
@@ -178,7 +178,7 @@ static void gst_pylon_camera_set_enum_property(GenApi::INodeMap& nodemap,
 }
 
 template <typename F, typename P>
-static void gst_pylon_camera_set_pylon_selector(GenApi::INodeMap& nodemap,
+static void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
                                                 F get_value,
                                                 const GValue* value,
                                                 const gchar* feature_name,
@@ -187,11 +187,11 @@ static void gst_pylon_camera_set_pylon_selector(GenApi::INodeMap& nodemap,
   Pylon::CEnumParameter selparam(nodemap, selector_name);
   selparam.SetIntValue(selector_value);
 
-  gst_pylon_camera_set_pylon_property<F, P>(nodemap, get_value, value,
+  gst_pylon_object_set_pylon_property<F, P>(nodemap, get_value, value,
                                             feature_name);
 }
 
-static void gst_pylon_camera_set_enum_selector(GenApi::INodeMap& nodemap,
+static void gst_pylon_object_set_enum_selector(GenApi::INodeMap& nodemap,
                                                const GValue* value,
                                                const gchar* feature_name,
                                                const gchar* selector_name,
@@ -199,28 +199,28 @@ static void gst_pylon_camera_set_enum_selector(GenApi::INodeMap& nodemap,
   Pylon::CEnumParameter selparam(nodemap, selector_name);
   selparam.SetIntValue(selector_value);
 
-  gst_pylon_camera_set_enum_property(nodemap, value, feature_name);
+  gst_pylon_object_set_enum_property(nodemap, value, feature_name);
 }
 
 template <typename T, typename P>
-static T gst_pylon_camera_get_pylon_property(GenApi::INodeMap& nodemap,
+static T gst_pylon_object_get_pylon_property(GenApi::INodeMap& nodemap,
                                              const gchar* name) {
   P param(nodemap, name);
   return param.GetValue();
 }
 
-static gint gst_pylon_camera_get_enum_property(GenApi::INodeMap& nodemap,
+static gint gst_pylon_object_get_enum_property(GenApi::INodeMap& nodemap,
                                                const gchar* name) {
   Pylon::CEnumParameter param(nodemap, name);
   return param.GetIntValue();
 }
 
-static void gst_pylon_camera_set_property(GObject* object, guint property_id,
+static void gst_pylon_object_set_property(GObject* object, guint property_id,
                                           const GValue* value,
                                           GParamSpec* pspec) {
-  GstPylonCamera* self = (GstPylonCamera*)object;
-  GstPylonCameraPrivate* priv =
-      (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
+  GstPylonObject* self = (GstPylonObject*)object;
+  GstPylonObjectPrivate* priv =
+      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
   GType value_type = g_type_fundamental(G_VALUE_TYPE(value));
 
   try {
@@ -232,13 +232,13 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
         GstPylonParamSpecSelectorInt64* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
         typedef gint64 (*GGetInt64)(const GValue*);
-        gst_pylon_camera_set_pylon_selector<GGetInt64,
+        gst_pylon_object_set_pylon_selector<GGetInt64,
                                             Pylon::CIntegerParameter>(
             nodemap, g_value_get_int64, value, lspec->feature, lspec->selector,
             lspec->selector_value);
       } else {
         typedef gint64 (*GGetInt64)(const GValue*);
-        gst_pylon_camera_set_pylon_property<GGetInt64,
+        gst_pylon_object_set_pylon_property<GGetInt64,
                                             Pylon::CIntegerParameter>(
             nodemap, g_value_get_int64, value, pspec->name);
       }
@@ -247,12 +247,12 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
         GstPylonParamSpecSelectorBool* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
         typedef gboolean (*GGetBool)(const GValue*);
-        gst_pylon_camera_set_pylon_selector<GGetBool, Pylon::CBooleanParameter>(
+        gst_pylon_object_set_pylon_selector<GGetBool, Pylon::CBooleanParameter>(
             nodemap, g_value_get_boolean, value, lspec->feature,
             lspec->selector, lspec->selector_value);
       } else {
         typedef gboolean (*GGetBool)(const GValue*);
-        gst_pylon_camera_set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
+        gst_pylon_object_set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
             nodemap, g_value_get_boolean, value, pspec->name);
       }
     } else if (G_TYPE_FLOAT == value_type) {
@@ -260,12 +260,12 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
         GstPylonParamSpecSelectorFloat* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
         typedef gfloat (*GGetFloat)(const GValue*);
-        gst_pylon_camera_set_pylon_selector<GGetFloat, Pylon::CFloatParameter>(
+        gst_pylon_object_set_pylon_selector<GGetFloat, Pylon::CFloatParameter>(
             nodemap, g_value_get_float, value, lspec->feature, lspec->selector,
             lspec->selector_value);
       } else {
         typedef gfloat (*GGetFloat)(const GValue*);
-        gst_pylon_camera_set_pylon_property<GGetFloat, Pylon::CFloatParameter>(
+        gst_pylon_object_set_pylon_property<GGetFloat, Pylon::CFloatParameter>(
             nodemap, g_value_get_float, value, pspec->name);
       }
     } else if (G_TYPE_STRING == value_type) {
@@ -273,13 +273,13 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
         GstPylonParamSpecSelectorStr* lspec =
             GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
         typedef const gchar* (*GGetString)(const GValue*);
-        gst_pylon_camera_set_pylon_selector<GGetString,
+        gst_pylon_object_set_pylon_selector<GGetString,
                                             Pylon::CStringParameter>(
             nodemap, g_value_get_string, value, lspec->feature, lspec->selector,
             lspec->selector_value);
       } else {
         typedef const gchar* (*GGetString)(const GValue*);
-        gst_pylon_camera_set_pylon_property<GGetString,
+        gst_pylon_object_set_pylon_property<GGetString,
                                             Pylon::CStringParameter>(
             nodemap, g_value_get_string, value, pspec->name);
       }
@@ -287,11 +287,11 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
       if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
         GstPylonParamSpecSelectorEnum* lspec =
             (GstPylonParamSpecSelectorEnum*)pspec;
-        gst_pylon_camera_set_enum_selector(nodemap, value, lspec->feature,
+        gst_pylon_object_set_enum_selector(nodemap, value, lspec->feature,
                                            lspec->selector,
                                            lspec->selector_value);
       } else {
-        gst_pylon_camera_set_enum_property(nodemap, value, pspec->name);
+        gst_pylon_object_set_enum_property(nodemap, value, pspec->name);
       }
     } else {
       g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
@@ -306,41 +306,41 @@ static void gst_pylon_camera_set_property(GObject* object, guint property_id,
   }
 }
 
-static void gst_pylon_camera_get_property(GObject* object, guint property_id,
+static void gst_pylon_object_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec) {
-  GstPylonCamera* self = (GstPylonCamera*)object;
-  GstPylonCameraPrivate* priv =
-      (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
+  GstPylonObject* self = (GstPylonObject*)object;
+  GstPylonObjectPrivate* priv =
+      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
 
   try {
     GenApi::INodeMap& nodemap = priv->camera->GetNodeMap();
     switch (g_type_fundamental(pspec->value_type)) {
       case G_TYPE_INT64:
         g_value_set_int64(
-            value, gst_pylon_camera_get_pylon_property<
+            value, gst_pylon_object_get_pylon_property<
                        gint64, Pylon::CIntegerParameter>(nodemap, pspec->name));
         break;
       case G_TYPE_BOOLEAN:
-        g_value_set_boolean(value, gst_pylon_camera_get_pylon_property<
+        g_value_set_boolean(value, gst_pylon_object_get_pylon_property<
                                        gboolean, Pylon::CBooleanParameter>(
                                        nodemap, pspec->name));
         break;
       case G_TYPE_FLOAT:
         g_value_set_float(
             value,
-            gst_pylon_camera_get_pylon_property<gfloat, Pylon::CFloatParameter>(
+            gst_pylon_object_get_pylon_property<gfloat, Pylon::CFloatParameter>(
                 nodemap, pspec->name));
         break;
       case G_TYPE_STRING:
         g_value_set_string(
-            value, gst_pylon_camera_get_pylon_property<GenICam::gcstring,
+            value, gst_pylon_object_get_pylon_property<GenICam::gcstring,
                                                        Pylon::CStringParameter>(
                        nodemap, pspec->name)
                        .c_str());
         break;
       case G_TYPE_ENUM:
         g_value_set_enum(
-            value, gst_pylon_camera_get_enum_property(nodemap, pspec->name));
+            value, gst_pylon_object_get_enum_property(nodemap, pspec->name));
         break;
       default:
         g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
@@ -355,29 +355,29 @@ static void gst_pylon_camera_get_property(GObject* object, guint property_id,
   }
 }
 
-GObject* gst_pylon_camera_new(
+GObject* gst_pylon_object_new(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera) {
-  gchar* type_name = gst_pylon_camera_get_sanitized_name(*camera);
+  gchar* type_name = gst_pylon_object_get_sanitized_name(*camera);
 
   GType type = g_type_from_name(type_name);
   g_free(type_name);
 
   GObject* obj = G_OBJECT(g_object_new(type, NULL));
-  GstPylonCamera* self = (GstPylonCamera*)obj;
-  GstPylonCameraPrivate* priv =
-      (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
+  GstPylonObject* self = (GstPylonObject*)obj;
+  GstPylonObjectPrivate* priv =
+      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
 
   priv->camera = camera;
 
   return obj;
 }
 
-static void gst_pylon_camera_finalize(GObject* object) {
-  GstPylonCamera* self = (GstPylonCamera*)object;
-  GstPylonCameraPrivate* priv =
-      (GstPylonCameraPrivate*)gst_pylon_camera_get_instance_private(self);
+static void gst_pylon_object_finalize(GObject* object) {
+  GstPylonObject* self = (GstPylonObject*)object;
+  GstPylonObjectPrivate* priv =
+      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
 
   priv->camera = NULL;
 
-  G_OBJECT_CLASS(gst_pylon_camera_parent_class)->finalize(object);
+  G_OBJECT_CLASS(gst_pylon_object_parent_class)->finalize(object);
 }

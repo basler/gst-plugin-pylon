@@ -56,7 +56,7 @@ gboolean gst_pylon_set_configuration (GstPylon * self, const GstCaps *conf,
 gchar *gst_pylon_camera_get_string_properties (GError ** err);
 gchar *gst_pylon_stream_grabber_get_string_properties(GError **err);
 
-GObject *gst_pylon_get_camera (GstPylon *self);
+GObject *gst_pylon_get_object (GstPylon *self);
 GObject *gst_pylon_get_stream_grabber (GstPylon *self);
 
 GST_DEBUG_CATEGORY_EXTERN (gst_pylon_src_debug_category);

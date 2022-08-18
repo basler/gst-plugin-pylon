@@ -30,8 +30,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_CAMERA_H_
-#define _GST_PYLON_CAMERA_H_
+#ifndef _GST_PYLON_OBJECT_H_
+#define _GST_PYLON_OBJECT_H_
 
 #include <gst/gst.h>
 
@@ -55,15 +55,15 @@
 
 G_BEGIN_DECLS
 
-G_DECLARE_DERIVABLE_TYPE (GstPylonCamera, gst_pylon_camera,
-    GST, PYLON_CAMERA, GObject)
+G_DECLARE_DERIVABLE_TYPE (GstPylonObject, gst_pylon_object,
+    GST, PYLON_OBJECT, GObject)
 
-struct _GstPylonCameraClass {
+struct _GstPylonObjectClass {
   GObjectClass parent_class;
 };
 
-GType gst_pylon_camera_register (const Pylon::CBaslerUniversalInstantCamera &exemplar);
-GObject * gst_pylon_camera_new (std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera);
+GType gst_pylon_object_register (const Pylon::CBaslerUniversalInstantCamera &exemplar);
+GObject * gst_pylon_object_new (std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera);
 
 G_END_DECLS
 

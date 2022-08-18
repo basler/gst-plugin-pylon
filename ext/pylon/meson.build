@@ -31,7 +31,7 @@ pylon_sources = [
   'gstpylonsrc.c',
   'gstpylonplugin.c',
   'gstchildinspector.cpp',
-  'gstpyloncamera.cpp',
+  'gstpylonobject.cpp',
   'gstpylon.cpp',
   'gstpylonintrospection.cpp',
   'gstpylonparamspecs.cpp',

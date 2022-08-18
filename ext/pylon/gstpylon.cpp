@@ -33,7 +33,7 @@
 #include "gstpylon.h"
 
 #include "gstchildinspector.h"
-#include "gstpyloncamera.h"
+#include "gstpylonobject.h"
 #include "gstpylonstreamgrabber.h"
 
 #include <map>
@@ -165,7 +165,7 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     self->camera->Attach(factory.CreateDevice(device_info));
     self->camera->Open();
 
-    self->gcamera = gst_pylon_camera_new(self->camera);
+    self->gcamera = gst_pylon_object_new(self->camera);
     self->gstream_grabber = gst_pylon_stream_grabber_new(self->camera);
 
   } catch (const Pylon::GenericException &e) {
@@ -600,7 +600,7 @@ static void gst_pylon_append_camera_properties(
     gchar **camera_parameters, guint alignment) {
   g_return_if_fail(camera_parameters);
 
-  GType camera_type = gst_pylon_camera_register(camera);
+  GType camera_type = gst_pylon_object_register(camera);
   GObject *camera_obj = G_OBJECT(g_object_new(camera_type, NULL));
 
   gchar *camera_name = g_strdup_printf(
@@ -703,7 +703,7 @@ gchar *gst_pylon_stream_grabber_get_string_properties(GError **err) {
   return camera_parameters;
 }
 
-GObject *gst_pylon_get_camera(GstPylon *self) {
+GObject *gst_pylon_get_object(GstPylon *self) {
   g_return_val_if_fail(self, NULL);
 
   return G_OBJECT(g_object_ref(self->gcamera));
