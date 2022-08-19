@@ -53,8 +53,8 @@ gboolean gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err);
 GstCaps *gst_pylon_query_configuration (GstPylon * self, GError ** err);
 gboolean gst_pylon_set_configuration (GstPylon * self, const GstCaps *conf,
     GError ** err);
-gchar *gst_pylon_camera_get_string_properties (GError ** err);
-gchar *gst_pylon_stream_grabber_get_string_properties(GError **err);
+gchar *gst_pylon_camera_get_string_properties ();
+gchar *gst_pylon_stream_grabber_get_string_properties ();
 
 GObject *gst_pylon_get_object (GstPylon *self);
 GObject *gst_pylon_get_stream_grabber (GstPylon *self);

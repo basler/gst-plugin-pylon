@@ -74,12 +74,20 @@ static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     GenApi::StringList_t genapi_formats);
 static std::string gst_pylon_query_default_set(
     const Pylon::CBaslerUniversalInstantCamera &camera);
+static void gst_pylon_append_properties(
+    Pylon::CBaslerUniversalInstantCamera *camera,
+    Pylon::String_t device_full_name, Pylon::String_t device_type_str,
+    GenApi::INodeMap &nodemap, gchar **device_parameters, guint alignment);
 static void gst_pylon_append_camera_properties(
     Pylon::CBaslerUniversalInstantCamera *camera, gchar **camera_parameters,
     guint alignment);
 static void gst_pylon_append_stream_grabber_properties(
     Pylon::CBaslerUniversalInstantCamera *camera,
     gchar **stream_grabber_parameters, guint alignment);
+typedef void (*GetStringProperties)(Pylon::CBaslerUniversalInstantCamera *,
+                                    gchar **, guint);
+static gchar *gst_pylon_get_string_properties(
+    GetStringProperties get_device_string_properties);
 
 static constexpr gint DEFAULT_ALIGNMENT = 35;
 
@@ -616,71 +624,66 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   return TRUE;
 }
 
+static void gst_pylon_append_properties(
+    Pylon::CBaslerUniversalInstantCamera *camera,
+    Pylon::String_t device_full_name, Pylon::String_t device_type_str,
+    GenApi::INodeMap &nodemap, gchar **device_parameters, guint alignment) {
+  g_return_if_fail(camera);
+  g_return_if_fail(device_parameters);
+
+  GType device_type = gst_pylon_object_register(device_full_name, nodemap);
+  GObject *device_obj = G_OBJECT(g_object_new(device_type, NULL));
+
+  gchar *device_name = g_strdup_printf(
+      "%*s %s:\n", alignment, camera->GetDeviceInfo().GetFriendlyName().c_str(),
+      device_type_str.c_str());
+
+  gchar *parameters = gst_child_inspector_properties_to_string(
+      device_obj, alignment, device_name);
+
+  if (NULL == *device_parameters) {
+    *device_parameters = g_strdup(parameters);
+  } else {
+    *device_parameters =
+        g_strconcat(*device_parameters, "\n", parameters, NULL);
+  }
+
+  g_free(device_name);
+  g_free(parameters);
+
+  g_object_unref(device_obj);
+}
+
 static void gst_pylon_append_camera_properties(
     Pylon::CBaslerUniversalInstantCamera *camera, gchar **camera_parameters,
     guint alignment) {
+  g_return_if_fail(camera);
   g_return_if_fail(camera_parameters);
 
   GenApi::INodeMap &nodemap = camera->GetNodeMap();
+  Pylon::String_t camera_name = gst_pylon_get_camera_fullname(*camera);
+  Pylon::String_t device_type = "Camera";
 
-  GType camera_type = gst_pylon_object_register(
-      gst_pylon_get_camera_fullname(*camera), nodemap);
-  GObject *camera_obj = G_OBJECT(g_object_new(camera_type, NULL));
-
-  gchar *camera_name = g_strdup_printf(
-      "%*s:\n", alignment, camera->GetDeviceInfo().GetFriendlyName().c_str());
-
-  gchar *parameters = gst_child_inspector_properties_to_string(
-      camera_obj, alignment, camera_name);
-
-  if (NULL == *camera_parameters) {
-    *camera_parameters = g_strdup(parameters);
-  } else {
-    *camera_parameters =
-        g_strconcat(*camera_parameters, "\n", parameters, NULL);
-  }
-
-  g_free(camera_name);
-  g_free(parameters);
-
-  g_object_unref(camera_obj);
+  gst_pylon_append_properties(camera, camera_name, device_type, nodemap,
+                              camera_parameters, alignment);
 }
 
 static void gst_pylon_append_stream_grabber_properties(
-    Pylon::CBaslerUniversalInstantCamera *camera,
-    gchar **stream_grabber_parameters, guint alignment) {
-  g_return_if_fail(stream_grabber_parameters);
+    Pylon::CBaslerUniversalInstantCamera *camera, gchar **sgrabber_parameters,
+    guint alignment) {
+  g_return_if_fail(camera);
+  g_return_if_fail(sgrabber_parameters);
 
   GenApi::INodeMap &nodemap = camera->GetStreamGrabberNodeMap();
+  Pylon::String_t sgrabber_name = gst_pylon_get_sgrabber_name(*camera);
+  Pylon::String_t device_type = "Stream Grabber";
 
-  GType stream_grabber_type =
-      gst_pylon_object_register(gst_pylon_get_sgrabber_name(*camera), nodemap);
-  GObject *stream_grabber_obj =
-      G_OBJECT(g_object_new(stream_grabber_type, NULL));
-
-  gchar *stream_grabber_name =
-      g_strdup_printf("%*s Stream Grabber:\n", alignment,
-                      camera->GetDeviceInfo().GetFriendlyName().c_str());
-
-  gchar *parameters = gst_child_inspector_properties_to_string(
-      stream_grabber_obj, alignment, stream_grabber_name);
-
-  if (NULL == *stream_grabber_parameters) {
-    *stream_grabber_parameters = g_strdup(parameters);
-  } else {
-    *stream_grabber_parameters =
-        g_strconcat(*stream_grabber_parameters, "\n", parameters, NULL);
-  }
-
-  g_free(stream_grabber_name);
-  g_free(parameters);
-
-  g_object_unref(stream_grabber_obj);
+  gst_pylon_append_properties(camera, sgrabber_name, device_type, nodemap,
+                              sgrabber_parameters, alignment);
 }
 
-gchar *gst_pylon_camera_get_string_properties(GError **err) {
-  g_return_val_if_fail(err && *err == NULL, NULL);
-
+static gchar *gst_pylon_get_string_properties(
+    GetStringProperties get_device_string_properties) {
   gchar *camera_parameters = NULL;
 
   Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
@@ -693,8 +696,8 @@ gchar *gst_pylon_camera_get_string_properties(GError **err) {
       Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
                                                   Pylon::Cleanup_Delete);
       camera.Open();
-      gst_pylon_append_camera_properties(&camera, &camera_parameters,
-                                         DEFAULT_ALIGNMENT);
+      get_device_string_properties(&camera, &camera_parameters,
+                                   DEFAULT_ALIGNMENT);
       camera.Close();
     } catch (const Pylon::GenericException &e) {
       continue;
@@ -704,30 +707,13 @@ gchar *gst_pylon_camera_get_string_properties(GError **err) {
   return camera_parameters;
 }
 
-gchar *gst_pylon_stream_grabber_get_string_properties(GError **err) {
-  g_return_val_if_fail(err && *err == NULL, NULL);
+gchar *gst_pylon_camera_get_string_properties() {
+  return gst_pylon_get_string_properties(gst_pylon_append_camera_properties);
+}
 
-  gchar *camera_parameters = NULL;
-
-  Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
-  Pylon::DeviceInfoList_t device_list;
-
-  factory.EnumerateDevices(device_list);
-
-  for (const auto &device : device_list) {
-    try {
-      Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
-                                                  Pylon::Cleanup_Delete);
-      camera.Open();
-      gst_pylon_append_stream_grabber_properties(&camera, &camera_parameters,
-                                                 DEFAULT_ALIGNMENT);
-      camera.Close();
-    } catch (const Pylon::GenericException &e) {
-      continue;
-    }
-  }
-
-  return camera_parameters;
+gchar *gst_pylon_stream_grabber_get_string_properties() {
+  return gst_pylon_get_string_properties(
+      gst_pylon_append_stream_grabber_properties);
 }
 
 GObject *gst_pylon_get_object(GstPylon *self) {
