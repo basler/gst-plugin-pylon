@@ -125,7 +125,8 @@ GType gst_pylon_param_spec_selector_float_get_type(void);
 GType gst_pylon_param_spec_selector_str_get_type(void);
 GType gst_pylon_param_spec_selector_enum_register(GenApi::INodeMap& nodemap,
                                                   const gchar* feature_name,
-                                                  GType enum_feature_type);
+                                                  GType enum_feature_type,
+                                                  const gchar* device_fullname);
 
 /* --- typedefs & structures --- */
 
@@ -248,8 +249,8 @@ GParamSpec* gst_pylon_param_spec_selector_str(
 GParamSpec* gst_pylon_param_spec_selector_enum(
     GenApi::INodeMap& nodemap, const gchar* feature_name,
     const gchar* selector_name, guint64 selector_value, const gchar* nick,
-    const gchar* blurb, GType type, gint64 def,
-    GParamFlags flags) G_GNUC_MALLOC;
+    const gchar* blurb, GType type, gint64 def, GParamFlags flags,
+    const gchar* device_fullname) G_GNUC_MALLOC;
 
 /* --- Utility prototypes --- */
 

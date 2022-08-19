@@ -54,7 +54,8 @@
 class GstPylonFeatureWalker {
  public:
   static void install_properties(GObjectClass* oclass,
-                                    GenApi::INodeMap& nodemap);
+                                 GenApi::INodeMap& nodemap,
+                                 const gchar* device_fullname);
 };
 
 #endif

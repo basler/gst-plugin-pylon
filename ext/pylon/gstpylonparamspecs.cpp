@@ -575,14 +575,12 @@ static gint _gst_pylon_param_selector_enum_values_cmp(GParamSpec *pspec,
   return g_param_values_cmp(spec->base, value1, value2);
 }
 
-GType gst_pylon_param_spec_selector_enum_register(GenApi::INodeMap &nodemap,
-                                                  const gchar *feature_name,
-                                                  GType enum_feature_type) {
+GType gst_pylon_param_spec_selector_enum_register(
+    GenApi::INodeMap &nodemap, const gchar *feature_name,
+    GType enum_feature_type, const gchar *device_fullname) {
   GType selector_type = G_TYPE_INVALID;
-  Pylon::CStringParameter model_name(nodemap, "DeviceModelName");
 
-  gchar *full_name =
-      g_strdup_printf("%s_%s", model_name.GetValue().c_str(), feature_name);
+  gchar *full_name = g_strdup_printf("%s_%s", device_fullname, feature_name);
   gchar *name = gst_pylon_param_spec_sanitize_name(full_name);
   g_free(full_name);
 
@@ -611,7 +609,8 @@ GType gst_pylon_param_spec_selector_enum_register(GenApi::INodeMap &nodemap,
 GParamSpec *gst_pylon_param_spec_selector_enum(
     GenApi::INodeMap &nodemap, const gchar *feature_name,
     const gchar *selector_name, guint64 selector_value, const gchar *nick,
-    const gchar *blurb, GType type, gint64 def, GParamFlags flags) {
+    const gchar *blurb, GType type, gint64 def, GParamFlags flags,
+    const gchar *device_fullname) {
   GstPylonParamSpecSelectorEnum *spec;
   gchar *name = NULL;
   gint int_flags = static_cast<gint>(flags);
@@ -628,8 +627,9 @@ GParamSpec *gst_pylon_param_spec_selector_enum(
   int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
 
   spec = static_cast<GstPylonParamSpecSelectorEnum *>(g_param_spec_internal(
-      gst_pylon_param_spec_selector_enum_register(nodemap, name, type), name,
-      nick, blurb, static_cast<GParamFlags>(int_flags)));
+      gst_pylon_param_spec_selector_enum_register(nodemap, name, type,
+                                                  device_fullname),
+      name, nick, blurb, static_cast<GParamFlags>(int_flags)));
 
   spec->selector = g_strdup(selector_name);
   spec->feature = g_strdup(feature_name);

@@ -120,7 +120,7 @@ static Pylon::String_t gst_pylon_get_camera_fullname(
 
 static Pylon::String_t gst_pylon_get_sgrabber_name(
     Pylon::CBaslerUniversalInstantCamera &camera) {
-  return gst_pylon_get_camera_fullname(camera) + "_StreamGrabber";
+  return gst_pylon_get_camera_fullname(camera) + " StreamGrabber";
 }
 
 GstPylon *gst_pylon_new(const gchar *device_user_name,

@@ -42,21 +42,27 @@ struct _GstPylonObjectPrivate {
   GenApi::INodeMap* nodemap;
 };
 
+typedef struct _GstPylonObjectDeviceMembers GstPylonObjectDeviceMembers;
+struct _GstPylonObjectDeviceMembers {
+  const gchar* device_name;
+  GenApi::INodeMap* nodemap;
+};
+
 /************************************************************
  * Start of GObject definition
  ***********************************************************/
 
 static void gst_pylon_object_init(GstPylonObject* self);
-static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
-                                        GenApi::INodeMap* nodemap);
+static void gst_pylon_object_class_init(
+    GstPylonObjectClass* klass, GstPylonObjectDeviceMembers* device_members);
 static gpointer gst_pylon_object_parent_class = NULL;
 static gint GstPylonObject_private_offset;
-static void gst_pylon_object_class_intern_init(gpointer klass,
-                                               GenApi::INodeMap* nodemap) {
+static void gst_pylon_object_class_intern_init(
+    gpointer klass, GstPylonObjectDeviceMembers* device_members) {
   gst_pylon_object_parent_class = g_type_class_peek_parent(klass);
   if (GstPylonObject_private_offset != 0)
     g_type_class_adjust_private_offset(klass, &GstPylonObject_private_offset);
-  gst_pylon_object_class_init((GstPylonObjectClass*)klass, nodemap);
+  gst_pylon_object_class_init((GstPylonObjectClass*)klass, device_members);
 }
 static inline gpointer gst_pylon_object_get_instance_private(
     GstPylonObject* self) {
@@ -65,13 +71,15 @@ static inline gpointer gst_pylon_object_get_instance_private(
 
 GType gst_pylon_object_register(Pylon::String_t device_name,
                                 GenApi::INodeMap& exemplar) {
+  GstPylonObjectDeviceMembers device_members = {device_name.c_str(), &exemplar};
+
   GTypeInfo typeinfo = {
       sizeof(GstPylonObjectClass),
       NULL,
       NULL,
       (GClassInitFunc)gst_pylon_object_class_intern_init,
       NULL,
-      &exemplar,
+      &device_members,
       sizeof(GstPylonObject),
       0,
       (GInstanceInitFunc)gst_pylon_object_init,
@@ -100,7 +108,8 @@ GType gst_pylon_object_register(Pylon::String_t device_name,
 
 /* prototypes */
 static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
-                                                GenApi::INodeMap* nodemap);
+                                                GenApi::INodeMap* nodemap,
+                                                const gchar* device_fullname);
 template <typename F, typename P>
 static void gst_pylon_object_set_pylon_property(GenApi::INodeMap& nodemap,
                                                 F get_value,
@@ -131,24 +140,26 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
 static void gst_pylon_object_finalize(GObject* self);
 
 static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
-                                                GenApi::INodeMap* nodemap) {
+                                                GenApi::INodeMap* nodemap,
+                                                const gchar* device_name) {
   g_return_if_fail(klass);
   g_return_if_fail(nodemap);
 
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
-  GstPylonFeatureWalker::install_properties(oclass, *nodemap);
+  GstPylonFeatureWalker::install_properties(oclass, *nodemap, device_name);
 }
 
-static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
-                                        GenApi::INodeMap* exemplar) {
+static void gst_pylon_object_class_init(
+    GstPylonObjectClass* klass, GstPylonObjectDeviceMembers* device_members) {
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
   oclass->set_property = gst_pylon_object_set_property;
   oclass->get_property = gst_pylon_object_get_property;
   oclass->finalize = gst_pylon_object_finalize;
 
-  gst_pylon_object_install_properties(klass, exemplar);
+  gst_pylon_object_install_properties(klass, device_members->nodemap,
+                                      device_members->device_name);
 }
 
 static void gst_pylon_object_init(GstPylonObject* self) {}

@@ -39,7 +39,8 @@
 
 /* prototypes */
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
-    GenApi::INode* node, GenApi::INodeMap& nodemap);
+    GenApi::INode* node, GenApi::INodeMap& nodemap,
+    const gchar* device_fullname);
 static void gst_pylon_camera_install_specs(
     const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
     gint& nprop);
@@ -53,7 +54,8 @@ static std::unordered_set<std::string> propfilter_set = {
     "AcquisitionFrameRateAbs"};
 
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
-    GenApi::INode* node, GenApi::INodeMap& nodemap) {
+    GenApi::INode* node, GenApi::INodeMap& nodemap,
+    const gchar* device_fullname) {
   GenApi::INode* selector_node = NULL;
   guint64 selector_value = 0;
   std::vector<GParamSpec*> specs_list;
@@ -73,7 +75,7 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   sel_node->GetSelectingFeatures(selectors);
   if (selectors.empty()) {
     specs_list.push_back(GstPylonParamFactory::make_param(
-        nodemap, node, selector_node, selector_value));
+        nodemap, node, selector_node, selector_value, device_fullname));
     return specs_list;
   }
 
@@ -120,7 +122,7 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   for (auto const& sel_pair : enum_values) {
     selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
     specs_list.push_back(GstPylonParamFactory::make_param(
-        nodemap, node, selector_node, selector_value));
+        nodemap, node, selector_node, selector_value, device_fullname));
   }
 
   return specs_list;
@@ -144,7 +146,8 @@ static void gst_pylon_camera_install_specs(
 }
 
 void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
-                                               GenApi::INodeMap& nodemap) {
+                                               GenApi::INodeMap& nodemap,
+                                               const gchar* device_fullname) {
   g_return_if_fail(oclass);
 
   gint nprop = 1;
@@ -173,7 +176,7 @@ void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
         if (GenICam::gcstring("Yes") == value) {
           try {
             std::vector<GParamSpec*> specs_list =
-                gst_pylon_camera_handle_node(node, nodemap);
+                gst_pylon_camera_handle_node(node, nodemap, device_fullname);
             gst_pylon_camera_install_specs(specs_list, oclass, nprop);
           } catch (const Pylon::GenericException& e) {
             GST_FIXME("Unable to install property \"%s\" on device \"%s\": %s",

@@ -62,13 +62,14 @@ static GParamSpec *gst_pylon_make_spec_selector_str(GenApi::INodeMap &nodemap,
                                                     GenApi::INode *selector,
                                                     guint64 selector_value);
 static GType gst_pylon_make_enum_type(GenApi::INodeMap &nodemap,
-                                      GenApi::INode *node);
+                                      GenApi::INode *node,
+                                      const gchar *device_fullname);
 static GParamSpec *gst_pylon_make_spec_enum(GenApi::INodeMap &nodemap,
-                                            GenApi::INode *node);
-static GParamSpec *gst_pylon_make_spec_selector_enum(GenApi::INodeMap &nodemap,
-                                                     GenApi::INode *node,
-                                                     GenApi::INode *selector,
-                                                     guint64 selector_value);
+                                            GenApi::INode *node,
+                                            const gchar *device_fullname);
+static GParamSpec *gst_pylon_make_spec_selector_enum(
+    GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
+    guint64 selector_value, const gchar *device_fullname);
 static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
                                           GenApi::INode *node);
 
@@ -218,7 +219,8 @@ static GParamSpec *gst_pylon_make_spec_selector_str(GenApi::INodeMap &nodemap,
 }
 
 static GType gst_pylon_make_enum_type(GenApi::INodeMap &nodemap,
-                                      GenApi::INode *node) {
+                                      GenApi::INode *node,
+                                      const gchar *device_fullname) {
   /* When registering enums to the GType system, their string pointers
      must remain valid throughout the application lifespan. To achieve this
      we are saving all found enums into a static hash table
@@ -228,10 +230,9 @@ static GType gst_pylon_make_enum_type(GenApi::INodeMap &nodemap,
   g_return_val_if_fail(node, G_TYPE_INVALID);
 
   Pylon::CEnumParameter param(node);
-  Pylon::CStringParameter model_name(nodemap, "DeviceModelName");
 
-  gchar *full_name = g_strdup_printf("%s_%s", model_name.GetValue().c_str(),
-                                     node->GetName().c_str());
+  gchar *full_name =
+      g_strdup_printf("%s_%s", device_fullname, node->GetName().c_str());
   gchar *name = gst_pylon_param_spec_sanitize_name(full_name);
   g_free(full_name);
 
@@ -267,37 +268,38 @@ static GType gst_pylon_make_enum_type(GenApi::INodeMap &nodemap,
 }
 
 static GParamSpec *gst_pylon_make_spec_enum(GenApi::INodeMap &nodemap,
-                                            GenApi::INode *node) {
+                                            GenApi::INode *node,
+                                            const gchar *device_fullname) {
   g_return_val_if_fail(node, NULL);
 
   Pylon::CEnumParameter param(node);
-  GType type = gst_pylon_make_enum_type(nodemap, node);
+  GType type = gst_pylon_make_enum_type(nodemap, node, device_fullname);
 
   return g_param_spec_enum(node->GetName(), node->GetDisplayName(),
                            node->GetToolTip(), type, param.GetIntValue(),
                            gst_pylon_query_access(nodemap, node));
 }
 
-static GParamSpec *gst_pylon_make_spec_selector_enum(GenApi::INodeMap &nodemap,
-                                                     GenApi::INode *node,
-                                                     GenApi::INode *selector,
-                                                     guint64 selector_value) {
+static GParamSpec *gst_pylon_make_spec_selector_enum(
+    GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
+    guint64 selector_value, const gchar *device_fullname) {
   g_return_val_if_fail(node, NULL);
   g_return_val_if_fail(selector, NULL);
 
   Pylon::CEnumParameter param(node);
-  GType type = gst_pylon_make_enum_type(nodemap, node);
+  GType type = gst_pylon_make_enum_type(nodemap, node, device_fullname);
 
   return gst_pylon_param_spec_selector_enum(
       nodemap, node->GetName(), selector->GetName(), selector_value,
       node->GetDisplayName(), node->GetToolTip(), type, param.GetIntValue(),
-      gst_pylon_query_access(nodemap, node));
+      gst_pylon_query_access(nodemap, node), device_fullname);
 }
 
 GParamSpec *GstPylonParamFactory::make_param(GenApi::INodeMap &nodemap,
                                              GenApi::INode *node,
                                              GenApi::INode *selector,
-                                             guint64 selector_value) {
+                                             guint64 selector_value,
+                                             const gchar *device_fullname) {
   g_return_val_if_fail(node, NULL);
 
   GParamSpec *spec = NULL;
@@ -338,10 +340,10 @@ GParamSpec *GstPylonParamFactory::make_param(GenApi::INodeMap &nodemap,
       break;
     case GenApi::intfIEnumeration:
       if (!selector) {
-        spec = gst_pylon_make_spec_enum(nodemap, node);
+        spec = gst_pylon_make_spec_enum(nodemap, node, device_fullname);
       } else {
-        spec = gst_pylon_make_spec_selector_enum(nodemap, node, selector,
-                                                 selector_value);
+        spec = gst_pylon_make_spec_selector_enum(
+            nodemap, node, selector, selector_value, device_fullname);
       }
       break;
     default:
