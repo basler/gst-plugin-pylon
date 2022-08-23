@@ -716,7 +716,7 @@ gchar *gst_pylon_stream_grabber_get_string_properties() {
       gst_pylon_append_stream_grabber_properties);
 }
 
-GObject *gst_pylon_get_object(GstPylon *self) {
+GObject *gst_pylon_get_camera(GstPylon *self) {
   g_return_val_if_fail(self, NULL);
 
   return G_OBJECT(g_object_ref(self->gcamera));

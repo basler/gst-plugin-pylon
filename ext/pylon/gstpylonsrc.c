@@ -763,7 +763,7 @@ gst_pylon_src_child_proxy_get_child_by_name (GstChildProxy *
 
   if (!g_strcmp0 (name, "cam")) {
     GST_OBJECT_LOCK (self);
-    obj = gst_pylon_get_object (self->pylon);
+    obj = gst_pylon_get_camera (self->pylon);
     GST_OBJECT_UNLOCK (self);
   } else if (!g_strcmp0 (name, "stream")) {
     GST_OBJECT_LOCK (self);
