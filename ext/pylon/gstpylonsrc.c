@@ -141,9 +141,12 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
   GstPushSrcClass *push_src_class = GST_PUSH_SRC_CLASS (klass);
-  gchar *cam_params, *cam_blurb = NULL;
-  gchar *stream_params, *stream_blurb = NULL;
-  const gchar *cam_prolog, *stream_prolog = NULL;
+  gchar *cam_params = NULL;
+  gchar *cam_blurb = NULL;
+  gchar *stream_params = NULL;
+  gchar *stream_blurb = NULL;
+  const gchar *cam_prolog = NULL;
+  const gchar *stream_prolog = NULL;
 
   gst_pylon_initialize ();
 
@@ -258,7 +261,7 @@ gst_pylon_src_init (GstPylonSrc * self)
   self->device_index = PROP_DEVICE_INDEX_DEFAULT;
   self->user_set = PROP_USER_SET_DEFAULT;
   self->cam = PROP_CAM_DEFAULT;
-  self->cam = PROP_STREAM_DEFAULT;
+  self->stream = PROP_STREAM_DEFAULT;
   gst_video_info_init (&self->video_info);
 
   gst_base_src_set_live (base, TRUE);
