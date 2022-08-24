@@ -274,6 +274,25 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
   return TRUE;
 }
 
+gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
+                                  GError **err) {
+  g_return_val_if_fail(self, FALSE);
+  g_return_val_if_fail(err && *err == NULL, FALSE);
+
+  bool check_nodemap_sanity = true;
+
+  try {
+    Pylon::CFeaturePersistence::Load(pfs_location, &self->camera->GetNodeMap(),
+                                     check_nodemap_sanity);
+  } catch (const Pylon::GenericException &e) {
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
+                "PFS file error: %s", e.GetDescription());
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
 void gst_pylon_free(GstPylon *self) {
   g_return_if_fail(self);
 
