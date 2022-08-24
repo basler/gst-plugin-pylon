@@ -128,7 +128,7 @@ Overall UserSets topics for the camera are documented in [Chapter UserSets](http
 
 `pylonsrc` can load a custom configuration from a PFS file. A PFS file is a file with previously saved settings of camera features.
 
-This feature is controlled by the property `pfs-location`. 
+This feature is controlled by the property `user-set``user-set`. 
 
 To use a PFS file, specify the filepath using the `pfs-location` property.
 
@@ -137,6 +137,8 @@ e.g to use a PFS file with name `custom-Nodemap-config.pfs` on a Basler ace came
 ```
 gst-launch-1.0 pylonsrc pfs-location=custom-Nodemap-config.pfs ! videoconvert ! autovideosink
 ```
+
+**Important:** Using this property will result in overriding the camera features set by the `user-set` property if also specified.
 
 An example on how to generate PFS files using pylon Viewer is documented in [Chapter Overview of the pylon Viewer](https://docs.baslerweb.com/overview-of-the-pylon-viewer#camera-menu) in the Basler product documentation.
 
