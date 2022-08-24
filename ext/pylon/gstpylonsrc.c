@@ -199,9 +199,10 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_PFS_LOCATION,
-      g_param_spec_string ("pfs-location", "Pfs file location",
-          "The filepath to the 'pfs' file from which to load the device configuration. "
-          "\n \t\t\tThe file has to have a .pfs extension.",
+      g_param_spec_string ("pfs-location", "PFS file location",
+          "The filepath to the PFS file from which to load the device configuration."
+          "\n \t\t\tThe file has to have a .pfs extension. \n \t\t\tSetting this property "
+          "will override the user set property if also set.",
           PROP_PFS_LOCATION_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
@@ -553,7 +554,8 @@ gst_pylon_src_start (GstBaseSrc * src)
   GST_OBJECT_LOCK (self);
   GST_INFO_OBJECT (self,
       "Attempting to create camera device with the following configuration:"
-      "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s \n\tpfs filepath: %s",
+      "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s \n\tPFS filepath: %s."
+      "If defined, the PFS file will override the user set configuration.",
       self->device_user_name, self->device_serial_number, self->device_index,
       self->user_set, self->pfs_location);
 
@@ -575,12 +577,14 @@ gst_pylon_src_start (GstBaseSrc * src)
     goto log_gst_error;
   }
 
-  GST_OBJECT_LOCK (self);
-  ret = gst_pylon_set_pfs_config (self->pylon, self->pfs_location, &error);
-  GST_OBJECT_UNLOCK (self);
+  if (self->pfs_location) {
+    GST_OBJECT_LOCK (self);
+    ret = gst_pylon_set_pfs_config (self->pylon, self->pfs_location, &error);
+    GST_OBJECT_UNLOCK (self);
 
-  if (ret == FALSE && error) {
-    goto log_gst_error;
+    if (ret == FALSE && error) {
+      goto log_gst_error;
+    }
   }
 
   self->offset = G_GUINT64_CONSTANT (0);
