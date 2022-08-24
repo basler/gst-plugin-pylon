@@ -61,7 +61,7 @@ select camera with user name `top-left`
 
 The configuration of the camera is defined by
 * gstreamer pipeline capabilities
-* the active UserSet
+* the active UserSet or supplied PFS file
 * feature properties of the plugin 
 
 ### Capabilities
@@ -112,7 +112,7 @@ It is recommended to set a caps-filter to explicitly set the wanted capabilities
 
 This feature is controlled by the enumeration property `user-set`.
 
-If this property is not set, or set to the value `Auto`, the power-on UserSet gets loaded. Howto select another power-on default is documented for [UserSetDefault](https://docs.baslerweb.com/user-sets#choosing-a-startup-set) feature.
+If this property is not set, or set to the value `Auto`, the power-on UserSet gets loaded. How to select another power-on default is documented for [UserSetDefault](https://docs.baslerweb.com/user-sets#choosing-a-startup-set) feature.
 
 To select dynamically another UserSet the `user-set` property accepts any other implemented UserSet of the camera.
 
@@ -123,6 +123,22 @@ gst-launch-1.0 pylonsrc user-set=HighGain ! videoconvert ! autovideosink
 ```
 
 Overall UserSets topics for the camera are documented in [Chapter UserSets](https://docs.baslerweb.com/user-sets) in the Basler product documentation.
+
+### PFS file
+
+`pylonsrc` can load a custom configuration from a PFS file. A PFS file is a file with previously saved settings of camera features.
+
+This feature is controlled by the property `pfs-location`. 
+
+To use a PFS file, specify the filepath using the `pfs-location` property.
+
+e.g to use a PFS file with name `custom-Nodemap-config.pfs` on a Basler ace camera:
+
+```
+gst-launch-1.0 pylonsrc pfs-location=custom-Nodemap-config.pfs ! videoconvert ! autovideosink
+```
+
+An example on how to generate PFS files using pylon Viewer is documented in [Chapter Overview of the pylon Viewer](https://docs.baslerweb.com/overview-of-the-pylon-viewer#camera-menu) in the Basler product documentation.
 
 ### Features
 
@@ -203,7 +219,7 @@ The build process relies on `PYLON_ROOT` pointing to the Basler pylon install di
 ```bash
 # for pylon in default location
 export PYLON_ROOT=/opt/pylon
-``
+```
 
 Then proceed to configure the project. Check `meson_options.txt` for a
 list of configuration options. On Debian-based systems, make sure you
