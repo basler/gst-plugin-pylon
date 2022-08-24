@@ -200,9 +200,8 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_PFS_LOCATION,
       g_param_spec_string ("pfs-location", "PFS file location",
-          "The filepath to the PFS file from which to load the device configuration."
-          "The file has to have a .pfs extension. Setting this property "
-          "will override the user set property if also set.",
+          "The filepath to the PFS file from which to load the device configuration. "
+          "Setting this property will override the user set property if also set.",
           PROP_PFS_LOCATION_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
@@ -546,6 +545,7 @@ gst_pylon_src_start (GstBaseSrc * src)
   GstPylonSrc *self = GST_PYLON_SRC (src);
   GError *error = NULL;
   gboolean ret = TRUE;
+  gboolean using_pfs = FALSE;
 
   if (self->pylon) {
     return TRUE;
@@ -579,13 +579,14 @@ gst_pylon_src_start (GstBaseSrc * src)
 
   GST_OBJECT_LOCK (self);
   if (self->pfs_location) {
+    using_pfs = TRUE;
     ret = gst_pylon_set_pfs_config (self->pylon, self->pfs_location, &error);
-
-    if (ret == FALSE && error) {
-      goto log_gst_error;
-    }
   }
   GST_OBJECT_UNLOCK (self);
+
+  if (using_pfs && ret == FALSE && error) {
+    goto log_gst_error;
+  }
 
   self->offset = G_GUINT64_CONSTANT (0);
   self->duration = GST_CLOCK_TIME_NONE;
