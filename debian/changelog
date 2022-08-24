@@ -1,0 +1,5 @@
+gst-plugin-pylon (0.2.0-1) unstable; urgency=medium
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Patrick Thomas <pthomas@caltech.edu>  Wed, 24 Aug 2022 16:17:02 -0700
