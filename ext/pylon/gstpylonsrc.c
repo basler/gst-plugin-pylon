@@ -169,30 +169,30 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_DEVICE_USER_NAME,
       g_param_spec_string ("device-user-name", "Device user defined name",
-          "The user-defined name of the device to use.\n \t\t\tMay be combined"
+          "The user-defined name of the device to use. May be combined"
           "with other device selection properties to reduce the search.",
           PROP_DEVICE_USER_NAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_DEVICE_SERIAL_NUMBER,
       g_param_spec_string ("device-serial-number", "Device serial number",
-          "The serial number of the device to use.\n \t\t\tMay be combined with "
+          "The serial number of the device to use. May be combined with "
           "other device selection properties to reduce the search.",
           PROP_DEVICE_SERIAL_NUMBER_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_DEVICE_INDEX,
       g_param_spec_int ("device-index", "Device index",
-          "The index of the device to use.\n \t\t\tThis index applies to the "
+          "The index of the device to use.This index applies to the "
           "resulting device list after applying the other device selection "
-          "properties.\n \t\t\tThe index is mandatory if multiple devices match "
+          "properties. The index is mandatory if multiple devices match "
           "the given search criteria.", PROP_DEVICE_INDEX_MIN,
           PROP_DEVICE_INDEX_MAX, PROP_DEVICE_INDEX_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_USER_SET,
       g_param_spec_string ("user-set", "Device user configuration set",
-          "The user-defined configuration set to use.\n \t\t\tLeaving this property "
+          "The user-defined configuration set to use. Leaving this property "
           "unset, or using 'Auto' result in selecting the "
           "power-on default camera configuration.",
           PROP_USER_SET_DEFAULT,
@@ -201,7 +201,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   g_object_class_install_property (gobject_class, PROP_PFS_LOCATION,
       g_param_spec_string ("pfs-location", "PFS file location",
           "The filepath to the PFS file from which to load the device configuration."
-          "\n \t\t\tThe file has to have a .pfs extension. \n \t\t\tSetting this property "
+          "The file has to have a .pfs extension. Setting this property "
           "will override the user set property if also set.",
           PROP_PFS_LOCATION_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
@@ -577,15 +577,15 @@ gst_pylon_src_start (GstBaseSrc * src)
     goto log_gst_error;
   }
 
+  GST_OBJECT_LOCK (self);
   if (self->pfs_location) {
-    GST_OBJECT_LOCK (self);
     ret = gst_pylon_set_pfs_config (self->pylon, self->pfs_location, &error);
-    GST_OBJECT_UNLOCK (self);
 
     if (ret == FALSE && error) {
       goto log_gst_error;
     }
   }
+  GST_OBJECT_UNLOCK (self);
 
   self->offset = G_GUINT64_CONSTANT (0);
   self->duration = GST_CLOCK_TIME_NONE;
