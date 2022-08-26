@@ -552,7 +552,7 @@ gst_pylon_src_start (GstBaseSrc * src)
   GST_OBJECT_LOCK (self);
   GST_INFO_OBJECT (self,
       "Attempting to create camera device with the following configuration:"
-      "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s \n\tPFS filepath: %s."
+      "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s \n\tPFS filepath: %s. "
       "If defined, the PFS file will override the user set configuration.",
       self->device_user_name, self->device_serial_number, self->device_index,
       self->user_set, self->pfs_location);
