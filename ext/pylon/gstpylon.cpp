@@ -75,6 +75,9 @@ static void gst_pylon_query_integer(GstPylon *self, GValue *outvalue,
 static void gst_pylon_query_width(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_height(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue);
+static void gst_pylon_query_features(
+    GstPylon *self, GstStructure *st,
+    std::vector<PixelFormatMappingType> pixel_format_mapping);
 static std::vector<std::string> gst_pylon_gst_to_pfnc(
     const std::string &gst_format);
 static std::vector<std::string> gst_pylon_pfnc_to_gst(
@@ -541,13 +544,12 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
   }
 }
 
-GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
-  g_return_val_if_fail(self, NULL);
-  g_return_val_if_fail(err && *err == NULL, NULL);
+static void gst_pylon_query_features(
+    GstPylon *self, GstStructure *st,
+    std::vector<PixelFormatMappingType> pixel_format_mapping) {
+  g_return_if_fail(self);
+  g_return_if_fail(st);
 
-  /* Build gst caps */
-  GstCaps *caps = gst_caps_new_empty();
-  GstStructure *st = gst_structure_new_empty("video/x-raw");
   GValue value = G_VALUE_INIT;
 
   const std::vector<std::pair<GstPylonQuery, const std::string>> queries = {
@@ -555,23 +557,37 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
       {gst_pylon_query_height, "height"},
       {gst_pylon_query_framerate, "framerate"}};
 
-  try {
-    /* Offsets are set to 0 to get the true image geometry */
-    self->camera->OffsetX.TrySetToMinimum();
-    self->camera->OffsetY.TrySetToMinimum();
+  /* Offsets are set to 0 to get the true image geometry */
+  self->camera->OffsetX.TrySetToMinimum();
+  self->camera->OffsetY.TrySetToMinimum();
 
-    gst_pylon_query_format(self, &value, pixel_format_mapping_raw);
-    gst_structure_set_value(st, "format", &value);
+  /* Pixel format is queried separately to support querying different pixel
+   * format mappings */
+  gst_pylon_query_format(self, &value, pixel_format_mapping);
+  gst_structure_set_value(st, "format", &value);
+  g_value_unset(&value);
+
+  for (const auto &query : queries) {
+    GstPylonQuery func = query.first;
+    const gchar *name = query.second.c_str();
+
+    func(self, &value);
+    gst_structure_set_value(st, name, &value);
     g_value_unset(&value);
+  }
+}
 
-    for (const auto &query : queries) {
-      GstPylonQuery func = query.first;
-      const gchar *name = query.second.c_str();
+GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
+  g_return_val_if_fail(self, NULL);
+  g_return_val_if_fail(err && *err == NULL, NULL);
 
-      func(self, &value);
-      gst_structure_set_value(st, name, &value);
-      g_value_unset(&value);
-    }
+  /* Build gst caps */
+  GstCaps *caps = gst_caps_new_empty();
+  GstStructure *st = gst_structure_new_empty("video/x-raw");
+
+  try {
+    gst_pylon_query_features(self, st, pixel_format_mapping_raw);
+
   } catch (const Pylon::GenericException &e) {
     gst_structure_free(st);
     gst_caps_unref(caps);
@@ -631,7 +647,6 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
     /* In case of ambiguous format mapping choose first */
     bool fmt_valid = false;
     for (auto &fmt : pfnc_formats) {
-      std::cout << "format " << fmt << std::endl;
       fmt_valid = pixelFormat.TrySetValue(fmt.c_str());
       if (fmt_valid) break;
     }
