@@ -55,11 +55,17 @@
 #pragma GCC diagnostic pop
 #endif
 
-/* pixel format definitions */
+/* Pixel format definitions */
 typedef struct {
   std::string pfnc_name;
   std::string gst_name;
 } PixelFormatMappingType;
+
+/* Mapping of GstStructure with its corresponding formats */
+typedef struct {
+  const gchar *st_name;
+  std::vector<PixelFormatMappingType> format_map;
+} GstStPixelFormats;
 
 /* prototypes */
 static Pylon::String_t gst_pylon_get_camera_fullname(
@@ -79,7 +85,8 @@ static void gst_pylon_query_features(
     GstPylon *self, GstStructure *st,
     std::vector<PixelFormatMappingType> pixel_format_mapping);
 static std::vector<std::string> gst_pylon_gst_to_pfnc(
-    const std::string &gst_format);
+    const std::string &gst_format,
+    const std::vector<PixelFormatMappingType> &pixel_format_mapping);
 static std::vector<std::string> gst_pylon_pfnc_to_gst(
     const std::string &genapi_format,
     const std::vector<PixelFormatMappingType> &pixel_format_mapping);
@@ -125,6 +132,10 @@ static std::vector<PixelFormatMappingType> pixel_format_mapping_bayer = {
     {"BayerGR8", "grbg"},
     {"BayerRG8", "rggb"},
     {"BayerGB8", "gbrg"}};
+
+static std::vector<GstStPixelFormats> gst_structure_formats = {
+    {"video/x-raw", pixel_format_mapping_raw},
+    {"video/x-bayer", pixel_format_mapping_bayer}};
 
 void gst_pylon_initialize() { Pylon::PylonInitialize(); }
 
@@ -404,9 +415,10 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
 }
 
 static std::vector<std::string> gst_pylon_gst_to_pfnc(
-    const std::string &gst_format) {
+    const std::string &gst_format,
+    const std::vector<PixelFormatMappingType> &pixel_format_mapping) {
   std::vector<std::string> out_formats;
-  for (auto &entry : pixel_format_mapping_raw) {
+  for (auto &entry : pixel_format_mapping) {
     if (entry.gst_name == gst_format) {
       out_formats.push_back(entry.pfnc_name);
     }
@@ -583,21 +595,25 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
 
   /* Build gst caps */
   GstCaps *caps = gst_caps_new_empty();
-  GstStructure *st = gst_structure_new_empty("video/x-raw");
+  std::vector<GstStructure *> gst_structures;
 
-  try {
-    gst_pylon_query_features(self, st, pixel_format_mapping_raw);
+  for (const auto &gst_structure_format : gst_structure_formats) {
+    GstStructure *st = gst_structure_new_empty(gst_structure_format.st_name);
+    gst_structures.push_back(st);
+    try {
+      gst_pylon_query_features(self, st, gst_structure_format.format_map);
+    } catch (const Pylon::GenericException &e) {
+      for (const auto &gst_structure : gst_structures) {
+        gst_structure_free(gst_structure);
+      }
+      gst_caps_unref(caps);
 
-  } catch (const Pylon::GenericException &e) {
-    gst_structure_free(st);
-    gst_caps_unref(caps);
-
-    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-                e.GetDescription());
-    return NULL;
+      g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                  e.GetDescription());
+      return NULL;
+    }
+    gst_caps_append_structure(caps, st);
   }
-
-  gst_caps_append_structure(caps, st);
 
   return caps;
 }
@@ -641,14 +657,16 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
           __LINE__);
     }
 
-    const std::vector<std::string> pfnc_formats =
-        gst_pylon_gst_to_pfnc(gst_format);
-
-    /* In case of ambiguous format mapping choose first */
     bool fmt_valid = false;
-    for (auto &fmt : pfnc_formats) {
-      fmt_valid = pixelFormat.TrySetValue(fmt.c_str());
-      if (fmt_valid) break;
+    for (const auto &gst_structure_format : gst_structure_formats) {
+      const std::vector<std::string> pfnc_formats =
+          gst_pylon_gst_to_pfnc(gst_format, gst_structure_format.format_map);
+
+      /* In case of ambiguous format mapping choose first */
+      for (auto &fmt : pfnc_formats) {
+        fmt_valid = pixelFormat.TrySetValue(fmt.c_str());
+        if (fmt_valid) break;
+      }
     }
 
     if (!fmt_valid) {

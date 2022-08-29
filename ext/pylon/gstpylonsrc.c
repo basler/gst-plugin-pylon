@@ -122,11 +122,12 @@ enum
 /* pad templates */
 
 static GstStaticPadTemplate gst_pylon_src_src_template =
-GST_STATIC_PAD_TEMPLATE ("src",
+    GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE (" {GRAY8, RGB, BGR, YUY2, UYVY} "))
-    );
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE (" {GRAY8, RGB, BGR, YUY2, UYVY} ") ";"
+        "video/x-bayer,format={rggb,bggr,gbgr,grgb},width=" GST_VIDEO_SIZE_RANGE
+        ",height=" GST_VIDEO_SIZE_RANGE ",framerate=" GST_VIDEO_FPS_RANGE));
 
 
 /* class initialization */
