@@ -1,5 +1,11 @@
+gst-plugin-pylon (0.2.0-2) UNRELEASED; urgency=medium
+
+  * Added libgstreamer-plugins-base1.0-dev and cmake to the build dependencies.
+
+ -- Patrick Thomas <pthomas@caltech.edu>  Mon, 29 Aug 2022 08:21:00 -0700
+
 gst-plugin-pylon (0.2.0-1) unstable; urgency=medium
 
-  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+  * Initial release
 
  -- Patrick Thomas <pthomas@caltech.edu>  Wed, 24 Aug 2022 16:17:02 -0700
