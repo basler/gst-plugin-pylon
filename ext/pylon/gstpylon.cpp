@@ -77,7 +77,7 @@ static std::string gst_pylon_query_default_set(
 static void gst_pylon_append_properties(
     Pylon::CBaslerUniversalInstantCamera *camera,
     Pylon::String_t device_full_name, Pylon::String_t device_type_str,
-    GenApi::INodeMap &nodemap, gchar **device_properties, guint alignment);
+    GenApi::INodeMap *nodemap, gchar **device_properties, guint alignment);
 static void gst_pylon_append_camera_properties(
     Pylon::CBaslerUniversalInstantCamera *camera, gchar **camera_properties,
     guint alignment);
@@ -175,8 +175,8 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
       throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
 
-    // Only one device was found, we don't require the user specifying an index
-    // and if they did, we already checked for out-of-range errors above
+    /* Only one device was found, we don't require the user specifying an index
+     * and if they did, we already checked for out-of-range errors above */
     if (1 == n_devices) {
       device_index = 0;
     }
@@ -186,16 +186,19 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     self->camera->Attach(factory.CreateDevice(device_info));
     self->camera->Open();
 
-    GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
+    /* Is is necessary to get a Nodemap pointer so the retrieved Nodemap does
+     * not get destroyed by going out of scope */
+    GenApi::INodeMap *cam_nodemap =
+        self->camera->GetNodeMap().GetNode("Root")->GetNodeMap();
     self->gcamera = gst_pylon_object_new(
         self->camera, gst_pylon_get_camera_fullname(*self->camera),
-        &cam_nodemap);
+        cam_nodemap);
 
-    GenApi::INodeMap &sgrabber_nodemap =
-        self->camera->GetStreamGrabberNodeMap();
+    GenApi::INodeMap *sgrabber_nodemap =
+        self->camera->GetStreamGrabberNodeMap().GetNode("Root")->GetNodeMap();
     self->gstream_grabber = gst_pylon_object_new(
         self->camera, gst_pylon_get_sgrabber_name(*self->camera),
-        &sgrabber_nodemap);
+        sgrabber_nodemap);
 
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
@@ -647,7 +650,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 static void gst_pylon_append_properties(
     Pylon::CBaslerUniversalInstantCamera *camera,
     Pylon::String_t device_full_name, Pylon::String_t device_type_str,
-    GenApi::INodeMap &nodemap, gchar **device_properties, guint alignment) {
+    GenApi::INodeMap *nodemap, gchar **device_properties, guint alignment) {
   g_return_if_fail(camera);
   g_return_if_fail(device_properties);
 
@@ -680,7 +683,8 @@ static void gst_pylon_append_camera_properties(
   g_return_if_fail(camera);
   g_return_if_fail(camera_properties);
 
-  GenApi::INodeMap &nodemap = camera->GetNodeMap();
+  GenApi::INodeMap *nodemap =
+      camera->GetNodeMap().GetNode("Root")->GetNodeMap();
   Pylon::String_t camera_name = gst_pylon_get_camera_fullname(*camera);
   Pylon::String_t device_type = "Camera";
 
@@ -694,7 +698,9 @@ static void gst_pylon_append_stream_grabber_properties(
   g_return_if_fail(camera);
   g_return_if_fail(sgrabber_properties);
 
-  GenApi::INodeMap &nodemap = camera->GetStreamGrabberNodeMap();
+  GenApi::INodeMap *nodemap =
+      camera->GetStreamGrabberNodeMap().GetNode("Root")->GetNodeMap();
+  ;
   Pylon::String_t sgrabber_name = gst_pylon_get_sgrabber_name(*camera);
   Pylon::String_t device_type = "Stream Grabber";
 
