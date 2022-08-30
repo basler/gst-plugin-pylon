@@ -71,8 +71,8 @@ static inline gpointer gst_pylon_object_get_instance_private(
 
 GType gst_pylon_object_register(Pylon::String_t device_name,
                                 GenApi::INodeMap& exemplar) {
-  GstPylonObjectDeviceMembers device_members = {g_strdup(device_name.c_str()),
-                                                exemplar};
+  GstPylonObjectDeviceMembers* device_members = new GstPylonObjectDeviceMembers(
+      {g_strdup(device_name.c_str()), exemplar});
 
   GTypeInfo typeinfo = {
       sizeof(GstPylonObjectClass),
@@ -80,7 +80,7 @@ GType gst_pylon_object_register(Pylon::String_t device_name,
       NULL,
       (GClassInitFunc)gst_pylon_object_class_intern_init,
       NULL,
-      &device_members,
+      device_members,
       sizeof(GstPylonObject),
       0,
       (GInstanceInitFunc)gst_pylon_object_init,
@@ -160,6 +160,8 @@ static void gst_pylon_object_class_init(
 
   gst_pylon_object_install_properties(klass, device_members->nodemap,
                                       device_members->device_name);
+
+  delete (device_members);
 }
 
 static void gst_pylon_object_init(GstPylonObject* self) {}
