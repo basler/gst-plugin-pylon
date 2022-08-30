@@ -186,8 +186,6 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     self->camera->Attach(factory.CreateDevice(device_info));
     self->camera->Open();
 
-    /* Is is necessary to get a Nodemap pointer so the retrieved Nodemap does
-     * not get destroyed by going out of scope */
     GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
     self->gcamera = gst_pylon_object_new(
         self->camera, gst_pylon_get_camera_fullname(*self->camera),
