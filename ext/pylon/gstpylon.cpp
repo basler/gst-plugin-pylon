@@ -189,13 +189,13 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
     self->gcamera = gst_pylon_object_new(
         self->camera, gst_pylon_get_camera_fullname(*self->camera),
-        cam_nodemap);
+        &cam_nodemap);
 
     GenApi::INodeMap &sgrabber_nodemap =
         self->camera->GetStreamGrabberNodeMap();
     self->gstream_grabber = gst_pylon_object_new(
         self->camera, gst_pylon_get_sgrabber_name(*self->camera),
-        sgrabber_nodemap);
+        &sgrabber_nodemap);
 
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
