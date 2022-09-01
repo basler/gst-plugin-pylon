@@ -16,3 +16,6 @@ Build
 
 # vscode
 .vscode/
+
+# qtcreator
+.qtc_clangd/
