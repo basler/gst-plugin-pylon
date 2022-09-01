@@ -216,7 +216,7 @@ static std::string gst_pylon_query_default_set(
   if (!camera.UserSetDefault.IsReadable() &&
       !camera.UserSetDefaultSelector.IsReadable()) {
     set = "Default";
-  } else if (camera.GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
+  } else if (camera.UserSetDefault.IsReadable()) {
     set = std::string(camera.UserSetDefault.ToString());
   } else {
     set = std::string(camera.UserSetDefaultSelector.ToString());
