@@ -175,8 +175,8 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
       throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
 
-    // Only one device was found, we don't require the user specifying an index
-    // and if they did, we already checked for out-of-range errors above
+    /* Only one device was found, we don't require the user specifying an index
+     * and if they did, we already checked for out-of-range errors above */
     if (1 == n_devices) {
       device_index = 0;
     }
@@ -695,6 +695,7 @@ static void gst_pylon_append_stream_grabber_properties(
   g_return_if_fail(sgrabber_properties);
 
   GenApi::INodeMap &nodemap = camera->GetStreamGrabberNodeMap();
+  ;
   Pylon::String_t sgrabber_name = gst_pylon_get_sgrabber_name(*camera);
   Pylon::String_t device_type = "Stream Grabber";
 
