@@ -40,6 +40,14 @@ G_BEGIN_DECLS
 
 typedef struct _GstPylon GstPylon;
 
+typedef enum
+{
+  ENUM_KEEP = 0,
+  ENUM_SKIP = 1,
+  ENUM_ABORT= 2,
+} GstCaptureErrorEnum;
+
+
 void gst_pylon_initialize ();
 
 GstPylon *gst_pylon_new (const gchar *device_user_name,
@@ -49,8 +57,8 @@ void gst_pylon_free (GstPylon * self);
 
 gboolean gst_pylon_start (GstPylon * self, GError ** err);
 gboolean gst_pylon_stop (GstPylon * self, GError ** err);
-gboolean gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err);
 void gst_pylon_interrupt_capture (GstPylon * self);
+gboolean gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err);
 GstCaps *gst_pylon_query_configuration (GstPylon * self, GError ** err);
 gboolean gst_pylon_set_configuration (GstPylon * self, const GstCaps *conf,
     GError ** err);

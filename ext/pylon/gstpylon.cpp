@@ -35,6 +35,7 @@
 #include "gstchildinspector.h"
 #include "gstpylonimagehandler.h"
 #include "gstpylonobject.h"
+#include "gstpylonsrc.h"
 
 #include <map>
 
@@ -385,25 +386,53 @@ void gst_pylon_interrupt_capture(GstPylon *self) {
   self->image_handler.InterruptWaitForImage();
 }
 
-gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
+gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
+                           GstCaptureErrorEnum capture_error, GError **err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(buf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
-  Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr =
-      self->image_handler.WaitForImage();
+  bool retry_grab = true;
 
-  /* Return if user requests to interrupt the grabbing thread */
-  if (!grab_result_ptr) {
-    return FALSE;
-  }
+  while (retry_grab) {
+    Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr =
+        self->image_handler.WaitForImage();
 
-  if (!(*grab_result_ptr)->GrabSucceeded()) {
-    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-                (*grab_result_ptr)->GetErrorDescription().c_str());
-    delete grab_result_ptr;
-    return FALSE;
-  }
+    /* Return if user requests to interrupt the grabbing thread */
+    if (!grab_result_ptr) {
+      return FALSE;
+    }
+
+    if (!(*grab_result_ptr)->GrabSucceeded()) {
+      switch (capture_error) {
+        case ENUM_KEEP:
+          /* deliver the buffer into pipeline even if pylon reports an error */
+          g_warning("Capture failed. Keeping buffer: %s",
+                    ptr_grab_result->GetErrorDescription().c_str());
+          retry_grab = false;
+          break;
+        case ENUM_ABORT:
+          /* signal an error to abort pipeline */
+          g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                      ptr_grab_result->GetErrorDescription().c_str());
+          retry_grab = false;
+          return FALSE;
+          break;
+        case ENUM_SKIP:
+          /* retry to capture next buffer and release current pylon buffer */
+          /* FIXIT: find a way to release the current buffer and queue into
+           * pylon again
+           * -> or other gstreamer style of skipping a frame
+           */
+          g_warning("Capture failed. skipping buffer: %s",
+                    ptr_grab_result->GetErrorDescription().c_str());
+          retry_grab = true;
+          break;
+      };
+    } else {
+      retry_grab = false;
+    }
+  };
 
   gsize buffer_size = (*grab_result_ptr)->GetBufferSize();
   *buf = gst_buffer_new_wrapped_full(

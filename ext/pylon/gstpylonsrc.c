@@ -69,6 +69,7 @@ struct _GstPylonSrc
   gint device_index;
   gchar *user_set;
   gchar *pfs_location;
+  GstCaptureErrorEnum capture_error;
   GObject *cam;
   GObject *stream;
 };
@@ -107,7 +108,8 @@ enum
   PROP_USER_SET,
   PROP_PFS_LOCATION,
   PROP_CAM,
-  PROP_STREAM
+  PROP_STREAM,
+  PROP_CAPTURE_ERROR
 };
 
 #define PROP_DEVICE_USER_NAME_DEFAULT NULL
@@ -119,6 +121,34 @@ enum
 #define PROP_PFS_LOCATION_DEFAULT NULL
 #define PROP_CAM_DEFAULT NULL
 #define PROP_STREAM_DEFAULT NULL
+#define PROP_CAPTURE_ERROR_DEFAULT ENUM_ABORT
+
+
+/* enum for cature_error */
+
+#define GST_TYPE_CAPTURE_ERROR_ENUM (gst_capture_error_enum_get_type ())
+
+static GType
+gst_capture_error_enum_get_type (void)
+{
+  static gsize gtype = 0;
+  static const GEnumValue values[] = {
+    {ENUM_KEEP, "keep", "Use partial or corrupt buffers"},
+    {ENUM_SKIP, "skip", "Skip partial or corrupt buffers"},
+    {ENUM_ABORT, "abort", "Stop pipeline in case of any capture error"},
+    {0, NULL, NULL}
+  };
+
+  if (g_once_init_enter (&gtype)) {
+    GType tmp = g_enum_register_static ("GstCaptureErrorEnum", values);
+    g_once_init_leave (&gtype, tmp);
+  }
+
+  return (GType) gtype;
+}
+
+
+
 
 /* pad templates */
 
@@ -206,6 +236,12 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           PROP_PFS_LOCATION_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
+  g_object_class_install_property (gobject_class, PROP_CAPTURE_ERROR,
+      g_param_spec_enum ("capture-error",
+          "Capture error strategy",
+          "Set the strategy to use in case of a capture error. ",
+          GST_TYPE_CAPTURE_ERROR_ENUM, PROP_CAPTURE_ERROR_DEFAULT,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE));
 
   cam_params = gst_pylon_camera_get_string_properties ();
   stream_params = gst_pylon_stream_grabber_get_string_properties ();
@@ -309,6 +345,10 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
       g_free (self->pfs_location);
       self->pfs_location = g_value_dup_string (value);
       break;
+    case PROP_CAPTURE_ERROR:
+      self->capture_error = g_value_get_enum (value);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -348,6 +388,9 @@ gst_pylon_src_get_property (GObject * object, guint property_id,
       break;
     case PROP_STREAM:
       g_value_set_object (value, self->stream);
+      break;
+    case PROP_CAPTURE_ERROR:
+      g_value_set_enum (value, self->capture_error);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -790,7 +833,7 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
   gboolean pylon_ret = TRUE;
   GstFlowReturn ret = GST_FLOW_OK;
 
-  pylon_ret = gst_pylon_capture (self->pylon, buf, &error);
+  pylon_ret = gst_pylon_capture (self->pylon, buf, self->capture_error, &error);
 
   if (pylon_ret == FALSE) {
     if (error) {
