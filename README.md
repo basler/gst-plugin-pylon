@@ -145,7 +145,7 @@ An example on how to generate PFS files using pylon Viewer is documented in [Cha
 
 ### Features
 
-After applying the UserSet and the gstreamer properties any other camera feature gets applied.
+After applying the UserSet, the optional PFS file and the gstreamer properties any other camera feature gets applied.
 
 The `pylonsrc` plugin dynamically exposes all writable features of the camera as  gstreamer [child properties](https://gstreamer.freedesktop.org/documentation/gstreamer/gstchildproxy.html?gi-language=c) with the prefix `cam::`.
 
@@ -208,10 +208,10 @@ Make sure the dependencies are properly installed. In Debian-based
 systems you can run the following commands:
 
 ```bash
-# Meson build system.
-# Remove older meson from APT and install newer PIP version
-sudo apt remove meson
-sudo -H python3 -m pip install meson
+# Meson and ninja build system
+# Remove older meson and ninja from APT and install newer PIP version
+sudo apt remove meson ninja-build
+sudo -H python3 -m pip install meson ninja --upgrade
 
 # GStreamer
 sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake
@@ -269,11 +269,21 @@ TBD
 A yocto recipe will be provided in  [meta-basler-tools](https://github.com/basler/meta-basler-tools) layer on github.
 
 ## Windows
-The following commands should be run from a *Visual Studio command prompt*.
+Install the dependencies:
 
-Install the gstreamer runtime **and** development packages ( using the files for MSVC 64-bit (VS 2019, Release CRT )
+GStreamer:
+* Install the gstreamer runtime **and** development packages ( using the files for MSVC 64-bit (VS 2019, Release CRT ) from [https://gstreamer.freedesktop.org/download/](https://gstreamer.freedesktop.org/download/)
+* use latest version.
 
-[https://gstreamer.freedesktop.org/download/](https://gstreamer.freedesktop.org/download/)
+Meson:
+* Install the meson build system from github releases https://github.com/mesonbuild/meson/releases
+* Use version meson-0.63.1-64.msi
+
+Visual Studio:
+* Install Visual Studio (e.g. Community Edition) from Microsoft
+* Select desktop development (C++) package within installer
+
+The following commands should be run from a *Visual Studio command prompt*. The description below doesn't work for powershell.
 
 Specify the path to pkgconfig configuration files for GStreamer and the pkg-config binary ( shipped as part of gstreamer development )
 
@@ -336,7 +346,7 @@ Installation on macOS is currently not supported due to conflicts between meson 
 This target will be integrated after a Basler pylon 7.x release for macOS
 
 # Known issues
-* typos and unsupported feature names are silently ignored in this version
+* due to an issue in the pipeline parser typos and unsupported feature names are silently ignored. We work on providing an upstream fix to provide full error reporting capability in the pipeline parser.
 
 
  
