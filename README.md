@@ -29,7 +29,7 @@ If only a single camera is connected to the system, `pylonsrc` will use this cam
 If more than one camera is connected, you have to select the camera.
 Cameras can be selected via index, serial-number or device-user-name
 
-If no selection is given `pylonsrc` will show an error message which will list the available cameras
+If no selection is given `pylonsrc` will show an error message which will list the available cameras. The list contains the serial number, the device model name and if set the user defined name of each camera.
 
 ```bash
 gst-launch-1.0 pylonsrc ! fakesink
@@ -38,12 +38,13 @@ ERROR: Pipeline doesn't want to pause.
 ERROR: from element /GstPipeline:pipeline0/GstPylonSrc:pylonsrc0: Failed to start camera.
 Additional debug info:
 ../ext/pylon/gstpylonsrc.c(524): gst_pylon_src_start (): /GstPipeline:pipeline0/GstPylonSrc:pylonsrc0:
-At least 4 devices match the specified criteria, use "device-index" to select one from the following list:
-[0]:  21656705
-[1]:  0815-0000
-[2]:  0815-0001
-[3]:  0815-0002
+At least 4 devices match the specified criteria, use "device-index", "device-serial-number" or "device-user-name" to select one from the following list:
+[0]: 21656705   acA1920-155uc   top-left
+[1]: 0815-0000  Emulation
+[2]: 0815-0001  Emulation
+[3]: 0815-0002  Emulation
 ```
+
 ### examples
 select second camera from list:
 
@@ -51,11 +52,11 @@ select second camera from list:
 
 select camera with serial number `21656705`
 
-` gst-launch-1.0 pylonsrc device-serial-number='21656705' ! videoconvert ! autovideosink`
+` gst-launch-1.0 pylonsrc device-serial-number="21656705" ! videoconvert ! autovideosink`
 
 select camera with user name `top-left`
 
-` gst-launch-1.0 pylonsrc device-user-name='top-left' ! videoconvert ! autovideosink`
+` gst-launch-1.0 pylonsrc device-user-name="top-left" ! videoconvert ! autovideosink`
 
 ## Configuring the camera
 
@@ -116,10 +117,10 @@ If this property is not set, or set to the value `Auto`, the power-on UserSet ge
 
 To select dynamically another UserSet the `user-set` property accepts any other implemented UserSet of the camera.
 
-e.g to activate the `HighGain` UserSet on a Basler ace camera:
+e.g to activate the `UserSet1` UserSet on a Basler ace camera:
 
 ```
-gst-launch-1.0 pylonsrc user-set=HighGain ! videoconvert ! autovideosink
+gst-launch-1.0 pylonsrc user-set=UserSet1 ! videoconvert ! autovideosink
 ```
 
 Overall UserSets topics for the camera are documented in [Chapter UserSets](https://docs.baslerweb.com/user-sets) in the Basler product documentation.
