@@ -51,7 +51,6 @@ GstPylonImageEventHandler::WaitForImage() {
   this->grab_result_cv.wait(mutex_lock,
                             [this] { return this->ptr_grab_result; });
   Pylon::CBaslerUniversalGrabResultPtr *grab_result = this->ptr_grab_result;
-  delete (this->ptr_grab_result);
   this->ptr_grab_result = NULL;
   mutex_lock.unlock();
 

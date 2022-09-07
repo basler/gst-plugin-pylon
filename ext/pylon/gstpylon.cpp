@@ -363,21 +363,20 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
   g_return_val_if_fail(buf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
-  Pylon::CBaslerUniversalGrabResultPtr grab_result =
-      *self->image_handler->WaitForImage();
+  Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr =
+      self->image_handler->WaitForImage();
 
-  if (!grab_result->GrabSucceeded()) {
+  if (!(*grab_result_ptr)->GrabSucceeded()) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-                grab_result->GetErrorDescription().c_str());
+                (*grab_result_ptr)->GetErrorDescription().c_str());
+    delete grab_result_ptr;
     return FALSE;
   }
 
-  gsize buffer_size = grab_result->GetBufferSize();
-  Pylon::CBaslerUniversalGrabResultPtr *persistent_ptr_grab_result =
-      new Pylon::CBaslerUniversalGrabResultPtr(grab_result);
+  gsize buffer_size = (*grab_result_ptr)->GetBufferSize();
   *buf = gst_buffer_new_wrapped_full(
-      static_cast<GstMemoryFlags>(0), grab_result->GetBuffer(), buffer_size, 0,
-      buffer_size, persistent_ptr_grab_result,
+      static_cast<GstMemoryFlags>(0), (*grab_result_ptr)->GetBuffer(),
+      buffer_size, 0, buffer_size, grab_result_ptr,
       static_cast<GDestroyNotify>(free_ptr_grab_result));
 
   return TRUE;
