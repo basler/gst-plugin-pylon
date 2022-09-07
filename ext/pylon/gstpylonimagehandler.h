@@ -65,7 +65,6 @@ class GstPylonImageEventHandler : public Pylon::CImageEventHandler {
   std::mutex grab_result_mutex;
   std::condition_variable grab_result_cv;
   Pylon::CBaslerUniversalGrabResultPtr *ptr_grab_result;
-  bool grab_result_processed;
 };
 
 #endif

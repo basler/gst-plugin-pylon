@@ -99,6 +99,7 @@ struct _GstPylon {
       std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
   GObject *gcamera;
   GObject *gstream_grabber;
+  GstPylonImageEventHandler *image_handler;
 };
 
 /* pixel format definitions */
@@ -190,7 +191,9 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     device_info = device_list.at(device_index);
 
     self->camera->Attach(factory.CreateDevice(device_info));
-    self->camera->RegisterImageEventHandler(new GstPylonImageEventHandler,
+
+    self->image_handler = new GstPylonImageEventHandler();
+    self->camera->RegisterImageEventHandler(self->image_handler,
                                             Pylon::RegistrationMode_Append,
                                             Pylon::Cleanup_Delete);
     self->camera->Open();
@@ -359,6 +362,9 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(buf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
+
+  Pylon::CBaslerUniversalGrabResultPtr grab_result =
+      *self->image_handler->WaitForImage();
 
   if (!grab_result->GrabSucceeded()) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
