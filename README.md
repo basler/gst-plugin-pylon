@@ -347,6 +347,7 @@ This target will be integrated after a Basler pylon 7.x release for macOS
 
 # Known issues
 * due to an issue in the pipeline parser typos and unsupported feature names are silently ignored. We work on providing an upstream fix to provide full error reporting capability in the pipeline parser.
+* Not all features of Basler dart camera models ( not dart 2 ) are properly mapped to gstreamer ( e.g. Gain and ExposureTime ). As a workaround they have to be set in the PFS file or the user-set
 
 
  
