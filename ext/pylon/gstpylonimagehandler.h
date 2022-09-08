@@ -30,8 +30,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_IMAGEHANDLER_H_
-#define _GST_PYLON_IMAGEHANDLER_H_
+#ifndef _GST_PYLON_IMAGE_HANDLER_H_
+#define _GST_PYLON_IMAGE_HANDLER_H_
 
 #include <condition_variable>
 #include <mutex>
@@ -53,10 +53,9 @@
 #pragma GCC diagnostic pop
 #endif
 
-class GstPylonImageEventHandler
-    : public Pylon::CBaslerUniversalImageEventHandler {
+class GstPylonImageHandler : public Pylon::CBaslerUniversalImageEventHandler {
  public:
-  GstPylonImageEventHandler();
+  GstPylonImageHandler();
   void OnImageGrabbed(
       Pylon::CBaslerUniversalInstantCamera &camera,
       const Pylon::CBaslerUniversalGrabResultPtr &grab_result) override;

@@ -99,7 +99,7 @@ struct _GstPylon {
       std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
   GObject *gcamera;
   GObject *gstream_grabber;
-  GstPylonImageEventHandler *image_handler;
+  GstPylonImageHandler *image_handler;
 };
 
 /* pixel format definitions */
@@ -192,7 +192,7 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
 
     self->camera->Attach(factory.CreateDevice(device_info));
 
-    self->image_handler = new GstPylonImageEventHandler();
+    self->image_handler = new GstPylonImageHandler();
     self->camera->RegisterImageEventHandler(self->image_handler,
                                             Pylon::RegistrationMode_Append,
                                             Pylon::Cleanup_Delete);
