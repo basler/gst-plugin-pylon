@@ -53,11 +53,13 @@
 #pragma GCC diagnostic pop
 #endif
 
-class GstPylonImageEventHandler : public Pylon::CImageEventHandler {
+class GstPylonImageEventHandler
+    : public Pylon::CBaslerUniversalImageEventHandler {
  public:
   GstPylonImageEventHandler();
-  void OnImageGrabbed(Pylon::CBaslerUniversalInstantCamera &camera,
-                      const Pylon::CBaslerUniversalGrabResultPtr &grab_result);
+  void OnImageGrabbed(
+      Pylon::CBaslerUniversalInstantCamera &camera,
+      const Pylon::CBaslerUniversalGrabResultPtr &grab_result) override;
   Pylon::CBaslerUniversalGrabResultPtr *WaitForImage();
   void InterruptWaitForImage();
 
