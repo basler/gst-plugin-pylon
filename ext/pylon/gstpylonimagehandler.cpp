@@ -59,4 +59,7 @@ Pylon::CBaslerUniversalGrabResultPtr *GstPylonImageHandler::WaitForImage() {
   return grab_result;
 };
 
-void GstPylonImageHandler::InterruptWaitForImage() {}
+void GstPylonImageHandler::InterruptWaitForImage() {
+  this->grab_result_ready = true;
+  this->grab_result_cv.notify_one();
+}

@@ -358,6 +358,11 @@ static void free_ptr_grab_result(gpointer data) {
   delete ptr_grab_result;
 }
 
+void gst_pylon_interrupt_capture(GstPylon *self) {
+  g_return_if_fail(self);
+  self->image_handler->InterruptWaitForImage();
+}
+
 gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(buf, FALSE);
@@ -365,6 +370,10 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
 
   Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr =
       self->image_handler->WaitForImage();
+
+  if (!grab_result_ptr) {
+    return FALSE;
+  }
 
   if (!(*grab_result_ptr)->GrabSucceeded()) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",

@@ -645,6 +645,8 @@ gst_pylon_src_unlock_stop (GstBaseSrc * src)
 
   GST_LOG_OBJECT (self, "unlock_stop");
 
+  gst_pylon_interrupt_capture (self->pylon);
+
   return TRUE;
 }
 
@@ -764,12 +766,14 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
   pylon_ret = gst_pylon_capture (self->pylon, buf, &error);
 
   if (pylon_ret == FALSE) {
+    ret = GST_FLOW_EOS;
+
     if (error) {
       GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
           ("Failed to create buffer."), ("%s", error->message));
       g_error_free (error);
+      ret = GST_FLOW_ERROR;
     }
-    ret = GST_FLOW_ERROR;
   }
 
   gst_plyon_src_add_metadata (self, *buf);
