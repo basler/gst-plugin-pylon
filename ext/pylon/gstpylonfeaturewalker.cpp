@@ -104,7 +104,7 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   const auto prefix_str = std::string("EnumEntry_") +
                           enum_node->GetNode()->GetName().c_str() +
                           std::string("_");
-  auto prefix_len = prefix_str.length();    
+  auto prefix_len = prefix_str.length();
   enum_node->GetEntries(enum_entries);
   for (auto const& e : enum_entries) {
     auto enum_name = std::string(e->GetName());
@@ -172,18 +172,14 @@ void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
       GenICam::gcstring attrib;
 
       /* Handle only features with the 'Streamable' flag */
-      if (node->GetProperty("Streamable", value, attrib)) {
-        if (GenICam::gcstring("Yes") == value) {
-          try {
-            std::vector<GParamSpec*> specs_list =
-                gst_pylon_camera_handle_node(node, nodemap, device_fullname);
-            gst_pylon_camera_install_specs(specs_list, oclass, nprop);
-          } catch (const Pylon::GenericException& e) {
-            GST_FIXME("Unable to install property \"%s\" on device \"%s\": %s",
-                      node->GetDisplayName().c_str(),
-                      model_name.GetValue().c_str(), e.GetDescription());
-          }
-        }
+      try {
+        std::vector<GParamSpec*> specs_list =
+            gst_pylon_camera_handle_node(node, nodemap, device_fullname);
+        gst_pylon_camera_install_specs(specs_list, oclass, nprop);
+      } catch (const Pylon::GenericException& e) {
+        GST_FIXME("Unable to install property \"%s\" on device \"%s\": %s",
+                  node->GetDisplayName().c_str(), model_name.GetValue().c_str(),
+                  e.GetDescription());
       }
     }
 
