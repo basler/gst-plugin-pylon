@@ -91,7 +91,6 @@ static gboolean gst_pylon_src_decide_allocation (GstBaseSrc * src,
 static gboolean gst_pylon_src_start (GstBaseSrc * src);
 static gboolean gst_pylon_src_stop (GstBaseSrc * src);
 static gboolean gst_pylon_src_unlock (GstBaseSrc * src);
-static gboolean gst_pylon_src_unlock_stop (GstBaseSrc * src);
 static gboolean gst_pylon_src_query (GstBaseSrc * src, GstQuery * query);
 static void gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf);
 static GstFlowReturn gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf);
@@ -252,7 +251,6 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   base_src_class->start = GST_DEBUG_FUNCPTR (gst_pylon_src_start);
   base_src_class->stop = GST_DEBUG_FUNCPTR (gst_pylon_src_stop);
   base_src_class->unlock = GST_DEBUG_FUNCPTR (gst_pylon_src_unlock);
-  base_src_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_pylon_src_unlock_stop);
   base_src_class->query = GST_DEBUG_FUNCPTR (gst_pylon_src_query);
 
   push_src_class->create = GST_DEBUG_FUNCPTR (gst_pylon_src_create);
@@ -633,17 +631,6 @@ gst_pylon_src_unlock (GstBaseSrc * src)
   GstPylonSrc *self = GST_PYLON_SRC (src);
 
   GST_LOG_OBJECT (self, "unlock");
-
-  return TRUE;
-}
-
-/* Clear any pending unlock request, as we succeeded in unlocking */
-static gboolean
-gst_pylon_src_unlock_stop (GstBaseSrc * src)
-{
-  GstPylonSrc *self = GST_PYLON_SRC (src);
-
-  GST_LOG_OBJECT (self, "unlock_stop");
 
   gst_pylon_interrupt_capture (self->pylon);
 
