@@ -767,13 +767,13 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
 
   if (pylon_ret == FALSE) {
     ret = GST_FLOW_EOS;
-
     if (error) {
       GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
           ("Failed to create buffer."), ("%s", error->message));
       g_error_free (error);
       ret = GST_FLOW_ERROR;
     }
+    goto done;
   }
 
   gst_plyon_src_add_metadata (self, *buf);
@@ -781,6 +781,7 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
 
   GST_LOG_OBJECT (self, "Created buffer %" GST_PTR_FORMAT, *buf);
 
+done:
   return ret;
 }
 
