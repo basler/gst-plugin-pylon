@@ -2,18 +2,18 @@ stages:
   - fetch
   - test
 
-cache:
-  - key:
-      files:
-        - pylon_7.1.0.25066_x86_64_setup.tar.gz
-        - pylon_6.3.0.23157_x86_64_setup.tar.gz
-    paths:
-      - pylon-installer
+cache: &pylon_cache
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - pylon-installer
 
 fetch:
   stage: fetch
   variables:
     PYLON_DOWNLOAD_URL_BASE: $PYLON_DOWNLOAD_URL_BASE
+  cache:
+    <<: *pylon_cache
+    policy: push
   script:
     - |
       apt update
@@ -38,6 +38,9 @@ test:
       - OS: [ubuntu:20.04, ubuntu:18.04]
         PV: [7.1.0.25066, 6.3.0.23157]
   image: ${OS}
+  cache:
+    <<: *pylon_cache
+    policy: pull
   script:
     - echo "Building Pylon ${PV} on ${OS}"
     - |
