@@ -1,0 +1,59 @@
+stages:
+  - test
+
+test:
+  stage: test
+  parallel:
+    matrix:
+      - OS: [ubuntu:20.04, ubuntu:22.04]
+        PV: [7.1.0.25066]
+  variables:
+    PYLON_DOWNLOAD_URL_BASE: $PYLON_DOWNLOAD_URL_BASE
+  image: ${OS}
+  script:
+    - echo "Building Pylon ${PV} on ${OS}"
+    - |
+      apt update
+      dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && apt-get remove -y libunwind-14-dev
+      DEBIAN_FRONTEND=noninteractive apt install -y \
+        curl \
+        python3 \
+        python3-pip \
+        libgstreamer1.0-dev \
+        libgstreamer-plugins-base1.0-dev \
+        cmake \
+        clang \
+        gstreamer1.0-tools
+    - |
+      tee pylon-installer.txt <<"EOF"
+      ${PYLON_DOWNLOAD_URL_BASE}/pylon_${PV}_x86_64_setup.tar.gz
+      EOF
+      mkdir -p pylon-installer && pushd pylon-installer
+      while read line; do
+        url=$(eval echo "$line")
+        echo "download $url"
+        curl -sSfL -O "$url"
+      done <../pylon-installer.txt
+      echo "Download result"
+      rm -rf pylon_tmp
+      md5sum *
+      popd
+    - |
+      PYLON_TGZ=$(readlink -m pylon-installer/pylon_${PV}_x86_64_setup.tar.gz)
+      mkdir pylon-installer/pylon_tmp
+      pushd pylon-installer/pylon_tmp
+      tar -xf $PYLON_TGZ
+      mkdir -p /opt/pylon
+      tar -C /opt/pylon -xzf pylon_${PV}_x86_64.tar.gz
+      popd
+
+    - |
+      pip3 install pip --upgrade
+      pip3 install meson ninja
+    - |
+      PYLON_ROOT=/opt/pylon meson --prefix /usr builddir
+      ninja -C builddir
+      ninja -C builddir test
+      ninja -C builddir install
+    - |
+      PYLON_CAMEMU=1 gst-inspect-1.0 pylonsrc
