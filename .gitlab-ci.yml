@@ -6,7 +6,7 @@ test:
   parallel:
     matrix:
       - OS: [ubuntu:20.04, ubuntu:22.04]
-        PV: [7.1.0.25066]
+        PV: [7.1.0.25066, 6.3.0.23157]
   variables:
     PYLON_DOWNLOAD_URL_BASE: $PYLON_DOWNLOAD_URL_BASE
   image: ${OS}
@@ -25,15 +25,10 @@ test:
         clang \
         gstreamer1.0-tools
     - |
-      tee pylon-installer.txt <<"EOF"
-      ${PYLON_DOWNLOAD_URL_BASE}/pylon_${PV}_x86_64_setup.tar.gz
-      EOF
       mkdir -p pylon-installer && pushd pylon-installer
-      while read line; do
-        url=$(eval echo "$line")
-        echo "download $url"
-        curl -sSfL -O "$url"
-      done <../pylon-installer.txt
+      url=${PYLON_DOWNLOAD_URL_BASE}/pylon_${PV}_x86_64_setup.tar.gz
+      echo "Download $url"
+      curl -sSfL -O "$url"
       echo "Download result"
       rm -rf pylon_tmp
       md5sum *
@@ -46,7 +41,6 @@ test:
       mkdir -p /opt/pylon
       tar -C /opt/pylon -xzf pylon_${PV}_x86_64.tar.gz
       popd
-
     - |
       pip3 install pip --upgrade
       pip3 install meson ninja
@@ -57,3 +51,4 @@ test:
       ninja -C builddir install
     - |
       PYLON_CAMEMU=1 gst-inspect-1.0 pylonsrc
+      PYLON_CAMEMU=1 gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
