@@ -1,5 +1,35 @@
 stages:
+  - fetch
   - test
+
+cache:
+  - key:
+      files:
+        - pylon_7.1.0.25066_x86_64_setup.tar.gz
+        - pylon_6.3.0.23157_x86_64_setup.tar.gz
+    paths:
+      - pylon-installer
+
+fetch:
+  stage: fetch
+  variables:
+    PYLON_DOWNLOAD_URL_BASE: $PYLON_DOWNLOAD_URL_BASE
+  script:
+    - |
+      apt update
+      apt install -y curl
+    - |
+      mkdir -p pylon-installer && pushd pylon-installer
+      list="${PYLON_DOWNLOAD_URL_BASE}/pylon_7.1.0.25066_x86_64_setup.tar.gz \
+            ${PYLON_DOWNLOAD_URL_BASE}/pylon_6.3.0.23157_x86_64_setup.tar.gz"
+      for url in $list; do
+        echo "Download $url"
+        curl -sSfL -O "$url"
+      done
+      echo "Download result"
+      rm -rf pylon_tmp
+      md5sum *
+      popd
 
 test:
   stage: test
@@ -7,8 +37,6 @@ test:
     matrix:
       - OS: [ubuntu:20.04, ubuntu:18.04]
         PV: [7.1.0.25066, 6.3.0.23157]
-  variables:
-    PYLON_DOWNLOAD_URL_BASE: $PYLON_DOWNLOAD_URL_BASE
   image: ${OS}
   script:
     - echo "Building Pylon ${PV} on ${OS}"
@@ -25,18 +53,9 @@ test:
         clang \
         gstreamer1.0-tools
     - |
-      mkdir -p pylon-installer && pushd pylon-installer
-      url=${PYLON_DOWNLOAD_URL_BASE}/pylon_${PV}_x86_64_setup.tar.gz
-      echo "Download $url"
-      curl -sSfL -O "$url"
-      echo "Download result"
-      rm -rf pylon_tmp
-      md5sum *
-      popd
-    - |
       PYLON_TGZ=$(readlink -m pylon-installer/pylon_${PV}_x86_64_setup.tar.gz)
-      mkdir pylon-installer/pylon_tmp
-      pushd pylon-installer/pylon_tmp
+      mkdir pylon_tmp
+      pushd pylon_tmp
       tar -xf $PYLON_TGZ
       mkdir -p /opt/pylon
       tar -C /opt/pylon -xzf pylon_${PV}_x86_64.tar.gz
