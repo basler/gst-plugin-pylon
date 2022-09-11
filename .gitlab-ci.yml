@@ -5,7 +5,7 @@ test:
   stage: test
   parallel:
     matrix:
-      - OS: [ubuntu:20.04, ubuntu:22.04]
+      - OS: [ubuntu:20.04, ubuntu:18.04]
         PV: [7.1.0.25066, 6.3.0.23157]
   variables:
     PYLON_DOWNLOAD_URL_BASE: $PYLON_DOWNLOAD_URL_BASE
