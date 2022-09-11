@@ -51,7 +51,7 @@ test:
       pip3 install pip --upgrade
       pip3 install meson ninja
     - |
-      PYLON_ROOT=/opt/pylon meson --prefix /usr builddir
+      PYLON_ROOT=/opt/pylon meson --prefix /usr builddir || cat builddir/meson-logs/meson-log.txt >&2
       ninja -C builddir
       ninja -C builddir test
       ninja -C builddir install
