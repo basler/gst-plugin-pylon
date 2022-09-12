@@ -97,7 +97,7 @@ struct _GstPylon {
       std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
   GObject *gcamera;
   GObject *gstream_grabber;
-  GstPylonImageHandler *image_handler;
+  GstPylonImageHandler image_handler;
 };
 
 /* pixel format definitions */
@@ -190,10 +190,9 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
 
     self->camera->Attach(factory.CreateDevice(device_info));
 
-    self->image_handler = new GstPylonImageHandler();
-    self->camera->RegisterImageEventHandler(self->image_handler,
+    self->camera->RegisterImageEventHandler(&self->image_handler,
                                             Pylon::RegistrationMode_Append,
-                                            Pylon::Cleanup_Delete);
+                                            Pylon::Cleanup_None);
     self->camera->Open();
 
     GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
@@ -307,6 +306,7 @@ gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
 void gst_pylon_free(GstPylon *self) {
   g_return_if_fail(self);
 
+  self->camera->DeregisterImageEventHandler(&self->image_handler);
   self->camera->Close();
   g_object_unref(self->gcamera);
 
@@ -358,7 +358,7 @@ static void free_ptr_grab_result(gpointer data) {
 
 void gst_pylon_interrupt_capture(GstPylon *self) {
   g_return_if_fail(self);
-  self->image_handler->InterruptWaitForImage();
+  self->image_handler.InterruptWaitForImage();
 }
 
 gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
@@ -367,7 +367,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
   Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr =
-      self->image_handler->WaitForImage();
+      self->image_handler.WaitForImage();
 
   if (!grab_result_ptr) {
     return FALSE;
