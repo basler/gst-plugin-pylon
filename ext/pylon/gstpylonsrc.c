@@ -84,6 +84,7 @@ static void gst_pylon_src_get_property (GObject * object,
 static void gst_pylon_src_finalize (GObject * object);
 
 static GstCaps *gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter);
+static gboolean gst_pylon_src_is_bayer (GstStructure * st);
 static GstCaps *gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps);
 static gboolean gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps);
 static gboolean gst_pylon_src_decide_allocation (GstBaseSrc * src,
@@ -431,6 +432,16 @@ out:
   return outcaps;
 }
 
+static gboolean
+gst_pylon_src_is_bayer (GstStructure * st)
+{
+  gboolean is_bayer = FALSE;
+  if (0 == g_strcmp0 (gst_structure_get_name (st), "video/x-bayer")) {
+    is_bayer = TRUE;
+  }
+  return is_bayer;
+}
+
 /* called if, in negotiation, caps need fixating */
 static GstCaps *
 gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
@@ -438,7 +449,8 @@ gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
   GstPylonSrc *self = GST_PYLON_SRC (src);
   GstCaps *outcaps = NULL;
   GstStructure *st = NULL;
-  static const gint preferred_width = 1920;
+  const GValue *width_field = NULL;
+  static gint preferred_width = 1920;
   static const gint preferred_height = 1080;
   static const gint preferred_framerate_num = 30;
   static const gint preferred_framerate_den = 1;
@@ -453,7 +465,13 @@ gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
 
   outcaps = gst_caps_new_empty ();
   st = gst_structure_copy (gst_caps_get_structure (caps, 0));
+  width_field = gst_structure_get_value (st, "width");
   gst_caps_unref (caps);
+
+  if (gst_pylon_src_is_bayer (st) && GST_VALUE_HOLDS_INT_RANGE (width_field)) {
+    preferred_width =
+        GST_ROUND_DOWN_4 (gst_value_get_int_range_max (width_field));
+  }
 
   gst_structure_fixate_field_nearest_int (st, "width", preferred_width);
   gst_structure_fixate_field_nearest_int (st, "height", preferred_height);
