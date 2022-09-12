@@ -80,6 +80,8 @@ configuring to 640x480 @ 10fps in BayerRG8 format:
 
 `gst-launch-1.0 pylonsrc ! "video/x-bayer,width=640,height=480,framerate=10/1,format=rggb" ! bayer2rgb ! videoconvert ! autovideosink`
 
+**Important:** The **bayer2rgb** element has a bug that causes non 4 byte aligned bayer formats to display incorrectly. For this reason, an error will occur if a non 4 byte aligned width is used with bayer formats.
+
 #### Pixel format definitions
 
 For the pixel format check the format supported for your camera on https://docs.baslerweb.com/pixel-format
