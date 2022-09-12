@@ -496,6 +496,8 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   GstStructure *st = NULL;
   gint numerator = 0;
   gint denominator = 0;
+  gint width = 0;
+  const gchar *error_msg = NULL;
   GError *error = NULL;
   gboolean ret = FALSE;
   const gchar *action = NULL;
@@ -503,6 +505,14 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   GST_INFO_OBJECT (self, "Setting new caps: %" GST_PTR_FORMAT, caps);
 
   st = gst_caps_get_structure (caps, 0);
+  gst_structure_get_int (st, "width", &width);
+
+  if (gst_pylon_src_is_bayer (st) && 0 != width % 4) {
+    action = "configure";
+    error_msg = "Bayer formats require the width to be word aligned (4 bytes).";
+    goto error;
+  }
+
   gst_structure_get_fraction (st, "framerate", &numerator, &denominator);
 
   GST_OBJECT_LOCK (self);
@@ -516,29 +526,32 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   ret = gst_pylon_stop (self->pylon, &error);
   if (FALSE == ret && error) {
     action = "stop";
-    goto error;
+    goto log_error;
   }
 
   ret = gst_pylon_set_configuration (self->pylon, caps, &error);
   if (FALSE == ret && error) {
     action = "configure";
-    goto error;
+    goto log_error;
   }
 
   ret = gst_pylon_start (self->pylon, &error);
   if (FALSE == ret && error) {
     action = "start";
-    goto error;
+    goto log_error;
   }
 
   ret = gst_video_info_from_caps (&self->video_info, caps);
 
   goto out;
 
+log_error:
+  error_msg = error->message;
+  g_error_free (error);
+
 error:
   GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-      ("Failed to %s camera.", action), ("%s", error->message));
-  g_error_free (error);
+      ("Failed to %s camera.", action), ("%s", error_msg));
 
 out:
   return ret;
