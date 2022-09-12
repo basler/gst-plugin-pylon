@@ -60,6 +60,8 @@ Pylon::CBaslerUniversalGrabResultPtr *GstPylonImageHandler::WaitForImage() {
 };
 
 void GstPylonImageHandler::InterruptWaitForImage() {
+  std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
   this->grab_result_ready = true;
   this->grab_result_cv.notify_one();
+  mutex_lock.unlock();
 }

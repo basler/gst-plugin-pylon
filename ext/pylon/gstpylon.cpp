@@ -36,9 +36,7 @@
 #include "gstpylonimagehandler.h"
 #include "gstpylonobject.h"
 
-#include <condition_variable>
 #include <map>
-#include <mutex>
 
 #ifdef _MSC_VER  // MSVC
 #pragma warning(push)
