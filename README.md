@@ -29,7 +29,7 @@ If only a single camera is connected to the system, `pylonsrc` will use this cam
 If more than one camera is connected, you have to select the camera.
 Cameras can be selected via index, serial-number or device-user-name
 
-If no selection is given `pylonsrc` will show an error message which will list the available cameras
+If no selection is given `pylonsrc` will show an error message which will list the available cameras. The list contains the serial number, the device model name and if set the user defined name of each camera.
 
 ```bash
 gst-launch-1.0 pylonsrc ! fakesink
@@ -38,12 +38,13 @@ ERROR: Pipeline doesn't want to pause.
 ERROR: from element /GstPipeline:pipeline0/GstPylonSrc:pylonsrc0: Failed to start camera.
 Additional debug info:
 ../ext/pylon/gstpylonsrc.c(524): gst_pylon_src_start (): /GstPipeline:pipeline0/GstPylonSrc:pylonsrc0:
-At least 4 devices match the specified criteria, use "device-index" to select one from the following list:
-[0]:  21656705
-[1]:  0815-0000
-[2]:  0815-0001
-[3]:  0815-0002
+At least 4 devices match the specified criteria, use "device-index", "device-serial-number" or "device-user-name" to select one from the following list:
+[0]: 21656705   acA1920-155uc   top-left
+[1]: 0815-0000  Emulation
+[2]: 0815-0001  Emulation
+[3]: 0815-0002  Emulation
 ```
+
 ### examples
 select second camera from list:
 
@@ -51,11 +52,11 @@ select second camera from list:
 
 select camera with serial number `21656705`
 
-` gst-launch-1.0 pylonsrc device-serial-number='21656705' ! videoconvert ! autovideosink`
+` gst-launch-1.0 pylonsrc device-serial-number="21656705" ! videoconvert ! autovideosink`
 
 select camera with user name `top-left`
 
-` gst-launch-1.0 pylonsrc device-user-name='top-left' ! videoconvert ! autovideosink`
+` gst-launch-1.0 pylonsrc device-user-name="top-left" ! videoconvert ! autovideosink`
 
 ## Configuring the camera
 
@@ -116,10 +117,10 @@ If this property is not set, or set to the value `Auto`, the power-on UserSet ge
 
 To select dynamically another UserSet the `user-set` property accepts any other implemented UserSet of the camera.
 
-e.g to activate the `HighGain` UserSet on a Basler ace camera:
+e.g to activate the `UserSet1` UserSet on a Basler ace camera:
 
 ```
-gst-launch-1.0 pylonsrc user-set=HighGain ! videoconvert ! autovideosink
+gst-launch-1.0 pylonsrc user-set=UserSet1 ! videoconvert ! autovideosink
 ```
 
 Overall UserSets topics for the camera are documented in [Chapter UserSets](https://docs.baslerweb.com/user-sets) in the Basler product documentation.
@@ -144,7 +145,7 @@ An example on how to generate PFS files using pylon Viewer is documented in [Cha
 
 ### Features
 
-After applying the UserSet and the gstreamer properties any other camera feature gets applied.
+After applying the UserSet, the optional PFS file and the gstreamer properties any other camera feature gets applied.
 
 The `pylonsrc` plugin dynamically exposes all writable features of the camera as  gstreamer [child properties](https://gstreamer.freedesktop.org/documentation/gstreamer/gstchildproxy.html?gi-language=c) with the prefix `cam::`.
 
@@ -207,10 +208,10 @@ Make sure the dependencies are properly installed. In Debian-based
 systems you can run the following commands:
 
 ```bash
-# Meson build system.
-# Remove older meson from APT and install newer PIP version
-sudo apt remove meson
-sudo -H python3 -m pip install meson
+# Meson and ninja build system
+# Remove older meson and ninja from APT and install newer PIP version
+sudo apt remove meson ninja-build
+sudo -H python3 -m pip install meson ninja --upgrade
 
 # GStreamer
 sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake
@@ -268,11 +269,21 @@ TBD
 A yocto recipe will be provided in  [meta-basler-tools](https://github.com/basler/meta-basler-tools) layer on github.
 
 ## Windows
-The following commands should be run from a *Visual Studio command prompt*.
+Install the dependencies:
 
-Install the gstreamer runtime **and** development packages ( using the files for MSVC 64-bit (VS 2019, Release CRT )
+GStreamer:
+* Install the gstreamer runtime **and** development packages ( using the files for MSVC 64-bit (VS 2019, Release CRT ) from [https://gstreamer.freedesktop.org/download/](https://gstreamer.freedesktop.org/download/)
+* use latest version.
 
-[https://gstreamer.freedesktop.org/download/](https://gstreamer.freedesktop.org/download/)
+Meson:
+* Install the meson build system from github releases https://github.com/mesonbuild/meson/releases
+* Use version meson-0.63.1-64.msi
+
+Visual Studio:
+* Install Visual Studio (e.g. Community Edition) from Microsoft
+* Select desktop development (C++) package within installer
+
+The following commands should be run from a *Visual Studio command prompt*. The description below doesn't work for powershell.
 
 Specify the path to pkgconfig configuration files for GStreamer and the pkg-config binary ( shipped as part of gstreamer development )
 
@@ -335,7 +346,8 @@ Installation on macOS is currently not supported due to conflicts between meson 
 This target will be integrated after a Basler pylon 7.x release for macOS
 
 # Known issues
-* typos and unsupported feature names are silently ignored in this version
+* due to an issue in the pipeline parser typos and unsupported feature names are silently ignored. We work on providing an upstream fix to provide full error reporting capability in the pipeline parser.
+* Not all features of Basler dart camera models ( not dart 2 ) are properly mapped to gstreamer ( e.g. Gain and ExposureTime ). As a workaround they have to be set in the PFS file or the user-set
 
 
  
