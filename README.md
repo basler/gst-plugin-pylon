@@ -153,13 +153,19 @@ An example on how to generate PFS files using pylon Viewer is documented in [Cha
 
 After applying the UserSet, the optional PFS file and the gstreamer properties any other camera feature gets applied.
 
-The `pylonsrc` plugin dynamically exposes all writable features of the camera as  gstreamer [child properties](https://gstreamer.freedesktop.org/documentation/gstreamer/gstchildproxy.html?gi-language=c) with the prefix `cam::`.
+The `pylonsrc` plugin dynamically exposes all features of the camera as gstreamer [child properties](https://gstreamer.freedesktop.org/documentation/gstreamer/gstchildproxy.html?gi-language=c) with the prefix `cam::` and all stream grabber parameters with the prefix `stream::`
 
 Pylon features like `ExposureTime` or `Gain` are mapped to the gstreamer properties `cam::ExposureTime` and `cam::Gain`.
 
 Examples to set Exposuretime to 2000µs and Gain to 10.3dB
 
 `gst-launch-1.0 pylonsrc cam::ExposureTime=2000 cam::Gain=10.3 ! videoconvert ! autovideosink`
+
+Pylon stream grabber parameters like MaxTransferSize or MaxNumBuffer are mapped to the gstreamer properties `stream::MaxTransferSize` and `stream::MaxNumBuffer`.
+
+Example to set MaxTransferSize to 4MB and MaxNumBuffer to 10 on an USB3Vision camera
+
+`gst-launch-1.0 pylonsrc stream::MaxTransferSize=4194304 stream::MaxNumBuffer=10 ! videoconvert ! autovideosink`
 
 All available features can be listed by by calling
 
@@ -183,7 +189,6 @@ Example:
 Configure a hardware trigger on Line1 for the trigger FrameStart:
 
 `gst-launch-1.0 pylonsrc cam::TriggerSource-FrameStart=Line1 cam::TriggerMode-FrameStart=On ! videoconvert ! autovideosink`
-
 
 
 # Building
@@ -397,6 +402,6 @@ This target will be integrated after a Basler pylon 7.x release for macOS
 
 # Known issues
 * Due to an issue in the pipeline parser typos and unsupported feature names are silently ignored. We work on providing an upstream fix to provide full error reporting capability in the pipeline parser.
-* Not all features of Basler dart camera models ( not dart 2 ) are properly mapped to gstreamer ( e.g. Gain and ExposureTime ). As a workaround they have to be set in the PFS file or the user-set
+
 * Bayer formats need to be 4 byte aligned to be properly processed by GStreamer. If no size is specified (or a range is provided) a word aligned width will be automatically selected. If the width is hardcoded and it is not word aligned, the pipeline will fail displaying an error.
  
