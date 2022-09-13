@@ -80,7 +80,7 @@ configuring to 640x480 @ 10fps in BayerRG8 format:
 
 `gst-launch-1.0 pylonsrc ! "video/x-bayer,width=640,height=480,framerate=10/1,format=rggb" ! bayer2rgb ! videoconvert ! autovideosink`
 
-**Important:** The **bayer2rgb** element has a bug that causes non 4 byte aligned bayer formats to display incorrectly. For this reason, an error will occur if a non 4 byte aligned width is used with bayer formats.
+**Important:** The **bayer2rgb** element does not process non 4 byte aligned bayer formats correctly. If no size is specified (or a range is provided) a word aligned width will be automatically selected. If the width is hardcoded and it is not word aligned, the pipeline will fail displaying an error.
 
 #### Pixel format definitions
 

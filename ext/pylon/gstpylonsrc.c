@@ -504,7 +504,7 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   gint numerator = 0;
   gint denominator = 0;
   gint width = 0;
-  gint byte_alignment = 4;
+  static const gint byte_alignment = 4;
   const gchar *error_msg = NULL;
   GError *error = NULL;
   gboolean ret = FALSE;
