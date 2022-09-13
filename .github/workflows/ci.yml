@@ -157,6 +157,8 @@ jobs:
 
             # compile gcc
             export PYLON_ROOT=/opt/pylon
+            export CC=gcc
+            export CXX=g++
             meson builddir_gcc --prefix $PWD/install_gcc
             ninja -C builddir_gcc
             ninja -C builddir_gcc test
@@ -164,6 +166,8 @@ jobs:
 
             # compile clang
             export PYLON_ROOT=/opt/pylon
+            export CC=clang
+            export CXX=clang++
             meson builddir_clang --prefix $PWD/install_clang
             ninja -C builddir_clang
             ninja -C builddir_clang test
@@ -221,6 +225,8 @@ jobs:
       - name: compile gcc
         run: |
           export PYLON_ROOT=/opt/pylon
+          export CC=gcc
+          export CXX=g++
           meson builddir_gcc --prefix $PWD/install_gcc
           ninja -C builddir_gcc
           ninja -C builddir_gcc test
@@ -229,6 +235,8 @@ jobs:
       - name: compile clang
         run: |
           export PYLON_ROOT=/opt/pylon
+          export CC=clang
+          export CXX=clang++
           meson builddir_clang --prefix $PWD/install_clang
           ninja -C builddir_clang
           ninja -C builddir_clang test
