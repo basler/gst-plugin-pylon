@@ -257,6 +257,50 @@ Finally, test for proper installation:
 gst-inspect-1.0 pylonsrc
 ```
 
+### Integrating with GStreamer monorepo
+
+The monorepo is a top-level repository that integrates and builds all
+GStreamer subprojects (core, plugins, docs, etc...). It is the
+recommended way of building GStreamer from source, test different
+versions without installing them and even contribute code in the form
+of Merge Requests. The monorepo was released starting with GStreamer
+1.20 stable release.
+
+GstPluginPylon can integrate seamlessly with GStreamer's monorepo. To
+do so run the following commands:
+
+1. Clone the monorepo branch you wish to test. For example 1.20:
+```
+git clone https://gitlab.freedesktop.org/gstreamer/gstreamer -b 1.20
+cd gstreamer
+```
+
+2. Clone gst-plugin-pylon into the subprojects directory:
+```
+cd subprojects/
+git clone https://github.com/basler/gst-plugin-pylon
+cd -
+```
+
+3. Configure and build as usual, specifying the custom subproject:
+```
+PYLON_ROOT=/opt/pylon meson builddir --prefix /usr -Dcustom_subprojects=gst-plugin-pylon
+ninja -C builddir
+```
+
+4. Test the uninstalled environment:
+```
+ninja -C builddir devenv
+```
+This will open a new shell with the evironment configured to load GStreamer from this build.
+```
+gst-inspect-1.0 pylonsrc
+```
+Type `exit` to return to the normal shell.
+
+Refer to the [official documentation](https://github.com/GStreamer/gstreamer/blob/main/README.md)
+for instructions on how to customize the monorepo build.
+
 ### Maintainer configuration
 
 If you are a maintainer or plan to extend the plug-in, we recommend
