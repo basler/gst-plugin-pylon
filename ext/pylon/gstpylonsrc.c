@@ -84,6 +84,7 @@ static void gst_pylon_src_get_property (GObject * object,
 static void gst_pylon_src_finalize (GObject * object);
 
 static GstCaps *gst_pylon_src_get_caps (GstBaseSrc * src, GstCaps * filter);
+static gboolean gst_pylon_src_is_bayer (GstStructure * st);
 static GstCaps *gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps);
 static gboolean gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps);
 static gboolean gst_pylon_src_decide_allocation (GstBaseSrc * src,
@@ -122,11 +123,12 @@ enum
 /* pad templates */
 
 static GstStaticPadTemplate gst_pylon_src_src_template =
-GST_STATIC_PAD_TEMPLATE ("src",
+    GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE (" {GRAY8, RGB, BGR, YUY2, UYVY} "))
-    );
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE (" {GRAY8, RGB, BGR, YUY2, UYVY} ") ";"
+        "video/x-bayer,format={rggb,bggr,gbgr,grgb},width=" GST_VIDEO_SIZE_RANGE
+        ",height=" GST_VIDEO_SIZE_RANGE ",framerate=" GST_VIDEO_FPS_RANGE));
 
 
 /* class initialization */
@@ -430,6 +432,19 @@ out:
   return outcaps;
 }
 
+static gboolean
+gst_pylon_src_is_bayer (GstStructure * st)
+{
+  gboolean is_bayer = FALSE;
+
+  g_return_val_if_fail (st, FALSE);
+
+  if (0 == g_strcmp0 (gst_structure_get_name (st), "video/x-bayer")) {
+    is_bayer = TRUE;
+  }
+  return is_bayer;
+}
+
 /* called if, in negotiation, caps need fixating */
 static GstCaps *
 gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
@@ -437,10 +452,12 @@ gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
   GstPylonSrc *self = GST_PYLON_SRC (src);
   GstCaps *outcaps = NULL;
   GstStructure *st = NULL;
+  const GValue *width_field = NULL;
   static const gint preferred_width = 1920;
   static const gint preferred_height = 1080;
   static const gint preferred_framerate_num = 30;
   static const gint preferred_framerate_den = 1;
+  gint preferred_width_adjusted = 0;
 
 
   GST_DEBUG_OBJECT (self, "Fixating caps %" GST_PTR_FORMAT, caps);
@@ -452,9 +469,18 @@ gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
 
   outcaps = gst_caps_new_empty ();
   st = gst_structure_copy (gst_caps_get_structure (caps, 0));
+  width_field = gst_structure_get_value (st, "width");
   gst_caps_unref (caps);
 
-  gst_structure_fixate_field_nearest_int (st, "width", preferred_width);
+  if (gst_pylon_src_is_bayer (st) && GST_VALUE_HOLDS_INT_RANGE (width_field)) {
+    preferred_width_adjusted =
+        GST_ROUND_DOWN_4 (gst_value_get_int_range_max (width_field));
+  } else {
+    preferred_width_adjusted = preferred_width;
+  }
+
+  gst_structure_fixate_field_nearest_int (st, "width",
+      preferred_width_adjusted);
   gst_structure_fixate_field_nearest_int (st, "height", preferred_height);
   gst_structure_fixate_field_nearest_fraction (st, "framerate",
       preferred_framerate_num, preferred_framerate_den);
@@ -477,6 +503,9 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   GstStructure *st = NULL;
   gint numerator = 0;
   gint denominator = 0;
+  gint width = 0;
+  static const gint byte_alignment = 4;
+  const gchar *error_msg = NULL;
   GError *error = NULL;
   gboolean ret = FALSE;
   const gchar *action = NULL;
@@ -484,6 +513,14 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   GST_INFO_OBJECT (self, "Setting new caps: %" GST_PTR_FORMAT, caps);
 
   st = gst_caps_get_structure (caps, 0);
+  gst_structure_get_int (st, "width", &width);
+
+  if (gst_pylon_src_is_bayer (st) && 0 != width % byte_alignment) {
+    action = "configure";
+    error_msg = "Bayer formats require the width to be word aligned (4 bytes).";
+    goto error;
+  }
+
   gst_structure_get_fraction (st, "framerate", &numerator, &denominator);
 
   GST_OBJECT_LOCK (self);
@@ -497,29 +534,32 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   ret = gst_pylon_stop (self->pylon, &error);
   if (FALSE == ret && error) {
     action = "stop";
-    goto error;
+    goto log_error;
   }
 
   ret = gst_pylon_set_configuration (self->pylon, caps, &error);
   if (FALSE == ret && error) {
     action = "configure";
-    goto error;
+    goto log_error;
   }
 
   ret = gst_pylon_start (self->pylon, &error);
   if (FALSE == ret && error) {
     action = "start";
-    goto error;
+    goto log_error;
   }
 
   ret = gst_video_info_from_caps (&self->video_info, caps);
 
   goto out;
 
+log_error:
+  error_msg = error->message;
+  g_error_free (error);
+
 error:
   GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-      ("Failed to %s camera.", action), ("%s", error->message));
-  g_error_free (error);
+      ("Failed to %s camera.", action), ("%s", error_msg));
 
 out:
   return ret;
@@ -552,7 +592,7 @@ gst_pylon_src_start (GstBaseSrc * src)
   GST_OBJECT_LOCK (self);
   GST_INFO_OBJECT (self,
       "Attempting to create camera device with the following configuration:"
-      "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s \n\tPFS filepath: %s."
+      "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s \n\tPFS filepath: %s. "
       "If defined, the PFS file will override the user set configuration.",
       self->device_user_name, self->device_serial_number, self->device_index,
       self->user_set, self->pfs_location);

@@ -55,24 +55,44 @@
 #pragma GCC diagnostic pop
 #endif
 
+/* Pixel format definitions */
+typedef struct {
+  std::string pfnc_name;
+  std::string gst_name;
+} PixelFormatMappingType;
+
+/* Mapping of GstStructure with its corresponding formats */
+typedef struct {
+  const std::string st_name;
+  std::vector<PixelFormatMappingType> format_map;
+} GstStPixelFormats;
+
 /* prototypes */
 static Pylon::String_t gst_pylon_get_camera_fullname(
     Pylon::CBaslerUniversalInstantCamera &camera);
 static Pylon::String_t gst_pylon_get_sgrabber_name(
     Pylon::CBaslerUniversalInstantCamera &camera);
 static void free_ptr_grab_result(gpointer data);
-static void gst_pylon_query_format(GstPylon *self, GValue *outvalue);
+static void gst_pylon_query_format(
+    GstPylon *self, GValue *outvalue,
+    const std::vector<PixelFormatMappingType> &pixel_format_mapping);
 static void gst_pylon_query_integer(GstPylon *self, GValue *outvalue,
                                     const std::string &name);
 static void gst_pylon_query_width(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_height(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue);
+static void gst_pylon_query_caps(
+    GstPylon *self, GstStructure *st,
+    std::vector<PixelFormatMappingType> pixel_format_mapping);
 static std::vector<std::string> gst_pylon_gst_to_pfnc(
-    const std::string &gst_format);
+    const std::string &gst_format,
+    const std::vector<PixelFormatMappingType> &pixel_format_mapping);
 static std::vector<std::string> gst_pylon_pfnc_to_gst(
-    const std::string &genapi_format);
+    const std::string &genapi_format,
+    const std::vector<PixelFormatMappingType> &pixel_format_mapping);
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
-    GenApi::StringList_t genapi_formats);
+    GenApi::StringList_t genapi_formats,
+    const std::vector<PixelFormatMappingType> &pixel_format_mapping);
 static std::string gst_pylon_query_default_set(
     const Pylon::CBaslerUniversalInstantCamera &camera);
 static void gst_pylon_append_properties(
@@ -100,18 +120,22 @@ struct _GstPylon {
   GstPylonImageHandler image_handler;
 };
 
-/* pixel format definitions */
-typedef struct {
-  std::string pfnc_name;
-  std::string gst_name;
-} PixelFormatMappingType;
-
-static PixelFormatMappingType pixel_format_mapping[] = {
+static const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
     {"Mono8", "GRAY8"},        {"RGB8Packed", "RGB"},
     {"BGR8Packed", "BGR"},     {"RGB8", "RGB"},
     {"BGR8", "BGR"},           {"YCbCr422_8", "YUY2"},
     {"YUV422_8_UYVY", "UYVY"}, {"YUV422_8", "YUY2"},
     {"YUV422Packed", "UYVY"},  {"YUV422_YUYV_Packed", "YUY2"}};
+
+static const std::vector<PixelFormatMappingType> pixel_format_mapping_bayer = {
+    {"BayerBG8", "bggr"},
+    {"BayerGR8", "grbg"},
+    {"BayerRG8", "rggb"},
+    {"BayerGB8", "gbrg"}};
+
+static const std::vector<GstStPixelFormats> gst_structure_formats = {
+    {"video/x-raw", pixel_format_mapping_raw},
+    {"video/x-bayer", pixel_format_mapping_bayer}};
 
 void gst_pylon_initialize() { Pylon::PylonInitialize(); }
 
@@ -391,7 +415,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
 }
 
 static std::vector<std::string> gst_pylon_gst_to_pfnc(
-    const std::string &gst_format) {
+    const std::string &gst_format,
+    const std::vector<PixelFormatMappingType> &pixel_format_mapping) {
   std::vector<std::string> out_formats;
   for (auto &entry : pixel_format_mapping) {
     if (entry.gst_name == gst_format) {
@@ -402,7 +427,8 @@ static std::vector<std::string> gst_pylon_gst_to_pfnc(
 }
 
 static std::vector<std::string> gst_pylon_pfnc_to_gst(
-    const std::string &genapi_format) {
+    const std::string &genapi_format,
+    const std::vector<PixelFormatMappingType> &pixel_format_mapping) {
   std::vector<std::string> out_formats;
   for (auto &entry : pixel_format_mapping) {
     if (entry.pfnc_name == genapi_format) {
@@ -413,12 +439,13 @@ static std::vector<std::string> gst_pylon_pfnc_to_gst(
 }
 
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
-    GenApi::StringList_t genapi_formats) {
+    GenApi::StringList_t genapi_formats,
+    const std::vector<PixelFormatMappingType> &pixel_format_mapping) {
   std::vector<std::string> formats_list;
 
   for (const auto &genapi_fmt : genapi_formats) {
     std::vector<std::string> gst_fmts =
-        gst_pylon_pfnc_to_gst(std::string(genapi_fmt));
+        gst_pylon_pfnc_to_gst(std::string(genapi_fmt), pixel_format_mapping);
 
     /* Insert every matching gst format */
     formats_list.insert(formats_list.end(), gst_fmts.begin(), gst_fmts.end());
@@ -429,7 +456,9 @@ static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
 
 typedef void (*GstPylonQuery)(GstPylon *, GValue *);
 
-static void gst_pylon_query_format(GstPylon *self, GValue *outvalue) {
+static void gst_pylon_query_format(
+    GstPylon *self, GValue *outvalue,
+    const std::vector<PixelFormatMappingType> &pixel_format_mapping) {
   g_return_if_fail(self);
   g_return_if_fail(outvalue);
 
@@ -441,7 +470,7 @@ static void gst_pylon_query_format(GstPylon *self, GValue *outvalue) {
 
   /* Convert GenApi formats to Gst formats */
   std::vector<std::string> gst_formats =
-      gst_pylon_pfnc_list_to_gst(genapi_formats);
+      gst_pylon_pfnc_list_to_gst(genapi_formats, pixel_format_mapping);
 
   /* Fill format field */
   g_value_init(outvalue, GST_TYPE_LIST);
@@ -527,44 +556,61 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
   }
 }
 
+static void gst_pylon_query_caps(
+    GstPylon *self, GstStructure *st,
+    std::vector<PixelFormatMappingType> pixel_format_mapping) {
+  g_return_if_fail(self);
+  g_return_if_fail(st);
+
+  GValue value = G_VALUE_INIT;
+
+  const std::vector<std::pair<GstPylonQuery, const std::string>> queries = {
+      {gst_pylon_query_width, "width"},
+      {gst_pylon_query_height, "height"},
+      {gst_pylon_query_framerate, "framerate"}};
+
+  /* Offsets are set to 0 to get the true image geometry */
+  self->camera->OffsetX.TrySetToMinimum();
+  self->camera->OffsetY.TrySetToMinimum();
+
+  /* Pixel format is queried separately to support querying different pixel
+   * format mappings */
+  gst_pylon_query_format(self, &value, pixel_format_mapping);
+  gst_structure_set_value(st, "format", &value);
+  g_value_unset(&value);
+
+  for (const auto &query : queries) {
+    GstPylonQuery func = query.first;
+    const gchar *name = query.second.c_str();
+
+    func(self, &value);
+    gst_structure_set_value(st, name, &value);
+    g_value_unset(&value);
+  }
+}
+
 GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
   g_return_val_if_fail(self, NULL);
   g_return_val_if_fail(err && *err == NULL, NULL);
 
   /* Build gst caps */
   GstCaps *caps = gst_caps_new_empty();
-  GstStructure *st = gst_structure_new_empty("video/x-raw");
-  GValue value = G_VALUE_INIT;
 
-  const std::vector<std::pair<GstPylonQuery, const std::string>> queries = {
-      {gst_pylon_query_format, "format"},
-      {gst_pylon_query_width, "width"},
-      {gst_pylon_query_height, "height"},
-      {gst_pylon_query_framerate, "framerate"}};
+  for (const auto &gst_structure_format : gst_structure_formats) {
+    GstStructure *st =
+        gst_structure_new_empty(gst_structure_format.st_name.c_str());
+    try {
+      gst_pylon_query_caps(self, st, gst_structure_format.format_map);
+      gst_caps_append_structure(caps, st);
+    } catch (const Pylon::GenericException &e) {
+      gst_structure_free(st);
+      gst_caps_unref(caps);
 
-  try {
-    /* Offsets are set to 0 to get the true image geometry */
-    self->camera->OffsetX.TrySetToMinimum();
-    self->camera->OffsetY.TrySetToMinimum();
-
-    for (const auto &query : queries) {
-      GstPylonQuery func = query.first;
-      const gchar *name = query.second.c_str();
-
-      func(self, &value);
-      gst_structure_set_value(st, name, &value);
-      g_value_unset(&value);
+      g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                  e.GetDescription());
+      return NULL;
     }
-  } catch (const Pylon::GenericException &e) {
-    gst_structure_free(st);
-    gst_caps_unref(caps);
-
-    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-                e.GetDescription());
-    return NULL;
   }
-
-  gst_caps_append_structure(caps, st);
 
   return caps;
 }
@@ -608,14 +654,16 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
           __LINE__);
     }
 
-    const std::vector<std::string> pfnc_formats =
-        gst_pylon_gst_to_pfnc(gst_format);
-
-    /* In case of ambiguous format mapping choose first */
     bool fmt_valid = false;
-    for (auto &fmt : pfnc_formats) {
-      fmt_valid = pixelFormat.TrySetValue(fmt.c_str());
-      if (fmt_valid) break;
+    for (const auto &gst_structure_format : gst_structure_formats) {
+      const std::vector<std::string> pfnc_formats =
+          gst_pylon_gst_to_pfnc(gst_format, gst_structure_format.format_map);
+
+      /* In case of ambiguous format mapping choose first */
+      for (auto &fmt : pfnc_formats) {
+        fmt_valid = pixelFormat.TrySetValue(fmt.c_str());
+        if (fmt_valid) break;
+      }
     }
 
     if (!fmt_valid) {

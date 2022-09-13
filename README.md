@@ -34,7 +34,7 @@ If no selection is given `pylonsrc` will show an error message which will list t
 ```bash
 gst-launch-1.0 pylonsrc ! fakesink
 Setting pipeline to PAUSED ...
-ERROR: Pipeline doesn't want to pause.
+ERROR: Pipeline doesnt want to pause.
 ERROR: from element /GstPipeline:pipeline0/GstPylonSrc:pylonsrc0: Failed to start camera.
 Additional debug info:
 ../ext/pylon/gstpylonsrc.c(524): gst_pylon_src_start (): /GstPipeline:pipeline0/GstPylonSrc:pylonsrc0:
@@ -70,11 +70,17 @@ The configuration of the camera is defined by
 The pixel format, image width, image height and acquisition framerate ( FPS ) are set during capability negotiation.
 
 
-#### example
+#### examples
 
 configuring to 640x480 @ 10fps in Mono8 format:
 
 `gst-launch-1.0 pylonsrc ! "video/x-raw,width=640,height=480,framerate=10/1,format=GRAY8"  ! videoconvert ! autovideosink`
+
+configuring to 640x480 @ 10fps in BayerRG8 format:
+
+`gst-launch-1.0 pylonsrc ! "video/x-bayer,width=640,height=480,framerate=10/1,format=rggb" ! bayer2rgb ! videoconvert ! autovideosink`
+
+**Important:** The **bayer2rgb** element does not process non 4 byte aligned bayer formats correctly. If no size is specified (or a range is provided) a word aligned width will be automatically selected. If the width is hardcoded and it is not word aligned, the pipeline will fail displaying an error.
 
 #### Pixel format definitions
 
@@ -82,9 +88,8 @@ For the pixel format check the format supported for your camera on https://docs.
 
 The mapping of the camera pixel format names to the gstreamer format names is:
 
-```
 |Pylon              | GSTREAMER  |
-|-------------------|------------|
+|-------------------|:----------:|
 | Mono8             |  GRAY8     |
 | RGB8Packed        |  RGB       |
 | RGB8              |  RGB       |
@@ -92,12 +97,13 @@ The mapping of the camera pixel format names to the gstreamer format names is:
 | BGR8              |  BGR       |
 | YCbCr422_8        |  YUY2      |
 | YUV422_8          |  YUY2      |
-| YUV422_YUYV_Packed|  YUY2 
+| YUV422_YUYV_Packed|  YUY2      |
 | YUV422_8_UYVY     |  UYVY      |
 | YUV422Packed      |  UYVY      |
-
-
-```
+| BayerBG8          |  bggr      |
+| BayerGR8          |  grbg      |
+| BayerRG8          |  rggb      |
+| BayerGB8          |  gbrg      |
 
 ### Fixation 
 
