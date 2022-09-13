@@ -393,10 +393,10 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
   bool retry_grab = true;
+  Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr = NULL;
 
   while (retry_grab) {
-    Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr =
-        self->image_handler.WaitForImage();
+    grab_result_ptr = self->image_handler.WaitForImage();
 
     /* Return if user requests to interrupt the grabbing thread */
     if (!grab_result_ptr) {
@@ -408,13 +408,13 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
         case ENUM_KEEP:
           /* deliver the buffer into pipeline even if pylon reports an error */
           g_warning("Capture failed. Keeping buffer: %s",
-                    ptr_grab_result->GetErrorDescription().c_str());
+                    (*grab_result_ptr)->GetErrorDescription().c_str());
           retry_grab = false;
           break;
         case ENUM_ABORT:
           /* signal an error to abort pipeline */
           g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-                      ptr_grab_result->GetErrorDescription().c_str());
+                      (*grab_result_ptr)->GetErrorDescription().c_str());
           retry_grab = false;
           return FALSE;
           break;
@@ -425,7 +425,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
            * -> or other gstreamer style of skipping a frame
            */
           g_warning("Capture failed. skipping buffer: %s",
-                    ptr_grab_result->GetErrorDescription().c_str());
+                    (*grab_result_ptr)->GetErrorDescription().c_str());
           retry_grab = true;
           break;
       };
