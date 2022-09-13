@@ -352,8 +352,7 @@ Installation on macOS is currently not supported due to conflicts between meson 
 This target will be integrated after a Basler pylon 7.x release for macOS
 
 # Known issues
-* due to an issue in the pipeline parser typos and unsupported feature names are silently ignored. We work on providing an upstream fix to provide full error reporting capability in the pipeline parser.
+* Due to an issue in the pipeline parser typos and unsupported feature names are silently ignored. We work on providing an upstream fix to provide full error reporting capability in the pipeline parser.
 * Not all features of Basler dart camera models ( not dart 2 ) are properly mapped to gstreamer ( e.g. Gain and ExposureTime ). As a workaround they have to be set in the PFS file or the user-set
-
-
+* Bayer formats need to be 4 byte aligned to be properly processed by GStreamer. If no size is specified (or a range is provided) a word aligned width will be automatically selected. If the width is hardcoded and it is not word aligned, the pipeline will fail displaying an error.
  
