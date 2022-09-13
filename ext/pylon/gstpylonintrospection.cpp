@@ -93,7 +93,7 @@ static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
   bool is_read_write = param.IsReadable() && param.IsWritable();
   bool is_write_only = !param.IsReadable() && param.IsWritable();
 
-  // check is feature writable in PLAYING state
+  /* Check if feature is writable in PLAYING state */
   if (is_read_write || is_write_only) {
     GenICam::gcstring value;
     GenICam::gcstring attribute;

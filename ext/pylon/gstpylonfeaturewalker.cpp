@@ -171,7 +171,6 @@ void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
       GenICam::gcstring value;
       GenICam::gcstring attrib;
 
-      /* Handle only features with the 'Streamable' flag */
       try {
         std::vector<GParamSpec*> specs_list =
             gst_pylon_camera_handle_node(node, nodemap, device_fullname);
