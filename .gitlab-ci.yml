@@ -1,0 +1,82 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_REF_PROTECTED
+
+stages:
+  - fetch
+  - test
+
+cache: &pylon_cache
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - pylon-installer
+
+fetch:
+  stage: fetch
+  variables:
+    PYLON_DOWNLOAD_URL_BASE: $PYLON_DOWNLOAD_URL_BASE
+  cache:
+    <<: *pylon_cache
+    policy: push
+  script:
+    - |
+      apt update
+      apt install -y curl
+    - |
+      mkdir -p pylon-installer && pushd pylon-installer
+      list="${PYLON_DOWNLOAD_URL_BASE}/pylon_7.1.0.25066_x86_64_setup.tar.gz \
+            ${PYLON_DOWNLOAD_URL_BASE}/pylon_6.3.0.23157_x86_64_setup.tar.gz"
+      for url in $list; do
+        echo "Download $url"
+        curl -sSfL -O "$url"
+      done
+      echo "Download result"
+      rm -rf pylon_tmp
+      md5sum *
+      popd
+
+test:
+  stage: test
+  parallel:
+    matrix:
+      - OS: [ubuntu:20.04, ubuntu:18.04]
+        PV: [7.1.0.25066, 6.3.0.23157]
+  image: ${OS}
+  cache:
+    <<: *pylon_cache
+    policy: pull
+  script:
+    - echo "Building Pylon ${PV} on ${OS}"
+    - |
+      apt update
+      dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && apt-get remove -y libunwind-14-dev
+      DEBIAN_FRONTEND=noninteractive apt install -y \
+        curl \
+        python3 \
+        python3-pip \
+        libgstreamer1.0-dev \
+        libgstreamer-plugins-base1.0-dev \
+        cmake \
+        clang \
+        gstreamer1.0-tools
+    - |
+      PYLON_TGZ=$(readlink -m pylon-installer/pylon_${PV}_x86_64_setup.tar.gz)
+      mkdir pylon_tmp
+      pushd pylon_tmp
+      tar -xf $PYLON_TGZ
+      mkdir -p /opt/pylon
+      tar -C /opt/pylon -xzf pylon_${PV}_x86_64.tar.gz
+      popd
+    - |
+      pip3 install pip --upgrade
+      pip3 install meson ninja
+    - |
+      PYLON_ROOT=/opt/pylon meson --prefix /usr builddir || cat builddir/meson-logs/meson-log.txt >&2
+      ninja -C builddir
+      ninja -C builddir test
+      ninja -C builddir install
+    - |
+      PYLON_CAMEMU=2 G_DEBUG=critical-warnings gst-inspect-1.0 pylonsrc
+      PYLON_CAMEMU=2 GST_DEBUG=2 G_DEBUG=critical-warnings gst-launch-1.0 pylonsrc device-index=0 num-buffers=10 cam::TestIamgeSelector=Testimage1 ! fakesink
