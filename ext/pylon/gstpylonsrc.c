@@ -753,12 +753,14 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
   pylon_ret = gst_pylon_capture (self->pylon, buf, &error);
 
   if (pylon_ret == FALSE) {
-    ret = GST_FLOW_EOS;
     if (error) {
       GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
           ("Failed to create buffer."), ("%s", error->message));
       g_error_free (error);
       ret = GST_FLOW_ERROR;
+    } else {
+      GST_DEBUG_OBJECT (self, "Buffer not created, user requested EOS");
+      ret = GST_FLOW_EOS;
     }
     goto done;
   }

@@ -369,6 +369,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
   Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr =
       self->image_handler.WaitForImage();
 
+  /* Return if user requests to interrupt the grabbing thread */
   if (!grab_result_ptr) {
     return FALSE;
   }
