@@ -1,4 +1,10 @@
-gst-plugin-pylon (0.2.0-2) UNRELEASED; urgency=medium
+gst-plugin-pylon (0.3.0-1) unstable; urgency=medium
+
+  * Pulled upstream changes.
+
+ -- Patrick Thomas <pthomas@caltech.edu>  Tue, 13 Sep 2022 11:56:17 -0700
+
+gst-plugin-pylon (0.2.0-2) unstable; urgency=medium
 
   * Added libgstreamer-plugins-base1.0-dev and cmake to the build dependencies.
 
