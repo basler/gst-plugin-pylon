@@ -595,25 +595,21 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
 
   /* Build gst caps */
   GstCaps *caps = gst_caps_new_empty();
-  std::vector<GstStructure *> gst_structures;
 
   for (const auto &gst_structure_format : gst_structure_formats) {
     GstStructure *st =
         gst_structure_new_empty(gst_structure_format.st_name.c_str());
-    gst_structures.push_back(st);
     try {
       gst_pylon_query_caps(self, st, gst_structure_format.format_map);
+      gst_caps_append_structure(caps, st);
     } catch (const Pylon::GenericException &e) {
-      for (const auto &gst_structure : gst_structures) {
-        gst_structure_free(gst_structure);
-      }
+      gst_structure_free(st);
       gst_caps_unref(caps);
 
       g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                   e.GetDescription());
       return NULL;
     }
-    gst_caps_append_structure(caps, st);
   }
 
   return caps;
