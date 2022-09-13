@@ -79,4 +79,4 @@ test:
       ninja -C builddir install
     - |
       PYLON_CAMEMU=2 G_DEBUG=critical-warnings gst-inspect-1.0 pylonsrc
-      PYLON_CAMEMU=2 GST_DEBUG=2 G_DEBUG=critical-warnings gst-launch-1.0 pylonsrc device-index=0 cam::num-buffers=10 cam::TestIamgeSelector=Testimage1 ! fakesink
+      PYLON_CAMEMU=2 GST_DEBUG=2 G_DEBUG=critical-warnings gst-launch-1.0 pylonsrc device-index=0 num-buffers=10 cam::TestIamgeSelector=Testimage1 ! fakesink
