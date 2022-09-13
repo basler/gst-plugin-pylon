@@ -88,7 +88,7 @@ For the pixel format check the format supported for your camera on https://docs.
 
 The mapping of the camera pixel format names to the gstreamer format names is:
 
-|Pylon              | GSTREAMER  |
+|Pylon              | GStreamer  |
 |-------------------|:----------:|
 | Mono8             |  GRAY8     |
 | RGB8Packed        |  RGB       |
