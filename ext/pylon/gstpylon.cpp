@@ -33,6 +33,7 @@
 #include "gstpylon.h"
 
 #include "gstchildinspector.h"
+#include "gstpylonimagehandler.h"
 #include "gstpylonobject.h"
 
 #include <map>
@@ -96,6 +97,7 @@ struct _GstPylon {
       std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
   GObject *gcamera;
   GObject *gstream_grabber;
+  GstPylonImageHandler image_handler;
 };
 
 /* pixel format definitions */
@@ -177,7 +179,8 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
       throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
 
-    /* Only one device was found, we don't require the user specifying an index
+    /* Only one device was found, we don't require the user specifying an
+     * index
      * and if they did, we already checked for out-of-range errors above */
     if (1 == n_devices) {
       device_index = 0;
@@ -186,6 +189,10 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     device_info = device_list.at(device_index);
 
     self->camera->Attach(factory.CreateDevice(device_info));
+
+    self->camera->RegisterImageEventHandler(&self->image_handler,
+                                            Pylon::RegistrationMode_Append,
+                                            Pylon::Cleanup_None);
     self->camera->Open();
 
     GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
@@ -299,6 +306,7 @@ gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
 void gst_pylon_free(GstPylon *self) {
   g_return_if_fail(self);
 
+  self->camera->DeregisterImageEventHandler(&self->image_handler);
   self->camera->Close();
   g_object_unref(self->gcamera);
 
@@ -312,7 +320,8 @@ gboolean gst_pylon_start(GstPylon *self, GError **err) {
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
   try {
-    self->camera->StartGrabbing(Pylon::GrabStrategy_LatestImageOnly);
+    self->camera->StartGrabbing(Pylon::GrabStrategy_LatestImageOnly,
+                                Pylon::GrabLoop_ProvidedByInstantCamera);
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
@@ -347,35 +356,35 @@ static void free_ptr_grab_result(gpointer data) {
   delete ptr_grab_result;
 }
 
+void gst_pylon_interrupt_capture(GstPylon *self) {
+  g_return_if_fail(self);
+  self->image_handler.InterruptWaitForImage();
+}
+
 gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(buf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
-  Pylon::CBaslerUniversalGrabResultPtr ptr_grab_result;
-  gint timeout_ms = 5000;
-  /* Catch the timeout exception if any */
-  try {
-    self->camera->RetrieveResult(timeout_ms, ptr_grab_result,
-                                 Pylon::TimeoutHandling_ThrowException);
-  } catch (const Pylon::GenericException &e) {
-    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-                e.GetDescription());
+  Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr =
+      self->image_handler.WaitForImage();
+
+  /* Return if user requests to interrupt the grabbing thread */
+  if (!grab_result_ptr) {
     return FALSE;
   }
 
-  if (ptr_grab_result->GrabSucceeded() == FALSE) {
+  if (!(*grab_result_ptr)->GrabSucceeded()) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-                ptr_grab_result->GetErrorDescription().c_str());
+                (*grab_result_ptr)->GetErrorDescription().c_str());
+    delete grab_result_ptr;
     return FALSE;
   }
 
-  gsize buffer_size = ptr_grab_result->GetBufferSize();
-  Pylon::CBaslerUniversalGrabResultPtr *persistent_ptr_grab_result =
-      new Pylon::CBaslerUniversalGrabResultPtr(ptr_grab_result);
+  gsize buffer_size = (*grab_result_ptr)->GetBufferSize();
   *buf = gst_buffer_new_wrapped_full(
-      static_cast<GstMemoryFlags>(0), ptr_grab_result->GetBuffer(), buffer_size,
-      0, buffer_size, persistent_ptr_grab_result,
+      static_cast<GstMemoryFlags>(0), (*grab_result_ptr)->GetBuffer(),
+      buffer_size, 0, buffer_size, grab_result_ptr,
       static_cast<GDestroyNotify>(free_ptr_grab_result));
 
   return TRUE;

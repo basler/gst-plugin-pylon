@@ -30,42 +30,39 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_H_
-#define _GST_PYLON_H_
+#include "gstpylonimagehandler.h"
 
-#include <glib.h>
-#include <gst/gst.h>
+GstPylonImageHandler::GstPylonImageHandler() {
+  this->ptr_grab_result = NULL;
+  this->grab_result_ready = false;
+}
 
-G_BEGIN_DECLS
+void GstPylonImageHandler::OnImageGrabbed(
+    Pylon::CBaslerUniversalInstantCamera &camera,
+    const Pylon::CBaslerUniversalGrabResultPtr &grab_result) {
+  std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
+  this->ptr_grab_result = new Pylon::CBaslerUniversalGrabResultPtr(grab_result);
+  this->grab_result_ready = true;
+  mutex_lock.unlock();
+  this->grab_result_cv.notify_one();
+}
 
-typedef struct _GstPylon GstPylon;
+Pylon::CBaslerUniversalGrabResultPtr *GstPylonImageHandler::WaitForImage() {
+  std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
+  this->grab_result_cv.wait(mutex_lock,
+                            [this] { return this->grab_result_ready; });
+  Pylon::CBaslerUniversalGrabResultPtr *grab_result = this->ptr_grab_result;
+  this->ptr_grab_result = NULL;
+  this->grab_result_ready = false;
+  mutex_lock.unlock();
 
-void gst_pylon_initialize ();
+  return grab_result;
+};
 
-GstPylon *gst_pylon_new (const gchar *device_user_name,
-    const gchar *device_serial_number, gint device_index, GError ** err);
-gboolean gst_pylon_set_user_config (GstPylon *self, const gchar * user_set, GError **err);
-void gst_pylon_free (GstPylon * self);
+void GstPylonImageHandler::InterruptWaitForImage() {
+  std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
+  this->grab_result_ready = true;
+  mutex_lock.unlock();
 
-gboolean gst_pylon_start (GstPylon * self, GError ** err);
-gboolean gst_pylon_stop (GstPylon * self, GError ** err);
-gboolean gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err);
-void gst_pylon_interrupt_capture (GstPylon * self);
-GstCaps *gst_pylon_query_configuration (GstPylon * self, GError ** err);
-gboolean gst_pylon_set_configuration (GstPylon * self, const GstCaps *conf,
-    GError ** err);
-gboolean gst_pylon_set_pfs_config (GstPylon *self, const gchar *pfs_location,
-    GError **err);
-gchar *gst_pylon_camera_get_string_properties ();
-gchar *gst_pylon_stream_grabber_get_string_properties ();
-
-GObject *gst_pylon_get_camera (GstPylon *self);
-GObject *gst_pylon_get_stream_grabber (GstPylon *self);
-
-GST_DEBUG_CATEGORY_EXTERN (gst_pylon_src_debug_category);
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
-
-
-G_END_DECLS
-
-#endif
+  this->grab_result_cv.notify_one();
+}
