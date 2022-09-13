@@ -63,7 +63,7 @@ typedef struct {
 
 /* Mapping of GstStructure with its corresponding formats */
 typedef struct {
-  const gchar *st_name;
+  const std::string st_name;
   std::vector<PixelFormatMappingType> format_map;
 } GstStPixelFormats;
 
@@ -81,7 +81,7 @@ static void gst_pylon_query_integer(GstPylon *self, GValue *outvalue,
 static void gst_pylon_query_width(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_height(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue);
-static void gst_pylon_query_features(
+static void gst_pylon_query_caps(
     GstPylon *self, GstStructure *st,
     std::vector<PixelFormatMappingType> pixel_format_mapping);
 static std::vector<std::string> gst_pylon_gst_to_pfnc(
@@ -120,20 +120,20 @@ struct _GstPylon {
   GstPylonImageHandler image_handler;
 };
 
-static std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
+static const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
     {"Mono8", "GRAY8"},        {"RGB8Packed", "RGB"},
     {"BGR8Packed", "BGR"},     {"RGB8", "RGB"},
     {"BGR8", "BGR"},           {"YCbCr422_8", "YUY2"},
     {"YUV422_8_UYVY", "UYVY"}, {"YUV422_8", "YUY2"},
     {"YUV422Packed", "UYVY"},  {"YUV422_YUYV_Packed", "YUY2"}};
 
-static std::vector<PixelFormatMappingType> pixel_format_mapping_bayer = {
+static const std::vector<PixelFormatMappingType> pixel_format_mapping_bayer = {
     {"BayerBG8", "bggr"},
     {"BayerGR8", "grbg"},
     {"BayerRG8", "rggb"},
     {"BayerGB8", "gbrg"}};
 
-static std::vector<GstStPixelFormats> gst_structure_formats = {
+static const std::vector<GstStPixelFormats> gst_structure_formats = {
     {"video/x-raw", pixel_format_mapping_raw},
     {"video/x-bayer", pixel_format_mapping_bayer}};
 
@@ -556,7 +556,7 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
   }
 }
 
-static void gst_pylon_query_features(
+static void gst_pylon_query_caps(
     GstPylon *self, GstStructure *st,
     std::vector<PixelFormatMappingType> pixel_format_mapping) {
   g_return_if_fail(self);
@@ -598,10 +598,11 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
   std::vector<GstStructure *> gst_structures;
 
   for (const auto &gst_structure_format : gst_structure_formats) {
-    GstStructure *st = gst_structure_new_empty(gst_structure_format.st_name);
+    GstStructure *st =
+        gst_structure_new_empty(gst_structure_format.st_name.c_str());
     gst_structures.push_back(st);
     try {
-      gst_pylon_query_features(self, st, gst_structure_format.format_map);
+      gst_pylon_query_caps(self, st, gst_structure_format.format_map);
     } catch (const Pylon::GenericException &e) {
       for (const auto &gst_structure : gst_structures) {
         gst_structure_free(gst_structure);
