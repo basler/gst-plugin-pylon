@@ -436,6 +436,9 @@ static gboolean
 gst_pylon_src_is_bayer (GstStructure * st)
 {
   gboolean is_bayer = FALSE;
+
+  g_return_val_if_fail (st, FALSE);
+
   if (0 == g_strcmp0 (gst_structure_get_name (st), "video/x-bayer")) {
     is_bayer = TRUE;
   }
@@ -450,10 +453,11 @@ gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
   GstCaps *outcaps = NULL;
   GstStructure *st = NULL;
   const GValue *width_field = NULL;
-  static gint preferred_width = 1920;
+  static const gint preferred_width = 1920;
   static const gint preferred_height = 1080;
   static const gint preferred_framerate_num = 30;
   static const gint preferred_framerate_den = 1;
+  gint preferred_width_adjusted = 0;
 
 
   GST_DEBUG_OBJECT (self, "Fixating caps %" GST_PTR_FORMAT, caps);
@@ -469,11 +473,14 @@ gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
   gst_caps_unref (caps);
 
   if (gst_pylon_src_is_bayer (st) && GST_VALUE_HOLDS_INT_RANGE (width_field)) {
-    preferred_width =
+    preferred_width_adjusted =
         GST_ROUND_DOWN_4 (gst_value_get_int_range_max (width_field));
+  } else {
+    preferred_width_adjusted = preferred_width;
   }
 
-  gst_structure_fixate_field_nearest_int (st, "width", preferred_width);
+  gst_structure_fixate_field_nearest_int (st, "width",
+      preferred_width_adjusted);
   gst_structure_fixate_field_nearest_int (st, "height", preferred_height);
   gst_structure_fixate_field_nearest_fraction (st, "framerate",
       preferred_framerate_num, preferred_framerate_den);
@@ -497,6 +504,7 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   gint numerator = 0;
   gint denominator = 0;
   gint width = 0;
+  gint byte_alignment = 4;
   const gchar *error_msg = NULL;
   GError *error = NULL;
   gboolean ret = FALSE;
@@ -507,7 +515,7 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   st = gst_caps_get_structure (caps, 0);
   gst_structure_get_int (st, "width", &width);
 
-  if (gst_pylon_src_is_bayer (st) && 0 != width % 4) {
+  if (gst_pylon_src_is_bayer (st) && 0 != width % byte_alignment) {
     action = "configure";
     error_msg = "Bayer formats require the width to be word aligned (4 bytes).";
     goto error;
