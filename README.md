@@ -88,7 +88,7 @@ For the pixel format check the format supported for your camera on https://docs.
 
 The mapping of the camera pixel format names to the gstreamer format names is:
 
-|Pylon              | GSTREAMER  |
+|Pylon              | GStreamer  |
 |-------------------|:----------:|
 | Mono8             |  GRAY8     |
 | RGB8Packed        |  RGB       |
@@ -257,6 +257,50 @@ Finally, test for proper installation:
 gst-inspect-1.0 pylonsrc
 ```
 
+### Integrating with GStreamer monorepo
+
+The monorepo is a top-level repository that integrates and builds all
+GStreamer subprojects (core, plugins, docs, etc...). It is the
+recommended way of building GStreamer from source, test different
+versions without installing them and even contribute code in the form
+of Merge Requests. The monorepo was released starting with GStreamer
+1.20 stable release.
+
+GstPluginPylon can integrate seamlessly with GStreamer's monorepo. To
+do so run the following commands:
+
+1. Clone the monorepo branch you wish to test. For example 1.20:
+```
+git clone https://gitlab.freedesktop.org/gstreamer/gstreamer -b 1.20
+cd gstreamer
+```
+
+2. Clone gst-plugin-pylon into the subprojects directory:
+```
+cd subprojects/
+git clone https://github.com/basler/gst-plugin-pylon
+cd -
+```
+
+3. Configure and build as usual, specifying the custom subproject:
+```
+PYLON_ROOT=/opt/pylon meson builddir --prefix /usr -Dcustom_subprojects=gst-plugin-pylon
+ninja -C builddir
+```
+
+4. Test the uninstalled environment:
+```
+ninja -C builddir devenv
+```
+This will open a new shell with the evironment configured to load GStreamer from this build.
+```
+gst-inspect-1.0 pylonsrc
+```
+Type `exit` to return to the normal shell.
+
+Refer to the [official documentation](https://github.com/GStreamer/gstreamer/blob/main/README.md)
+for instructions on how to customize the monorepo build.
+
 ### Maintainer configuration
 
 If you are a maintainer or plan to extend the plug-in, we recommend
@@ -352,8 +396,7 @@ Installation on macOS is currently not supported due to conflicts between meson 
 This target will be integrated after a Basler pylon 7.x release for macOS
 
 # Known issues
-* due to an issue in the pipeline parser typos and unsupported feature names are silently ignored. We work on providing an upstream fix to provide full error reporting capability in the pipeline parser.
+* Due to an issue in the pipeline parser typos and unsupported feature names are silently ignored. We work on providing an upstream fix to provide full error reporting capability in the pipeline parser.
 * Not all features of Basler dart camera models ( not dart 2 ) are properly mapped to gstreamer ( e.g. Gain and ExposureTime ). As a workaround they have to be set in the PFS file or the user-set
-
-
+* Bayer formats need to be 4 byte aligned to be properly processed by GStreamer. If no size is specified (or a range is provided) a word aligned width will be automatically selected. If the width is hardcoded and it is not word aligned, the pipeline will fail displaying an error.
  
