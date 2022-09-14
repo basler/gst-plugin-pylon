@@ -1,3 +1,9 @@
+gst-plugin-pylon (0.3.0-2) unstable; urgency=medium
+
+  * Added ninja-build to build dependencies.
+
+ -- Patrick Thomas <pthomas@debian.ligo-wa.caltech.edu>  Wed, 14 Sep 2022 13:04:42 -0700
+
 gst-plugin-pylon (0.3.0-1) unstable; urgency=medium
 
   * Pulled upstream changes.
