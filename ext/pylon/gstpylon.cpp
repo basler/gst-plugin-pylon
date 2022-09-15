@@ -405,26 +405,24 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
     if (!(*grab_result_ptr)->GrabSucceeded()) {
       switch (capture_error) {
         case ENUM_KEEP:
-          /* deliver the buffer into pipeline even if pylon reports an error */
+          /* Deliver the buffer into pipeline even if pylon reports an error */
           g_warning("Capture failed. Keeping buffer: %s",
                     (*grab_result_ptr)->GetErrorDescription().c_str());
           retry_grab = false;
           break;
         case ENUM_ABORT:
-          /* signal an error to abort pipeline */
+          /* Signal an error to abort pipeline */
           g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                       (*grab_result_ptr)->GetErrorDescription().c_str());
           retry_grab = false;
           return FALSE;
           break;
         case ENUM_SKIP:
-          /* retry to capture next buffer and release current pylon buffer */
-          /* FIXIT: find a way to release the current buffer and queue into
-           * pylon again
-           * -> or other gstreamer style of skipping a frame
-           */
-          g_warning("Capture failed. skipping buffer: %s",
+          /* Retry to capture next buffer and release current pylon buffer */
+          g_warning("Capture failed. Skipping buffer: %s",
                     (*grab_result_ptr)->GetErrorDescription().c_str());
+          delete grab_result_ptr;
+          grab_result_ptr = NULL;
           retry_grab = true;
           break;
       };
