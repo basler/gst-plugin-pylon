@@ -107,9 +107,9 @@ enum
   PROP_DEVICE_INDEX,
   PROP_USER_SET,
   PROP_PFS_LOCATION,
+  PROP_CAPTURE_ERROR,
   PROP_CAM,
-  PROP_STREAM,
-  PROP_CAPTURE_ERROR
+  PROP_STREAM
 };
 
 #define PROP_DEVICE_USER_NAME_DEFAULT NULL
@@ -123,9 +123,7 @@ enum
 #define PROP_STREAM_DEFAULT NULL
 #define PROP_CAPTURE_ERROR_DEFAULT ENUM_ABORT
 
-
-/* enum for cature_error */
-
+/* Enum for cature_error */
 #define GST_TYPE_CAPTURE_ERROR_ENUM (gst_capture_error_enum_get_type ())
 
 static GType
@@ -146,9 +144,6 @@ gst_capture_error_enum_get_type (void)
 
   return (GType) gtype;
 }
-
-
-
 
 /* pad templates */
 
@@ -239,7 +234,7 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   g_object_class_install_property (gobject_class, PROP_CAPTURE_ERROR,
       g_param_spec_enum ("capture-error",
           "Capture error strategy",
-          "Set the strategy to use in case of a capture error. ",
+          "The strategy to use in case of a camera capture error.",
           GST_TYPE_CAPTURE_ERROR_ENUM, PROP_CAPTURE_ERROR_DEFAULT,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE));
 
@@ -307,6 +302,7 @@ gst_pylon_src_init (GstPylonSrc * self)
   self->device_index = PROP_DEVICE_INDEX_DEFAULT;
   self->user_set = PROP_USER_SET_DEFAULT;
   self->pfs_location = PROP_PFS_LOCATION_DEFAULT;
+  self->capture_error = PROP_CAPTURE_ERROR_DEFAULT;
   self->cam = PROP_CAM_DEFAULT;
   self->stream = PROP_STREAM_DEFAULT;
   gst_video_info_init (&self->video_info);
@@ -348,7 +344,6 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
     case PROP_CAPTURE_ERROR:
       self->capture_error = g_value_get_enum (value);
       break;
-
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -383,14 +378,14 @@ gst_pylon_src_get_property (GObject * object, guint property_id,
     case PROP_PFS_LOCATION:
       g_value_set_string (value, self->pfs_location);
       break;
+    case PROP_CAPTURE_ERROR:
+      g_value_set_enum (value, self->capture_error);
+      break;
     case PROP_CAM:
       g_value_set_object (value, self->cam);
       break;
     case PROP_STREAM:
       g_value_set_object (value, self->stream);
-      break;
-    case PROP_CAPTURE_ERROR:
-      g_value_set_enum (value, self->capture_error);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

@@ -35,7 +35,6 @@
 #include "gstchildinspector.h"
 #include "gstpylonimagehandler.h"
 #include "gstpylonobject.h"
-#include "gstpylonsrc.h"
 
 #include <map>
 
