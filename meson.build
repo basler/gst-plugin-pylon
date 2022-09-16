@@ -1,6 +1,6 @@
 project('gst-plugin-pylon', 'c', 'cpp',
   version : '0.4.0',
-  meson_version : '>= 0.61',
+  meson_version : '>= 0.51',
   default_options : [ 'warning_level=1',
                       'buildtype=debugoptimized' ])
 
@@ -237,17 +237,6 @@ subdir('tests')
 subdir('docs')
 
 configure_file(output : 'config.h', configuration : cdata)
-
-# install hooks if git workspace available
-fs = import('fs')
-root = meson.project_source_root()
-if fs.is_dir(join_paths(root,'.git/hooks'))
-  message('install git commit hooks')
-  hook_file_src = root / 'hooks' / 'pre-commit.hook'
-  hook_file_dst = root / '.git' / 'hooks' / 'pre-commit'
-  run_command(python3, '-c', 'import shutil; shutil.copy("@0@", "@1@")'.format(hook_file_src, hook_file_dst), check : true)
-endif
-
 
 if meson.version().version_compare('>= 0.54')
   plugin_names = []

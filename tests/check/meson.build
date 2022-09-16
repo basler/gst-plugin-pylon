@@ -47,8 +47,8 @@ foreach t : pylon_tests
     env.set('GST_STATE_IGNORE_ELEMENTS', state_ignore_elements)
     env.set('CK_DEFAULT_TIMEOUT', '20')
     env.set('GST_PLUGIN_LOADING_WHITELIST', 'gstreamer', 'gst-plugins-base',
-        'gst-plugin-pylon@' + meson.global_build_root())
-    env.set('GST_PLUGIN_PATH_1_0', [meson.global_build_root()] + pluginsdirs)
+        'gst-plugin-pylon@' + meson.build_root())
+    env.set('GST_PLUGIN_PATH_1_0', [meson.build_root()] + pluginsdirs)
     env.set('GSETTINGS_BACKEND', 'memory')
 
     env.set('GST_REGISTRY', join_paths(meson.current_build_dir(), '@0@.registry'.format(test_name)))

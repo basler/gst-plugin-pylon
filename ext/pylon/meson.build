@@ -10,22 +10,22 @@ if target_machine.system() == 'linux' and pylon_path == 'PYLON_ROOT_NOT_SET'
   error('PYLON_ROOT has to be set to location of pylon install e.g. /opt/pylon')
 endif
 
-# detect pylon 7.x
-pylon_dep = dependency('pylon', method : 'cmake', modules : ['pylon::PylonBase', 'pylon::GCBase', 'pylon::GenApi', 'pylon::PylonUtility'],
-        version : '>=7.1', cmake_module_path: pylon_path / 'share/pylon/cmake/' , required: false)
-if pylon_dep.found()
-  # patch rpath on linux
-  if target_machine.system() == 'linux'
-    pylon_link_args = ['-Wl,--enable-new-dtags', '-Wl,-rpath,' + pylon_path / 'lib']
-  else
-    pylon_link_args = []
-  endif
-else
-    message('fallback to detect pylon 6.x')
-    pylon_dep = dependency('pylon', method : 'cmake', cmake_module_path: meson.project_source_root() + '/cmake', required: true)
-    # runtime path is properly defined by cmake
-    pylon_link_args = []
+pylon_config = find_program ('pylon-config', pylon_path / 'bin' / 'pylon-config', required : false, disabler : true)
+if not pylon_config.found()
+   error('Pylon SDK not found, is it installed? If you installed it in alternative location you may specify it using -Dpylon-path=')
 endif
+
+
+pylon_c_args = run_command(pylon_config, '--cflags', check : true).stdout().strip().split()
+pylon_link_args = run_command(pylon_config, '--libs', check : true).stdout().strip().split()
+
+pylon_dep = declare_dependency (
+    compile_args : pylon_c_args,
+    link_args : pylon_link_args
+)
+
+# runtime path is properly defined by cmake
+pylon_link_args = []
 
 pylon_sources = [
   'gstpylonsrc.c',
