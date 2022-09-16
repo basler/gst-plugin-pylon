@@ -269,7 +269,7 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
           "UserSet feature not available"
           " camera will start in internal default state");
 
-      return true;
+      return TRUE;
     }
 
     std::string set;
