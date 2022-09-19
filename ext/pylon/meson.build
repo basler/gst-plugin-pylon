@@ -48,7 +48,8 @@ gstpylon = library('gstpylon',
   include_directories : [configinc],
   dependencies : [gstbase_dep, gstvideo_dep, pylon_dep],
   install : true,
-  install_dir : plugins_install_dir
+  install_dir : plugins_install_dir,
+  install_rpath: pylon_path / 'lib'
 )
 
 pkgconfig.generate(gstpylon, install_dir : plugins_pkgconfig_install_dir)
