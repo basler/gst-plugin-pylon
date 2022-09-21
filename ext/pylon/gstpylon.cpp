@@ -372,17 +372,17 @@ gboolean gst_pylon_stop(GstPylon *self, GError **err) {
   return ret;
 }
 
+void gst_pylon_interrupt_capture(GstPylon *self) {
+  g_return_if_fail(self);
+  self->image_handler.InterruptWaitForImage();
+}
+
 static void free_ptr_grab_result(gpointer data) {
   g_return_if_fail(data);
 
   Pylon::CBaslerUniversalGrabResultPtr *ptr_grab_result =
       static_cast<Pylon::CBaslerUniversalGrabResultPtr *>(data);
   delete ptr_grab_result;
-}
-
-void gst_pylon_interrupt_capture(GstPylon *self) {
-  g_return_if_fail(self);
-  self->image_handler.InterruptWaitForImage();
 }
 
 gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
@@ -394,6 +394,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
   bool retry_grab = true;
   gint retry_frame_counter = 0;
   gint max_frames_to_skip = 100;
+  guint32 disconnect_error_code = 3791650831;
   Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr = NULL;
 
   while (retry_grab) {
@@ -405,6 +406,12 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
     }
 
     if (!(*grab_result_ptr)->GrabSucceeded()) {
+      if ((*grab_result_ptr)->GetErrorCode() == disconnect_error_code) {
+        g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                    (*grab_result_ptr)->GetErrorDescription().c_str());
+        return FALSE;
+      }
+
       switch (capture_error) {
         case ENUM_KEEP:
           /* Deliver the buffer into pipeline even if pylon reports an error */
