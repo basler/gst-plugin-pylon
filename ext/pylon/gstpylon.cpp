@@ -392,6 +392,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
   bool retry_grab = true;
+  gint retry_frame_counter = 0;
+  gint max_frames_to_skip = 100;
   Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr = NULL;
 
   while (retry_grab) {
@@ -414,16 +416,23 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
           /* Signal an error to abort pipeline */
           g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                       (*grab_result_ptr)->GetErrorDescription().c_str());
-          retry_grab = false;
           return FALSE;
           break;
         case ENUM_SKIP:
+          /* Fail if max number of skipped frames is reached */
+          if (retry_frame_counter == max_frames_to_skip) {
+            g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
+                        "Max number of allowed buffer skips reached (100): %s",
+                        (*grab_result_ptr)->GetErrorDescription().c_str());
+            return FALSE;
+          }
           /* Retry to capture next buffer and release current pylon buffer */
           GST_WARNING("Capture failed. Skipping buffer: %s",
                       (*grab_result_ptr)->GetErrorDescription().c_str());
           delete grab_result_ptr;
           grab_result_ptr = NULL;
           retry_grab = true;
+          retry_frame_counter += 1;
           break;
       };
     } else {
