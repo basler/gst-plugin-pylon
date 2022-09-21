@@ -132,7 +132,8 @@ gst_capture_error_enum_get_type (void)
   static gsize gtype = 0;
   static const GEnumValue values[] = {
     {ENUM_KEEP, "keep", "Use partial or corrupt buffers"},
-    {ENUM_SKIP, "skip", "Skip partial or corrupt buffers"},
+    {ENUM_SKIP, "skip",
+        "Skip partial or corrupt buffers. A maximum of 100 buffers can be skipped before the pipeline aborts."},
     {ENUM_ABORT, "abort", "Stop pipeline in case of any capture error"},
     {0, NULL, NULL}
   };
