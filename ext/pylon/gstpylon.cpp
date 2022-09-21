@@ -406,8 +406,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
       switch (capture_error) {
         case ENUM_KEEP:
           /* Deliver the buffer into pipeline even if pylon reports an error */
-          g_warning("Capture failed. Keeping buffer: %s",
-                    (*grab_result_ptr)->GetErrorDescription().c_str());
+          GST_WARNING("Capture failed. Keeping buffer: %s",
+                      (*grab_result_ptr)->GetErrorDescription().c_str());
           retry_grab = false;
           break;
         case ENUM_ABORT:
@@ -419,8 +419,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
           break;
         case ENUM_SKIP:
           /* Retry to capture next buffer and release current pylon buffer */
-          g_warning("Capture failed. Skipping buffer: %s",
-                    (*grab_result_ptr)->GetErrorDescription().c_str());
+          GST_WARNING("Capture failed. Skipping buffer: %s",
+                      (*grab_result_ptr)->GetErrorDescription().c_str());
           delete grab_result_ptr;
           grab_result_ptr = NULL;
           retry_grab = true;
