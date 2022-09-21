@@ -33,6 +33,7 @@
 #include "gstpylon.h"
 
 #include "gstchildinspector.h"
+#include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
 #include "gstpylonobject.h"
 
@@ -118,6 +119,7 @@ struct _GstPylon {
   GObject *gcamera;
   GObject *gstream_grabber;
   GstPylonImageHandler image_handler;
+  GstPylonDisconnectHandler disconnect_handler;
 };
 
 static const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
@@ -217,6 +219,9 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     self->camera->RegisterImageEventHandler(&self->image_handler,
                                             Pylon::RegistrationMode_Append,
                                             Pylon::Cleanup_None);
+    self->camera->RegisterConfiguration(&self->disconnect_handler,
+                                        Pylon::RegistrationMode_Append,
+                                        Pylon::Cleanup_None);
     self->camera->Open();
 
     GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
@@ -331,6 +336,7 @@ void gst_pylon_free(GstPylon *self) {
   g_return_if_fail(self);
 
   self->camera->DeregisterImageEventHandler(&self->image_handler);
+  self->camera->DeregisterConfiguration(&self->disconnect_handler);
   self->camera->Close();
   g_object_unref(self->gcamera);
 
