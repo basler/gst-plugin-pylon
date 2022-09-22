@@ -393,7 +393,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
 
   bool retry_grab = true;
   gint retry_frame_counter = 0;
-  gint max_frames_to_skip = 100;
+  static const gint max_frames_to_skip = 100;
   guint32 disconnect_error_code = 3791650831;
   Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr = NULL;
 
@@ -409,6 +409,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
       if ((*grab_result_ptr)->GetErrorCode() == disconnect_error_code) {
         g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                     (*grab_result_ptr)->GetErrorDescription().c_str());
+        delete grab_result_ptr;
+        grab_result_ptr = NULL;
         return FALSE;
       }
 
@@ -423,6 +425,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
           /* Signal an error to abort pipeline */
           g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                       (*grab_result_ptr)->GetErrorDescription().c_str());
+          delete grab_result_ptr;
+          grab_result_ptr = NULL;
           return FALSE;
           break;
         case ENUM_SKIP:
@@ -431,6 +435,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
             g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                         "Max number of allowed buffer skips reached (100): %s",
                         (*grab_result_ptr)->GetErrorDescription().c_str());
+            delete grab_result_ptr;
+            grab_result_ptr = NULL;
             return FALSE;
           }
           /* Retry to capture next buffer and release current pylon buffer */
