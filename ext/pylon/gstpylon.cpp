@@ -33,7 +33,6 @@
 #include "gstpylon.h"
 
 #include "gstchildinspector.h"
-#include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
 #include "gstpylonobject.h"
 
@@ -112,6 +111,14 @@ static gchar *gst_pylon_get_string_properties(
     GetStringProperties get_device_string_properties);
 
 static constexpr gint DEFAULT_ALIGNMENT = 35;
+
+class GstPylonDisconnectHandler
+    : public Pylon::CBaslerUniversalConfigurationEventHandler {
+ public:
+  void OnCameraDeviceRemoved(Pylon::CBaslerUniversalInstantCamera &camera) {
+    std::cout << "CAMERA DISCONNECTED" << std::endl;
+  }
+};
 
 struct _GstPylon {
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera =
