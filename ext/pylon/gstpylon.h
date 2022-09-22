@@ -44,7 +44,7 @@ typedef enum {
   ENUM_KEEP = 0,
   ENUM_SKIP = 1,
   ENUM_ABORT = 2,
-} GstCaptureErrorEnum;
+} GstPylonCaptureErrorEnum;
 
 void gst_pylon_initialize();
 
@@ -59,7 +59,8 @@ gboolean gst_pylon_start(GstPylon *self, GError **err);
 gboolean gst_pylon_stop(GstPylon *self, GError **err);
 void gst_pylon_interrupt_capture(GstPylon *self);
 gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
-                           GstCaptureErrorEnum capture_error, GError **err);
+                           GstPylonCaptureErrorEnum capture_error,
+                           GError **err);
 GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err);
 gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
                                      GError **err);

@@ -69,7 +69,7 @@ struct _GstPylonSrc
   gint device_index;
   gchar *user_set;
   gchar *pfs_location;
-  GstCaptureErrorEnum capture_error;
+  GstPylonCaptureErrorEnum capture_error;
   GObject *cam;
   GObject *stream;
 };
@@ -124,10 +124,10 @@ enum
 #define PROP_CAPTURE_ERROR_DEFAULT ENUM_ABORT
 
 /* Enum for cature_error */
-#define GST_TYPE_CAPTURE_ERROR_ENUM (gst_capture_error_enum_get_type ())
+#define GST_TYPE_CAPTURE_ERROR_ENUM (gst_pylon_capture_error_enum_get_type ())
 
 static GType
-gst_capture_error_enum_get_type (void)
+gst_pylon_capture_error_enum_get_type (void)
 {
   static gsize gtype = 0;
   static const GEnumValue values[] = {
@@ -139,7 +139,7 @@ gst_capture_error_enum_get_type (void)
   };
 
   if (g_once_init_enter (&gtype)) {
-    GType tmp = g_enum_register_static ("GstCaptureErrorEnum", values);
+    GType tmp = g_enum_register_static ("GstPylonCaptureErrorEnum", values);
     g_once_init_leave (&gtype, tmp);
   }
 

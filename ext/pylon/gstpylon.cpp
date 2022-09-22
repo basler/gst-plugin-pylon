@@ -386,7 +386,8 @@ static void free_ptr_grab_result(gpointer data) {
 }
 
 gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
-                           GstCaptureErrorEnum capture_error, GError **err) {
+                           GstPylonCaptureErrorEnum capture_error,
+                           GError **err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(buf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
