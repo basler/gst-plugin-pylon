@@ -120,10 +120,10 @@ It is recommended to set a caps-filter to explicitly set the wanted capabilities
 This feature is controlled by the enumeration property `capture-error`. You can choose one of the following options:
 
 * **keep:** Use the partial or corrupted buffers.
-* **skip:** Skip the partial or corrupted buffers.
+* **skip:** Skip the partial or corrupted buffers. A maximum of 100 buffers can be skipped before the pipeline aborts
 * **abort:** Stop pipeline in case of any capture error.
 
-If this property is not set, the default behavior is the 'abort' option, meaning that the pipeline will abort if any capture errors are encountered. 
+If this property is not set, the default behavior is the `abort` option, meaning that the element will fail to process the buffer and it will post a fatal error to the bus.
 
 As an example, the following pipeline will skip corrupted or partial buffers:
 
