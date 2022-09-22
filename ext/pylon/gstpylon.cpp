@@ -405,52 +405,52 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
       return FALSE;
     }
 
-    if (!(*grab_result_ptr)->GrabSucceeded()) {
-      if ((*grab_result_ptr)->GetErrorCode() == disconnect_error_code) {
+    if ((*grab_result_ptr)->GrabSucceeded()) {
+      break;
+    }
+
+    if ((*grab_result_ptr)->GetErrorCode() == disconnect_error_code) {
+      g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                  (*grab_result_ptr)->GetErrorDescription().c_str());
+      delete grab_result_ptr;
+      grab_result_ptr = NULL;
+      return FALSE;
+    }
+
+    switch (capture_error) {
+      case ENUM_KEEP:
+        /* Deliver the buffer into pipeline even if pylon reports an error */
+        GST_WARNING("Capture failed. Keeping buffer: %s",
+                    (*grab_result_ptr)->GetErrorDescription().c_str());
+        retry_grab = false;
+        break;
+      case ENUM_ABORT:
+        /* Signal an error to abort pipeline */
         g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                     (*grab_result_ptr)->GetErrorDescription().c_str());
         delete grab_result_ptr;
         grab_result_ptr = NULL;
         return FALSE;
-      }
-
-      switch (capture_error) {
-        case ENUM_KEEP:
-          /* Deliver the buffer into pipeline even if pylon reports an error */
-          GST_WARNING("Capture failed. Keeping buffer: %s",
-                      (*grab_result_ptr)->GetErrorDescription().c_str());
-          retry_grab = false;
-          break;
-        case ENUM_ABORT:
-          /* Signal an error to abort pipeline */
-          g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+        break;
+      case ENUM_SKIP:
+        /* Fail if max number of skipped frames is reached */
+        if (retry_frame_counter == max_frames_to_skip) {
+          g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
+                      "Max number of allowed buffer skips reached (100): %s",
                       (*grab_result_ptr)->GetErrorDescription().c_str());
           delete grab_result_ptr;
           grab_result_ptr = NULL;
           return FALSE;
-          break;
-        case ENUM_SKIP:
-          /* Fail if max number of skipped frames is reached */
-          if (retry_frame_counter == max_frames_to_skip) {
-            g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
-                        "Max number of allowed buffer skips reached (100): %s",
-                        (*grab_result_ptr)->GetErrorDescription().c_str());
-            delete grab_result_ptr;
-            grab_result_ptr = NULL;
-            return FALSE;
-          }
-          /* Retry to capture next buffer and release current pylon buffer */
-          GST_WARNING("Capture failed. Skipping buffer: %s",
-                      (*grab_result_ptr)->GetErrorDescription().c_str());
-          delete grab_result_ptr;
-          grab_result_ptr = NULL;
-          retry_grab = true;
-          retry_frame_counter += 1;
-          break;
-      };
-    } else {
-      retry_grab = false;
-    }
+        }
+        /* Retry to capture next buffer and release current pylon buffer */
+        GST_WARNING("Capture failed. Skipping buffer: %s",
+                    (*grab_result_ptr)->GetErrorDescription().c_str());
+        delete grab_result_ptr;
+        grab_result_ptr = NULL;
+        retry_grab = true;
+        retry_frame_counter += 1;
+        break;
+    };
   };
 
   gsize buffer_size = (*grab_result_ptr)->GetBufferSize();
