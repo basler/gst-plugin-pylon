@@ -637,8 +637,8 @@ gst_pylon_src_start (GstBaseSrc * src)
       self->user_set, self->pfs_location);
 
   self->pylon =
-      gst_pylon_new (self->device_user_name, self->device_serial_number,
-      self->device_index, &error);
+      gst_pylon_new (GST_ELEMENT_CAST (self), self->device_user_name,
+      self->device_serial_number, self->device_index, &error);
   GST_OBJECT_UNLOCK (self);
 
   if (error) {

@@ -115,12 +115,24 @@ static constexpr gint DEFAULT_ALIGNMENT = 35;
 class GstPylonDisconnectHandler
     : public Pylon::CBaslerUniversalConfigurationEventHandler {
  public:
-  void OnCameraDeviceRemoved(Pylon::CBaslerUniversalInstantCamera &camera) {
-    std::cout << "CAMERA DISCONNECTED" << std::endl;
+  void set_data(GstElement *gstpylnsrc, GstPylonImageHandler *image_handler) {
+    this->gstpylnsrc = gstpylnsrc;
+    this->image_handler = image_handler;
   }
+  void OnCameraDeviceRemoved(Pylon::CBaslerUniversalInstantCamera &camera) {
+    this->image_handler->InterruptWaitForImage();
+    GST_ELEMENT_ERROR(this->gstpylnsrc, LIBRARY, FAILED,
+                      ("Connection to camera was lost."),
+                      ("The camera has been removed from the computer."));
+  }
+
+ private:
+  GstElement *gstpylnsrc;
+  GstPylonImageHandler *image_handler;
 };
 
 struct _GstPylon {
+  GstElement *gstpylonsrc;
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera =
       std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
   GObject *gcamera;
@@ -158,10 +170,12 @@ static Pylon::String_t gst_pylon_get_sgrabber_name(
   return gst_pylon_get_camera_fullname(camera) + " StreamGrabber";
 }
 
-GstPylon *gst_pylon_new(const gchar *device_user_name,
+GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
                         const gchar *device_serial_number, gint device_index,
                         GError **err) {
   GstPylon *self = new GstPylon;
+
+  self->gstpylonsrc = gstpylonsrc;
 
   g_return_val_if_fail(self, NULL);
   g_return_val_if_fail(err && *err == NULL, NULL);
@@ -226,6 +240,7 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     self->camera->RegisterImageEventHandler(&self->image_handler,
                                             Pylon::RegistrationMode_Append,
                                             Pylon::Cleanup_None);
+    self->disconnect_handler.set_data(self->gstpylonsrc, &self->image_handler);
     self->camera->RegisterConfiguration(&self->disconnect_handler,
                                         Pylon::RegistrationMode_Append,
                                         Pylon::Cleanup_None);
