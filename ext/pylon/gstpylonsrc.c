@@ -828,10 +828,13 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
   GError *error = NULL;
   gboolean pylon_ret = TRUE;
   GstFlowReturn ret = GST_FLOW_OK;
+  gint capture_error = -1;
 
   GST_OBJECT_LOCK (self);
-  pylon_ret = gst_pylon_capture (self->pylon, buf, self->capture_error, &error);
+  capture_error = self->capture_error;
   GST_OBJECT_UNLOCK (self);
+
+  pylon_ret = gst_pylon_capture (self->pylon, buf, capture_error, &error);
 
   if (pylon_ret == FALSE) {
     if (error) {
