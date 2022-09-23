@@ -393,6 +393,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
   bool retry_grab = true;
+  bool buffer_error = false;
   gint retry_frame_counter = 0;
   static const gint max_frames_to_skip = 100;
   Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr = NULL;
@@ -420,29 +421,33 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
         /* Signal an error to abort pipeline */
         g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                     (*grab_result_ptr)->GetErrorDescription().c_str());
-        delete grab_result_ptr;
-        grab_result_ptr = NULL;
-        return FALSE;
+        buffer_error = true;
         break;
       case ENUM_SKIP:
         /* Fail if max number of skipped frames is reached */
         if (retry_frame_counter == max_frames_to_skip) {
           g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
-                      "Max number of allowed buffer skips reached (100): %s",
+                      "Max number of allowed buffer skips reached (%d): %s",
+                      max_frames_to_skip,
+                      (*grab_result_ptr)->GetErrorDescription().c_str());
+          buffer_error = true;
+        } else {
+          /* Retry to capture next buffer and release current pylon buffer */
+          GST_WARNING("Capture failed. Skipping buffer: %s",
                       (*grab_result_ptr)->GetErrorDescription().c_str());
           delete grab_result_ptr;
           grab_result_ptr = NULL;
-          return FALSE;
+          retry_grab = true;
+          retry_frame_counter += 1;
         }
-        /* Retry to capture next buffer and release current pylon buffer */
-        GST_WARNING("Capture failed. Skipping buffer: %s",
-                    (*grab_result_ptr)->GetErrorDescription().c_str());
-        delete grab_result_ptr;
-        grab_result_ptr = NULL;
-        retry_grab = true;
-        retry_frame_counter += 1;
         break;
     };
+
+    if (buffer_error) {
+      delete grab_result_ptr;
+      grab_result_ptr = NULL;
+      return FALSE;
+    }
   };
 
   gsize buffer_size = (*grab_result_ptr)->GetBufferSize();
