@@ -70,11 +70,11 @@ static GParamSpec *gst_pylon_make_spec_enum(GenApi::INodeMap &nodemap,
 static GParamSpec *gst_pylon_make_spec_selector_enum(
     GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
     guint64 selector_value, const gchar *device_fullname);
-static bool gst_pylon_can_feature_be_writable(GenApi::INode *node);
+static bool gst_pylon_can_feature_later_be_writable(GenApi::INode *node);
 static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
                                           GenApi::INode *node);
 
-static bool gst_pylon_can_feature_be_writable(GenApi::INode *node) {
+static bool gst_pylon_can_feature_later_be_writable(GenApi::INode *node) {
   GenICam::gcstring value;
   GenICam::gcstring attribute;
   if (node->GetProperty("pIsLocked", value, attribute)) {
@@ -106,6 +106,9 @@ static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
   if (param.IsWritable()) {
     flags |= G_PARAM_WRITABLE;
     is_writable = TRUE;
+  }
+  if (!param.IsWritable() && gst_pylon_can_feature_later_be_writable(node)) {
+    flags |= G_PARAM_WRITABLE;
   }
 
   bool is_read_write = param.IsReadable() && param.IsWritable();
