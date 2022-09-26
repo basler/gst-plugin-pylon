@@ -410,31 +410,31 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
       break;
     }
 
+    std::string error_message =
+        std::string((*grab_result_ptr)->GetErrorDescription());
     switch (capture_error) {
       case ENUM_KEEP:
         /* Deliver the buffer into pipeline even if pylon reports an error */
         GST_WARNING("Capture failed. Keeping buffer: %s",
-                    (*grab_result_ptr)->GetErrorDescription().c_str());
+                    error_message.c_str());
         retry_grab = false;
         break;
       case ENUM_ABORT:
         /* Signal an error to abort pipeline */
-        g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-                    (*grab_result_ptr)->GetErrorDescription().c_str());
         buffer_error = true;
         break;
       case ENUM_SKIP:
         /* Fail if max number of skipped frames is reached */
         if (retry_frame_counter == max_frames_to_skip) {
-          g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
-                      "Max number of allowed buffer skips reached (%d): %s",
-                      max_frames_to_skip,
-                      (*grab_result_ptr)->GetErrorDescription().c_str());
+          error_message = "Max number of allowed buffer skips reached (" +
+                          std::to_string(max_frames_to_skip) +
+                          "): " + error_message;
           buffer_error = true;
         } else {
           /* Retry to capture next buffer and release current pylon buffer */
           GST_WARNING("Capture failed. Skipping buffer: %s",
-                      (*grab_result_ptr)->GetErrorDescription().c_str());
+                      error_message.c_str());
+
           delete grab_result_ptr;
           grab_result_ptr = NULL;
           retry_grab = true;
@@ -444,6 +444,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
     };
 
     if (buffer_error) {
+      g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                  error_message.c_str());
       delete grab_result_ptr;
       grab_result_ptr = NULL;
       return FALSE;
