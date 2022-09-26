@@ -33,6 +33,7 @@
 #include "gstpylon.h"
 
 #include "gstchildinspector.h"
+#include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
 #include "gstpylonobject.h"
 
@@ -111,25 +112,6 @@ static gchar *gst_pylon_get_string_properties(
     GetStringProperties get_device_string_properties);
 
 static constexpr gint DEFAULT_ALIGNMENT = 35;
-
-class GstPylonDisconnectHandler
-    : public Pylon::CBaslerUniversalConfigurationEventHandler {
- public:
-  void set_data(GstElement *gstpylnsrc, GstPylonImageHandler *image_handler) {
-    this->gstpylnsrc = gstpylnsrc;
-    this->image_handler = image_handler;
-  }
-  void OnCameraDeviceRemoved(Pylon::CBaslerUniversalInstantCamera &camera) {
-    GST_ELEMENT_ERROR(this->gstpylnsrc, LIBRARY, FAILED,
-                      ("Connection to camera was lost."),
-                      ("The camera has been removed from the computer."));
-    this->image_handler->InterruptWaitForImage();
-  }
-
- private:
-  GstElement *gstpylnsrc;
-  GstPylonImageHandler *image_handler;
-};
 
 struct _GstPylon {
   GstElement *gstpylonsrc;
@@ -240,7 +222,7 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
     self->camera->RegisterImageEventHandler(&self->image_handler,
                                             Pylon::RegistrationMode_Append,
                                             Pylon::Cleanup_None);
-    self->disconnect_handler.set_data(self->gstpylonsrc, &self->image_handler);
+    self->disconnect_handler.SetData(self->gstpylonsrc, &self->image_handler);
     self->camera->RegisterConfiguration(&self->disconnect_handler,
                                         Pylon::RegistrationMode_Append,
                                         Pylon::Cleanup_None);
