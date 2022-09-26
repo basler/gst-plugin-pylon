@@ -120,10 +120,10 @@ class GstPylonDisconnectHandler
     this->image_handler = image_handler;
   }
   void OnCameraDeviceRemoved(Pylon::CBaslerUniversalInstantCamera &camera) {
-    this->image_handler->InterruptWaitForImage();
     GST_ELEMENT_ERROR(this->gstpylnsrc, LIBRARY, FAILED,
                       ("Connection to camera was lost."),
                       ("The camera has been removed from the computer."));
+    this->image_handler->InterruptWaitForImage();
   }
 
  private:
