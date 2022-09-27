@@ -36,7 +36,8 @@ pylon_sources = [
   'gstpylonintrospection.cpp',
   'gstpylonparamspecs.cpp',
   'gstpylonfeaturewalker.cpp',
-  'gstpylonimagehandler.cpp'
+  'gstpylonimagehandler.cpp',
+  'gstpylondisconnecthandler.cpp'
 ]
 
 gstpylon = library('gstpylon',

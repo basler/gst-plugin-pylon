@@ -637,8 +637,8 @@ gst_pylon_src_start (GstBaseSrc * src)
       self->user_set, self->pfs_location);
 
   self->pylon =
-      gst_pylon_new (self->device_user_name, self->device_serial_number,
-      self->device_index, &error);
+      gst_pylon_new (GST_ELEMENT_CAST (self), self->device_user_name,
+      self->device_serial_number, self->device_index, &error);
   GST_OBJECT_UNLOCK (self);
 
   if (error) {
@@ -843,7 +843,8 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
       g_error_free (error);
       ret = GST_FLOW_ERROR;
     } else {
-      GST_DEBUG_OBJECT (self, "Buffer not created, user requested EOS");
+      GST_DEBUG_OBJECT (self,
+          "Buffer not created, user requested EOS or device connection was lost");
       ret = GST_FLOW_EOS;
     }
     goto done;

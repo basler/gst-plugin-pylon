@@ -30,51 +30,43 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_H_
-#define _GST_PYLON_H_
+#ifndef _GST_PYLON_DISCONNECT_HANDLER_H_
+#define _GST_PYLON_DISCONNECT_HANDLER_H_
 
-#include <glib.h>
+#include "gstpylonimagehandler.h"
+
 #include <gst/gst.h>
 
-G_BEGIN_DECLS
+#include <condition_variable>
+#include <mutex>
 
-typedef struct _GstPylon GstPylon;
+#ifdef _MSC_VER  // MSVC
+#pragma warning(push)
+#pragma warning(disable : 4265)
+#elif __GNUC__  // GCC, CLANG, MinGW
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#endif
 
-typedef enum {
-  ENUM_KEEP = 0,
-  ENUM_SKIP = 1,
-  ENUM_ABORT = 2,
-} GstPylonCaptureErrorEnum;
+#include <pylon/BaslerUniversalInstantCamera.h>
+#include <pylon/PylonIncludes.h>
 
-void gst_pylon_initialize();
+#ifdef _MSC_VER  // MSVC
+#pragma warning(pop)
+#elif __GNUC__  // GCC, CLANG, MinWG
+#pragma GCC diagnostic pop
+#endif
 
-GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
-                        const gchar *device_serial_number, gint device_index,
-                        GError **err);
-gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
-                                   GError **err);
-void gst_pylon_free(GstPylon *self);
+class GstPylonDisconnectHandler
+    : public Pylon::CBaslerUniversalConfigurationEventHandler {
+ public:
+  void SetData(GstElement *gstpylnsrc, GstPylonImageHandler *image_handler);
+  void OnCameraDeviceRemoved(
+      Pylon::CBaslerUniversalInstantCamera &camera) override;
 
-gboolean gst_pylon_start(GstPylon *self, GError **err);
-gboolean gst_pylon_stop(GstPylon *self, GError **err);
-void gst_pylon_interrupt_capture(GstPylon *self);
-gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
-                           GstPylonCaptureErrorEnum capture_error,
-                           GError **err);
-GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err);
-gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
-                                     GError **err);
-gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
-                                  GError **err);
-gchar *gst_pylon_camera_get_string_properties();
-gchar *gst_pylon_stream_grabber_get_string_properties();
-
-GObject *gst_pylon_get_camera(GstPylon *self);
-GObject *gst_pylon_get_stream_grabber(GstPylon *self);
-
-GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
-
-G_END_DECLS
+ private:
+  GstElement *gstpylnsrc;
+  GstPylonImageHandler *image_handler;
+};
 
 #endif

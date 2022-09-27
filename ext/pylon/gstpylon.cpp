@@ -33,6 +33,7 @@
 #include "gstpylon.h"
 
 #include "gstchildinspector.h"
+#include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
 #include "gstpylonobject.h"
 
@@ -113,11 +114,13 @@ static gchar *gst_pylon_get_string_properties(
 static constexpr gint DEFAULT_ALIGNMENT = 35;
 
 struct _GstPylon {
+  GstElement *gstpylonsrc;
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera =
       std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
   GObject *gcamera;
   GObject *gstream_grabber;
   GstPylonImageHandler image_handler;
+  GstPylonDisconnectHandler disconnect_handler;
 };
 
 static const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
@@ -149,10 +152,12 @@ static Pylon::String_t gst_pylon_get_sgrabber_name(
   return gst_pylon_get_camera_fullname(camera) + " StreamGrabber";
 }
 
-GstPylon *gst_pylon_new(const gchar *device_user_name,
+GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
                         const gchar *device_serial_number, gint device_index,
                         GError **err) {
   GstPylon *self = new GstPylon;
+
+  self->gstpylonsrc = gstpylonsrc;
 
   g_return_val_if_fail(self, NULL);
   g_return_val_if_fail(err && *err == NULL, NULL);
@@ -217,6 +222,10 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     self->camera->RegisterImageEventHandler(&self->image_handler,
                                             Pylon::RegistrationMode_Append,
                                             Pylon::Cleanup_None);
+    self->disconnect_handler.SetData(self->gstpylonsrc, &self->image_handler);
+    self->camera->RegisterConfiguration(&self->disconnect_handler,
+                                        Pylon::RegistrationMode_Append,
+                                        Pylon::Cleanup_None);
     self->camera->Open();
 
     GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
@@ -331,6 +340,7 @@ void gst_pylon_free(GstPylon *self) {
   g_return_if_fail(self);
 
   self->camera->DeregisterImageEventHandler(&self->image_handler);
+  self->camera->DeregisterConfiguration(&self->disconnect_handler);
   self->camera->Close();
   g_object_unref(self->gcamera);
 
@@ -415,8 +425,9 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
     switch (capture_error) {
       case ENUM_KEEP:
         /* Deliver the buffer into pipeline even if pylon reports an error */
-        GST_WARNING("Capture failed. Keeping buffer: %s",
-                    error_message.c_str());
+        GST_ELEMENT_WARNING(self->gstpylonsrc, LIBRARY, FAILED,
+                            ("Capture failed. Keeping buffer."),
+                            ("%s", error_message.c_str()));
         retry_grab = false;
         break;
       case ENUM_ABORT:
@@ -432,9 +443,9 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
           buffer_error = true;
         } else {
           /* Retry to capture next buffer and release current pylon buffer */
-          GST_WARNING("Capture failed. Skipping buffer: %s",
-                      error_message.c_str());
-
+          GST_ELEMENT_WARNING(self->gstpylonsrc, LIBRARY, FAILED,
+                              ("Capture failed. Skipping buffer."),
+                              ("%s", error_message.c_str()));
           delete grab_result_ptr;
           grab_result_ptr = NULL;
           retry_grab = true;
