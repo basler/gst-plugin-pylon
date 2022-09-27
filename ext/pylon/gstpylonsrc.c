@@ -843,7 +843,8 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
       g_error_free (error);
       ret = GST_FLOW_ERROR;
     } else {
-      GST_DEBUG_OBJECT (self, "Buffer not created, user requested EOS");
+      GST_DEBUG_OBJECT (self,
+          "Buffer not created, user requested EOS or device connection was lost");
       ret = GST_FLOW_EOS;
     }
     goto done;
