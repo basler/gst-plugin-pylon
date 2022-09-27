@@ -81,8 +81,8 @@ static bool gst_pylon_can_feature_later_be_writable(GenApi::INode *node) {
     return true;
   } else {
     GenApi::NodeList_t node_children;
+    node->GetChildren(node_children);
     if (!node_children.empty()) {
-      node->GetChildren(node_children);
       for (auto &node_child : node_children) {
         return gst_pylon_can_feature_later_be_writable(node_child);
       }
