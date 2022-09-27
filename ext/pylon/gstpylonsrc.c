@@ -69,6 +69,7 @@ struct _GstPylonSrc
   gint device_index;
   gchar *user_set;
   gchar *pfs_location;
+  GstPylonCaptureErrorEnum capture_error;
   GObject *cam;
   GObject *stream;
 };
@@ -106,6 +107,7 @@ enum
   PROP_DEVICE_INDEX,
   PROP_USER_SET,
   PROP_PFS_LOCATION,
+  PROP_CAPTURE_ERROR,
   PROP_CAM,
   PROP_STREAM
 };
@@ -119,6 +121,30 @@ enum
 #define PROP_PFS_LOCATION_DEFAULT NULL
 #define PROP_CAM_DEFAULT NULL
 #define PROP_STREAM_DEFAULT NULL
+#define PROP_CAPTURE_ERROR_DEFAULT ENUM_ABORT
+
+/* Enum for cature_error */
+#define GST_TYPE_CAPTURE_ERROR_ENUM (gst_pylon_capture_error_enum_get_type ())
+
+static GType
+gst_pylon_capture_error_enum_get_type (void)
+{
+  static gsize gtype = 0;
+  static const GEnumValue values[] = {
+    {ENUM_KEEP, "keep", "Use partial or corrupt buffers"},
+    {ENUM_SKIP, "skip",
+        "Skip partial or corrupt buffers. A maximum of 100 buffers can be skipped before the pipeline aborts."},
+    {ENUM_ABORT, "abort", "Stop pipeline in case of any capture error"},
+    {0, NULL, NULL}
+  };
+
+  if (g_once_init_enter (&gtype)) {
+    GType tmp = g_enum_register_static ("GstPylonCaptureErrorEnum", values);
+    g_once_init_leave (&gtype, tmp);
+  }
+
+  return (GType) gtype;
+}
 
 /* pad templates */
 
@@ -206,6 +232,12 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
           PROP_PFS_LOCATION_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
+  g_object_class_install_property (gobject_class, PROP_CAPTURE_ERROR,
+      g_param_spec_enum ("capture-error",
+          "Capture error strategy",
+          "The strategy to use in case of a camera capture error.",
+          GST_TYPE_CAPTURE_ERROR_ENUM, PROP_CAPTURE_ERROR_DEFAULT,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE));
 
   cam_params = gst_pylon_camera_get_string_properties ();
   stream_params = gst_pylon_stream_grabber_get_string_properties ();
@@ -271,6 +303,7 @@ gst_pylon_src_init (GstPylonSrc * self)
   self->device_index = PROP_DEVICE_INDEX_DEFAULT;
   self->user_set = PROP_USER_SET_DEFAULT;
   self->pfs_location = PROP_PFS_LOCATION_DEFAULT;
+  self->capture_error = PROP_CAPTURE_ERROR_DEFAULT;
   self->cam = PROP_CAM_DEFAULT;
   self->stream = PROP_STREAM_DEFAULT;
   gst_video_info_init (&self->video_info);
@@ -309,6 +342,9 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
       g_free (self->pfs_location);
       self->pfs_location = g_value_dup_string (value);
       break;
+    case PROP_CAPTURE_ERROR:
+      self->capture_error = g_value_get_enum (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -342,6 +378,9 @@ gst_pylon_src_get_property (GObject * object, guint property_id,
       break;
     case PROP_PFS_LOCATION:
       g_value_set_string (value, self->pfs_location);
+      break;
+    case PROP_CAPTURE_ERROR:
+      g_value_set_enum (value, self->capture_error);
       break;
     case PROP_CAM:
       g_value_set_object (value, self->cam);
@@ -789,8 +828,13 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
   GError *error = NULL;
   gboolean pylon_ret = TRUE;
   GstFlowReturn ret = GST_FLOW_OK;
+  gint capture_error = -1;
 
-  pylon_ret = gst_pylon_capture (self->pylon, buf, &error);
+  GST_OBJECT_LOCK (self);
+  capture_error = self->capture_error;
+  GST_OBJECT_UNLOCK (self);
+
+  pylon_ret = gst_pylon_capture (self->pylon, buf, capture_error, &error);
 
   if (pylon_ret == FALSE) {
     if (error) {

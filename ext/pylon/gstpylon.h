@@ -40,31 +40,40 @@ G_BEGIN_DECLS
 
 typedef struct _GstPylon GstPylon;
 
-void gst_pylon_initialize ();
+typedef enum {
+  ENUM_KEEP = 0,
+  ENUM_SKIP = 1,
+  ENUM_ABORT = 2,
+} GstPylonCaptureErrorEnum;
 
-GstPylon *gst_pylon_new (const gchar *device_user_name,
-    const gchar *device_serial_number, gint device_index, GError ** err);
-gboolean gst_pylon_set_user_config (GstPylon *self, const gchar * user_set, GError **err);
-void gst_pylon_free (GstPylon * self);
+void gst_pylon_initialize();
 
-gboolean gst_pylon_start (GstPylon * self, GError ** err);
-gboolean gst_pylon_stop (GstPylon * self, GError ** err);
-gboolean gst_pylon_capture (GstPylon * self, GstBuffer ** buf, GError ** err);
-void gst_pylon_interrupt_capture (GstPylon * self);
-GstCaps *gst_pylon_query_configuration (GstPylon * self, GError ** err);
-gboolean gst_pylon_set_configuration (GstPylon * self, const GstCaps *conf,
-    GError ** err);
-gboolean gst_pylon_set_pfs_config (GstPylon *self, const gchar *pfs_location,
-    GError **err);
-gchar *gst_pylon_camera_get_string_properties ();
-gchar *gst_pylon_stream_grabber_get_string_properties ();
+GstPylon *gst_pylon_new(const gchar *device_user_name,
+                        const gchar *device_serial_number, gint device_index,
+                        GError **err);
+gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
+                                   GError **err);
+void gst_pylon_free(GstPylon *self);
 
-GObject *gst_pylon_get_camera (GstPylon *self);
-GObject *gst_pylon_get_stream_grabber (GstPylon *self);
+gboolean gst_pylon_start(GstPylon *self, GError **err);
+gboolean gst_pylon_stop(GstPylon *self, GError **err);
+void gst_pylon_interrupt_capture(GstPylon *self);
+gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
+                           GstPylonCaptureErrorEnum capture_error,
+                           GError **err);
+GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err);
+gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
+                                     GError **err);
+gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
+                                  GError **err);
+gchar *gst_pylon_camera_get_string_properties();
+gchar *gst_pylon_stream_grabber_get_string_properties();
 
-GST_DEBUG_CATEGORY_EXTERN (gst_pylon_src_debug_category);
+GObject *gst_pylon_get_camera(GstPylon *self);
+GObject *gst_pylon_get_stream_grabber(GstPylon *self);
+
+GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
 #define GST_CAT_DEFAULT gst_pylon_src_debug_category
-
 
 G_END_DECLS
 

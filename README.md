@@ -113,6 +113,24 @@ This could result in an unexpected pixel format or width/height.
 
 It is recommended to set a caps-filter to explicitly set the wanted capabilities.
 
+### Handle capture errors
+
+`pylonsrc` lets you decide what to do when a capture error happens.
+
+This feature is controlled by the enumeration property `capture-error`. You can choose one of the following options:
+
+* **keep:** Use the partial or corrupted buffers.
+* **skip:** Skip the partial or corrupted buffers. A maximum of 100 buffers can be skipped before the pipeline aborts
+* **abort:** Stop pipeline in case of any capture error.
+
+If this property is not set, the default behavior is the `abort` option, meaning that the element will fail to process the buffer and it will post a fatal error to the bus.
+
+As an example, the following pipeline will skip corrupted or partial buffers:
+
+```
+gst-launch-1.0 pylonsrc capture-error=skip ! videoconvert ! autovideosink
+```
+
 ### UserSet handling
 
 `pylonsrc` always loads a UserSet of the camera before applying any further properties. 
@@ -151,7 +169,7 @@ An example on how to generate PFS files using pylon Viewer is documented in [Cha
 
 ### Features
 
-After applying the UserSet, the optional PFS file and the gstreamer properties any other camera feature gets applied.
+After applying the UserSet, the optional PFS file and the gstreamer properties, any other camera feature gets applied.
 
 The `pylonsrc` plugin dynamically exposes all features of the camera as gstreamer [child properties](https://gstreamer.freedesktop.org/documentation/gstreamer/gstchildproxy.html?gi-language=c) with the prefix `cam::` and all stream grabber parameters with the prefix `stream::`
 
