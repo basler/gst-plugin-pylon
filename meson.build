@@ -240,9 +240,10 @@ configure_file(output : 'config.h', configuration : cdata)
 
 # install hooks if git workspace available
 fs = import('fs')
-if fs.is_dir(join_paths(meson.global_source_root(),'.git/hooks'))
+root = meson.project_source_root()
+if fs.is_dir(join_paths(root,'.git/hooks'))
   message('install git commit hooks')
-  run_command(python3, '-c', 'import shutil; shutil.copy("hooks/pre-commit.hook", ".git/hooks/pre-commit")', check : true)
+  run_command(python3, '-c', 'import shutil; shutil.copy("@0@/hooks/pre-commit.hook", "@0@/.git/hooks/pre-commit")'.format(root), check : true)
 endif
 
 
