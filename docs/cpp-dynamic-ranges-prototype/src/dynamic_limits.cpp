@@ -24,17 +24,62 @@ using namespace std;
 
 GenApi::INode* find_limit_node(GenApi::INode* feature_node,
                                const GenICam::gcstring limit) {
-  GenApi::INode* limit_node;
+  GenApi::INode* limit_node = NULL;
   GenICam::gcstring value;
   GenICam::gcstring attribute;
 
   if (feature_node->GetProperty(limit, value, attribute)) {
     limit_node = feature_node->GetNodeMap()->GetNode(value);
-  } else if (feature_node->GetProperty(limit, value, attribute)) {
+  } else if (feature_node->GetProperty("pValue", value, attribute)) {
     limit_node =
         find_limit_node(feature_node->GetNodeMap()->GetNode(value), limit);
+  }
+  return limit_node;
+}
+
+bool is_node_integer(GenApi::INode* feature_node) {
+  if (intfIInteger == feature_node->GetPrincipalInterfaceType()) {
+    return true;
   } else {
-    return limit_node;
+    return false;
+  }
+}
+
+void find_limits(GenApi::INode* feature_node) {
+  vector<GenApi::INode*> invalidators;
+  int64_t maximum_under_all_settings = 0;
+  int64_t minimum_under_all_settings = 0;
+
+  GenICam::gcstring value;
+  GenICam::gcstring attribute;
+  bool has_invalidator = false;
+
+  GenApi::INode* pmax_node = find_limit_node(feature_node, "pMax");
+  if (!pmax_node || !pmax_node->GetProperty("pInvalidator", value, attribute)) {
+    if (is_node_integer(feature_node)) {
+      maximum_under_all_settings =
+          Pylon::CIntegerParameter(feature_node).GetMax();
+    } else {
+      maximum_under_all_settings =
+          Pylon::CFloatParameter(feature_node).GetMax();
+    }
+  } else {
+    pmax_node->GetProperty("pInvalidator", value, attribute);
+    invalidators.push_back(feature_node->GetNodeMap()->GetNode(value));
+  }
+
+  GenApi::INode* pmin_node = find_limit_node(feature_node, "pMin");
+  if (!pmin_node || !pmin_node->GetProperty("pInvalidator", value, attribute)) {
+    if (is_node_integer(feature_node)) {
+      minimum_under_all_settings =
+          Pylon::CIntegerParameter(feature_node).GetMin();
+    } else {
+      minimum_under_all_settings =
+          Pylon::CFloatParameter(feature_node).GetMin();
+    }
+  } else {
+    pmin_node->GetProperty("pInvalidator", value, attribute);
+    invalidators.push_back(feature_node->GetNodeMap()->GetNode(value));
   }
 }
 
@@ -108,12 +153,15 @@ int main(int /*argc*/, char* /*argv*/ []) {
     // Create an instant camera object with the camera found first.
     CInstantCamera camera(CTlFactory::GetInstance().CreateFirstDevice());
     for (const auto& node : walk_nodes(camera)) {
-      cout << node->GetName() << endl;
+      try {
+        find_limits(node);
+      } catch (const GenericException& e) {
+        continue;
+      }
     }
   } catch (const GenericException& e) {
     // Error handling.
-    cerr << "An exception occurred." << endl << e.GetDescription() << endl;
-    exitCode = 1;
+    cout << "An exception occurred." << endl << e.GetDescription() << endl;
   }
 
   // Releases all pylon resources.
