@@ -1,46 +1,20 @@
-gst-plugin-pylon (0.3.0-2) unstable; urgency=medium
-
-  * Removed unused auto generated Debian packaging files and comments
-  * Updated the Debian packaging contact information and license to match those from Basler
-  * Changed the Debian control file 'Section' value to 'libs'
-
- -- Patrick Thomas <pthomas@caltech.edu>  Wed, 05 Oct 2022 14:09:27 -0700
-
-gst-plugin-pylon (0.3.0-1) unstable; urgency=medium
-
-  * Added ninja-build to build dependencies
-
- -- Patrick Thomas <pthomas@caltech.edu>  Wed, 14 Sep 2022 13:04:42 -0700
-
 gst-plugin-pylon (0.3.0-0) unstable; urgency=medium
 
-  * Added - Support to access stream grabber parameters via stream:: prefix
-  * Added - Bayer 8bit video data support
-  * Added - Add property to configure camera from a pylon feature stream file ( pfs-location=<filename> )
-  * Added - Support to build gst-plugin-pylon as monorepo subproject to test against upcoming changes in gstreamer monorepo
-  * Added - Add pygobject example to access camera and stream grabber features in the folder examples
-  * Changed - Remove fixed grab timeout of 5s. pylonsrc will now wait forever. If required timeout/underrun detection can be handled in the gstreamer pipeline. ( e.g. via queue underrun )
-  * Changed - Remove limititation to only map features that are streamable Effect is that now all accessible features of a camera are mapped to gstreamer properties
-  * Changed - Output more information in case of missing selection of a camera. Now: serial number, model name and user defined name.
-  * Changed - Run all tests in github actions
-  * Fixed - Allow loading of default user set on some early Basler USB3Vision cameras
+   * Added - Support to access stream grabber parameters via stream:: prefix
+   * Added - Bayer 8bit video data support
+   * Added - Add property to configure camera from a pylon feature stream file ( pfs-location=<filename> )
+   * Added - Support to build gst-plugin-pylon as monorepo subproject to test against upcoming changes in gstreamer monorepo
+   * Added - Add pygobject example to access camera and stream grabber features in the folder examples
+   * Changed - Remove fixed grab timeout of 5s. pylonsrc will now wait forever. If required timeout/underrun detection can be handled in the gstreamer pipeline. ( e.g. via queue underrun )
+   * Changed - Remove limititation to only map features that are streamable Effect is that now all accessible features of a camera are mapped to gstreamer properties
+   * Changed - Output more information in case of missing selection of a camera. Now: serial number, model name and user defined name.
+   * Changed - Run all tests in github actions
+   * Fixed - Allow loading of default user set on some early Basler USB3Vision cameras
 
- -- Thies Möller thies.moeller@baslerweb.com  Tue, 13 Sep 2022 00:00:00 -0700
+  -- Thies Möller thies.moeller@baslerweb.com  Tue, 13 Sep 2022 00:00:00 -0700
 
-gst-plugin-pylon (0.2.0-2) unstable; urgency=medium
+ gst-plugin-pylon (0.2.0-0) unstable; urgency=medium
 
-  * Added libgstreamer-plugins-base1.0-dev and cmake to the build dependencies
+   * Added - Initial public release
 
- -- Patrick Thomas <pthomas@caltech.edu>  Mon, 29 Aug 2022 08:21:00 -0700
-
-gst-plugin-pylon (0.2.0-1) unstable; urgency=medium
-
-  * Added Debian build files
-
- -- Patrick Thomas <pthomas@caltech.edu>  Wed, 24 Aug 2022 16:17:02 -0700
-
-gst-plugin-pylon (0.2.0-0) unstable; urgency=medium
-
-  * Added - Initial public release
-
- -- Thies Möller thies.moeller@baslerweb.com  Tue, 09 Aug 2022 00:00:00 -0700
+  -- Thies Möller thies.moeller@baslerweb.com  Tue, 09 Aug 2022 00:00:00 -0700
