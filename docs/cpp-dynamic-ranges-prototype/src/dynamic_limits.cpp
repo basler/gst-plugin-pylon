@@ -22,10 +22,26 @@ using namespace std;
 #include <string>
 #include <vector>
 
+GenApi::INode* find_limit_node(GenApi::INode* feature_node,
+                               const GenICam::gcstring limit) {
+  GenApi::INode* limit_node;
+  GenICam::gcstring value;
+  GenICam::gcstring attribute;
+
+  if (feature_node->GetProperty(limit, value, attribute)) {
+    limit_node = feature_node->GetNodeMap()->GetNode(value);
+  } else if (feature_node->GetProperty(limit, value, attribute)) {
+    limit_node =
+        find_limit_node(feature_node->GetNodeMap()->GetNode(value), limit);
+  } else {
+    return limit_node;
+  }
+}
+
+/* Feature Walker */
 bool has_ranges(INode* node) {
   bool add_to_list = false;
 
-  // output node type:
   switch (node->GetPrincipalInterfaceType()) {
     case intfIInteger:
       add_to_list = true;
@@ -44,7 +60,7 @@ bool has_ranges(INode* node) {
     case intfIRegister:
       break;
     default:
-      printf("Unhandled type: %d\n", node->GetPrincipalInterfaceType());
+      break;
   }
 
   return add_to_list;
