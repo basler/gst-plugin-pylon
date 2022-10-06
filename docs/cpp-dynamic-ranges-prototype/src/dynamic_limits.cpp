@@ -70,12 +70,14 @@ void find_limits(GenApi::INode* feature_node) {
 
   GenApi::INode* pmax_node = find_limit_node(feature_node, "pMax");
   if (!pmax_node || !pmax_node->GetProperty("pInvalidator", value, attribute)) {
-    if (is_node_integer(feature_node)) {
-      maximum_under_all_settings =
-          Pylon::CIntegerParameter(feature_node).GetMax();
-    } else {
-      maximum_under_all_settings =
-          Pylon::CFloatParameter(feature_node).GetMax();
+    if (GenApi::IsAvailable(feature_node)) {
+      if (is_node_integer(feature_node)) {
+        maximum_under_all_settings =
+            Pylon::CIntegerParameter(feature_node).GetMax();
+      } else {
+        maximum_under_all_settings =
+            Pylon::CFloatParameter(feature_node).GetMax();
+      }
     }
   } else {
     pmax_node->GetProperty("pInvalidator", value, attribute);
@@ -84,12 +86,14 @@ void find_limits(GenApi::INode* feature_node) {
 
   GenApi::INode* pmin_node = find_limit_node(feature_node, "pMin");
   if (!pmin_node || !pmin_node->GetProperty("pInvalidator", value, attribute)) {
-    if (is_node_integer(feature_node)) {
-      minimum_under_all_settings =
-          Pylon::CIntegerParameter(feature_node).GetMin();
-    } else {
-      minimum_under_all_settings =
-          Pylon::CFloatParameter(feature_node).GetMin();
+    if (GenApi::IsAvailable(feature_node)) {
+      if (is_node_integer(feature_node)) {
+        minimum_under_all_settings =
+            Pylon::CIntegerParameter(feature_node).GetMin();
+      } else {
+        minimum_under_all_settings =
+            Pylon::CFloatParameter(feature_node).GetMin();
+      }
     }
   } else {
     pmin_node->GetProperty("pInvalidator", value, attribute);
