@@ -37,6 +37,23 @@ GenApi::INode* find_limit_node(GenApi::INode* feature_node,
   return limit_node;
 }
 
+vector<GenApi::INode*> find_parent_features(GenApi::INode* feature_node) {
+  vector<GenApi::INode*> parent_features;
+
+  if (feature_node->IsFeature()) {
+    parent_features.push_back(feature_node);
+  } else {
+    GenApi::NodeList_t parents;
+    feature_node->GetParents(parents);
+    for (const auto& parent : parents) {
+      vector<GenApi::INode*> grandparents = find_parent_features(parent);
+      parent_features.insert(parent_features.end(), grandparents.begin(),
+                             grandparents.end());
+    }
+  }
+  return parent_features;
+}
+
 bool is_node_integer(GenApi::INode* feature_node) {
   if (intfIInteger == feature_node->GetPrincipalInterfaceType()) {
     return true;
@@ -102,8 +119,20 @@ void find_limits(GenApi::INode* feature_node) {
     add_all_property_values(feature_node, std::string(value), invalidators);
   }
 
-  for (const auto& pair : invalidators) {
-    cout << pair.first << endl;
+  /* Return if no invalidator nodes found */
+  if (invalidators.empty()) {
+    return;
+  }
+
+  vector<GenApi::INode*> invalidator_feature;
+  for (const auto& inv : invalidators) {
+    vector<GenApi::INode*> parent_features = find_parent_features(inv.second);
+    invalidator_feature.insert(invalidator_feature.end(),
+                               parent_features.begin(), parent_features.end());
+  }
+
+  for (const auto& i : invalidator_feature) {
+    cout << i->GetName() << endl;
   }
 }
 
