@@ -45,6 +45,21 @@ bool is_node_integer(GenApi::INode* feature_node) {
   }
 }
 
+void add_all_property_values(GenApi::INode* feature_node, std::string value,
+                             vector<GenApi::INode*>& invalidators) {
+  string delimiter = "\t";
+
+  size_t pos = 0;
+  std::string token;
+
+  while ((pos = value.find(delimiter)) != std::string::npos) {
+    token = value.substr(0, pos);
+    invalidators.push_back(feature_node->GetNodeMap()->GetNode(token.c_str()));
+    value.erase(0, pos + delimiter.length());
+  }
+  invalidators.push_back(feature_node->GetNodeMap()->GetNode(value.c_str()));
+}
+
 void find_limits(GenApi::INode* feature_node) {
   vector<GenApi::INode*> invalidators;
   int64_t maximum_under_all_settings = 0;
@@ -52,7 +67,6 @@ void find_limits(GenApi::INode* feature_node) {
 
   GenICam::gcstring value;
   GenICam::gcstring attribute;
-  bool has_invalidator = false;
 
   GenApi::INode* pmax_node = find_limit_node(feature_node, "pMax");
   if (!pmax_node || !pmax_node->GetProperty("pInvalidator", value, attribute)) {
@@ -65,7 +79,7 @@ void find_limits(GenApi::INode* feature_node) {
     }
   } else {
     pmax_node->GetProperty("pInvalidator", value, attribute);
-    invalidators.push_back(feature_node->GetNodeMap()->GetNode(value));
+    add_all_property_values(feature_node, std::string(value), invalidators);
   }
 
   GenApi::INode* pmin_node = find_limit_node(feature_node, "pMin");
@@ -79,7 +93,11 @@ void find_limits(GenApi::INode* feature_node) {
     }
   } else {
     pmin_node->GetProperty("pInvalidator", value, attribute);
-    invalidators.push_back(feature_node->GetNodeMap()->GetNode(value));
+    add_all_property_values(feature_node, std::string(value), invalidators);
+  }
+
+  for (const auto& node : invalidators) {
+    cout << node->GetName() << endl;
   }
 }
 
@@ -153,11 +171,7 @@ int main(int /*argc*/, char* /*argv*/ []) {
     // Create an instant camera object with the camera found first.
     CInstantCamera camera(CTlFactory::GetInstance().CreateFirstDevice());
     for (const auto& node : walk_nodes(camera)) {
-      try {
-        find_limits(node);
-      } catch (const GenericException& e) {
-        continue;
-      }
+      find_limits(node);
     }
   } catch (const GenericException& e) {
     // Error handling.
