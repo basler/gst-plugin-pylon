@@ -243,7 +243,9 @@ fs = import('fs')
 root = meson.project_source_root()
 if fs.is_dir(join_paths(root,'.git/hooks'))
   message('install git commit hooks')
-  run_command(python3, '-c', 'import shutil; shutil.copy("@0@/hooks/pre-commit.hook", "@0@/.git/hooks/pre-commit")'.format(root), check : true)
+  hook_file_src = root / 'hooks' / 'pre-commit.hook'
+  hook_file_dst = root / '.git' / 'hooks' / 'pre-commit'
+  run_command(python3, '-c', 'import shutil; shutil.copy("@0@", "@1@")'.format(hook_file_src, hook_file_dst), check : true)
 endif
 
 
