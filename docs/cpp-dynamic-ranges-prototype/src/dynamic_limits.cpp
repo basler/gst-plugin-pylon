@@ -19,7 +19,7 @@ using namespace std;
 
 #include <cstdlib>
 #include <iostream>
-#include <string>
+#include <unordered_map>
 #include <vector>
 
 GenApi::INode* find_limit_node(GenApi::INode* feature_node,
@@ -45,8 +45,9 @@ bool is_node_integer(GenApi::INode* feature_node) {
   }
 }
 
-void add_all_property_values(GenApi::INode* feature_node, std::string value,
-                             vector<GenApi::INode*>& invalidators) {
+void add_all_property_values(
+    GenApi::INode* feature_node, std::string value,
+    unordered_map<std::string, GenApi::INode*>& invalidators) {
   string delimiter = "\t";
 
   size_t pos = 0;
@@ -54,14 +55,19 @@ void add_all_property_values(GenApi::INode* feature_node, std::string value,
 
   while ((pos = value.find(delimiter)) != std::string::npos) {
     token = value.substr(0, pos);
-    invalidators.push_back(feature_node->GetNodeMap()->GetNode(token.c_str()));
+    if (invalidators.find(token) == invalidators.end()) {
+      invalidators[token] = feature_node->GetNodeMap()->GetNode(token.c_str());
+    }
     value.erase(0, pos + delimiter.length());
   }
-  invalidators.push_back(feature_node->GetNodeMap()->GetNode(value.c_str()));
+
+  if (invalidators.find(value) == invalidators.end()) {
+    invalidators[value] = feature_node->GetNodeMap()->GetNode(value.c_str());
+  }
 }
 
 void find_limits(GenApi::INode* feature_node) {
-  vector<GenApi::INode*> invalidators;
+  unordered_map<std::string, GenApi::INode*> invalidators;
   int64_t maximum_under_all_settings = 0;
   int64_t minimum_under_all_settings = 0;
 
@@ -96,8 +102,8 @@ void find_limits(GenApi::INode* feature_node) {
     add_all_property_values(feature_node, std::string(value), invalidators);
   }
 
-  for (const auto& node : invalidators) {
-    cout << node->GetName() << endl;
+  for (const auto& pair : invalidators) {
+    cout << pair.first << endl;
   }
 }
 
