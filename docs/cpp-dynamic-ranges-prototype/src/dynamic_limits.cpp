@@ -70,14 +70,12 @@ void find_limits(GenApi::INode* feature_node) {
 
   GenApi::INode* pmax_node = find_limit_node(feature_node, "pMax");
   if (!pmax_node || !pmax_node->GetProperty("pInvalidator", value, attribute)) {
-    if (GenApi::IsAvailable(feature_node)) {
-      if (is_node_integer(feature_node)) {
-        maximum_under_all_settings =
-            Pylon::CIntegerParameter(feature_node).GetMax();
-      } else {
-        maximum_under_all_settings =
-            Pylon::CFloatParameter(feature_node).GetMax();
-      }
+    if (is_node_integer(feature_node)) {
+      maximum_under_all_settings =
+          Pylon::CIntegerParameter(feature_node).GetMax();
+    } else {
+      maximum_under_all_settings =
+          Pylon::CFloatParameter(feature_node).GetMax();
     }
   } else {
     pmax_node->GetProperty("pInvalidator", value, attribute);
@@ -86,14 +84,12 @@ void find_limits(GenApi::INode* feature_node) {
 
   GenApi::INode* pmin_node = find_limit_node(feature_node, "pMin");
   if (!pmin_node || !pmin_node->GetProperty("pInvalidator", value, attribute)) {
-    if (GenApi::IsAvailable(feature_node)) {
-      if (is_node_integer(feature_node)) {
-        minimum_under_all_settings =
-            Pylon::CIntegerParameter(feature_node).GetMin();
-      } else {
-        minimum_under_all_settings =
-            Pylon::CFloatParameter(feature_node).GetMin();
-      }
+    if (is_node_integer(feature_node)) {
+      minimum_under_all_settings =
+          Pylon::CIntegerParameter(feature_node).GetMin();
+    } else {
+      minimum_under_all_settings =
+          Pylon::CFloatParameter(feature_node).GetMin();
     }
   } else {
     pmin_node->GetProperty("pInvalidator", value, attribute);
@@ -146,8 +142,10 @@ vector<INode*> walk_nodes(CInstantCamera& camera) {
     auto node = worklist.front();
     worklist.pop();
 
-    if (has_ranges(node)) {
-      node_list.push_back(node);
+    if (GenApi::IsAvailable(node)) {
+      if (has_ranges(node)) {
+        node_list.push_back(node);
+      }
     }
 
     // walk down all categories
@@ -174,9 +172,11 @@ int main(int /*argc*/, char* /*argv*/ []) {
   try {
     // Create an instant camera object with the camera found first.
     CInstantCamera camera(CTlFactory::GetInstance().CreateFirstDevice());
+    camera.Open();
     for (const auto& node : walk_nodes(camera)) {
       find_limits(node);
     }
+    camera.Close();
   } catch (const GenericException& e) {
     // Error handling.
     cout << "An exception occurred." << endl << e.GetDescription() << endl;
