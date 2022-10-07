@@ -33,6 +33,7 @@
 #include "gstpylon.h"
 
 #include "gstchildinspector.h"
+#include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
 #include "gstpylonobject.h"
 
@@ -113,11 +114,13 @@ static gchar *gst_pylon_get_string_properties(
 static constexpr gint DEFAULT_ALIGNMENT = 35;
 
 struct _GstPylon {
+  GstElement *gstpylonsrc;
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera =
       std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
   GObject *gcamera;
   GObject *gstream_grabber;
   GstPylonImageHandler image_handler;
+  GstPylonDisconnectHandler disconnect_handler;
 };
 
 static const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
@@ -149,10 +152,12 @@ static Pylon::String_t gst_pylon_get_sgrabber_name(
   return gst_pylon_get_camera_fullname(camera) + " StreamGrabber";
 }
 
-GstPylon *gst_pylon_new(const gchar *device_user_name,
+GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
                         const gchar *device_serial_number, gint device_index,
                         GError **err) {
   GstPylon *self = new GstPylon;
+
+  self->gstpylonsrc = gstpylonsrc;
 
   g_return_val_if_fail(self, NULL);
   g_return_val_if_fail(err && *err == NULL, NULL);
@@ -217,6 +222,10 @@ GstPylon *gst_pylon_new(const gchar *device_user_name,
     self->camera->RegisterImageEventHandler(&self->image_handler,
                                             Pylon::RegistrationMode_Append,
                                             Pylon::Cleanup_None);
+    self->disconnect_handler.SetData(self->gstpylonsrc, &self->image_handler);
+    self->camera->RegisterConfiguration(&self->disconnect_handler,
+                                        Pylon::RegistrationMode_Append,
+                                        Pylon::Cleanup_None);
     self->camera->Open();
 
     GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
@@ -269,7 +278,7 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
           "UserSet feature not available"
           " camera will start in internal default state");
 
-      return true;
+      return TRUE;
     }
 
     std::string set;
@@ -331,6 +340,7 @@ void gst_pylon_free(GstPylon *self) {
   g_return_if_fail(self);
 
   self->camera->DeregisterImageEventHandler(&self->image_handler);
+  self->camera->DeregisterConfiguration(&self->disconnect_handler);
   self->camera->Close();
   g_object_unref(self->gcamera);
 
@@ -372,6 +382,11 @@ gboolean gst_pylon_stop(GstPylon *self, GError **err) {
   return ret;
 }
 
+void gst_pylon_interrupt_capture(GstPylon *self) {
+  g_return_if_fail(self);
+  self->image_handler.InterruptWaitForImage();
+}
+
 static void free_ptr_grab_result(gpointer data) {
   g_return_if_fail(data);
 
@@ -380,30 +395,73 @@ static void free_ptr_grab_result(gpointer data) {
   delete ptr_grab_result;
 }
 
-void gst_pylon_interrupt_capture(GstPylon *self) {
-  g_return_if_fail(self);
-  self->image_handler.InterruptWaitForImage();
-}
-
-gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf, GError **err) {
+gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
+                           GstPylonCaptureErrorEnum capture_error,
+                           GError **err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(buf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
-  Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr =
-      self->image_handler.WaitForImage();
+  bool retry_grab = true;
+  bool buffer_error = false;
+  gint retry_frame_counter = 0;
+  static const gint max_frames_to_skip = 100;
+  Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr = NULL;
 
-  /* Return if user requests to interrupt the grabbing thread */
-  if (!grab_result_ptr) {
-    return FALSE;
-  }
+  while (retry_grab) {
+    grab_result_ptr = self->image_handler.WaitForImage();
 
-  if (!(*grab_result_ptr)->GrabSucceeded()) {
-    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
-                (*grab_result_ptr)->GetErrorDescription().c_str());
-    delete grab_result_ptr;
-    return FALSE;
-  }
+    /* Return if user requests to interrupt the grabbing thread */
+    if (!grab_result_ptr) {
+      return FALSE;
+    }
+
+    if ((*grab_result_ptr)->GrabSucceeded()) {
+      break;
+    }
+
+    std::string error_message =
+        std::string((*grab_result_ptr)->GetErrorDescription());
+    switch (capture_error) {
+      case ENUM_KEEP:
+        /* Deliver the buffer into pipeline even if pylon reports an error */
+        GST_ELEMENT_WARNING(self->gstpylonsrc, LIBRARY, FAILED,
+                            ("Capture failed. Keeping buffer."),
+                            ("%s", error_message.c_str()));
+        retry_grab = false;
+        break;
+      case ENUM_ABORT:
+        /* Signal an error to abort pipeline */
+        buffer_error = true;
+        break;
+      case ENUM_SKIP:
+        /* Fail if max number of skipped frames is reached */
+        if (retry_frame_counter == max_frames_to_skip) {
+          error_message = "Max number of allowed buffer skips reached (" +
+                          std::to_string(max_frames_to_skip) +
+                          "): " + error_message;
+          buffer_error = true;
+        } else {
+          /* Retry to capture next buffer and release current pylon buffer */
+          GST_ELEMENT_WARNING(self->gstpylonsrc, LIBRARY, FAILED,
+                              ("Capture failed. Skipping buffer."),
+                              ("%s", error_message.c_str()));
+          delete grab_result_ptr;
+          grab_result_ptr = NULL;
+          retry_grab = true;
+          retry_frame_counter += 1;
+        }
+        break;
+    };
+
+    if (buffer_error) {
+      g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                  error_message.c_str());
+      delete grab_result_ptr;
+      grab_result_ptr = NULL;
+      return FALSE;
+    }
+  };
 
   gsize buffer_size = (*grab_result_ptr)->GetBufferSize();
   *buf = gst_buffer_new_wrapped_full(

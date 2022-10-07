@@ -1,6 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2022-10-06
+
+### Added
+- Add property to control behaviour in case of capture errors. Allow to abort capture ( current behaviour ) / skip / keep bad buffer
+- Add support for proper handling of a device disconnect
+
+### Changed
+- Dynamically adjust a feature's access mode. This will make a feature writable, if it's access mode depends on another features state. ( Fixes issue #12 )
+
+### Fixed
+- Fix building gst-plugin-pylon with pylon 6 in monorepo configuration ( Fixes issue #15 )
+
+
 ## [0.3.0] - 2022-09-13
 
 ### Added

@@ -22,7 +22,7 @@ if pylon_dep.found()
   endif
 else
     message('fallback to detect pylon 6.x')
-    pylon_dep = dependency('pylon', method : 'cmake', cmake_module_path: 'cmake', required: true)
+    pylon_dep = dependency('pylon', method : 'cmake', cmake_module_path: meson.project_source_root() + '/cmake', required: true)
     # runtime path is properly defined by cmake
     pylon_link_args = []
 endif
@@ -36,7 +36,8 @@ pylon_sources = [
   'gstpylonintrospection.cpp',
   'gstpylonparamspecs.cpp',
   'gstpylonfeaturewalker.cpp',
-  'gstpylonimagehandler.cpp'
+  'gstpylonimagehandler.cpp',
+  'gstpylondisconnecthandler.cpp'
 ]
 
 gstpylon = library('gstpylon',
