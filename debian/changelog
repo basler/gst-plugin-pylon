@@ -1,3 +1,12 @@
+gst-plugin-pylon (0.4.0-0) unstable; urgency=medium
+
+  * Added - Add property to control behaviour in case of capture errors. Allow to abort capture ( current behaviour ) / skip / keep bad buffer
+  * Added - Add support for proper handling of a device disconnect
+  * Changed - Dynamically adjust a feature's access mode. This will make a feature writable, if it's access mode depends on another features state. ( Fixes issue #12 )
+  * Fixed - Fix building gst-plugin-pylon with pylon 6 in monorepo configuration ( Fixes issue #15 )
+
+ -- Thies Möller <thies.moeller@baslerweb.com>  Thu, 06 Oct 2022 00:00:00 -0700
+
 gst-plugin-pylon (0.3.0-0) unstable; urgency=medium
 
   * Added - Support to access stream grabber parameters via stream:: prefix
