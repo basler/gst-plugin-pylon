@@ -83,6 +83,17 @@ void add_all_property_values(
   }
 }
 
+vector<GenApi::INode*> get_available_features(
+    vector<GenApi::INode*> feature_list) {
+  vector<GenApi::INode*> available_features;
+  for (const auto& feature : feature_list) {
+    if (GenApi::IsAvailable(feature)) {
+      available_features.push_back(feature);
+    }
+  }
+  return available_features;
+}
+
 void find_limits(GenApi::INode* feature_node) {
   unordered_map<std::string, GenApi::INode*> invalidators;
   int64_t maximum_under_all_settings = 0;
@@ -131,7 +142,11 @@ void find_limits(GenApi::INode* feature_node) {
                                parent_features.begin(), parent_features.end());
   }
 
-  for (const auto& i : invalidator_feature) {
+  vector<GenApi::INode*> available_inv_feature =
+      get_available_features(invalidator_feature);
+
+  cout << "\nAfter filtering" << endl;
+  for (const auto& i : available_inv_feature) {
     cout << i->GetName() << endl;
   }
 }
