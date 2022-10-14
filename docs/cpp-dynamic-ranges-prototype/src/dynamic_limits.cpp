@@ -98,6 +98,9 @@ vector<GenApi::INode*> get_available_features(
 class Actions {
  public:
   void virtual set_value() = 0;
+
+ protected:
+  GenApi::INode* node;
 };
 
 class BoolTrueAction : public Actions {
@@ -107,9 +110,6 @@ class BoolTrueAction : public Actions {
     Pylon::CBooleanParameter param(this->node);
     param.SetValue(true);
   }
-
- private:
-  GenApi::INode* node;
 };
 
 class BoolFalseAction : public Actions {
@@ -119,9 +119,6 @@ class BoolFalseAction : public Actions {
     Pylon::CBooleanParameter param(this->node);
     param.SetValue(false);
   }
-
- private:
-  GenApi::INode* node;
 };
 
 class IntMinAction : public Actions {
@@ -131,9 +128,6 @@ class IntMinAction : public Actions {
     Pylon::CIntegerParameter param(this->node);
     param.SetValue(param.GetMin());
   }
-
- private:
-  GenApi::INode* node;
 };
 
 class IntMaxAction : public Actions {
@@ -143,9 +137,6 @@ class IntMaxAction : public Actions {
     Pylon::CIntegerParameter param(this->node);
     param.SetValue(param.GetMax());
   }
-
- private:
-  GenApi::INode* node;
 };
 
 class FloatMinAction : public Actions {
@@ -155,9 +146,6 @@ class FloatMinAction : public Actions {
     Pylon::CFloatParameter param(this->node);
     param.SetValue(param.GetMin());
   }
-
- private:
-  GenApi::INode* node;
 };
 
 class FloatMaxAction : public Actions {
@@ -167,14 +155,11 @@ class FloatMaxAction : public Actions {
     Pylon::CFloatParameter param(this->node);
     param.SetValue(param.GetMax());
   }
-
- private:
-  GenApi::INode* node;
 };
 
 class EnumAction : public Actions {
  public:
-  EnumAction(GenApi::INode* node, Pylon::String_t symbolic) {
+  EnumAction(GenApi::INode* node, const Pylon::String_t& symbolic) {
     this->node = node;
     this->symbolic = symbolic;
   }
@@ -184,31 +169,52 @@ class EnumAction : public Actions {
   }
 
  private:
-  GenApi::INode* node;
   Pylon::String_t symbolic;
 };
 
-void create_set_value_actions(vector<GenApi::INode*> node_list) {
+vector<vector<Actions*>> create_set_value_actions(
+    vector<GenApi::INode*> node_list) {
+  vector<vector<Actions*>> actions_list;
+
   for (const auto& node : node_list) {
-    switch (node->GetPrincipalInterfaceType()) {
-      case intfIInteger:
-        break;
-      case intfIFloat:
-        break;
-      case intfIBoolean:
-        break;
-      case intfIString:
-        break;
-      case intfIEnumeration:
-        break;
-      case intfICommand:
-        break;
-      case intfIRegister:
-        break;
-      default:
-        break;
+    if (intfIBoolean == node->GetPrincipalInterfaceType()) {
+      vector<Actions*> values;
+      BoolTrueAction bool_true(node);
+      BoolFalseAction bool_false(node);
+      values.push_back(&bool_true);
+      values.push_back(&bool_false);
+      actions_list.push_back(values);
+    } else if (intfIFloat == node->GetPrincipalInterfaceType()) {
+      vector<Actions*> values;
+      FloatMinAction float_min(node);
+      FloatMaxAction float_max(node);
+      values.push_back(&float_min);
+      values.push_back(&float_max);
+      actions_list.push_back(values);
+    } else if (intfIInteger == node->GetPrincipalInterfaceType()) {
+      vector<Actions*> values;
+      IntMinAction int_min(node);
+      IntMaxAction int_max(node);
+      values.push_back(&int_min);
+      values.push_back(&int_max);
+      actions_list.push_back(values);
+    } else if (intfIEnumeration == node->GetPrincipalInterfaceType()) {
+      vector<Actions*> values;
+      Pylon::CEnumParameter param(node);
+      GenApi::StringList_t symbolics;
+      param.GetSymbolics(symbolics);
+      for (const auto& symbolic : symbolics) {
+        EnumAction enum_action(node, symbolic);
+        values.push_back(&enum_action);
+      }
+      actions_list.push_back(values);
+    } else {
+      cout << node->GetName() << " " << node->GetPrincipalInterfaceType()
+           << endl;
     }
   }
+
+  return actions_list;
 }
 
 void find_limits(GenApi::INode* feature_node) {
