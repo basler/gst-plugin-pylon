@@ -238,8 +238,8 @@ vector<vector<Type>> cartesian(vector<vector<Type>>& v) {
 
 void find_limits(GenApi::INode* feature_node) {
   unordered_map<std::string, GenApi::INode*> invalidators;
-  int64_t maximum_under_all_settings = 0;
-  int64_t minimum_under_all_settings = 0;
+  double maximum_under_all_settings = 0;
+  double minimum_under_all_settings = 0;
 
   GenICam::gcstring value;
   GenICam::gcstring attribute;
@@ -311,6 +311,11 @@ void find_limits(GenApi::INode* feature_node) {
       max_values.push_back(Pylon::CFloatParameter(feature_node).GetMax());
     }
   }
+
+  minimum_under_all_settings =
+      *std::min_element(min_values.begin(), min_values.end());
+  maximum_under_all_settings =
+      *std::max_element(max_values.begin(), max_values.end());
 
   for (const auto& actions : actions_list) {
     for (const auto& action : actions) {
