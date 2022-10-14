@@ -6,6 +6,7 @@
 // Include files to use the pylon API.
 #include <pylon/PylonIncludes.h>
 
+#include <functional>
 #include <queue>
 
 // Namespace for using pylon objects.
@@ -92,6 +93,122 @@ vector<GenApi::INode*> get_available_features(
     }
   }
   return available_features;
+}
+
+class Actions {
+ public:
+  void virtual set_value() = 0;
+};
+
+class BoolTrueAction : public Actions {
+ public:
+  BoolTrueAction(GenApi::INode* node) { this->node = node; }
+  void set_value() override {
+    Pylon::CBooleanParameter param(this->node);
+    param.SetValue(true);
+  }
+
+ private:
+  GenApi::INode* node;
+};
+
+class BoolFalseAction : public Actions {
+ public:
+  BoolFalseAction(GenApi::INode* node) { this->node = node; }
+  void set_value() override {
+    Pylon::CBooleanParameter param(this->node);
+    param.SetValue(false);
+  }
+
+ private:
+  GenApi::INode* node;
+};
+
+class IntMinAction : public Actions {
+ public:
+  IntMinAction(GenApi::INode* node) { this->node = node; }
+  void set_value() override {
+    Pylon::CIntegerParameter param(this->node);
+    param.SetValue(param.GetMin());
+  }
+
+ private:
+  GenApi::INode* node;
+};
+
+class IntMaxAction : public Actions {
+ public:
+  IntMaxAction(GenApi::INode* node) { this->node = node; }
+  void set_value() override {
+    Pylon::CIntegerParameter param(this->node);
+    param.SetValue(param.GetMax());
+  }
+
+ private:
+  GenApi::INode* node;
+};
+
+class FloatMinAction : public Actions {
+ public:
+  FloatMinAction(GenApi::INode* node) { this->node = node; }
+  void set_value() override {
+    Pylon::CFloatParameter param(this->node);
+    param.SetValue(param.GetMin());
+  }
+
+ private:
+  GenApi::INode* node;
+};
+
+class FloatMaxAction : public Actions {
+ public:
+  FloatMaxAction(GenApi::INode* node) { this->node = node; }
+  void set_value() override {
+    Pylon::CFloatParameter param(this->node);
+    param.SetValue(param.GetMax());
+  }
+
+ private:
+  GenApi::INode* node;
+};
+
+class EnumAction : public Actions {
+ public:
+  EnumAction(GenApi::INode* node, Pylon::String_t symbolic) {
+    this->node = node;
+    this->symbolic = symbolic;
+  }
+  void set_value() override {
+    Pylon::CEnumParameter param(this->node);
+    param.SetValue(this->symbolic);
+  }
+
+ private:
+  GenApi::INode* node;
+  Pylon::String_t symbolic;
+};
+
+void create_set_value_actions(vector<GenApi::INode*> node_list) {
+  for (const auto& node : node_list) {
+    switch (node->GetPrincipalInterfaceType()) {
+      case intfIInteger:
+        break;
+      case intfIFloat:
+        break;
+      case intfIBoolean:
+        break;
+      case intfIString:
+        break;
+      case intfIEnumeration:
+        break;
+      case intfICommand:
+        break;
+      case intfIRegister:
+        break;
+      default:
+        break;
+    }
+  }
 }
 
 void find_limits(GenApi::INode* feature_node) {
