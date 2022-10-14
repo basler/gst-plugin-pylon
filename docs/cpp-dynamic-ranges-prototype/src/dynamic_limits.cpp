@@ -20,6 +20,7 @@ using namespace std;
 
 #include <cstdlib>
 #include <iostream>
+#include <numeric>
 #include <unordered_map>
 #include <vector>
 
@@ -217,6 +218,23 @@ vector<vector<Actions*>> create_set_value_actions(
   return actions_list;
 }
 
+template <class Type>
+vector<vector<Type>> cartesian(vector<vector<Type>>& v) {
+  vector<vector<Type>> result;
+  auto product = [](long long a, vector<Type>& b) { return a * b.size(); };
+  const long long N = accumulate(v.begin(), v.end(), 1LL, product);
+  vector<Type> u(v.size());
+  for (long long n = 0; n < N; ++n) {
+    lldiv_t q{n, 0};
+    for (long long i = v.size() - 1; 0 <= i; --i) {
+      q = div(q.quot, v[i].size());
+      u[i] = v[i][q.rem];
+    }
+    result.push_back(u);
+  }
+  return result;
+}
+
 void find_limits(GenApi::INode* feature_node) {
   unordered_map<std::string, GenApi::INode*> invalidators;
   int64_t maximum_under_all_settings = 0;
@@ -267,6 +285,31 @@ void find_limits(GenApi::INode* feature_node) {
 
   vector<GenApi::INode*> available_inv_feature =
       get_available_features(invalidator_feature);
+
+  /* Create list of extreme value settings per invalidator */
+  vector<vector<Actions*>> actions_list =
+      create_set_value_actions(available_inv_feature);
+
+  vector<double> min_values;
+  vector<double> max_values;
+
+  auto action_list_permutations = cartesian(actions_list);
+  for (const auto& actions : action_list_permutations) {
+    for (const auto& action : actions) {
+      try {
+        action->set_value();
+      } catch (const GenericException& e) {
+        continue;
+      }
+    }
+    if (is_node_integer(feature_node)) {
+      min_values.push_back(Pylon::CIntegerParameter(feature_node).GetMin());
+      max_values.push_back(Pylon::CIntegerParameter(feature_node).GetMax());
+    } else {
+      min_values.push_back(Pylon::CFloatParameter(feature_node).GetMin());
+      max_values.push_back(Pylon::CFloatParameter(feature_node).GetMax());
+    }
+  }
 
   cout << "\nAfter filtering" << endl;
   for (const auto& i : available_inv_feature) {
