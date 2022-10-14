@@ -18,6 +18,7 @@ using namespace GenApi;
 // Namespace for using cout.
 using namespace std;
 
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <numeric>
@@ -180,24 +181,24 @@ vector<vector<Actions*>> create_set_value_actions(
   for (const auto& node : node_list) {
     if (intfIBoolean == node->GetPrincipalInterfaceType()) {
       vector<Actions*> values;
-      BoolTrueAction bool_true(node);
-      BoolFalseAction bool_false(node);
-      values.push_back(&bool_true);
-      values.push_back(&bool_false);
+      BoolTrueAction* bool_true = new BoolTrueAction(node);
+      BoolFalseAction* bool_false = new BoolFalseAction(node);
+      values.push_back(bool_true);
+      values.push_back(bool_false);
       actions_list.push_back(values);
     } else if (intfIFloat == node->GetPrincipalInterfaceType()) {
       vector<Actions*> values;
-      FloatMinAction float_min(node);
-      FloatMaxAction float_max(node);
-      values.push_back(&float_min);
-      values.push_back(&float_max);
+      FloatMinAction* float_min = new FloatMinAction(node);
+      FloatMaxAction* float_max = new FloatMaxAction(node);
+      values.push_back(float_min);
+      values.push_back(float_max);
       actions_list.push_back(values);
     } else if (intfIInteger == node->GetPrincipalInterfaceType()) {
       vector<Actions*> values;
-      IntMinAction int_min(node);
-      IntMaxAction int_max(node);
-      values.push_back(&int_min);
-      values.push_back(&int_max);
+      IntMinAction* int_min = new IntMinAction(node);
+      IntMaxAction* int_max = new IntMaxAction(node);
+      values.push_back(int_min);
+      values.push_back(int_max);
       actions_list.push_back(values);
     } else if (intfIEnumeration == node->GetPrincipalInterfaceType()) {
       vector<Actions*> values;
@@ -205,8 +206,8 @@ vector<vector<Actions*>> create_set_value_actions(
       GenApi::StringList_t symbolics;
       param.GetSymbolics(symbolics);
       for (const auto& symbolic : symbolics) {
-        EnumAction enum_action(node, symbolic);
-        values.push_back(&enum_action);
+        EnumAction* enum_action = new EnumAction(node, symbolic);
+        values.push_back(enum_action);
       }
       actions_list.push_back(values);
     } else {
@@ -311,9 +312,10 @@ void find_limits(GenApi::INode* feature_node) {
     }
   }
 
-  cout << "\nAfter filtering" << endl;
-  for (const auto& i : available_inv_feature) {
-    cout << i->GetName() << endl;
+  for (const auto& actions : actions_list) {
+    for (const auto& action : actions) {
+      delete action;
+    }
   }
 }
 
