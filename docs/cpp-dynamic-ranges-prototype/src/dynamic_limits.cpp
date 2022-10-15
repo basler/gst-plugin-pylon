@@ -89,6 +89,57 @@ vector<GenApi::INode*> get_available_features(
   return available_features;
 }
 
+template <class Type>
+vector<vector<Type>> cartesian(vector<vector<Type>>& v) {
+  vector<vector<Type>> result;
+  auto product = [](long long a, vector<Type>& b) { return a * b.size(); };
+  const long long N = accumulate(v.begin(), v.end(), 1LL, product);
+  vector<Type> u(v.size());
+  for (long long n = 0; n < N; ++n) {
+    lldiv_t q{n, 0};
+    for (long long i = v.size() - 1; 0 <= i; --i) {
+      q = div(q.quot, v[i].size());
+      u[i] = v[i][q.rem];
+    }
+    result.push_back(u);
+  }
+  return result;
+}
+
+double query_feature_limits(GenApi::INode* feature_node, std::string limit) {
+  if (intfIInteger == feature_node->GetPrincipalInterfaceType()) {
+    if ("max" == limit) {
+      return Pylon::CIntegerParameter(feature_node).GetMax();
+    } else {
+      return Pylon::CIntegerParameter(feature_node).GetMin();
+    }
+  } else {
+    if ("max" == limit) {
+      return Pylon::CFloatParameter(feature_node).GetMax();
+    } else {
+      return Pylon::CFloatParameter(feature_node).GetMin();
+    }
+  }
+}
+
+double check_for_feature_invalidators(
+    GenApi::INode* feature_node, GenApi::INode* limit_node, std::string limit,
+    unordered_map<std::string, GenApi::INode*>& invalidators) {
+  double limit_under_all_settings = 0;
+  GenICam::gcstring value;
+  GenICam::gcstring attribute;
+
+  if (!limit_node ||
+      !limit_node->GetProperty("pInvalidator", value, attribute)) {
+    limit_under_all_settings = query_feature_limits(feature_node, limit);
+  } else {
+    limit_node->GetProperty("pInvalidator", value, attribute);
+    add_all_property_values(feature_node, std::string(value), invalidators);
+  }
+
+  return limit_under_all_settings;
+}
+
 class Actions {
  public:
   void virtual set_value() = 0;
@@ -149,57 +200,6 @@ vector<vector<Actions*>> create_set_value_actions(
   }
 
   return actions_list;
-}
-
-template <class Type>
-vector<vector<Type>> cartesian(vector<vector<Type>>& v) {
-  vector<vector<Type>> result;
-  auto product = [](long long a, vector<Type>& b) { return a * b.size(); };
-  const long long N = accumulate(v.begin(), v.end(), 1LL, product);
-  vector<Type> u(v.size());
-  for (long long n = 0; n < N; ++n) {
-    lldiv_t q{n, 0};
-    for (long long i = v.size() - 1; 0 <= i; --i) {
-      q = div(q.quot, v[i].size());
-      u[i] = v[i][q.rem];
-    }
-    result.push_back(u);
-  }
-  return result;
-}
-
-double query_feature_limits(GenApi::INode* feature_node, std::string limit) {
-  if (intfIInteger == feature_node->GetPrincipalInterfaceType()) {
-    if ("max" == limit) {
-      return Pylon::CIntegerParameter(feature_node).GetMax();
-    } else {
-      return Pylon::CIntegerParameter(feature_node).GetMin();
-    }
-  } else {
-    if ("max" == limit) {
-      return Pylon::CFloatParameter(feature_node).GetMax();
-    } else {
-      return Pylon::CFloatParameter(feature_node).GetMin();
-    }
-  }
-}
-
-double check_for_feature_invalidators(
-    GenApi::INode* feature_node, GenApi::INode* limit_node, std::string limit,
-    unordered_map<std::string, GenApi::INode*>& invalidators) {
-  double limit_under_all_settings = 0;
-  GenICam::gcstring value;
-  GenICam::gcstring attribute;
-
-  if (!limit_node ||
-      !limit_node->GetProperty("pInvalidator", value, attribute)) {
-    limit_under_all_settings = query_feature_limits(feature_node, limit);
-  } else {
-    limit_node->GetProperty("pInvalidator", value, attribute);
-    add_all_property_values(feature_node, std::string(value), invalidators);
-  }
-
-  return limit_under_all_settings;
 }
 
 void find_limits(GenApi::INode* feature_node, double& min_result,
