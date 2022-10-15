@@ -57,14 +57,6 @@ vector<GenApi::INode*> find_parent_features(GenApi::INode* feature_node) {
   return parent_features;
 }
 
-bool is_node_integer(GenApi::INode* feature_node) {
-  if (intfIInteger == feature_node->GetPrincipalInterfaceType()) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
 void add_all_property_values(
     GenApi::INode* feature_node, std::string value,
     unordered_map<std::string, GenApi::INode*>& invalidators) {
@@ -236,6 +228,40 @@ vector<vector<Type>> cartesian(vector<vector<Type>>& v) {
   return result;
 }
 
+double query_feature_limits(GenApi::INode* feature_node, std::string limit) {
+  if (intfIInteger == feature_node->GetPrincipalInterfaceType()) {
+    if ("max" == limit) {
+      return Pylon::CIntegerParameter(feature_node).GetMax();
+    } else {
+      return Pylon::CIntegerParameter(feature_node).GetMin();
+    }
+  } else {
+    if ("max" == limit) {
+      return Pylon::CFloatParameter(feature_node).GetMax();
+    } else {
+      return Pylon::CFloatParameter(feature_node).GetMin();
+    }
+  }
+}
+
+double check_for_feature_invalidators(
+    GenApi::INode* feature_node, GenApi::INode* limit_node, std::string limit,
+    unordered_map<std::string, GenApi::INode*>& invalidators) {
+  double limit_under_all_settings = 0;
+  GenICam::gcstring value;
+  GenICam::gcstring attribute;
+
+  if (!limit_node ||
+      !limit_node->GetProperty("pInvalidator", value, attribute)) {
+    limit_under_all_settings = query_feature_limits(feature_node, limit);
+  } else {
+    limit_node->GetProperty("pInvalidator", value, attribute);
+    add_all_property_values(feature_node, std::string(value), invalidators);
+  }
+
+  return limit_under_all_settings;
+}
+
 void find_limits(GenApi::INode* feature_node, double& min_result,
                  double& max_result,
                  vector<GenApi::INode*>& invalidators_result) {
@@ -243,36 +269,13 @@ void find_limits(GenApi::INode* feature_node, double& min_result,
   double maximum_under_all_settings = 0;
   double minimum_under_all_settings = 0;
 
-  GenICam::gcstring value;
-  GenICam::gcstring attribute;
-
   GenApi::INode* pmax_node = find_limit_node(feature_node, "pMax");
-  if (!pmax_node || !pmax_node->GetProperty("pInvalidator", value, attribute)) {
-    if (is_node_integer(feature_node)) {
-      maximum_under_all_settings =
-          Pylon::CIntegerParameter(feature_node).GetMax();
-    } else {
-      maximum_under_all_settings =
-          Pylon::CFloatParameter(feature_node).GetMax();
-    }
-  } else {
-    pmax_node->GetProperty("pInvalidator", value, attribute);
-    add_all_property_values(feature_node, std::string(value), invalidators);
-  }
+  maximum_under_all_settings = check_for_feature_invalidators(
+      feature_node, pmax_node, "max", invalidators);
 
   GenApi::INode* pmin_node = find_limit_node(feature_node, "pMin");
-  if (!pmin_node || !pmin_node->GetProperty("pInvalidator", value, attribute)) {
-    if (is_node_integer(feature_node)) {
-      minimum_under_all_settings =
-          Pylon::CIntegerParameter(feature_node).GetMin();
-    } else {
-      minimum_under_all_settings =
-          Pylon::CFloatParameter(feature_node).GetMin();
-    }
-  } else {
-    pmin_node->GetProperty("pInvalidator", value, attribute);
-    add_all_property_values(feature_node, std::string(value), invalidators);
-  }
+  minimum_under_all_settings = check_for_feature_invalidators(
+      feature_node, pmin_node, "min", invalidators);
 
   /* Return if no invalidator nodes found */
   if (invalidators.empty()) {
@@ -282,19 +285,19 @@ void find_limits(GenApi::INode* feature_node, double& min_result,
     return;
   }
 
-  vector<GenApi::INode*> invalidator_feature;
+  vector<GenApi::INode*> parent_invalidators;
   for (const auto& inv : invalidators) {
     vector<GenApi::INode*> parent_features = find_parent_features(inv.second);
-    invalidator_feature.insert(invalidator_feature.end(),
+    parent_invalidators.insert(parent_invalidators.end(),
                                parent_features.begin(), parent_features.end());
   }
 
-  vector<GenApi::INode*> available_inv_feature =
-      get_available_features(invalidator_feature);
+  vector<GenApi::INode*> available_parent_inv =
+      get_available_features(parent_invalidators);
 
   /* Create list of extreme value settings per invalidator */
   vector<vector<Actions*>> actions_list =
-      create_set_value_actions(available_inv_feature);
+      create_set_value_actions(available_parent_inv);
 
   vector<double> min_values;
   vector<double> max_values;
@@ -307,13 +310,8 @@ void find_limits(GenApi::INode* feature_node, double& min_result,
         continue;
       }
     }
-    if (is_node_integer(feature_node)) {
-      min_values.push_back(Pylon::CIntegerParameter(feature_node).GetMin());
-      max_values.push_back(Pylon::CIntegerParameter(feature_node).GetMax());
-    } else {
-      min_values.push_back(Pylon::CFloatParameter(feature_node).GetMin());
-      max_values.push_back(Pylon::CFloatParameter(feature_node).GetMax());
-    }
+    min_values.push_back(query_feature_limits(feature_node, "min"));
+    max_values.push_back(query_feature_limits(feature_node, "max"));
   }
 
   minimum_under_all_settings =
@@ -329,7 +327,7 @@ void find_limits(GenApi::INode* feature_node, double& min_result,
 
   min_result = minimum_under_all_settings;
   max_result = maximum_under_all_settings;
-  invalidators_result = available_inv_feature;
+  invalidators_result = available_parent_inv;
 }
 
 /* Feature Walker */
