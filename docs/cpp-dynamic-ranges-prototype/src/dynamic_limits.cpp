@@ -236,7 +236,9 @@ vector<vector<Type>> cartesian(vector<vector<Type>>& v) {
   return result;
 }
 
-void find_limits(GenApi::INode* feature_node) {
+void find_limits(GenApi::INode* feature_node, double& min_result,
+                 double& max_result,
+                 vector<GenApi::INode*>& invalidators_result) {
   unordered_map<std::string, GenApi::INode*> invalidators;
   double maximum_under_all_settings = 0;
   double minimum_under_all_settings = 0;
@@ -274,6 +276,9 @@ void find_limits(GenApi::INode* feature_node) {
 
   /* Return if no invalidator nodes found */
   if (invalidators.empty()) {
+    min_result = minimum_under_all_settings;
+    max_result = maximum_under_all_settings;
+    invalidators_result.clear();
     return;
   }
 
@@ -293,7 +298,6 @@ void find_limits(GenApi::INode* feature_node) {
 
   vector<double> min_values;
   vector<double> max_values;
-
   auto action_list_permutations = cartesian(actions_list);
   for (const auto& actions : action_list_permutations) {
     for (const auto& action : actions) {
@@ -322,6 +326,10 @@ void find_limits(GenApi::INode* feature_node) {
       delete action;
     }
   }
+
+  min_result = minimum_under_all_settings;
+  max_result = maximum_under_all_settings;
+  invalidators_result = available_inv_feature;
 }
 
 /* Feature Walker */
@@ -392,12 +400,22 @@ int main(int /*argc*/, char* /*argv*/ []) {
   // Before using any pylon methods, the pylon runtime must be initialized.
   PylonInitialize();
 
+  double min_result;
+  double max_result;
+  vector<GenApi::INode*> invalidators_result;
+
   try {
     // Create an instant camera object with the camera found first.
     CInstantCamera camera(CTlFactory::GetInstance().CreateFirstDevice());
     camera.Open();
     for (const auto& node : walk_nodes(camera)) {
-      find_limits(node);
+      find_limits(node, min_result, max_result, invalidators_result);
+      cout << node->GetName() << " "
+           << "(" << min_result << ", " << max_result << ", [ ";
+      for (const auto& i : invalidators_result) {
+        cout << i->GetName() << " ";
+      }
+      cout << "])\n";
     }
     camera.Close();
   } catch (const GenericException& e) {
