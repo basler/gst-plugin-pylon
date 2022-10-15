@@ -209,10 +209,14 @@ void find_limits(GenApi::INode* feature_node, double& min_result,
   double maximum_under_all_settings = 0;
   double minimum_under_all_settings = 0;
 
+  /* Find the maximum value of a feature under the influence of other elements
+   * of the nodemap */
   GenApi::INode* pmax_node = find_limit_node(feature_node, "pMax");
   maximum_under_all_settings = check_for_feature_invalidators(
       feature_node, pmax_node, "max", invalidators);
 
+  /* Find the minimum value of a feature under the influence of other elements
+   * of the nodemap */
   GenApi::INode* pmin_node = find_limit_node(feature_node, "pMin");
   minimum_under_all_settings = check_for_feature_invalidators(
       feature_node, pmin_node, "min", invalidators);
@@ -225,6 +229,7 @@ void find_limits(GenApi::INode* feature_node, double& min_result,
     return;
   }
 
+  /* Find all features that control the node */
   vector<GenApi::INode*> parent_invalidators;
   for (const auto& inv : invalidators) {
     vector<GenApi::INode*> parent_features = find_parent_features(inv.second);
@@ -232,6 +237,7 @@ void find_limits(GenApi::INode* feature_node, double& min_result,
                                parent_features.begin(), parent_features.end());
   }
 
+  /* Filter parent invalidators to only available ones */
   vector<GenApi::INode*> available_parent_inv =
       get_available_features(parent_invalidators);
 
@@ -239,9 +245,10 @@ void find_limits(GenApi::INode* feature_node, double& min_result,
   vector<vector<Actions*>> actions_list =
       create_set_value_actions(available_parent_inv);
 
+  /* Create list of all possible setting permutations and execute them all */
+  auto action_list_permutations = cartesian(actions_list);
   vector<double> min_values;
   vector<double> max_values;
-  auto action_list_permutations = cartesian(actions_list);
   for (const auto& actions : action_list_permutations) {
     for (const auto& action : actions) {
       try {
@@ -250,15 +257,18 @@ void find_limits(GenApi::INode* feature_node, double& min_result,
         continue;
       }
     }
+    /* Capture min and max values after all setting are applied*/
     min_values.push_back(query_feature_limits(feature_node, "min"));
     max_values.push_back(query_feature_limits(feature_node, "max"));
   }
 
+  /* Get the max and min values under all settings executed*/
   minimum_under_all_settings =
       *std::min_element(min_values.begin(), min_values.end());
   maximum_under_all_settings =
       *std::max_element(max_values.begin(), max_values.end());
 
+  /* Clean up */
   for (const auto& actions : actions_list) {
     for (const auto& action : actions) {
       delete action;
@@ -302,7 +312,7 @@ vector<INode*> walk_nodes(CInstantCamera& camera) {
   INodeMap& nodemap = camera.GetNodeMap();
   vector<INode*> node_list;
 
-  // walk over all features of the tree
+  /* Walk over all features of the tree */
   INode* root_node = nodemap.GetNode("Root");
   auto worklist = std::queue<INode*>();
 
@@ -317,7 +327,7 @@ vector<INode*> walk_nodes(CInstantCamera& camera) {
       }
     }
 
-    // walk down all categories
+    /* Walk down all categories */
     auto category_node = dynamic_cast<ICategory*>(node);
     if (category_node) {
       FeatureList_t features;
@@ -332,10 +342,8 @@ vector<INode*> walk_nodes(CInstantCamera& camera) {
 }
 
 int main(int /*argc*/, char* /*argv*/ []) {
-  // The exit code of the sample application.
   int exitCode = 0;
 
-  // Before using any pylon methods, the pylon runtime must be initialized.
   PylonInitialize();
 
   double min_result;
@@ -343,7 +351,6 @@ int main(int /*argc*/, char* /*argv*/ []) {
   vector<GenApi::INode*> invalidators_result;
 
   try {
-    // Create an instant camera object with the camera found first.
     CInstantCamera camera(CTlFactory::GetInstance().CreateFirstDevice());
     camera.Open();
     for (const auto& node : walk_nodes(camera)) {
@@ -357,11 +364,9 @@ int main(int /*argc*/, char* /*argv*/ []) {
     }
     camera.Close();
   } catch (const GenericException& e) {
-    // Error handling.
     cout << "An exception occurred." << endl << e.GetDescription() << endl;
   }
 
-  // Releases all pylon resources.
   PylonTerminate();
 
   return exitCode;
