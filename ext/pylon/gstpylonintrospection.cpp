@@ -82,11 +82,11 @@ static std::vector<GenApi::INode *> gst_pylon_get_available_features(
 template <class Type>
 static std::vector<std::vector<Type>> gst_pylon_cartesian_product(
     std::vector<std::vector<Type>> &v);
-static bool gst_pylon_can_feature_later_be_writable(GenApi::INode *node);
+static gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode *node);
 static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
                                           GenApi::INode *node);
 
-static bool gst_pylon_can_feature_later_be_writable(GenApi::INode *node) {
+static gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode *node) {
   GenICam::gcstring value;
   GenICam::gcstring attribute;
   if (node->GetProperty("pIsLocked", value, attribute)) {
@@ -99,7 +99,7 @@ static bool gst_pylon_can_feature_later_be_writable(GenApi::INode *node) {
         return gst_pylon_can_feature_later_be_writable(node_child);
       }
     }
-    return false;
+    return FALSE;
   }
 }
 
@@ -123,8 +123,8 @@ static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
     flags |= G_PARAM_WRITABLE;
   }
 
-  bool is_read_write = param.IsReadable() && param.IsWritable();
-  bool is_write_only = !param.IsReadable() && param.IsWritable();
+  gboolean is_read_write = param.IsReadable() && param.IsWritable();
+  gboolean is_write_only = !param.IsReadable() && param.IsWritable();
 
   /* Check if feature is writable in PLAYING state */
   if (is_read_write || is_write_only) {
@@ -193,7 +193,7 @@ static void gst_pylon_add_all_property_values(
     GenApi::INode *node, std::string value,
     std::unordered_map<std::string, GenApi::INode *> &invalidators) {
   std::string delimiter = "\t";
-  size_t pos = 0;
+  gsize pos = 0;
   std::string token;
 
   g_return_if_fail(node);
