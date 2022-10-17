@@ -299,7 +299,6 @@ static T gst_pylon_check_for_feature_invalidators(
   GenICam::gcstring attribute;
 
   g_return_val_if_fail(node, 0);
-  g_return_val_if_fail(limit_node, 0);
 
   if (!limit_node ||
       !limit_node->GetProperty("pInvalidator", value, attribute)) {
@@ -360,10 +359,9 @@ gst_pylon_create_set_value_actions(std::vector<GenApi::INode *> node_list) {
 }
 
 template <class P, class T>
-static void gst_pylon_find_limits(
-    GenApi::INode *node, T &minimum_under_all_settings,
-    T &maximum_under_all_settings,
-    std::vector<GenApi::INode *> &invalidators_result) {
+static void gst_pylon_find_limits(GenApi::INode *node,
+                                  T &minimum_under_all_settings,
+                                  T &maximum_under_all_settings) {
   std::unordered_map<std::string, GenApi::INode *> invalidators;
   maximum_under_all_settings = 0;
   minimum_under_all_settings = 0;
@@ -384,7 +382,6 @@ static void gst_pylon_find_limits(
 
   /* Return if no invalidator nodes found */
   if (invalidators.empty()) {
-    invalidators_result.clear();
     return;
   }
 
@@ -407,10 +404,11 @@ static void gst_pylon_find_limits(
 
   /* Create list of all possible setting permutations and execute them all */
   auto action_list_permutations = gst_pylon_cartesian_product(actions_list);
-  std::vector<double> min_values;
-  std::vector<double> max_values;
+  std::vector<T> min_values;
+  std::vector<T> max_values;
   for (const auto &actions : action_list_permutations) {
     for (const auto &action : actions) {
+      /* Some states might not be valid, so just skip them */
       try {
         action->set_value();
       } catch (const Pylon::GenericException &e) {
@@ -434,8 +432,6 @@ static void gst_pylon_find_limits(
       delete action;
     }
   }
-
-  invalidators_result = available_parent_inv;
 }
 
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
@@ -443,11 +439,15 @@ static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
   g_return_val_if_fail(node, NULL);
 
   Pylon::CIntegerParameter param(node);
+  gint64 max_value = 0;
+  gint64 min_value = 0;
 
-  return g_param_spec_int64(node->GetName(), node->GetDisplayName(),
-                            node->GetToolTip(), param.GetMin(), param.GetMax(),
-                            param.GetValue(),
-                            gst_pylon_query_access(nodemap, node));
+  gst_pylon_find_limits<Pylon::CIntegerParameter, gint64>(node, min_value,
+                                                          max_value);
+
+  return g_param_spec_int64(
+      node->GetName(), node->GetDisplayName(), node->GetToolTip(), min_value,
+      max_value, param.GetValue(), gst_pylon_query_access(nodemap, node));
 }
 
 static GParamSpec *gst_pylon_make_spec_selector_int64(GenApi::INodeMap &nodemap,
@@ -458,11 +458,16 @@ static GParamSpec *gst_pylon_make_spec_selector_int64(GenApi::INodeMap &nodemap,
   g_return_val_if_fail(selector, NULL);
 
   Pylon::CIntegerParameter param(node);
+  gint64 max_value = 0;
+  gint64 min_value = 0;
+
+  gst_pylon_find_limits<Pylon::CIntegerParameter, gint64>(node, min_value,
+                                                          max_value);
 
   return gst_pylon_param_spec_selector_int64(
       nodemap, node->GetName(), selector->GetName(), selector_value,
-      node->GetDisplayName(), node->GetToolTip(), param.GetMin(),
-      param.GetMax(), param.GetValue(), gst_pylon_query_access(nodemap, node));
+      node->GetDisplayName(), node->GetToolTip(), min_value, max_value,
+      param.GetValue(), gst_pylon_query_access(nodemap, node));
 }
 
 static GParamSpec *gst_pylon_make_spec_bool(GenApi::INodeMap &nodemap,
@@ -496,11 +501,15 @@ static GParamSpec *gst_pylon_make_spec_float(GenApi::INodeMap &nodemap,
   g_return_val_if_fail(node, NULL);
 
   Pylon::CFloatParameter param(node);
+  gdouble max_value = 0;
+  gdouble min_value = 0;
 
-  return g_param_spec_float(node->GetName(), node->GetDisplayName(),
-                            node->GetToolTip(), param.GetMin(), param.GetMax(),
-                            param.GetValue(),
-                            gst_pylon_query_access(nodemap, node));
+  gst_pylon_find_limits<Pylon::CFloatParameter, gdouble>(node, min_value,
+                                                         max_value);
+
+  return g_param_spec_float(
+      node->GetName(), node->GetDisplayName(), node->GetToolTip(), min_value,
+      max_value, param.GetValue(), gst_pylon_query_access(nodemap, node));
 }
 
 static GParamSpec *gst_pylon_make_spec_selector_float(GenApi::INodeMap &nodemap,
@@ -511,11 +520,16 @@ static GParamSpec *gst_pylon_make_spec_selector_float(GenApi::INodeMap &nodemap,
   g_return_val_if_fail(selector, NULL);
 
   Pylon::CFloatParameter param(node);
+  gdouble max_value = 0;
+  gdouble min_value = 0;
+
+  gst_pylon_find_limits<Pylon::CFloatParameter, gdouble>(node, min_value,
+                                                         max_value);
 
   return gst_pylon_param_spec_selector_float(
       nodemap, node->GetName(), selector->GetName(), selector_value,
-      node->GetDisplayName(), node->GetToolTip(), param.GetMin(),
-      param.GetMax(), param.GetValue(), gst_pylon_query_access(nodemap, node));
+      node->GetDisplayName(), node->GetToolTip(), min_value, max_value,
+      param.GetValue(), gst_pylon_query_access(nodemap, node));
 }
 
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INodeMap &nodemap,
