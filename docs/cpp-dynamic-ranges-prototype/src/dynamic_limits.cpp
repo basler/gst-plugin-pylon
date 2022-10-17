@@ -202,12 +202,13 @@ vector<vector<Actions*>> create_set_value_actions(
   return actions_list;
 }
 
-void find_limits(GenApi::INode* feature_node, double& min_result,
-                 double& max_result,
+void find_limits(GenApi::INode* feature_node,
+                 double& minimum_under_all_settings,
+                 double& maximum_under_all_settings,
                  vector<GenApi::INode*>& invalidators_result) {
   unordered_map<std::string, GenApi::INode*> invalidators;
-  double maximum_under_all_settings = 0;
-  double minimum_under_all_settings = 0;
+  maximum_under_all_settings = 0;
+  minimum_under_all_settings = 0;
 
   /* Find the maximum value of a feature under the influence of other elements
    * of the nodemap */
@@ -223,8 +224,6 @@ void find_limits(GenApi::INode* feature_node, double& min_result,
 
   /* Return if no invalidator nodes found */
   if (invalidators.empty()) {
-    min_result = minimum_under_all_settings;
-    max_result = maximum_under_all_settings;
     invalidators_result.clear();
     return;
   }
@@ -275,8 +274,6 @@ void find_limits(GenApi::INode* feature_node, double& min_result,
     }
   }
 
-  min_result = minimum_under_all_settings;
-  max_result = maximum_under_all_settings;
   invalidators_result = available_parent_inv;
 }
 
