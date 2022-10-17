@@ -82,6 +82,11 @@ static std::vector<GenApi::INode *> gst_pylon_get_available_features(
 template <class Type>
 static std::vector<std::vector<Type>> gst_pylon_cartesian_product(
     std::vector<std::vector<Type>> &v);
+static double gst_pylon_check_for_feature_invalidators(
+    GenApi::INode *feature_node, GenApi::INode *limit_node, std::string limit,
+    std::unordered_map<std::string, GenApi::INode *> &invalidators);
+static double gst_pylon_query_feature_limits(GenApi::INode *feature_node,
+                                             std::string limit);
 static gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode *node);
 static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
                                           GenApi::INode *node);
@@ -238,6 +243,48 @@ static std::vector<std::vector<Type>> gst_pylon_cartesian_product(
     result.push_back(u);
   }
   return result;
+}
+
+// TODO: use template for CParameter types
+static double gst_pylon_query_feature_limits(GenApi::INode *node,
+                                             std::string limit) {
+  g_return_val_if_fail(node, 0);
+
+  if (GenApi::intfIInteger == node->GetPrincipalInterfaceType()) {
+    if ("max" == limit) {
+      return Pylon::CIntegerParameter(node).GetMax();
+    } else {
+      return Pylon::CIntegerParameter(node).GetMin();
+    }
+  } else {
+    if ("max" == limit) {
+      return Pylon::CFloatParameter(node).GetMax();
+    } else {
+      return Pylon::CFloatParameter(node).GetMin();
+    }
+  }
+}
+
+// TODO: use template for CParameter types
+static double gst_pylon_check_for_feature_invalidators(
+    GenApi::INode *node, GenApi::INode *limit_node, std::string limit,
+    std::unordered_map<std::string, GenApi::INode *> &invalidators) {
+  double limit_under_all_settings = 0;
+  GenICam::gcstring value;
+  GenICam::gcstring attribute;
+
+  g_return_val_if_fail(node, 0);
+  g_return_val_if_fail(limit_node, 0);
+
+  if (!limit_node ||
+      !limit_node->GetProperty("pInvalidator", value, attribute)) {
+    limit_under_all_settings = gst_pylon_query_feature_limits(node, limit);
+  } else {
+    limit_node->GetProperty("pInvalidator", value, attribute);
+    gst_pylon_add_all_property_values(node, std::string(value), invalidators);
+  }
+
+  return limit_under_all_settings;
 }
 
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
