@@ -70,6 +70,10 @@ static GParamSpec *gst_pylon_make_spec_enum(GenApi::INodeMap &nodemap,
 static GParamSpec *gst_pylon_make_spec_selector_enum(
     GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
     guint64 selector_value, const gchar *device_fullname);
+static GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *feature_node,
+                                                const GenICam::gcstring limit);
+static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
+    GenApi::INode *feature_node);
 static bool gst_pylon_can_feature_later_be_writable(GenApi::INode *node);
 static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
                                           GenApi::INode *node);
@@ -137,6 +141,40 @@ static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
   }
 
   return static_cast<GParamFlags>(flags);
+}
+
+static GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *feature_node,
+                                                const GenICam::gcstring limit) {
+  GenApi::INode *limit_node = NULL;
+  GenICam::gcstring value;
+  GenICam::gcstring attribute;
+
+  if (feature_node->GetProperty(limit, value, attribute)) {
+    limit_node = feature_node->GetNodeMap()->GetNode(value);
+  } else if (feature_node->GetProperty("pValue", value, attribute)) {
+    limit_node = gst_pylon_find_limit_node(
+        feature_node->GetNodeMap()->GetNode(value), limit);
+  }
+  return limit_node;
+}
+
+static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
+    GenApi::INode *feature_node) {
+  std::vector<GenApi::INode *> parent_features;
+
+  if (feature_node->IsFeature()) {
+    parent_features.push_back(feature_node);
+  } else {
+    GenApi::NodeList_t parents;
+    feature_node->GetParents(parents);
+    for (const auto &parent : parents) {
+      std::vector<GenApi::INode *> grandparents =
+          gst_pylon_find_parent_features(parent);
+      parent_features.insert(parent_features.end(), grandparents.begin(),
+                             grandparents.end());
+    }
+  }
+  return parent_features;
 }
 
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
