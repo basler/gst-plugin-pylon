@@ -74,6 +74,14 @@ static GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *feature_node,
                                                 const GenICam::gcstring limit);
 static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
     GenApi::INode *feature_node);
+static void gst_pylon_add_all_property_values(
+    GenApi::INode *feature_node, std::string value,
+    std::unordered_map<std::string, GenApi::INode *> &invalidators);
+static std::vector<GenApi::INode *> gst_pylon_get_available_features(
+    std::vector<GenApi::INode *> feature_list);
+template <class Type>
+static std::vector<std::vector<Type>> gst_pylon_cartesian_product(
+    std::vector<std::vector<Type>> &v);
 static bool gst_pylon_can_feature_later_be_writable(GenApi::INode *node);
 static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
                                           GenApi::INode *node);
@@ -175,6 +183,55 @@ static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
     }
   }
   return parent_features;
+}
+
+static void gst_pylon_add_all_property_values(
+    GenApi::INode *feature_node, std::string value,
+    std::unordered_map<std::string, GenApi::INode *> &invalidators) {
+  std::string delimiter = "\t";
+  size_t pos = 0;
+  std::string token;
+
+  while ((pos = value.find(delimiter)) != std::string::npos) {
+    token = value.substr(0, pos);
+    if (invalidators.find(token) == invalidators.end()) {
+      invalidators[token] = feature_node->GetNodeMap()->GetNode(token.c_str());
+    }
+    value.erase(0, pos + delimiter.length());
+  }
+
+  if (invalidators.find(value) == invalidators.end()) {
+    invalidators[value] = feature_node->GetNodeMap()->GetNode(value.c_str());
+  }
+}
+
+static std::vector<GenApi::INode *> gst_pylon_get_available_features(
+    std::vector<GenApi::INode *> feature_list) {
+  std::vector<GenApi::INode *> available_features;
+  for (const auto &feature : feature_list) {
+    if (GenApi::IsAvailable(feature)) {
+      available_features.push_back(feature);
+    }
+  }
+  return available_features;
+}
+
+template <class Type>
+static std::vector<std::vector<Type>> gst_pylon_cartesian_product(
+    std::vector<std::vector<Type>> &v) {
+  std::vector<std::vector<Type>> result;
+  auto product = [](long long a, std::vector<Type> &b) { return a * b.size(); };
+  const long long N = accumulate(v.begin(), v.end(), 1LL, product);
+  std::vector<Type> u(v.size());
+  for (long long n = 0; n < N; ++n) {
+    lldiv_t q{n, 0};
+    for (long long i = v.size() - 1; 0 <= i; --i) {
+      q = div(q.quot, v[i].size());
+      u[i] = v[i][q.rem];
+    }
+    result.push_back(u);
+  }
+  return result;
 }
 
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
