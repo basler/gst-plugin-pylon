@@ -34,6 +34,8 @@
 
 #include "gstpylonparamspecs.h"
 
+#include <algorithm>
+#include <numeric>
 #include <unordered_map>
 
 class GstPylonActions {
@@ -107,8 +109,12 @@ static double gst_pylon_check_for_feature_invalidators(
     std::unordered_map<std::string, GenApi::INode *> &invalidators);
 static double gst_pylon_query_feature_limits(GenApi::INode *feature_node,
                                              std::string limit);
-static std::vector<std::vector<GstPylonActions *>> create_set_value_actions(
-    std::vector<GenApi::INode *> node_list);
+static std::vector<std::vector<GstPylonActions *>>
+gst_pylon_create_set_value_actions(std::vector<GenApi::INode *> node_list);
+static void gst_pylon_find_limits(
+    GenApi::INode *node, double &minimum_under_all_settings,
+    double &maximum_under_all_settings,
+    std::vector<GenApi::INode *> &invalidators_result);
 static gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode *node);
 static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
                                           GenApi::INode *node);
@@ -309,8 +315,8 @@ static double gst_pylon_check_for_feature_invalidators(
   return limit_under_all_settings;
 }
 
-static std::vector<std::vector<GstPylonActions *>> create_set_value_actions(
-    std::vector<GenApi::INode *> node_list) {
+static std::vector<std::vector<GstPylonActions *>>
+gst_pylon_create_set_value_actions(std::vector<GenApi::INode *> node_list) {
   std::vector<std::vector<GstPylonActions *>> actions_list;
 
   for (const auto &node : node_list) {
@@ -353,6 +359,84 @@ static std::vector<std::vector<GstPylonActions *>> create_set_value_actions(
   }
 
   return actions_list;
+}
+
+static void gst_pylon_find_limits(
+    GenApi::INode *node, double &minimum_under_all_settings,
+    double &maximum_under_all_settings,
+    std::vector<GenApi::INode *> &invalidators_result) {
+  std::unordered_map<std::string, GenApi::INode *> invalidators;
+  maximum_under_all_settings = 0;
+  minimum_under_all_settings = 0;
+
+  g_return_if_fail(node);
+
+  /* Find the maximum value of a feature under the influence of other elements
+   * of the nodemap */
+  GenApi::INode *pmax_node = gst_pylon_find_limit_node(node, "pMax");
+  maximum_under_all_settings = gst_pylon_check_for_feature_invalidators(
+      node, pmax_node, "max", invalidators);
+
+  /* Find the minimum value of a feature under the influence of other elements
+   * of the nodemap */
+  GenApi::INode *pmin_node = gst_pylon_find_limit_node(node, "pMin");
+  minimum_under_all_settings = gst_pylon_check_for_feature_invalidators(
+      node, pmin_node, "min", invalidators);
+
+  /* Return if no invalidator nodes found */
+  if (invalidators.empty()) {
+    invalidators_result.clear();
+    return;
+  }
+
+  /* Find all features that control the node */
+  std::vector<GenApi::INode *> parent_invalidators;
+  for (const auto &inv : invalidators) {
+    std::vector<GenApi::INode *> parent_features =
+        gst_pylon_find_parent_features(inv.second);
+    parent_invalidators.insert(parent_invalidators.end(),
+                               parent_features.begin(), parent_features.end());
+  }
+
+  /* Filter parent invalidators to only available ones */
+  std::vector<GenApi::INode *> available_parent_inv =
+      gst_pylon_get_available_features(parent_invalidators);
+
+  /* Create list of extreme value settings per invalidator */
+  std::vector<std::vector<GstPylonActions *>> actions_list =
+      gst_pylon_create_set_value_actions(available_parent_inv);
+
+  /* Create list of all possible setting permutations and execute them all */
+  auto action_list_permutations = gst_pylon_cartesian_product(actions_list);
+  std::vector<double> min_values;
+  std::vector<double> max_values;
+  for (const auto &actions : action_list_permutations) {
+    for (const auto &action : actions) {
+      try {
+        action->set_value();
+      } catch (const Pylon::GenericException &e) {
+        continue;
+      }
+    }
+    /* Capture min and max values after all setting are applied*/
+    min_values.push_back(gst_pylon_query_feature_limits(node, "min"));
+    max_values.push_back(gst_pylon_query_feature_limits(node, "max"));
+  }
+
+  /* Get the max and min values under all settings executed*/
+  minimum_under_all_settings =
+      *std::min_element(min_values.begin(), min_values.end());
+  maximum_under_all_settings =
+      *std::max_element(max_values.begin(), max_values.end());
+
+  /* Clean up */
+  for (const auto &actions : actions_list) {
+    for (const auto &action : actions) {
+      delete action;
+    }
+  }
+
+  invalidators_result = available_parent_inv;
 }
 
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
