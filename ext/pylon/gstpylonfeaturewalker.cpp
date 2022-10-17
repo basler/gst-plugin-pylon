@@ -176,11 +176,11 @@ void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
     auto node = worklist.front();
     worklist.pop();
 
-    /* Only handle real features that are not in the filter set and are not
-     * selectors */
+    /* Only handle real features that are not in the filter set, are not
+     * selectors and are available */
     auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
     if (node->IsFeature() && (node->GetVisibility() != GenApi::Invisible) &&
-        sel_node && !sel_node->IsSelector() &&
+        sel_node && GenApi::IsAvailable(node) && !sel_node->IsSelector() &&
         propfilter_set.find(std::string(node->GetName())) ==
             propfilter_set.end()) {
       GenICam::gcstring value;
