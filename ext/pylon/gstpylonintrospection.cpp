@@ -151,30 +151,34 @@ static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
   return static_cast<GParamFlags>(flags);
 }
 
-static GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *feature_node,
+static GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *node,
                                                 const GenICam::gcstring limit) {
   GenApi::INode *limit_node = NULL;
   GenICam::gcstring value;
   GenICam::gcstring attribute;
 
-  if (feature_node->GetProperty(limit, value, attribute)) {
-    limit_node = feature_node->GetNodeMap()->GetNode(value);
-  } else if (feature_node->GetProperty("pValue", value, attribute)) {
-    limit_node = gst_pylon_find_limit_node(
-        feature_node->GetNodeMap()->GetNode(value), limit);
+  g_return_val_if_fail(node, NULL);
+
+  if (node->GetProperty(limit, value, attribute)) {
+    limit_node = node->GetNodeMap()->GetNode(value);
+  } else if (node->GetProperty("pValue", value, attribute)) {
+    limit_node =
+        gst_pylon_find_limit_node(node->GetNodeMap()->GetNode(value), limit);
   }
   return limit_node;
 }
 
 static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
-    GenApi::INode *feature_node) {
+    GenApi::INode *node) {
   std::vector<GenApi::INode *> parent_features;
 
-  if (feature_node->IsFeature()) {
-    parent_features.push_back(feature_node);
+  g_return_val_if_fail(node, parent_features);
+
+  if (node->IsFeature()) {
+    parent_features.push_back(node);
   } else {
     GenApi::NodeList_t parents;
-    feature_node->GetParents(parents);
+    node->GetParents(parents);
     for (const auto &parent : parents) {
       std::vector<GenApi::INode *> grandparents =
           gst_pylon_find_parent_features(parent);
@@ -186,22 +190,24 @@ static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
 }
 
 static void gst_pylon_add_all_property_values(
-    GenApi::INode *feature_node, std::string value,
+    GenApi::INode *node, std::string value,
     std::unordered_map<std::string, GenApi::INode *> &invalidators) {
   std::string delimiter = "\t";
   size_t pos = 0;
   std::string token;
 
+  g_return_if_fail(node);
+
   while ((pos = value.find(delimiter)) != std::string::npos) {
     token = value.substr(0, pos);
     if (invalidators.find(token) == invalidators.end()) {
-      invalidators[token] = feature_node->GetNodeMap()->GetNode(token.c_str());
+      invalidators[token] = node->GetNodeMap()->GetNode(token.c_str());
     }
     value.erase(0, pos + delimiter.length());
   }
 
   if (invalidators.find(value) == invalidators.end()) {
-    invalidators[value] = feature_node->GetNodeMap()->GetNode(value.c_str());
+    invalidators[value] = node->GetNodeMap()->GetNode(value.c_str());
   }
 }
 
