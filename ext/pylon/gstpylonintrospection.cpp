@@ -44,17 +44,17 @@ class GstPylonActions {
   virtual ~GstPylonActions() = default;
 };
 
-template <class T, class V>
+template <class P, class V>
 class GstPylonTypeAction : public GstPylonActions {
  public:
-  GstPylonTypeAction(T param, V value) {
+  GstPylonTypeAction(P param, V value) {
     this->param = param;
     this->value = value;
   }
   void set_value() override { this->param.SetValue(this->value); }
 
  private:
-  T param;
+  P param;
   V value;
 };
 
@@ -104,13 +104,16 @@ static std::vector<GenApi::INode *> gst_pylon_get_available_features(
 template <class Type>
 static std::vector<std::vector<Type>> gst_pylon_cartesian_product(
     std::vector<std::vector<Type>> &v);
-static double gst_pylon_check_for_feature_invalidators(
+template <class P, class T>
+static T gst_pylon_check_for_feature_invalidators(
     GenApi::INode *feature_node, GenApi::INode *limit_node, std::string limit,
     std::unordered_map<std::string, GenApi::INode *> &invalidators);
-static double gst_pylon_query_feature_limits(GenApi::INode *feature_node,
-                                             std::string limit);
+template <class P, class T>
+static T gst_pylon_query_feature_limits(GenApi::INode *feature_node,
+                                        std::string limit);
 static std::vector<std::vector<GstPylonActions *>>
 gst_pylon_create_set_value_actions(std::vector<GenApi::INode *> node_list);
+template <class P, class T>
 static void gst_pylon_find_limits(
     GenApi::INode *node, double &minimum_under_all_settings,
     double &maximum_under_all_settings,
@@ -273,31 +276,25 @@ static std::vector<std::vector<Type>> gst_pylon_cartesian_product(
   return result;
 }
 
-// TODO: use template for CParameter types
-static double gst_pylon_query_feature_limits(GenApi::INode *node,
-                                             std::string limit) {
+template <class P, class T>
+static T gst_pylon_query_feature_limits(GenApi::INode *node,
+                                        std::string limit) {
   g_return_val_if_fail(node, 0);
 
-  if (GenApi::intfIInteger == node->GetPrincipalInterfaceType()) {
-    if ("max" == limit) {
-      return Pylon::CIntegerParameter(node).GetMax();
-    } else {
-      return Pylon::CIntegerParameter(node).GetMin();
-    }
+  P param(node);
+
+  if ("max" == limit) {
+    return param.GetMax();
   } else {
-    if ("max" == limit) {
-      return Pylon::CFloatParameter(node).GetMax();
-    } else {
-      return Pylon::CFloatParameter(node).GetMin();
-    }
+    return param.GetMin();
   }
 }
 
-// TODO: use template for CParameter types
-static double gst_pylon_check_for_feature_invalidators(
+template <class P, class T>
+static T gst_pylon_check_for_feature_invalidators(
     GenApi::INode *node, GenApi::INode *limit_node, std::string limit,
     std::unordered_map<std::string, GenApi::INode *> &invalidators) {
-  double limit_under_all_settings = 0;
+  T limit_under_all_settings = 0;
   GenICam::gcstring value;
   GenICam::gcstring attribute;
 
@@ -306,7 +303,8 @@ static double gst_pylon_check_for_feature_invalidators(
 
   if (!limit_node ||
       !limit_node->GetProperty("pInvalidator", value, attribute)) {
-    limit_under_all_settings = gst_pylon_query_feature_limits(node, limit);
+    limit_under_all_settings =
+        gst_pylon_query_feature_limits<P, T>(node, limit);
   } else {
     limit_node->GetProperty("pInvalidator", value, attribute);
     gst_pylon_add_all_property_values(node, std::string(value), invalidators);
@@ -361,9 +359,10 @@ gst_pylon_create_set_value_actions(std::vector<GenApi::INode *> node_list) {
   return actions_list;
 }
 
+template <class P, class T>
 static void gst_pylon_find_limits(
-    GenApi::INode *node, double &minimum_under_all_settings,
-    double &maximum_under_all_settings,
+    GenApi::INode *node, T &minimum_under_all_settings,
+    T &maximum_under_all_settings,
     std::vector<GenApi::INode *> &invalidators_result) {
   std::unordered_map<std::string, GenApi::INode *> invalidators;
   maximum_under_all_settings = 0;
@@ -374,13 +373,13 @@ static void gst_pylon_find_limits(
   /* Find the maximum value of a feature under the influence of other elements
    * of the nodemap */
   GenApi::INode *pmax_node = gst_pylon_find_limit_node(node, "pMax");
-  maximum_under_all_settings = gst_pylon_check_for_feature_invalidators(
+  maximum_under_all_settings = gst_pylon_check_for_feature_invalidators<P, T>(
       node, pmax_node, "max", invalidators);
 
   /* Find the minimum value of a feature under the influence of other elements
    * of the nodemap */
   GenApi::INode *pmin_node = gst_pylon_find_limit_node(node, "pMin");
-  minimum_under_all_settings = gst_pylon_check_for_feature_invalidators(
+  minimum_under_all_settings = gst_pylon_check_for_feature_invalidators<P, T>(
       node, pmin_node, "min", invalidators);
 
   /* Return if no invalidator nodes found */
@@ -419,8 +418,8 @@ static void gst_pylon_find_limits(
       }
     }
     /* Capture min and max values after all setting are applied*/
-    min_values.push_back(gst_pylon_query_feature_limits(node, "min"));
-    max_values.push_back(gst_pylon_query_feature_limits(node, "max"));
+    min_values.push_back(gst_pylon_query_feature_limits<P, T>(node, "min"));
+    max_values.push_back(gst_pylon_query_feature_limits<P, T>(node, "max"));
   }
 
   /* Get the max and min values under all settings executed*/
