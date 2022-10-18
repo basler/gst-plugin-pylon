@@ -35,6 +35,7 @@
 
 static gboolean gst_pylon_meta_init (GstMeta * meta,
     gpointer params, GstBuffer * buffer);
+static void gst_pylon_meta_free (GstMeta * meta, GstBuffer * buffer);
 
 GType
 gst_pylon_meta_api_get_type (void)
@@ -59,7 +60,7 @@ gst_pylon_meta_get_info (void)
         "GstPylonMeta",
         sizeof (GstPylonMeta),
         gst_pylon_meta_init,
-        NULL,
+        gst_pylon_meta_free,
         NULL);
     g_once_init_leave (&info, meta);
   }
@@ -80,6 +81,17 @@ gst_buffer_add_pylon_meta (GstBuffer * buffer)
 static gboolean
 gst_pylon_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
 {
-  /* Gst requieres this func to be implemented, even if it is empty */
+  GstPylonMeta *pylon_meta = (GstPylonMeta *) meta;
+
+  pylon_meta->chunks = gst_structure_new_empty ("meta/x-pylon");
+
   return TRUE;
+}
+
+static void
+gst_pylon_meta_free (GstMeta * meta, GstBuffer * buffer)
+{
+  GstPylonMeta *pylon_meta = (GstPylonMeta *) meta;
+
+  gst_structure_free (pylon_meta->chunks);
 }
