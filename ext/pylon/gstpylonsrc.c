@@ -890,6 +890,44 @@ gst_pylon_src_child_proxy_get_child_by_name (GstChildProxy *
   return obj;
 }
 
+static GObject *
+gst_pylon_src_child_proxy_get_child_by_index (GstChildProxy * child_proxy,
+    guint index)
+{
+  GstPylonSrc *self = GST_PYLON_SRC (child_proxy);
+  GObject *obj = NULL;
+
+  GST_DEBUG_OBJECT (self, "Looking for child at index \"%d\"", index);
+
+  if (!gst_pylon_src_start (GST_BASE_SRC (self))) {
+    GST_ERROR_OBJECT (self,
+        "Please specify a camera before attempting to set Pylon "
+        "device properties");
+    return NULL;
+  }
+
+  switch (index) {
+    case 0:
+      /* cam:: */
+      GST_OBJECT_LOCK (self);
+      obj = gst_pylon_get_camera (self->pylon);
+      GST_OBJECT_UNLOCK (self);
+      break;
+    case 1:
+      /* stream:: */
+      GST_OBJECT_LOCK (self);
+      obj = gst_pylon_get_stream_grabber (self->pylon);
+      GST_OBJECT_UNLOCK (self);
+      break;
+    default:
+      GST_ERROR_OBJECT (self,
+          "No child at index \"%d\". Use index 0 for \"cam\" or "
+          "index 1 for \"stream\"  instead.", index);
+  }
+
+  return obj;
+}
+
 static guint
 gst_pylon_src_child_proxy_get_children_count (GstChildProxy * child_proxy)
 {
@@ -901,5 +939,6 @@ static void
 gst_pylon_src_child_proxy_init (GstChildProxyInterface * iface)
 {
   iface->get_child_by_name = gst_pylon_src_child_proxy_get_child_by_name;
+  iface->get_child_by_index = gst_pylon_src_child_proxy_get_child_by_index;
   iface->get_children_count = gst_pylon_src_child_proxy_get_children_count;
 }
