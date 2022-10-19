@@ -387,6 +387,22 @@ void gst_pylon_interrupt_capture(GstPylon *self) {
   self->image_handler.InterruptWaitForImage();
 }
 
+static void gst_pylon_meta_fill_result_chunks(
+    GstBuffer *buf, Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
+  g_return_if_fail(buf);
+
+  GenApi::INodeMap &chunk_nodemap = (*grab_result_ptr)->GetChunkDataNodeMap();
+  GenApi::NodeList_t chunk_nodes;
+  chunk_nodemap.GetNodes(chunk_nodes);
+
+  for (auto &node : chunk_nodes) {
+    if (GenApi::IsAvailable(node) && node->IsFeature() &&
+        (node->GetName() != "Root")) {
+      std::cout << node->GetName() << std::endl;
+    }
+  }
+}
+
 static void free_ptr_grab_result(gpointer data) {
   g_return_if_fail(data);
 
