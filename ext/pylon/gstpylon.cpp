@@ -395,14 +395,16 @@ static void gst_pylon_meta_fill_result_chunks(
 
   GstPylonMeta *meta = gst_buffer_add_pylon_meta(buf);
   GstStructure *st = meta->chunks;
+  gboolean is_valid = TRUE;
 
   GenApi::INodeMap &chunk_nodemap = grab_result_ptr->GetChunkDataNodeMap();
   GenApi::NodeList_t chunk_nodes;
   chunk_nodemap.GetNodes(chunk_nodes);
 
   for (auto &node : chunk_nodes) {
+    auto sel_node = dynamic_cast<GenApi::ISelector *>(node);
     if (GenApi::IsAvailable(node) && node->IsFeature() &&
-        (node->GetName() != "Root")) {
+        (node->GetName() != "Root") && !sel_node->IsSelector()) {
       GValue value = G_VALUE_INIT;
       GenApi::EInterfaceType iface = node->GetPrincipalInterfaceType();
       switch (iface) {
@@ -424,13 +426,16 @@ static void gst_pylon_meta_fill_result_chunks(
           g_value_set_string(&value, Pylon::CStringParameter(node).GetValue());
           break;
         default:
-          GST_DEBUG_OBJECT(self->gstpylonsrc,
-                           "Chunk %s not added, chunk type %d is not supported",
-                           node->GetName().c_str(),
-                           node->GetPrincipalInterfaceType());
+          is_valid = FALSE;
+          GST_INFO_OBJECT(self->gstpylonsrc,
+                          "Chunk %s not added, chunk type %d is not supported",
+                          node->GetName().c_str(),
+                          node->GetPrincipalInterfaceType());
           break;
       }
-      gst_structure_set_value(st, node->GetName(), &value);
+      if (is_valid) {
+        gst_structure_set_value(st, node->GetName(), &value);
+      }
       g_value_unset(&value);
     }
   }
@@ -518,7 +523,9 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
       buffer_size, 0, buffer_size, grab_result_ptr,
       static_cast<GDestroyNotify>(free_ptr_grab_result));
 
-  gst_pylon_meta_fill_result_chunks(self, *buf, *grab_result_ptr);
+  if ((*grab_result_ptr)->IsChunkDataAvailable()) {
+    gst_pylon_meta_fill_result_chunks(self, *buf, *grab_result_ptr);
+  }
 
   return TRUE;
 }
