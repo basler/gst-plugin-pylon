@@ -143,6 +143,7 @@ double check_for_feature_invalidators(
 class Actions {
  public:
   void virtual set_value() = 0;
+  virtual ~Actions() = default;
 };
 
 template <class T, class V>
