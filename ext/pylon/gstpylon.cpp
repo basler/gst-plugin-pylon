@@ -403,24 +403,35 @@ static void gst_pylon_meta_fill_result_chunks(
   for (auto &node : chunk_nodes) {
     if (GenApi::IsAvailable(node) && node->IsFeature() &&
         (node->GetName() != "Root")) {
+      GValue value = G_VALUE_INIT;
       GenApi::EInterfaceType iface = node->GetPrincipalInterfaceType();
-
       switch (iface) {
         case GenApi::intfIInteger:
+          g_value_init(&value, G_TYPE_INT64);
+          g_value_set_int64(&value, Pylon::CIntegerParameter(node).GetValue());
           break;
         case GenApi::intfIBoolean:
+          g_value_init(&value, G_TYPE_BOOLEAN);
+          g_value_set_boolean(&value,
+                              Pylon::CBooleanParameter(node).GetValue());
           break;
         case GenApi::intfIFloat:
+          g_value_init(&value, G_TYPE_DOUBLE);
+          g_value_set_double(&value, Pylon::CFloatParameter(node).GetValue());
           break;
         case GenApi::intfIString:
+          g_value_init(&value, G_TYPE_STRING);
+          g_value_set_string(&value, Pylon::CStringParameter(node).GetValue());
           break;
         default:
-          GST_DEBUG_OBJECT(
-              self->gstpylonsrc,
-              "Chunk %s not added, chunck type %d is not supported",
-              node->GetName().c_str(), node->GetPrincipalInterfaceType());
+          GST_DEBUG_OBJECT(self->gstpylonsrc,
+                           "Chunk %s not added, chunk type %d is not supported",
+                           node->GetName().c_str(),
+                           node->GetPrincipalInterfaceType());
           break;
       }
+      gst_structure_set_value(st, node->GetName(), &value);
+      g_value_unset(&value);
     }
   }
 }
