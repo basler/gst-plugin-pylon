@@ -35,6 +35,7 @@
 #include "gstchildinspector.h"
 #include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
+#include "gstpylonmeta.h"
 #include "gstpylonobject.h"
 
 #include <map>
@@ -388,17 +389,38 @@ void gst_pylon_interrupt_capture(GstPylon *self) {
 }
 
 static void gst_pylon_meta_fill_result_chunks(
-    GstBuffer *buf, Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
+    GstPylon *self, GstBuffer *buf,
+    Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
   g_return_if_fail(buf);
 
-  GenApi::INodeMap &chunk_nodemap = (*grab_result_ptr)->GetChunkDataNodeMap();
+  GstPylonMeta *meta = gst_buffer_add_pylon_meta(buf);
+  GstStructure *st = meta->chunks;
+
+  GenApi::INodeMap &chunk_nodemap = grab_result_ptr->GetChunkDataNodeMap();
   GenApi::NodeList_t chunk_nodes;
   chunk_nodemap.GetNodes(chunk_nodes);
 
   for (auto &node : chunk_nodes) {
     if (GenApi::IsAvailable(node) && node->IsFeature() &&
         (node->GetName() != "Root")) {
-      std::cout << node->GetName() << std::endl;
+      GenApi::EInterfaceType iface = node->GetPrincipalInterfaceType();
+
+      switch (iface) {
+        case GenApi::intfIInteger:
+          break;
+        case GenApi::intfIBoolean:
+          break;
+        case GenApi::intfIFloat:
+          break;
+        case GenApi::intfIString:
+          break;
+        default:
+          GST_DEBUG_OBJECT(
+              self->gstpylonsrc,
+              "Chunk %s not added, chunck type %d is not supported",
+              node->GetName().c_str(), node->GetPrincipalInterfaceType());
+          break;
+      }
     }
   }
 }
@@ -484,6 +506,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
       static_cast<GstMemoryFlags>(0), (*grab_result_ptr)->GetBuffer(),
       buffer_size, 0, buffer_size, grab_result_ptr,
       static_cast<GDestroyNotify>(free_ptr_grab_result));
+
+  gst_pylon_meta_fill_result_chunks(self, *buf, *grab_result_ptr);
 
   return TRUE;
 }
