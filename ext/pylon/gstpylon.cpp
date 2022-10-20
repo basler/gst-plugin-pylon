@@ -432,10 +432,10 @@ static void gst_pylon_meta_fill_result_chunks(
           break;
         default:
           is_valid = FALSE;
-          GST_INFO_OBJECT(self->gstpylonsrc,
-                          "Chunk %s not added, chunk type %d is not supported",
-                          node->GetName().c_str(),
-                          node->GetPrincipalInterfaceType());
+          GST_DEBUG_OBJECT(self->gstpylonsrc,
+                           "Chunk %s not added, chunk type %d is not supported",
+                           node->GetName().c_str(),
+                           node->GetPrincipalInterfaceType());
           break;
       }
       if (is_valid) {
