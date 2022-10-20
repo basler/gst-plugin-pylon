@@ -425,6 +425,11 @@ static void gst_pylon_meta_fill_result_chunks(
           g_value_init(&value, G_TYPE_STRING);
           g_value_set_string(&value, Pylon::CStringParameter(node).GetValue());
           break;
+        case GenApi::intfIEnumeration:
+          g_value_init(&value, G_TYPE_STRING);
+          g_value_set_string(&value,
+                             Pylon::CEnumParameter(node).GetValue().c_str());
+          break;
         default:
           is_valid = FALSE;
           GST_INFO_OBJECT(self->gstpylonsrc,
