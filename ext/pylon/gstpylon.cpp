@@ -388,6 +388,66 @@ void gst_pylon_interrupt_capture(GstPylon *self) {
   self->image_handler.InterruptWaitForImage();
 }
 
+static void gst_pylon_add_chunks_as_meta(GstPylon *self, GstBuffer *buf,
+                                         GstStructure *st, GenApi::INode *node,
+                                         GenApi::INode *selector_node,
+                                         guint64 &selector_value) {
+  g_return_if_fail(buf);
+
+  gboolean is_valid = TRUE;
+  gchar *name = NULL;
+
+  if (selector_node) {
+    selector_value = 0;
+    Pylon::CEnumParameter selparam(selector_node);
+    selparam.SetIntValue(selector_value);
+    name = g_strdup_printf(
+        "%s-%s", node->GetName().c_str(),
+        selparam.GetEntry(selector_value)->GetSymbolic().c_str());
+  } else {
+    name = g_strdup(node->GetName().c_str());
+  }
+
+  GValue value = G_VALUE_INIT;
+  GenApi::EInterfaceType iface = node->GetPrincipalInterfaceType();
+  switch (iface) {
+    case GenApi::intfIInteger:
+      g_value_init(&value, G_TYPE_INT64);
+      g_value_set_int64(&value, Pylon::CIntegerParameter(node).GetValue());
+      break;
+    case GenApi::intfIBoolean:
+      g_value_init(&value, G_TYPE_BOOLEAN);
+      g_value_set_boolean(&value, Pylon::CBooleanParameter(node).GetValue());
+      break;
+    case GenApi::intfIFloat:
+      g_value_init(&value, G_TYPE_DOUBLE);
+      g_value_set_double(&value, Pylon::CFloatParameter(node).GetValue());
+      break;
+    case GenApi::intfIString:
+      g_value_init(&value, G_TYPE_STRING);
+      g_value_set_string(&value, Pylon::CStringParameter(node).GetValue());
+      break;
+    case GenApi::intfIEnumeration:
+      g_value_init(&value, G_TYPE_STRING);
+      g_value_set_string(&value,
+                         Pylon::CEnumParameter(node).GetValue().c_str());
+      break;
+    default:
+      is_valid = FALSE;
+      GST_DEBUG_OBJECT(self->gstpylonsrc,
+                       "Chunk %s not added, chunk type %d is not supported",
+                       name, node->GetPrincipalInterfaceType());
+      break;
+  }
+
+  if (is_valid) {
+    gst_structure_set_value(st, name, &value);
+  }
+
+  g_value_unset(&value);
+  g_free(name);
+}
+
 static void gst_pylon_meta_fill_result_chunks(
     GstPylon *self, GstBuffer *buf,
     Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
@@ -395,55 +455,67 @@ static void gst_pylon_meta_fill_result_chunks(
 
   GstPylonMeta *meta = gst_buffer_add_pylon_meta(buf);
   GstStructure *st = meta->chunks;
-  gboolean is_valid = TRUE;
 
   GenApi::INodeMap &chunk_nodemap = grab_result_ptr->GetChunkDataNodeMap();
   GenApi::NodeList_t chunk_nodes;
   chunk_nodemap.GetNodes(chunk_nodes);
 
   for (auto &node : chunk_nodes) {
+    GenApi::INode *selector_node = NULL;
+    guint64 selector_value = -1;
+
+    /* If the feature has no selectors then it is a "direct" feature, it does
+     * not depend on any other selector
+     */
     auto sel_node = dynamic_cast<GenApi::ISelector *>(node);
-    if (GenApi::IsAvailable(node) && node->IsFeature() &&
-        (node->GetName() != "Root") && !sel_node->IsSelector()) {
-      GValue value = G_VALUE_INIT;
-      GenApi::EInterfaceType iface = node->GetPrincipalInterfaceType();
-      switch (iface) {
-        case GenApi::intfIInteger:
-          g_value_init(&value, G_TYPE_INT64);
-          g_value_set_int64(&value, Pylon::CIntegerParameter(node).GetValue());
-          break;
-        case GenApi::intfIBoolean:
-          g_value_init(&value, G_TYPE_BOOLEAN);
-          g_value_set_boolean(&value,
-                              Pylon::CBooleanParameter(node).GetValue());
-          break;
-        case GenApi::intfIFloat:
-          g_value_init(&value, G_TYPE_DOUBLE);
-          g_value_set_double(&value, Pylon::CFloatParameter(node).GetValue());
-          break;
-        case GenApi::intfIString:
-          g_value_init(&value, G_TYPE_STRING);
-          g_value_set_string(&value, Pylon::CStringParameter(node).GetValue());
-          break;
-        case GenApi::intfIEnumeration:
-          g_value_init(&value, G_TYPE_STRING);
-          g_value_set_string(&value,
-                             Pylon::CEnumParameter(node).GetValue().c_str());
-          break;
-        default:
-          is_valid = FALSE;
-          GST_DEBUG_OBJECT(self->gstpylonsrc,
-                           "Chunk %s not added, chunk type %d is not supported",
-                           node->GetName().c_str(),
-                           node->GetPrincipalInterfaceType());
-          break;
-      }
-      if (is_valid) {
-        gst_structure_set_value(st, node->GetName(), &value);
-      }
-      g_value_unset(&value);
+    if (!GenApi::IsAvailable(node) || !node->IsFeature() ||
+        (node->GetName() == "Root") || sel_node->IsSelector()) {
+      continue;
+    }
+
+    GenApi::FeatureList_t selectors;
+    sel_node->GetSelectingFeatures(selectors);
+    if (selectors.empty()) {
+      gst_pylon_add_chunks_as_meta(self, buf, st, node, selector_node,
+                                   selector_value);
+      continue;
+    }
+
+    /* At the time being only features with enum selectors are supported */
+    auto selector = selectors.at(0);
+    auto enum_node = dynamic_cast<GenApi::IEnumeration *>(selector);
+
+    /* Add selector enum values */
+    std::vector<std::string> enum_values;
+    GenApi::NodeList_t enum_entries;
+    /* calculate prefix length to strip */
+    const auto prefix_str = std::string("EnumEntry_") +
+                            enum_node->GetNode()->GetName().c_str() +
+                            std::string("_");
+    auto prefix_len = prefix_str.length();
+    enum_node->GetEntries(enum_entries);
+    for (auto const &e : enum_entries) {
+      auto enum_name = std::string(e->GetName());
+      enum_values.push_back(enum_name.substr(prefix_len));
+    }
+
+    selector_node = selector->GetNode();
+    Pylon::CEnumParameter param(selector_node);
+
+    /* Treat features that have just one selector value as unselected */
+    if (1 == enum_values.size()) {
+      selector_node = NULL;
+    }
+
+    for (auto const &sel_pair : enum_values) {
+      selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
+      gst_pylon_add_chunks_as_meta(self, buf, st, node, selector_node,
+                                   selector_value);
     }
   }
+
+  GST_INFO_OBJECT(self->gstpylonsrc, "New meta: %" GST_PTR_FORMAT,
+                  meta->chunks);
 }
 
 static void free_ptr_grab_result(gpointer data) {
