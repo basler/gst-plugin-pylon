@@ -54,8 +54,8 @@ static std::unordered_set<std::string> propfilter_set = {
     "AcquisitionFrameRateAbs"};
 
 gboolean gst_pylon_process_selector_features(
-    GenApi::INode** selector_node, std::vector<std::string>& enum_values,
     GenApi::INode* node, const GenApi::FeatureList_t& selectors,
+    GenApi::INode** selector_node, std::vector<std::string>& enum_values,
     std::string& error_msg) {
   /* At the time being features with multiple selectors are not supported */
   guint max_selectors = 1;
@@ -121,8 +121,8 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     return specs_list;
   }
 
-  ret = gst_pylon_process_selector_features(&selector_node, enum_values, node,
-                                            selectors, error_msg);
+  ret = gst_pylon_process_selector_features(node, selectors, &selector_node,
+                                            enum_values, error_msg);
   if (!ret) {
     throw Pylon::GenericException(error_msg.c_str(), __FILE__, __LINE__);
   }
