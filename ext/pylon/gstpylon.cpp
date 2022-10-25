@@ -34,6 +34,7 @@
 
 #include "gstchildinspector.h"
 #include "gstpylondisconnecthandler.h"
+#include "gstpylonfeaturewalker.h"
 #include "gstpylonimagehandler.h"
 #include "gstpylonmeta.h"
 #include "gstpylonobject.h"
@@ -391,14 +392,13 @@ void gst_pylon_interrupt_capture(GstPylon *self) {
 static void gst_pylon_add_chunks_as_meta(GstPylon *self, GstBuffer *buf,
                                          GstStructure *st, GenApi::INode *node,
                                          GenApi::INode *selector_node,
-                                         guint64 &selector_value) {
+                                         const guint64 &selector_value) {
   g_return_if_fail(buf);
 
   gboolean is_valid = TRUE;
   gchar *name = NULL;
 
   if (selector_node) {
-    selector_value = 0;
     Pylon::CEnumParameter selparam(selector_node);
     selparam.SetIntValue(selector_value);
     name = g_strdup_printf(
@@ -462,17 +462,19 @@ static void gst_pylon_meta_fill_result_chunks(
 
   for (auto &node : chunk_nodes) {
     GenApi::INode *selector_node = NULL;
+    std::vector<std::string> enum_values;
     guint64 selector_value = -1;
+    gboolean ret = TRUE;
+    std::string error_msg;
 
-    /* If the feature has no selectors then it is a "direct" feature, it does
-     * not depend on any other selector
-     */
     auto sel_node = dynamic_cast<GenApi::ISelector *>(node);
     if (!GenApi::IsAvailable(node) || !node->IsFeature() ||
         (node->GetName() == "Root") || sel_node->IsSelector()) {
       continue;
     }
 
+    /* If the feature has no selectors then it is a "direct" feature, it does
+     * not depend on any other selector */
     GenApi::FeatureList_t selectors;
     sel_node->GetSelectingFeatures(selectors);
     if (selectors.empty()) {
@@ -481,25 +483,13 @@ static void gst_pylon_meta_fill_result_chunks(
       continue;
     }
 
-    /* At the time being only features with enum selectors are supported */
-    auto selector = selectors.at(0);
-    auto enum_node = dynamic_cast<GenApi::IEnumeration *>(selector);
-
-    /* Add selector enum values */
-    std::vector<std::string> enum_values;
-    GenApi::NodeList_t enum_entries;
-    /* calculate prefix length to strip */
-    const auto prefix_str = std::string("EnumEntry_") +
-                            enum_node->GetNode()->GetName().c_str() +
-                            std::string("_");
-    auto prefix_len = prefix_str.length();
-    enum_node->GetEntries(enum_entries);
-    for (auto const &e : enum_entries) {
-      auto enum_name = std::string(e->GetName());
-      enum_values.push_back(enum_name.substr(prefix_len));
+    ret = gst_pylon_process_selector_features(node, selectors, &selector_node,
+                                              enum_values, error_msg);
+    if (!ret) {
+      GST_DEBUG_OBJECT(self->gstpylonsrc, "%s", error_msg.c_str());
+      continue;
     }
 
-    selector_node = selector->GetNode();
     Pylon::CEnumParameter param(selector_node);
 
     /* Treat features that have just one selector value as unselected */
@@ -513,9 +503,6 @@ static void gst_pylon_meta_fill_result_chunks(
                                    selector_value);
     }
   }
-
-  GST_INFO_OBJECT(self->gstpylonsrc, "New meta: %" GST_PTR_FORMAT,
-                  meta->chunks);
 }
 
 static void free_ptr_grab_result(gpointer data) {
