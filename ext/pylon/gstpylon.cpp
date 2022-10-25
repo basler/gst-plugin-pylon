@@ -466,10 +466,7 @@ static void gst_pylon_meta_fill_result_chunks(
 
   for (auto &node : chunk_nodes) {
     GenApi::INode *selector_node = NULL;
-    std::vector<std::string> enum_values;
-    guint64 selector_value = -1;
-    gboolean ret = TRUE;
-    std::string error_msg;
+    guint64 selector_value = 0;
 
     auto sel_node = dynamic_cast<GenApi::ISelector *>(node);
     if (!GenApi::IsAvailable(node) || !node->IsFeature() ||
@@ -487,6 +484,9 @@ static void gst_pylon_meta_fill_result_chunks(
       continue;
     }
 
+    gboolean ret = TRUE;
+    std::string error_msg;
+    std::vector<std::string> enum_values;
     ret = gst_pylon_process_selector_features(node, selectors, &selector_node,
                                               enum_values, error_msg);
     if (!ret) {

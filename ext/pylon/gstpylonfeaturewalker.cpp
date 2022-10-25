@@ -102,9 +102,6 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   GenApi::INode* selector_node = NULL;
   guint64 selector_value = 0;
   std::vector<GParamSpec*> specs_list;
-  std::vector<std::string> enum_values;
-  gboolean ret = TRUE;
-  std::string error_msg;
 
   g_return_val_if_fail(node, specs_list);
 
@@ -124,6 +121,9 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     return specs_list;
   }
 
+  gboolean ret = TRUE;
+  std::string error_msg;
+  std::vector<std::string> enum_values;
   ret = gst_pylon_process_selector_features(node, selectors, &selector_node,
                                             enum_values, error_msg);
   if (!ret) {
