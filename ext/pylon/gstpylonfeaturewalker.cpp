@@ -57,6 +57,9 @@ gboolean gst_pylon_process_selector_features(
     GenApi::INode* node, const GenApi::FeatureList_t& selectors,
     GenApi::INode** selector_node, std::vector<std::string>& enum_values,
     std::string& error_msg) {
+  g_return_val_if_fail(node, FALSE);
+  g_return_val_if_fail(selector_node, FALSE);
+
   /* At the time being features with multiple selectors are not supported */
   guint max_selectors = 1;
   if (selectors.size() > max_selectors) {

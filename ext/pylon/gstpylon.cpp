@@ -393,8 +393,12 @@ static void gst_pylon_add_chunks_as_meta(GstPylon *self, GstBuffer *buf,
                                          GstStructure *st, GenApi::INode *node,
                                          GenApi::INode *selector_node,
                                          const guint64 &selector_value) {
+  g_return_if_fail(self);
   g_return_if_fail(buf);
+  g_return_if_fail(st);
+  g_return_if_fail(node);
 
+  GValue value = G_VALUE_INIT;
   gboolean is_valid = TRUE;
   gchar *name = NULL;
 
@@ -408,7 +412,6 @@ static void gst_pylon_add_chunks_as_meta(GstPylon *self, GstBuffer *buf,
     name = g_strdup(node->GetName().c_str());
   }
 
-  GValue value = G_VALUE_INIT;
   GenApi::EInterfaceType iface = node->GetPrincipalInterfaceType();
   switch (iface) {
     case GenApi::intfIInteger:
@@ -451,6 +454,7 @@ static void gst_pylon_add_chunks_as_meta(GstPylon *self, GstBuffer *buf,
 static void gst_pylon_meta_fill_result_chunks(
     GstPylon *self, GstBuffer *buf,
     Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
+  g_return_if_fail(self);
   g_return_if_fail(buf);
 
   GstPylonMeta *meta = gst_buffer_add_pylon_meta(buf);
