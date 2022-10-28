@@ -93,7 +93,7 @@ static GParamSpec *gst_pylon_make_spec_selector_enum(
     GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
     guint64 selector_value, const gchar *device_fullname);
 static GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *feature_node,
-                                                const GenICam::gcstring limit);
+                                                const GenICam::gcstring &limit);
 static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
     GenApi::INode *feature_node);
 static void gst_pylon_add_all_property_values(
@@ -187,8 +187,8 @@ static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
   return static_cast<GParamFlags>(flags);
 }
 
-static GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *node,
-                                                const GenICam::gcstring limit) {
+static GenApi::INode *gst_pylon_find_limit_node(
+    GenApi::INode *node, const GenICam::gcstring &limit) {
   GenApi::INode *limit_node = NULL;
   GenICam::gcstring value;
   GenICam::gcstring attribute;
@@ -260,18 +260,18 @@ static std::vector<GenApi::INode *> gst_pylon_get_available_features(
 
 template <class Type>
 static std::vector<std::vector<Type>> gst_pylon_cartesian_product(
-    std::vector<std::vector<Type>> &v) {
+    std::vector<std::vector<Type>> &values) {
   std::vector<std::vector<Type>> result;
   auto product = [](long long a, std::vector<Type> &b) { return a * b.size(); };
-  const long long N = accumulate(v.begin(), v.end(), 1LL, product);
-  std::vector<Type> u(v.size());
+  const long long N = accumulate(values.begin(), values.end(), 1LL, product);
+  std::vector<Type> result_combination(values.size());
   for (long long n = 0; n < N; ++n) {
-    lldiv_t q{n, 0};
-    for (long long i = v.size() - 1; 0 <= i; --i) {
-      q = div(q.quot, v[i].size());
-      u[i] = v[i][q.rem];
+    lldiv_t div_result{n, 0};
+    for (long long i = values.size() - 1; 0 <= i; --i) {
+      div_result = div(div_result.quot, values[i].size());
+      result_combination[i] = values[i][div_result.rem];
     }
-    result.push_back(u);
+    result.push_back(result_combination);
   }
   return result;
 }
