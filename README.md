@@ -208,6 +208,17 @@ Configure a hardware trigger on Line1 for the trigger FrameStart:
 
 `gst-launch-1.0 pylonsrc cam::TriggerSource-FrameStart=Line1 cam::TriggerMode-FrameStart=On ! videoconvert ! autovideosink`
 
+### Chunks
+
+Chunk support is available. The selected chunks will be appended to each gstreamer buffer as meta data.
+
+The `cam::ChunkModeActive` feature needs to be set to `true` for chunks to be enabled.
+
+Example:
+Enable Timestamp, ExposureTime and CounterValue chunks:
+```
+gst-launch-1.0 pylonsrc cam::ChunkModeActive=True cam::ChunkEnable-Timestamp=True cam::ChunkEnable-ExposureTime=true cam::ChunkEnable-CounterValue=true ! videoconvert ! autovideosink
+```
 
 # Building
 
