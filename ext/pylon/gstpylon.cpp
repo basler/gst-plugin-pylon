@@ -87,6 +87,13 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_caps(
     GstPylon *self, GstStructure *st,
     std::vector<PixelFormatMappingType> pixel_format_mapping);
+static void gst_pylon_add_chunks_as_meta(GstPylon *self, GstBuffer *buf,
+                                         GstStructure *st, GenApi::INode *node,
+                                         GenApi::INode *selector_node,
+                                         const guint64 &selector_value);
+static void gst_pylon_meta_fill_result_chunks(
+    GstPylon *self, GstBuffer *buf,
+    Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
 static std::vector<std::string> gst_pylon_gst_to_pfnc(
     const std::string &gst_format,
     const std::vector<PixelFormatMappingType> &pixel_format_mapping);
@@ -437,9 +444,10 @@ static void gst_pylon_add_chunks_as_meta(GstPylon *self, GstBuffer *buf,
       break;
     default:
       is_valid = FALSE;
-      GST_DEBUG_OBJECT(self->gstpylonsrc,
-                       "Chunk %s not added, chunk type %d is not supported",
-                       name, node->GetPrincipalInterfaceType());
+      GST_ELEMENT_WARNING(self->gstpylonsrc, LIBRARY, FAILED,
+                          ("Chunk %s not added.", name),
+                          ("Chunk of type %d is not supported",
+                           node->GetPrincipalInterfaceType()));
       break;
   }
 
@@ -468,6 +476,7 @@ static void gst_pylon_meta_fill_result_chunks(
     GenApi::INode *selector_node = NULL;
     guint64 selector_value = 0;
 
+    /* Only take into account valid Chunk nodes */
     auto sel_node = dynamic_cast<GenApi::ISelector *>(node);
     if (!GenApi::IsAvailable(node) || !node->IsFeature() ||
         (node->GetName() == "Root") || sel_node->IsSelector()) {
@@ -490,7 +499,9 @@ static void gst_pylon_meta_fill_result_chunks(
     ret = gst_pylon_process_selector_features(node, selectors, &selector_node,
                                               enum_values, error_msg);
     if (!ret) {
-      GST_DEBUG_OBJECT(self->gstpylonsrc, "%s", error_msg.c_str());
+      GST_ELEMENT_WARNING(self->gstpylonsrc, LIBRARY, FAILED,
+                          ("Chunk %s not added.", node->GetName().c_str()),
+                          ("%s", error_msg.c_str()));
       continue;
     }
 
