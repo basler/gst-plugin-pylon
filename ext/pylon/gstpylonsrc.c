@@ -76,7 +76,6 @@ struct _GstPylonSrc
 
 /* prototypes */
 
-
 static void
 gst_pylon_src_set_property (GObject * object,
     guint property_id, const GValue * value, GParamSpec * pspec);
@@ -125,6 +124,12 @@ enum
 
 /* Enum for cature_error */
 #define GST_TYPE_CAPTURE_ERROR_ENUM (gst_pylon_capture_error_enum_get_type ())
+
+/* Child proxy interface names */
+static const gchar *gst_pylon_src_child_proxy_names[] = {
+  "cam",
+  "stream"
+};
 
 static GType
 gst_pylon_capture_error_enum_get_type (void)
@@ -859,6 +864,12 @@ done:
   return ret;
 }
 
+static guint
+gst_pylon_src_child_proxy_get_children_count (GstChildProxy * child_proxy)
+{
+  return sizeof (gst_pylon_src_child_proxy_names) / sizeof (gchar *);
+}
+
 static GObject *
 gst_pylon_src_child_proxy_get_child_by_name (GstChildProxy *
     child_proxy, const gchar * name)
@@ -890,16 +901,33 @@ gst_pylon_src_child_proxy_get_child_by_name (GstChildProxy *
   return obj;
 }
 
-static guint
-gst_pylon_src_child_proxy_get_children_count (GstChildProxy * child_proxy)
+static GObject *
+gst_pylon_src_child_proxy_get_child_by_index (GstChildProxy * child_proxy,
+    guint index)
 {
-  /* There's only one camera and one stream grabber active at a time */
-  return 2;
+  GstPylonSrc *self = GST_PYLON_SRC (child_proxy);
+  GObject *obj = NULL;
+
+  GST_DEBUG_OBJECT (self, "Looking for child at index \"%d\"", index);
+
+  if (index >= gst_pylon_src_child_proxy_get_children_count (child_proxy)) {
+    GST_ERROR_OBJECT (self,
+        "No child at index \"%d\". Use a valid child index instead.", index);
+    goto done;
+  }
+
+  obj =
+      gst_pylon_src_child_proxy_get_child_by_name (child_proxy,
+      gst_pylon_src_child_proxy_names[index]);
+
+done:
+  return obj;
 }
 
 static void
 gst_pylon_src_child_proxy_init (GstChildProxyInterface * iface)
 {
   iface->get_child_by_name = gst_pylon_src_child_proxy_get_child_by_name;
+  iface->get_child_by_index = gst_pylon_src_child_proxy_get_child_by_index;
   iface->get_children_count = gst_pylon_src_child_proxy_get_children_count;
 }
