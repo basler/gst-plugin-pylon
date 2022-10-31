@@ -75,6 +75,7 @@ struct _GstPylonSrc
 };
 
 /* prototypes */
+
 static void
 gst_pylon_src_set_property (GObject * object,
     guint property_id, const GValue * value, GParamSpec * pspec);
@@ -123,6 +124,12 @@ enum
 
 /* Enum for cature_error */
 #define GST_TYPE_CAPTURE_ERROR_ENUM (gst_pylon_capture_error_enum_get_type ())
+
+/* Child proxy interface names */
+static const gchar *gst_pylon_src_child_proxy_names[] = {
+  "cam",
+  "stream"
+};
 
 static GType
 gst_pylon_capture_error_enum_get_type (void)
@@ -857,6 +864,12 @@ done:
   return ret;
 }
 
+static guint
+gst_pylon_src_child_proxy_get_children_count (GstChildProxy * child_proxy)
+{
+  return sizeof (gst_pylon_src_child_proxy_names) / sizeof (gchar *);
+}
+
 static GObject *
 gst_pylon_src_child_proxy_get_child_by_name (GstChildProxy *
     child_proxy, const gchar * name)
@@ -892,31 +905,17 @@ static GObject *
 gst_pylon_src_child_proxy_get_child_by_index (GstChildProxy * child_proxy,
     guint index)
 {
-  static const char *names[] = {
-    "cam",
-    "stream"
-  };
-
   GstPylonSrc *self = GST_PYLON_SRC (child_proxy);
-  gint num_names = 0;
 
   GST_DEBUG_OBJECT (self, "Looking for child at index \"%d\"", index);
 
-  num_names = sizeof (names) / sizeof (gchar *);
-  if (index >= num_names) {
+  if (index >= gst_pylon_src_child_proxy_get_children_count (child_proxy)) {
     GST_ERROR_OBJECT (self,
         "No child at index \"%d\". Use a valid child index instead.", index);
   }
 
   return gst_pylon_src_child_proxy_get_child_by_name (child_proxy,
-      names[index]);
-}
-
-static guint
-gst_pylon_src_child_proxy_get_children_count (GstChildProxy * child_proxy)
-{
-  /* There's only one camera and one stream grabber active at a time */
-  return 2;
+      gst_pylon_src_child_proxy_names[index]);
 }
 
 static void
