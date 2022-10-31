@@ -75,8 +75,6 @@ struct _GstPylonSrc
 };
 
 /* prototypes */
-
-
 static void
 gst_pylon_src_set_property (GObject * object,
     guint property_id, const GValue * value, GParamSpec * pspec);
@@ -894,34 +892,24 @@ static GObject *
 gst_pylon_src_child_proxy_get_child_by_index (GstChildProxy * child_proxy,
     guint index)
 {
+  static const char *names[] = {
+    "cam",
+    "stream"
+  };
+
   GstPylonSrc *self = GST_PYLON_SRC (child_proxy);
-  GObject *obj = NULL;
+  gint num_names = 0;
 
   GST_DEBUG_OBJECT (self, "Looking for child at index \"%d\"", index);
 
-  if (!gst_pylon_src_start (GST_BASE_SRC (self))) {
+  num_names = sizeof (names) / sizeof (gchar *);
+  if (index >= num_names) {
     GST_ERROR_OBJECT (self,
-        "Please specify a camera before attempting to set Pylon "
-        "device properties");
-    return NULL;
+        "No child at index \"%d\". Use a valid child index instead.", index);
   }
 
-  switch (index) {
-    case 0:
-      /* cam:: */
-      obj = gst_pylon_src_child_proxy_get_child_by_name (child_proxy, "cam");
-      break;
-    case 1:
-      /* stream:: */
-      obj = gst_pylon_src_child_proxy_get_child_by_name (child_proxy, "stream");
-      break;
-    default:
-      GST_ERROR_OBJECT (self,
-          "No child at index \"%d\". Use index 0 for \"cam\" or "
-          "index 1 for \"stream\"  instead.", index);
-  }
-
-  return obj;
+  return gst_pylon_src_child_proxy_get_child_by_name (child_proxy,
+      names[index]);
 }
 
 static guint
