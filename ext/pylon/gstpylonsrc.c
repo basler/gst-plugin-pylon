@@ -906,16 +906,22 @@ gst_pylon_src_child_proxy_get_child_by_index (GstChildProxy * child_proxy,
     guint index)
 {
   GstPylonSrc *self = GST_PYLON_SRC (child_proxy);
+  GObject *obj = NULL;
 
   GST_DEBUG_OBJECT (self, "Looking for child at index \"%d\"", index);
 
   if (index >= gst_pylon_src_child_proxy_get_children_count (child_proxy)) {
     GST_ERROR_OBJECT (self,
         "No child at index \"%d\". Use a valid child index instead.", index);
+    goto done;
   }
 
-  return gst_pylon_src_child_proxy_get_child_by_name (child_proxy,
+  obj =
+      gst_pylon_src_child_proxy_get_child_by_name (child_proxy,
       gst_pylon_src_child_proxy_names[index]);
+
+done:
+  return obj;
 }
 
 static void
