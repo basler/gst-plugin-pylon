@@ -909,15 +909,11 @@ gst_pylon_src_child_proxy_get_child_by_index (GstChildProxy * child_proxy,
   switch (index) {
     case 0:
       /* cam:: */
-      GST_OBJECT_LOCK (self);
-      obj = gst_pylon_get_camera (self->pylon);
-      GST_OBJECT_UNLOCK (self);
+      obj = gst_pylon_src_child_proxy_get_child_by_name (child_proxy, "cam");
       break;
     case 1:
       /* stream:: */
-      GST_OBJECT_LOCK (self);
-      obj = gst_pylon_get_stream_grabber (self->pylon);
-      GST_OBJECT_UNLOCK (self);
+      obj = gst_pylon_src_child_proxy_get_child_by_name (child_proxy, "stream");
       break;
     default:
       GST_ERROR_OBJECT (self,
