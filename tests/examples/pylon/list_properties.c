@@ -37,6 +37,159 @@
 #include <gst/gst.h>
 #include <stdlib.h>
 
+static gchar *
+flags_to_string (GParamSpec * spec)
+{
+  GString *flags = g_string_new (NULL);
+
+  g_return_val_if_fail (spec, NULL);
+
+  if (spec->flags & G_PARAM_READABLE) {
+    g_string_append_printf (flags, "readable,");
+  }
+  if (spec->flags & G_PARAM_WRITABLE) {
+    g_string_append_printf (flags, "writable,");
+  }
+  if (spec->flags & GST_PARAM_MUTABLE_READY) {
+    g_string_append_printf (flags, "changeable only in NULL or READY state");
+  }
+  if (spec->flags & GST_PARAM_MUTABLE_PLAYING) {
+    g_string_append_printf (flags,
+        "changeable only in NULL, READY, PAUSED or PLAYING state");
+  }
+
+  return g_string_free (flags, FALSE);
+}
+
+static gchar *
+string_to_string (GParamSpec * spec)
+{
+  GParamSpecString *pstring = G_PARAM_SPEC_STRING (spec);
+
+  return g_strdup_printf ("String. Default: \"%s\"", pstring->default_value);
+}
+
+static gchar *
+boolean_to_string (GParamSpec * spec)
+{
+  GParamSpecBoolean *pboolean = G_PARAM_SPEC_BOOLEAN (spec);
+  const gchar *value = pboolean->default_value ? "true" : "false";
+
+  return g_strdup_printf ("Boolean. Default: %s", value);
+}
+
+static gchar *
+int64_to_string (GParamSpec * spec)
+{
+  GParamSpecInt64 *pint = G_PARAM_SPEC_INT64 (spec);
+
+  return g_strdup_printf ("Integer64. Range: %" G_GINT64_FORMAT
+      " - %" G_GINT64_FORMAT " Default: %" G_GINT64_FORMAT,
+      pint->minimum, pint->maximum, pint->default_value);
+}
+
+static gchar *
+float_to_string (GParamSpec * spec)
+{
+  GParamSpecFloat *pfloat = G_PARAM_SPEC_FLOAT (spec);
+
+  return g_strdup_printf ("Float. Range: %.2f - %.2f Default: %.2f",
+      pfloat->minimum, pfloat->maximum, pfloat->default_value);
+}
+
+static gchar *
+enum_to_string (GParamSpec * spec)
+{
+  GParamSpecEnum *penum = G_PARAM_SPEC_ENUM (spec);
+  GString *desc = g_string_new (NULL);
+  GType type = G_TYPE_FROM_CLASS (penum->enum_class);
+  gchar *def = g_enum_to_string (type, penum->default_value);
+  const gchar *type_name = g_type_name (type);
+  GEnumValue *iter = NULL;
+
+  g_string_append_printf (desc, "Enum \"%s\" Default: %d, \"%s\"",
+      type_name, penum->default_value, def);
+  g_free (def);
+
+  for (iter = penum->enum_class->values; iter->value_name; iter++) {
+    if (iter->value_nick[0] == '\0') {
+      g_string_append_printf (desc, "\n\t(%d): %s", iter->value,
+          iter->value_name);
+    } else {
+      g_string_append_printf (desc, "\n\t(%d): %s - %s", iter->value,
+          iter->value_name, iter->value_nick);
+    }
+  }
+
+  return g_string_free (desc, FALSE);
+}
+
+static gchar *
+property_to_string (GParamSpec * spec)
+{
+  const gchar *name = NULL;
+  const gchar *blurb = NULL;
+  gchar *flags = NULL;
+  gchar *details = NULL;
+  gchar *prop = NULL;
+
+  g_return_val_if_fail (spec, NULL);
+
+  name = g_param_spec_get_name (spec);
+  blurb = g_param_spec_get_blurb (spec);
+  flags = flags_to_string (spec);
+
+  switch (G_TYPE_FUNDAMENTAL (spec->value_type)) {
+    case G_TYPE_INT64:
+      details = int64_to_string (spec);
+      break;
+    case G_TYPE_STRING:
+      details = string_to_string (spec);
+      break;
+    case G_TYPE_FLOAT:
+      details = float_to_string (spec);
+      break;
+    case G_TYPE_ENUM:
+      details = enum_to_string (spec);
+      break;
+    case G_TYPE_BOOLEAN:
+      details = boolean_to_string (spec);
+      break;
+    default:
+      details = g_strdup ("unknown type");
+      break;
+  }
+
+  prop = g_strdup_printf ("Name: %s\nBlurb: %s\nFlags: %s\nDetails: %s\n",
+      name, blurb, flags, details);
+
+  g_free (flags);
+  g_free (details);
+
+  return prop;
+}
+
+static void
+print_device_properties (GObject * object)
+{
+  GParamSpec **property_specs = NULL;
+  guint num_properties = 0, i = 0;
+
+  g_return_if_fail (object);
+
+  property_specs = g_object_class_list_properties (G_OBJECT_GET_CLASS (object),
+      &num_properties);
+
+  for (i = 0; i < num_properties; i++) {
+    gchar *property = property_to_string (property_specs[i]);
+
+    g_print ("%s", property);
+    g_print ("-----------\n");
+
+    g_free (property);
+  }
+}
+
 int
 main (int argc, char **argv)
 {
@@ -68,6 +221,8 @@ main (int argc, char **argv)
       /* No more devices */
       break;
     }
+
+    print_device_properties (cam);
 
     gst_object_unref (cam);
   }
