@@ -55,10 +55,10 @@
 G_BEGIN_DECLS
 
 G_DECLARE_DERIVABLE_TYPE (GstPylonObject, gst_pylon_object,
-    GST, PYLON_OBJECT, GObject)
+    GST, PYLON_OBJECT, GstObject)
 
 struct _GstPylonObjectClass {
-  GObjectClass parent_class;
+  GstObjectClass parent_class;
 };
 
 GType gst_pylon_object_register (Pylon::String_t device_name, GenApi::INodeMap& nodemap);

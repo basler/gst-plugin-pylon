@@ -224,9 +224,12 @@ main (int argc, char **argv)
       break;
     }
 
-    g_print ("CAMERA:\n======\n");
+    g_print ("**************************\n%s\n**************************\n",
+        GST_OBJECT_NAME (cam));
+
+    g_print ("\nCAMERA:\n=======\n");
     print_device_properties (cam);
-    g_print ("\n\nSTREAM GRABBER:\n===============\n");
+    g_print ("\nSTREAM GRABBER:\n===============\n");
     print_device_properties (stream);
 
     gst_object_unref (cam);
