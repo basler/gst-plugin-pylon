@@ -195,7 +195,6 @@ main (int argc, char **argv)
 {
   GstElement *element = NULL;
   GstChildProxy *child_proxy = NULL;
-  GObject *cam = NULL;
   gint device = 0;
   gint ret = EXIT_FAILURE;
 
@@ -214,17 +213,24 @@ main (int argc, char **argv)
   child_proxy = GST_CHILD_PROXY (element);
 
   for (device = 0;; device++) {
+    GObject *cam = NULL, *stream = NULL;
+
     g_object_set (element, "device-index", device, NULL);
     cam = gst_child_proxy_get_child_by_name (child_proxy, "cam");
+    stream = gst_child_proxy_get_child_by_name (child_proxy, "stream");
 
-    if (NULL == cam) {
+    if (NULL == cam || NULL == stream) {
       /* No more devices */
       break;
     }
 
+    g_print ("CAMERA:\n======\n");
     print_device_properties (cam);
+    g_print ("\n\nSTREAM GRABBER:\n===============\n");
+    print_device_properties (stream);
 
     gst_object_unref (cam);
+    gst_object_unref (stream);
   }
 
   gst_object_unref (element);
