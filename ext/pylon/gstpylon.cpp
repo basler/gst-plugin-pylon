@@ -130,6 +130,10 @@ struct _GstPylon {
   GObject *gstream_grabber;
   GstPylonImageHandler image_handler;
   GstPylonDisconnectHandler disconnect_handler;
+
+  std::string device_user_name;
+  std::string device_serial_number;
+  gint device_index;
 };
 
 static const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
@@ -247,6 +251,11 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
     self->gstream_grabber = gst_pylon_object_new(
         self->camera, gst_pylon_get_sgrabber_name(*self->camera),
         &sgrabber_nodemap);
+
+    self->device_index = device_index;
+    self->device_user_name = device_user_name ? device_user_name : "";
+    self->device_serial_number =
+        device_serial_number ? device_serial_number : "";
 
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
@@ -988,4 +997,17 @@ GObject *gst_pylon_get_stream_grabber(GstPylon *self) {
   g_return_val_if_fail(self, NULL);
 
   return G_OBJECT(g_object_ref(self->gstream_grabber));
+}
+
+gboolean gst_pylon_is_same_device(GstPylon *self, const gint device_index,
+                                  const gchar *device_user_name,
+                                  const gchar *device_serial_number) {
+  g_return_val_if_fail(self, FALSE);
+
+  std::string user_name = device_user_name ? device_user_name : "";
+  std::string serial_number = device_serial_number ? device_serial_number : "";
+
+  return self->device_index == device_index &&
+         self->device_user_name == user_name &&
+         self->device_serial_number == serial_number;
 }

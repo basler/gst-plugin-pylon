@@ -628,9 +628,27 @@ gst_pylon_src_start (GstBaseSrc * src)
   GError *error = NULL;
   gboolean ret = TRUE;
   gboolean using_pfs = FALSE;
+  gboolean same_device = TRUE;
+
+  GST_OBJECT_LOCK (self);
+  same_device = self->pylon
+      && gst_pylon_is_same_device (self->pylon, self->device_index,
+      self->device_user_name, self->device_serial_number);
+  GST_OBJECT_UNLOCK (self);
+
+  if (same_device) {
+    goto out;
+  }
 
   if (self->pylon) {
-    return TRUE;
+    gst_pylon_stop (self->pylon, &error);
+    gst_pylon_free (self->pylon);
+    self->pylon = NULL;
+
+    if (error) {
+      ret = FALSE;
+      goto log_gst_error;
+    }
   }
 
   GST_OBJECT_LOCK (self);

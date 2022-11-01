@@ -41,6 +41,9 @@ int
 main (int argc, char **argv)
 {
   GstElement *element = NULL;
+  GstChildProxy *child_proxy = NULL;
+  GObject *cam = NULL;
+  gint device = 0;
   gint ret = EXIT_FAILURE;
 
   /* Make sure we have at least an emulator running */
@@ -55,10 +58,24 @@ main (int argc, char **argv)
     goto out;
   }
 
+  child_proxy = GST_CHILD_PROXY (element);
+
+  for (device = 0;; device++) {
+    g_object_set (element, "device-index", device, NULL);
+    cam = gst_child_proxy_get_child_by_name (child_proxy, "cam");
+
+    if (NULL == cam) {
+      /* No more devices */
+      break;
+    }
+
+    gst_object_unref (cam);
+  }
+
   gst_object_unref (element);
 
+out:
   gst_deinit ();
 
-out:
   return ret;
 }

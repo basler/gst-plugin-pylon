@@ -72,6 +72,9 @@ gchar *gst_pylon_stream_grabber_get_string_properties();
 GObject *gst_pylon_get_camera(GstPylon *self);
 GObject *gst_pylon_get_stream_grabber(GstPylon *self);
 
+gboolean gst_pylon_is_same_device (GstPylon *self, const gint device_index,
+    const gchar *device_user_name, const gchar *device_serial_number);
+
 GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
 #define GST_CAT_DEFAULT gst_pylon_src_debug_category
 
