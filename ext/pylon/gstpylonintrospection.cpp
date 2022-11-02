@@ -490,7 +490,7 @@ static GParamSpec *gst_pylon_make_spec_selector_bool(GenApi::INodeMap &nodemap,
 
   Pylon::CBooleanParameter param(node);
 
-  return gst_pylon_param_spec_selector_bool(
+  return gst_pylon_param_spec_selector_boolean(
       nodemap, node->GetName(), selector->GetName(), selector_value,
       node->GetDisplayName(), node->GetToolTip(), param.GetValue(),
       gst_pylon_query_access(nodemap, node));
@@ -552,7 +552,7 @@ static GParamSpec *gst_pylon_make_spec_selector_str(GenApi::INodeMap &nodemap,
 
   Pylon::CStringParameter param(node);
 
-  return gst_pylon_param_spec_selector_str(
+  return gst_pylon_param_spec_selector_string(
       nodemap, node->GetName(), selector->GetName(), selector_value,
       node->GetDisplayName(), node->GetToolTip(), param.GetValue(),
       gst_pylon_query_access(nodemap, node));

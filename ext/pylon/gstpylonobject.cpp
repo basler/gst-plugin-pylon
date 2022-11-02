@@ -249,8 +249,8 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
     } else if (G_TYPE_BOOLEAN == value_type) {
       typedef gboolean (*GGetBool)(const GValue*);
       if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
-        GstPylonParamSpecSelectorBool* lspec =
-            GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
+        GstPylonParamSpecSelectorBoolean* lspec =
+            GST_PYLON_PARAM_SPEC_SELECTOR_BOOLEAN(pspec);
         gst_pylon_object_set_pylon_selector<GGetBool, Pylon::CBooleanParameter>(
             *priv->nodemap, g_value_get_boolean, value, lspec->feature,
             lspec->selector, lspec->selector_value);
@@ -275,8 +275,8 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
     } else if (G_TYPE_STRING == value_type) {
       typedef const gchar* (*GGetString)(const GValue*);
       if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
-        GstPylonParamSpecSelectorStr* lspec =
-            GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
+        GstPylonParamSpecSelectorString* lspec =
+            GST_PYLON_PARAM_SPEC_SELECTOR_STRING(pspec);
         gst_pylon_object_set_pylon_selector<GGetString,
                                             Pylon::CStringParameter>(
             *priv->nodemap, g_value_get_string, value, lspec->feature,

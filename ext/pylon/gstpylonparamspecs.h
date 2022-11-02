@@ -73,19 +73,19 @@ G_BEGIN_DECLS
                               GstPylonParamSpecSelectorInt64))
 
 /**
- * GstPylonParamSelectorBool:
+ * GstPylonParamSelectorBoolean:
  *
  * A fundamental type that describes a #GParamSpec Pylon
  * features controlled by a Selector
  */
 
-#define GST_PYLON_TYPE_PARAM_SELECTOR_BOOL \
-  (gst_pylon_param_spec_selector_bool_get_type())
-#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_BOOL(pspec) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_BOOL))
-#define GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec)                          \
-  (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_BOOL, \
-                              GstPylonParamSpecSelectorBool))
+#define GST_PYLON_TYPE_PARAM_SELECTOR_BOOLEAN\
+  (gst_pylon_param_spec_selector_boolean_get_type())
+#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_BOOLEAN(pspec) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_BOOLEAN))
+#define GST_PYLON_PARAM_SPEC_SELECTOR_BOOLEAN(pspec)                          \
+  (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_BOOLEAN, \
+                              GstPylonParamSpecSelectorBoolean))
 
 /**
  * GstPylonParamSelectorFloat:
@@ -103,26 +103,26 @@ G_BEGIN_DECLS
                               GstPylonParamSpecSelectorFloat))
 
 /**
- * GstPylonParamSelectorStr:
+ * GstPylonParamSelectorString:
  *
  * A fundamental type that describes a #GParamSpec Pylon
  * features controlled by a Selector
  */
 
-#define GST_PYLON_TYPE_PARAM_SELECTOR_STR \
-  (gst_pylon_param_spec_selector_str_get_type())
-#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_STR(pspec) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_STR))
-#define GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec)                          \
-  (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_STR, \
-                              GstPylonParamSpecSelectorStr))
+#define GST_PYLON_TYPE_PARAM_SELECTOR_STRING \
+  (gst_pylon_param_spec_selector_string_get_type())
+#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_STRING(pspec) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_STRING))
+#define GST_PYLON_PARAM_SPEC_SELECTOR_STRING(pspec)                          \
+  (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_STRING, \
+                              GstPylonParamSpecSelectorString))
 
 /* --- get_type functions --- */
 
 GType gst_pylon_param_spec_selector_int64_get_type(void);
-GType gst_pylon_param_spec_selector_bool_get_type(void);
+GType gst_pylon_param_spec_selector_boolean_get_type(void);
 GType gst_pylon_param_spec_selector_float_get_type(void);
-GType gst_pylon_param_spec_selector_str_get_type(void);
+GType gst_pylon_param_spec_selector_string_get_type(void);
 GType gst_pylon_param_spec_selector_enum_register(GenApi::INodeMap& nodemap,
                                                   const gchar* feature_name,
                                                   GType enum_feature_type,
@@ -131,9 +131,9 @@ GType gst_pylon_param_spec_selector_enum_register(GenApi::INodeMap& nodemap,
 /* --- typedefs & structures --- */
 
 typedef struct _GstPylonParamSpecSelectorInt64 GstPylonParamSpecSelectorInt64;
-typedef struct _GstPylonParamSpecSelectorBool GstPylonParamSpecSelectorBool;
+typedef struct _GstPylonParamSpecSelectorBoolean GstPylonParamSpecSelectorBoolean;
 typedef struct _GstPylonParamSpecSelectorFloat GstPylonParamSpecSelectorFloat;
-typedef struct _GstPylonParamSpecSelectorStr GstPylonParamSpecSelectorStr;
+typedef struct _GstPylonParamSpecSelectorString GstPylonParamSpecSelectorString;
 typedef struct _GstPylonParamSpecSelectorEnum GstPylonParamSpecSelectorEnum;
 
 /**
@@ -155,7 +155,7 @@ struct _GstPylonParamSpecSelectorInt64 {
 };
 
 /**
- * GstPylonParamSpecSelectorBool:
+ * GstPylonParamSpecSelectorBoolean:
  * @parent_instance: super class
  * @base: an existing boolean param spec to rely on
  * @selector_name: the name of the selector that controls the feature
@@ -164,7 +164,7 @@ struct _GstPylonParamSpecSelectorInt64 {
  * A GParamSpec derived structure that contains the meta data for Pylon
  * boolean features controlled by a selector.
  */
-struct _GstPylonParamSpecSelectorBool {
+struct _GstPylonParamSpecSelectorBoolean {
   GParamSpec parent_instance;
   GParamSpec* base;
   gchar* feature;
@@ -191,7 +191,7 @@ struct _GstPylonParamSpecSelectorFloat {
 };
 
 /**
- * GstPylonParamSpecSelectorStr:
+ * GstPylonParamSpecSelectorString:
  * @parent_instance: super class
  * @base: an existing string param spec to rely on
  * @selector_name: the name of the selector that controls the feature
@@ -200,7 +200,7 @@ struct _GstPylonParamSpecSelectorFloat {
  * A GParamSpec derived structure that contains the meta data for Pylon
  * string features controlled by a selector.
  */
-struct _GstPylonParamSpecSelectorStr {
+struct _GstPylonParamSpecSelectorString {
   GParamSpec parent_instance;
   GParamSpec* base;
   gchar* feature;
@@ -233,7 +233,7 @@ GParamSpec* gst_pylon_param_spec_selector_int64(
     const gchar* feature_name, guint64 selector_value, const gchar* nick,
     const gchar* blurb, gint64 min, gint64 max, gint64 def,
     GParamFlags flags) G_GNUC_MALLOC;
-GParamSpec* gst_pylon_param_spec_selector_bool(
+GParamSpec* gst_pylon_param_spec_selector_boolean(
     GenApi::INodeMap& nodemap, const gchar* selector_name,
     const gchar* feature_name, guint64 selector_value, const gchar* nick,
     const gchar* blurb, gboolean def, GParamFlags flags) G_GNUC_MALLOC;
@@ -242,7 +242,7 @@ GParamSpec* gst_pylon_param_spec_selector_float(
     const gchar* selector_name, guint64 selector_value, const gchar* nick,
     const gchar* blurb, gdouble min, gdouble max, gdouble def,
     GParamFlags flags) G_GNUC_MALLOC;
-GParamSpec* gst_pylon_param_spec_selector_str(
+GParamSpec* gst_pylon_param_spec_selector_string(
     GenApi::INodeMap& nodemap, const gchar* feature_name,
     const gchar* selector_name, guint64 selector_value, const gchar* nick,
     const gchar* blurb, const gchar* def, GParamFlags flags) G_GNUC_MALLOC;
