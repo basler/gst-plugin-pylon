@@ -57,170 +57,20 @@ G_BEGIN_DECLS
 #define GST_PYLON_PARAM_IS_SELECTOR (1 << (G_PARAM_USER_SHIFT + 1))
 #define GST_PYLON_PARAM_FLAG_IS_SET(pspec, flag) ((pspec)->flags & (flag))
 
-/**
- * GstPylonParamSelectorInt64:
- *
- * A fundamental type that describes a #GParamSpec Pylon
- * features controlled by a Selector
- */
-
-#define GST_PYLON_TYPE_PARAM_SELECTOR_INT64 \
-  (gst_pylon_param_spec_selector_int64_get_type())
-#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_INT64(pspec) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_INT64))
-#define GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec)                          \
-  (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_INT64, \
-                              GstPylonParamSpecSelectorInt64))
-
-/**
- * GstPylonParamSelectorBoolean:
- *
- * A fundamental type that describes a #GParamSpec Pylon
- * features controlled by a Selector
- */
-
-#define GST_PYLON_TYPE_PARAM_SELECTOR_BOOLEAN\
-  (gst_pylon_param_spec_selector_boolean_get_type())
-#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_BOOLEAN(pspec) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_BOOLEAN))
-#define GST_PYLON_PARAM_SPEC_SELECTOR_BOOLEAN(pspec)                          \
-  (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_BOOLEAN, \
-                              GstPylonParamSpecSelectorBoolean))
-
-/**
- * GstPylonParamSelectorFloat:
- *
- * A fundamental type that describes a #GParamSpec Pylon
- * features controlled by a Selector
- */
-
-#define GST_PYLON_TYPE_PARAM_SELECTOR_FLOAT \
-  (gst_pylon_param_spec_selector_float_get_type())
-#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_FLOAT(pspec) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_FLOAT))
-#define GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec)                          \
-  (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_FLOAT, \
-                              GstPylonParamSpecSelectorFloat))
-
-/**
- * GstPylonParamSelectorString:
- *
- * A fundamental type that describes a #GParamSpec Pylon
- * features controlled by a Selector
- */
-
-#define GST_PYLON_TYPE_PARAM_SELECTOR_STRING \
-  (gst_pylon_param_spec_selector_string_get_type())
-#define GST_PYLON_IS_PARAM_SPEC_SELECTOR_STRING(pspec) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_STRING))
-#define GST_PYLON_PARAM_SPEC_SELECTOR_STRING(pspec)                          \
-  (G_TYPE_CHECK_INSTANCE_CAST((pspec), GST_PYLON_TYPE_PARAM_SELECTOR_STRING, \
-                              GstPylonParamSpecSelectorString))
-
-/* --- get_type functions --- */
-
-GType gst_pylon_param_spec_selector_int64_get_type(void);
-GType gst_pylon_param_spec_selector_boolean_get_type(void);
-GType gst_pylon_param_spec_selector_float_get_type(void);
-GType gst_pylon_param_spec_selector_string_get_type(void);
-GType gst_pylon_param_spec_selector_enum_register(GenApi::INodeMap& nodemap,
-                                                  const gchar* feature_name,
-                                                  GType enum_feature_type,
-                                                  const gchar* device_fullname);
 
 /* --- typedefs & structures --- */
 
-typedef struct _GstPylonParamSpecSelectorInt64 GstPylonParamSpecSelectorInt64;
-typedef struct _GstPylonParamSpecSelectorBoolean GstPylonParamSpecSelectorBoolean;
-typedef struct _GstPylonParamSpecSelectorFloat GstPylonParamSpecSelectorFloat;
-typedef struct _GstPylonParamSpecSelectorString GstPylonParamSpecSelectorString;
-typedef struct _GstPylonParamSpecSelectorEnum GstPylonParamSpecSelectorEnum;
+typedef struct _GstPylonParamSpecSelectorData GstPylonParamSpecSelectorData;
 
 /**
- * GstPylonParamSpecSelectorInt64:
- * @parent_instance: super class
- * @base: an existing int64 param spec to rely on
- * @selector_name: the name of the selector that controls the feature
- * @feature_name: the name of the feature controlled by the selector
+ * GstPylonParamSpecSelectorData:
+ * @feature: the name of the feature controlled by the selector
+ * @selector: the name of the selector that controls the feature
+ * @selector_value: the numerical value to set on the selector
  *
- * A GParamSpec derived structure that contains the meta data for Pylon
- * int64eger features controlled by a selector.
+ * A structure to append to the different GParamSpecs.
  */
-struct _GstPylonParamSpecSelectorInt64 {
-  GParamSpec parent_instance;
-  GParamSpec* base;
-  gchar* feature;
-  gchar* selector;
-  guint64 selector_value;
-};
-
-/**
- * GstPylonParamSpecSelectorBoolean:
- * @parent_instance: super class
- * @base: an existing boolean param spec to rely on
- * @selector_name: the name of the selector that controls the feature
- * @feature_name: the name of the feature controlled by the selector
- *
- * A GParamSpec derived structure that contains the meta data for Pylon
- * boolean features controlled by a selector.
- */
-struct _GstPylonParamSpecSelectorBoolean {
-  GParamSpec parent_instance;
-  GParamSpec* base;
-  gchar* feature;
-  gchar* selector;
-  guint64 selector_value;
-};
-
-/**
- * GstPylonParamSpecSelectorFloat:
- * @parent_instance: super class
- * @base: an existing int64 param spec to rely on
- * @selector_name: the name of the selector that controls the feature
- * @feature_name: the name of the feature controlled by the selector
- *
- * A GParamSpec derived structure that contains the meta data for Pylon
- * float features controlled by a selector.
- */
-struct _GstPylonParamSpecSelectorFloat {
-  GParamSpec parent_instance;
-  GParamSpec* base;
-  gchar* feature;
-  gchar* selector;
-  guint64 selector_value;
-};
-
-/**
- * GstPylonParamSpecSelectorString:
- * @parent_instance: super class
- * @base: an existing string param spec to rely on
- * @selector_name: the name of the selector that controls the feature
- * @feature_name: the name of the feature controlled by the selector
- *
- * A GParamSpec derived structure that contains the meta data for Pylon
- * string features controlled by a selector.
- */
-struct _GstPylonParamSpecSelectorString {
-  GParamSpec parent_instance;
-  GParamSpec* base;
-  gchar* feature;
-  gchar* selector;
-  guint64 selector_value;
-};
-
-/**
- * GstPylonParamSpecSelectorEnum:
- * @parent_instance: super class
- * @base: an existing enumaration param spec to rely on
- * @selector_name: the name of the selector that controls the feature
- * @feature_name: the name of the feature controlled by the selector
- *
- * A GParamSpec derived structure that contains the meta data for Pylon
- * string features controlled by a selector.
- */
-struct _GstPylonParamSpecSelectorEnum {
-  GParamSpec parent_instance;
-  GParamSpec* base;
+struct _GstPylonParamSpecSelectorData {
   gchar* feature;
   gchar* selector;
   guint64 selector_value;
@@ -255,6 +105,7 @@ GParamSpec* gst_pylon_param_spec_selector_enum(
 /* --- Utility prototypes --- */
 
 gchar* gst_pylon_param_spec_sanitize_name(const gchar* name);
+GstPylonParamSpecSelectorData* gst_pylon_param_spec_selector_get_data(GParamSpec* spec);
 
 G_END_DECLS
 
