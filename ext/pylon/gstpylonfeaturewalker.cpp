@@ -114,31 +114,34 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   /* If the feature has no selectors then it is a "direct" feature, it does not
    * depend on any other selector */
   GenApi::FeatureList_t selectors;
+  std::vector<std::string> enum_values;
   sel_node->GetSelectingFeatures(selectors);
   if (selectors.empty()) {
-    specs_list.push_back(GstPylonParamFactory::make_param(
-        nodemap, node, selector_node, selector_value, device_fullname));
-    return specs_list;
+    enum_values.push_back("direct-feature");
   }
 
   gboolean ret = TRUE;
   std::string error_msg;
-  std::vector<std::string> enum_values;
-  ret = gst_pylon_process_selector_features(node, selectors, &selector_node,
-                                            enum_values, error_msg);
+  if (enum_values.empty()) {
+    ret = gst_pylon_process_selector_features(node, selectors, &selector_node,
+                                              enum_values, error_msg);
+  }
   if (!ret) {
     throw Pylon::GenericException(error_msg.c_str(), __FILE__, __LINE__);
   }
 
-  Pylon::CEnumParameter param(selector_node);
-
   /* Treat features that have just one selector value as unselected */
+  Pylon::CEnumParameter param;
   if (1 == enum_values.size()) {
     selector_node = NULL;
+  } else {
+    param.Attach(selector_node);
   }
 
   for (auto const& sel_pair : enum_values) {
-    selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
+    if (param.IsValid()) {
+      selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
+    }
     specs_list.push_back(GstPylonParamFactory::make_param(
         nodemap, node, selector_node, selector_value, device_fullname));
   }
