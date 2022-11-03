@@ -58,8 +58,7 @@ class GstPylonFeatureWalker {
                                  const gchar* device_fullname);
 };
 
-void gst_pylon_process_selector_features(
-    GenApi::INode* node, const GenApi::FeatureList_t& selectors,
-    GenApi::INode** selector_node, std::vector<std::string>& enum_values);
+GenApi::INode* gst_pylon_process_selector_features(
+    GenApi::INode* node, std::vector<std::string>& enum_values);
 
 #endif

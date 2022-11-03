@@ -483,31 +483,17 @@ static void gst_pylon_meta_fill_result_chunks(
       continue;
     }
 
-    /* If the feature has no selectors then it is a "direct" feature, it does
-     * not depend on any other selector */
-    GenApi::FeatureList_t selectors;
     std::vector<std::string> enum_values;
-    sel_node->GetSelectingFeatures(selectors);
-    if (selectors.empty()) {
-      enum_values.push_back("direct-feature");
+    try {
+      selector_node = gst_pylon_process_selector_features(node, enum_values);
+    } catch (const Pylon::GenericException &e) {
+      GST_WARNING_OBJECT(self->gstpylonsrc, "Chunk %s not added: %s",
+                         node->GetName().c_str(), e.GetDescription());
+      continue;
     }
 
-    if (enum_values.empty()) {
-      try {
-        gst_pylon_process_selector_features(node, selectors, &selector_node,
-                                            enum_values);
-      } catch (const Pylon::GenericException &e) {
-        GST_WARNING_OBJECT(self->gstpylonsrc, "Chunk %s not added: %s",
-                           node->GetName().c_str(), e.GetDescription());
-        continue;
-      }
-    }
-
-    /* Treat features that have just one selector value as unselected */
     Pylon::CEnumParameter param;
-    if (1 == enum_values.size()) {
-      selector_node = NULL;
-    } else {
+    if (selector_node) {
       param.Attach(selector_node);
     }
 

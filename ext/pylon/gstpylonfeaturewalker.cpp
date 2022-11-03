@@ -53,13 +53,27 @@ static std::unordered_set<std::string> propfilter_set = {
     "AcquisitionFrameRate",
     "AcquisitionFrameRateAbs"};
 
-void gst_pylon_process_selector_features(
-    GenApi::INode* node, const GenApi::FeatureList_t& selectors,
-    GenApi::INode** selector_node, std::vector<std::string>& enum_values) {
-  g_return_if_fail(node);
-  g_return_if_fail(selector_node);
+GenApi::INode* gst_pylon_process_selector_features(
+    GenApi::INode* node, std::vector<std::string>& enum_values) {
+  g_return_val_if_fail(node, NULL);
 
+  GenApi::INode* selector_node = NULL;
   std::string error_msg;
+
+  auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
+  if (!sel_node) {
+    std::string msg = std::string(node->GetName()) + " is an invalid node";
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
+
+  /* If the feature has no selectors then it is a "direct" feature, it does not
+   * depend on any other selector */
+  GenApi::FeatureList_t selectors;
+  sel_node->GetSelectingFeatures(selectors);
+  if (selectors.empty()) {
+    enum_values.push_back("direct-feature");
+    return selector_node;
+  }
 
   /* At the time being features with multiple selectors are not supported */
   guint max_selectors = 1;
@@ -92,7 +106,13 @@ void gst_pylon_process_selector_features(
     enum_values.push_back(enum_name.substr(prefix_len));
   }
 
-  *selector_node = selector->GetNode();
+  /* Treat features that have just one selector value as unselected, only set
+   * selector node if feature has more than one selector value */
+  if (1 < enum_values.size()) {
+    selector_node = selector->GetNode();
+  }
+
+  return selector_node;
 }
 
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
@@ -104,31 +124,11 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
 
   g_return_val_if_fail(node, specs_list);
 
-  auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
-  if (!sel_node) {
-    std::string msg = std::string(node->GetName()) + " is an invalid node";
-    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
-  }
-
-  /* If the feature has no selectors then it is a "direct" feature, it does not
-   * depend on any other selector */
-  GenApi::FeatureList_t selectors;
   std::vector<std::string> enum_values;
-  sel_node->GetSelectingFeatures(selectors);
-  if (selectors.empty()) {
-    enum_values.push_back("direct-feature");
-  }
+  selector_node = gst_pylon_process_selector_features(node, enum_values);
 
-  if (enum_values.empty()) {
-    gst_pylon_process_selector_features(node, selectors, &selector_node,
-                                        enum_values);
-  }
-
-  /* Treat features that have just one selector value as unselected */
   Pylon::CEnumParameter param;
-  if (1 == enum_values.size()) {
-    selector_node = NULL;
-  } else {
+  if (selector_node) {
     param.Attach(selector_node);
   }
 
