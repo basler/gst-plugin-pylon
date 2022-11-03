@@ -53,12 +53,13 @@ static std::unordered_set<std::string> propfilter_set = {
     "AcquisitionFrameRate",
     "AcquisitionFrameRateAbs"};
 
-gboolean gst_pylon_process_selector_features(
+void gst_pylon_process_selector_features(
     GenApi::INode* node, const GenApi::FeatureList_t& selectors,
-    GenApi::INode** selector_node, std::vector<std::string>& enum_values,
-    std::string& error_msg) {
-  g_return_val_if_fail(node, FALSE);
-  g_return_val_if_fail(selector_node, FALSE);
+    GenApi::INode** selector_node, std::vector<std::string>& enum_values) {
+  g_return_if_fail(node);
+  g_return_if_fail(selector_node);
+
+  std::string error_msg;
 
   /* At the time being features with multiple selectors are not supported */
   guint max_selectors = 1;
@@ -66,7 +67,7 @@ gboolean gst_pylon_process_selector_features(
     error_msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
                 " has more than " + std::to_string(max_selectors) +
                 " selectors, ignoring!";
-    return FALSE;
+    throw Pylon::GenericException(error_msg.c_str(), __FILE__, __LINE__);
   }
 
   /* At the time being only features with enum selectors are supported */
@@ -75,7 +76,7 @@ gboolean gst_pylon_process_selector_features(
   if (!enum_node) {
     error_msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
                 " is not an enumerator selector, ignoring!";
-    return FALSE;
+    throw Pylon::GenericException(error_msg.c_str(), __FILE__, __LINE__);
   }
 
   /* Add selector enum values */
@@ -92,8 +93,6 @@ gboolean gst_pylon_process_selector_features(
   }
 
   *selector_node = selector->GetNode();
-
-  return TRUE;
 }
 
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
@@ -120,14 +119,9 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     enum_values.push_back("direct-feature");
   }
 
-  gboolean ret = TRUE;
-  std::string error_msg;
   if (enum_values.empty()) {
-    ret = gst_pylon_process_selector_features(node, selectors, &selector_node,
-                                              enum_values, error_msg);
-  }
-  if (!ret) {
-    throw Pylon::GenericException(error_msg.c_str(), __FILE__, __LINE__);
+    gst_pylon_process_selector_features(node, selectors, &selector_node,
+                                        enum_values);
   }
 
   /* Treat features that have just one selector value as unselected */
