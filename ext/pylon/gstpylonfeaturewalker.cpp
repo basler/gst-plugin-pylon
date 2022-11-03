@@ -106,8 +106,8 @@ GenApi::INode* gst_pylon_process_selector_features(
     enum_values.push_back(enum_name.substr(prefix_len));
   }
 
-  /* Treat features that have just one selector value as unselected, only set
-   * selector node if feature has more than one selector value */
+  /* If the number of selector values (stored in enum_values) is 1, leave
+   * selector_node NULL, hence treating the feature as a "direct" one. */
   if (1 < enum_values.size()) {
     selector_node = selector->GetNode();
   }
