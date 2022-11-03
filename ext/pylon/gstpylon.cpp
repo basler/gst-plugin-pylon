@@ -87,10 +87,10 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_caps(
     GstPylon *self, GstStructure *st,
     std::vector<PixelFormatMappingType> pixel_format_mapping);
-static void gst_pylon_add_chunks_as_meta(GstPylon *self, GstBuffer *buf,
-                                         GstStructure *st, GenApi::INode *node,
-                                         GenApi::INode *selector_node,
-                                         const guint64 &selector_value);
+static void gst_pylon_add_chunk_as_meta(GstPylon *self, GstBuffer *buf,
+                                        GstStructure *st, GenApi::INode *node,
+                                        GenApi::INode *selector_node,
+                                        const guint64 &selector_value);
 static void gst_pylon_meta_fill_result_chunks(
     GstPylon *self, GstBuffer *buf,
     Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
@@ -396,10 +396,10 @@ void gst_pylon_interrupt_capture(GstPylon *self) {
   self->image_handler.InterruptWaitForImage();
 }
 
-static void gst_pylon_add_chunks_as_meta(GstPylon *self, GstBuffer *buf,
-                                         GstStructure *st, GenApi::INode *node,
-                                         GenApi::INode *selector_node,
-                                         const guint64 &selector_value) {
+static void gst_pylon_add_chunk_as_meta(GstPylon *self, GstBuffer *buf,
+                                        GstStructure *st, GenApi::INode *node,
+                                        GenApi::INode *selector_node,
+                                        const guint64 &selector_value) {
   g_return_if_fail(self);
   g_return_if_fail(buf);
   g_return_if_fail(st);
@@ -479,7 +479,7 @@ static void gst_pylon_meta_fill_result_chunks(
     /* Only take into account valid Chunk nodes */
     auto sel_node = dynamic_cast<GenApi::ISelector *>(node);
     if (!GenApi::IsAvailable(node) || !node->IsFeature() ||
-        (node->GetName() == "Root") || sel_node->IsSelector()) {
+        (node->GetName() == "Root") || !sel_node || sel_node->IsSelector()) {
       continue;
     }
 
@@ -488,8 +488,8 @@ static void gst_pylon_meta_fill_result_chunks(
     GenApi::FeatureList_t selectors;
     sel_node->GetSelectingFeatures(selectors);
     if (selectors.empty()) {
-      gst_pylon_add_chunks_as_meta(self, buf, st, node, selector_node,
-                                   selector_value);
+      gst_pylon_add_chunk_as_meta(self, buf, st, node, selector_node,
+                                  selector_value);
       continue;
     }
 
@@ -513,8 +513,8 @@ static void gst_pylon_meta_fill_result_chunks(
 
     for (auto const &sel_pair : enum_values) {
       selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
-      gst_pylon_add_chunks_as_meta(self, buf, st, node, selector_node,
-                                   selector_value);
+      gst_pylon_add_chunk_as_meta(self, buf, st, node, selector_node,
+                                  selector_value);
     }
   }
 }
