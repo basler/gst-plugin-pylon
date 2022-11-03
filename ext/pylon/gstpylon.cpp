@@ -444,10 +444,10 @@ static void gst_pylon_add_chunks_as_meta(GstPylon *self, GstBuffer *buf,
       break;
     default:
       is_valid = FALSE;
-      GST_ELEMENT_WARNING(self->gstpylonsrc, LIBRARY, FAILED,
-                          ("Chunk %s not added.", name),
-                          ("Chunk of type %d is not supported",
-                           node->GetPrincipalInterfaceType()));
+      GST_WARNING_OBJECT(
+          self->gstpylonsrc,
+          "Chunk %s not added. Chunk of type %d is not supported", name,
+          node->GetPrincipalInterfaceType());
       break;
   }
 
@@ -499,9 +499,8 @@ static void gst_pylon_meta_fill_result_chunks(
     ret = gst_pylon_process_selector_features(node, selectors, &selector_node,
                                               enum_values, error_msg);
     if (!ret) {
-      GST_ELEMENT_WARNING(self->gstpylonsrc, LIBRARY, FAILED,
-                          ("Chunk %s not added.", node->GetName().c_str()),
-                          ("%s", error_msg.c_str()));
+      GST_WARNING_OBJECT(self->gstpylonsrc, "Chunk %s not added: %s",
+                         node->GetName().c_str(), error_msg.c_str());
       continue;
     }
 
