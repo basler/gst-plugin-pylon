@@ -19,7 +19,9 @@ The next chapters describe how to [use](#getting-started) and [build](#Building)
 
 To display the video stream of a single Basler camera is as simple as:
 
-`gst-launch-1.0 pylonsrc ! videoconvert ! autovideosink`
+```
+gst-launch-1.0 pylonsrc ! videoconvert ! autovideosink
+```
 
 The following sections describe how to select and configure the camera.
 
@@ -45,18 +47,24 @@ At least 4 devices match the specified criteria, use "device-index", "device-ser
 [3]: 0815-0002  Emulation
 ```
 
-### examples
-select second camera from list:
+### Examples
+Select second camera from list:
 
-` gst-launch-1.0 pylonsrc device-index=1 ! videoconvert ! autovideosink`
+```
+gst-launch-1.0 pylonsrc device-index=1 ! videoconvert ! autovideosink
+```
 
-select camera with serial number `21656705`
+Select camera with serial number `21656705`:
 
-` gst-launch-1.0 pylonsrc device-serial-number="21656705" ! videoconvert ! autovideosink`
+```
+gst-launch-1.0 pylonsrc device-serial-number="21656705" ! videoconvert ! autovideosink
+```
 
-select camera with user name `top-left`
+Select camera with user name `top-left`:
 
-` gst-launch-1.0 pylonsrc device-user-name="top-left" ! videoconvert ! autovideosink`
+```
+gst-launch-1.0 pylonsrc device-user-name="top-left" ! videoconvert ! autovideosink
+```
 
 ## Configuring the camera
 
@@ -70,15 +78,19 @@ The configuration of the camera is defined by
 The pixel format, image width, image height and acquisition framerate ( FPS ) are set during capability negotiation.
 
 
-#### examples
+#### Examples
 
-configuring to 640x480 @ 10fps in Mono8 format:
+Configuring to 640x480 @ 10fps in Mono8 format:
 
-`gst-launch-1.0 pylonsrc ! "video/x-raw,width=640,height=480,framerate=10/1,format=GRAY8"  ! videoconvert ! autovideosink`
+```
+gst-launch-1.0 pylonsrc ! "video/x-raw,width=640,height=480,framerate=10/1,format=GRAY8"  ! videoconvert ! autovideosink
+```
 
-configuring to 640x480 @ 10fps in BayerRG8 format:
+Configuring to 640x480 @ 10fps in BayerRG8 format:
 
-`gst-launch-1.0 pylonsrc ! "video/x-bayer,width=640,height=480,framerate=10/1,format=rggb" ! bayer2rgb ! videoconvert ! autovideosink`
+```
+gst-launch-1.0 pylonsrc ! "video/x-bayer,width=640,height=480,framerate=10/1,format=rggb" ! bayer2rgb ! videoconvert ! autovideosink
+```
 
 **Important:** The **bayer2rgb** element does not process non 4 byte aligned bayer formats correctly. If no size is specified (or a range is provided) a word aligned width will be automatically selected. If the width is hardcoded and it is not word aligned, the pipeline will fail displaying an error.
 
@@ -141,7 +153,9 @@ If this property is not set, or set to the value `Auto`, the power-on UserSet ge
 
 To select dynamically another UserSet the `user-set` property accepts any other implemented UserSet of the camera.
 
-e.g to activate the `UserSet1` UserSet on a Basler ace camera:
+**Example**
+
+Activate the `UserSet1` UserSet on a Basler ace camera:
 
 ```
 gst-launch-1.0 pylonsrc user-set=UserSet1 ! videoconvert ! autovideosink
@@ -157,7 +171,9 @@ This feature is controlled by the property `pfs-location`.
 
 To use a PFS file, specify the filepath using the `pfs-location` property.
 
-e.g to use a PFS file with name `example-file-name.pfs` on a Basler ace camera:
+**Example**
+
+Use a PFS file with name `example-file-name.pfs` on a Basler ace camera:
 
 ```
 gst-launch-1.0 pylonsrc pfs-location=example-file-name.pfs ! videoconvert ! autovideosink
@@ -175,19 +191,29 @@ The `pylonsrc` plugin dynamically exposes all features of the camera as gstreame
 
 Pylon features like `ExposureTime` or `Gain` are mapped to the gstreamer properties `cam::ExposureTime` and `cam::Gain`.
 
-Examples to set Exposuretime to 2000µs and Gain to 10.3dB
+**Example**
 
-`gst-launch-1.0 pylonsrc cam::ExposureTime=2000 cam::Gain=10.3 ! videoconvert ! autovideosink`
+Set Exposuretime to 2000µs and Gain to 10.3dB:
+
+```
+gst-launch-1.0 pylonsrc cam::ExposureTime=2000 cam::Gain=10.3 ! videoconvert ! autovideosink
+```
 
 Pylon stream grabber parameters like MaxTransferSize or MaxNumBuffer are mapped to the gstreamer properties `stream::MaxTransferSize` and `stream::MaxNumBuffer`.
 
-Example to set MaxTransferSize to 4MB and MaxNumBuffer to 10 on an USB3Vision camera
+**Example**
 
-`gst-launch-1.0 pylonsrc stream::MaxTransferSize=4194304 stream::MaxNumBuffer=10 ! videoconvert ! autovideosink`
+Set MaxTransferSize to 4MB and MaxNumBuffer to 10 on an USB3Vision camera:
 
-All available features can be listed by by calling
+```
+gst-launch-1.0 pylonsrc stream::MaxTransferSize=4194304 stream::MaxNumBuffer=10 ! videoconvert ! autovideosink
+```
 
-`gst-inspect-1.0 pylonsrc`
+All available features can be listed by by calling `gst-inspect-1.0`:
+
+```
+gst-inspect-1.0 pylonsrc
+```
 
 ### Selected Features
 
@@ -203,11 +229,26 @@ For the above  `TriggerSource` example if  the `TriggerSource` of the trigger `F
 
 `cam::TriggerSource-FrameStart`
 
-Example:
+**Example**
+
 Configure a hardware trigger on Line1 for the trigger FrameStart:
 
-`gst-launch-1.0 pylonsrc cam::TriggerSource-FrameStart=Line1 cam::TriggerMode-FrameStart=On ! videoconvert ! autovideosink`
+```
+gst-launch-1.0 pylonsrc cam::TriggerSource-FrameStart=Line1 cam::TriggerMode-FrameStart=On ! videoconvert ! autovideosink
+```
 
+### Chunks
+
+Chunk support is available. The selected chunks will be appended to each gstreamer buffer as meta data.
+
+The `cam::ChunkModeActive` feature needs to be set to `true` for chunks to be enabled.
+
+**Example**
+
+Enable Timestamp, ExposureTime and CounterValue chunks:
+```
+gst-launch-1.0 pylonsrc cam::ChunkModeActive=True cam::ChunkEnable-Timestamp=True cam::ChunkEnable-ExposureTime=true cam::ChunkEnable-CounterValue=true ! videoconvert ! autovideosink
+```
 
 # Building
 

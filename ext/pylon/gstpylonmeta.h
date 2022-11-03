@@ -30,35 +30,28 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_FEATURE_WALKER_H_
-#define _GST_PYLON_FEATURE_WALKER_H_
+#ifndef __GST_PYLON_META_H__
+#define __GST_PYLON_META_H__
 
 #include <gst/gst.h>
 
-#ifdef _MSC_VER  // MSVC
-#pragma warning(push)
-#pragma warning(disable : 4265)
-#elif __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#endif
+G_BEGIN_DECLS
 
-#include <pylon/PylonIncludes.h>
+#define GST_PYLON_META_API_TYPE (gst_pylon_meta_api_get_type())
+#define GST_PYLON_META_INFO  (gst_pylon_meta_get_info())
+typedef struct _GstPylonMeta GstPylonMeta;
 
-#ifdef _MSC_VER  // MSVC
-#pragma warning(pop)
-#elif __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
-#endif
-
-class GstPylonFeatureWalker {
- public:
-  static void install_properties(GObjectClass* oclass,
-                                 GenApi::INodeMap& nodemap,
-                                 const gchar* device_fullname);
+struct _GstPylonMeta
+{
+  GstMeta meta;
+  GstStructure *chunks;
 };
 
-GenApi::INode* gst_pylon_process_selector_features(
-    GenApi::INode* node, std::vector<std::string>& enum_values);
+GstPylonMeta *gst_buffer_add_pylon_meta (GstBuffer * buffer);
+
+GType gst_pylon_meta_api_get_type (void);
+const GstMetaInfo *gst_pylon_meta_get_info (void);
+
+G_END_DECLS
 
 #endif
