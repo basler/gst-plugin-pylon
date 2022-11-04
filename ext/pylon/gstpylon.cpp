@@ -96,6 +96,9 @@ static void gst_pylon_add_chunk_as_meta(GstPylon *self, GstBuffer *buf,
                                         const guint64 &selector_value);
 static void gst_pylon_meta_fill_result_chunks(
     GstPylon *self, GstBuffer *buf,
+    Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr, GstPylonMeta *meta);
+static void gst_pylon_add_result_meta(
+    GstPylon *self, GstBuffer *buf,
     Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
 static std::vector<std::string> gst_pylon_gst_to_pfnc(
     const std::string &gst_format,
@@ -483,11 +486,11 @@ static void gst_pylon_add_chunk_as_meta(GstPylon *self, GstBuffer *buf,
 
 static void gst_pylon_meta_fill_result_chunks(
     GstPylon *self, GstBuffer *buf,
-    Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
+    Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr, GstPylonMeta *meta) {
   g_return_if_fail(self);
   g_return_if_fail(buf);
+  g_return_if_fail(meta);
 
-  GstPylonMeta *meta = gst_buffer_add_pylon_meta(buf);
   GstStructure *st = meta->chunks;
 
   GenApi::INodeMap &chunk_nodemap = grab_result_ptr->GetChunkDataNodeMap();
@@ -529,6 +532,24 @@ static void gst_pylon_meta_fill_result_chunks(
       gst_pylon_add_chunk_as_meta(self, buf, st, node, selector_node,
                                   selector_value);
     }
+  }
+}
+
+static void gst_pylon_add_result_meta(
+    GstPylon *self, GstBuffer *buf,
+    Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
+  g_return_if_fail(self);
+  g_return_if_fail(buf);
+
+  GstPylonMeta *meta = gst_buffer_add_pylon_meta(buf);
+
+  meta->block_id = grab_result_ptr->GetBlockID();
+  meta->offset.offset_x = grab_result_ptr->GetOffsetX();
+  meta->offset.offset_y = grab_result_ptr->GetOffsetY();
+  meta->timestamp = grab_result_ptr->GetTimeStamp();
+
+  if (grab_result_ptr->IsChunkDataAvailable()) {
+    gst_pylon_meta_fill_result_chunks(self, buf, grab_result_ptr, meta);
   }
 }
 
@@ -614,9 +635,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
       buffer_size, 0, buffer_size, grab_result_ptr,
       static_cast<GDestroyNotify>(free_ptr_grab_result));
 
-  if ((*grab_result_ptr)->IsChunkDataAvailable()) {
-    gst_pylon_meta_fill_result_chunks(self, *buf, *grab_result_ptr);
-  }
+  gst_pylon_add_result_meta(self, *buf, *grab_result_ptr);
 
   return TRUE;
 }
