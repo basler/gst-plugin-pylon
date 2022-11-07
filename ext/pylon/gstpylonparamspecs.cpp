@@ -36,6 +36,7 @@
 
 #include "gstpylonparamspecs.h"
 
+#define QSTRING "GstPylonParamSpecSelector"
 #define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
 
 gchar *gst_pylon_param_spec_sanitize_name(const gchar *name) {
@@ -44,329 +45,93 @@ gchar *gst_pylon_param_spec_sanitize_name(const gchar *name) {
   return g_strcanon(g_strdup_printf("_%s", name), VALID_CHARS, '_');
 }
 
-/* --- Selector int64 type functions --- */
-
-static void _gst_pylon_param_selector_int64_init(GParamSpec *pspec) {
-  g_return_if_fail(pspec);
-
-  GstPylonParamSpecSelectorInt64 *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
-
-  spec->feature = NULL;
-  spec->selector = NULL;
-  spec->selector_value = G_GUINT64_CONSTANT(0);
-  spec->base = NULL;
-}
-
-static void _gst_pylon_param_selector_int64_finalize(GParamSpec *pspec) {
-  g_return_if_fail(pspec);
-
-  GstPylonParamSpecSelectorInt64 *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
-
-  g_free(spec->feature);
-  g_free(spec->selector);
-  g_param_spec_unref(spec->base);
-}
-
-static void _gst_pylon_param_selector_int64_set_default(GParamSpec *pspec,
-                                                        GValue *value) {
-  g_return_if_fail(pspec);
-  g_return_if_fail(value);
-
-  GstPylonParamSpecSelectorInt64 *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
-
-  g_param_value_set_default(spec->base, value);
-}
-
-static gboolean _gst_pylon_param_selector_int64_validate(GParamSpec *pspec,
-                                                         GValue *value) {
-  g_return_val_if_fail(pspec, FALSE);
-  g_return_val_if_fail(value, FALSE);
-
-  GstPylonParamSpecSelectorInt64 *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
-
-  return g_param_value_validate(spec->base, value);
-}
-
-static gint _gst_pylon_param_selector_int64_values_cmp(GParamSpec *pspec,
-                                                       const GValue *value1,
-                                                       const GValue *value2) {
-  g_return_val_if_fail(pspec, 0);
-  g_return_val_if_fail(value1, 0);
-  g_return_val_if_fail(value2, 0);
-
-  GstPylonParamSpecSelectorInt64 *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_INT64(pspec);
-
-  return g_param_values_cmp(spec->base, value1, value2);
-}
-
-GType gst_pylon_param_spec_selector_int64_get_type(void) {
-  static GType gst_pylon_selector_int64_type = 0;
-
-  /* register GST_PYLON_TYPE_PARAM_SELECTOR_INT64 */
-  if (g_once_init_enter(&gst_pylon_selector_int64_type)) {
-    GType type;
-    static GParamSpecTypeInfo pspec_info = {
-        sizeof(GstPylonParamSpecSelectorInt64),      /* instance_size     */
-        0,                                           /* n_preallocs       */
-        _gst_pylon_param_selector_int64_init,        /* instance_init     */
-        G_TYPE_INT64,                                /* value_type        */
-        _gst_pylon_param_selector_int64_finalize,    /* finalize          */
-        _gst_pylon_param_selector_int64_set_default, /* value_set_default */
-        _gst_pylon_param_selector_int64_validate,    /* value_validate    */
-        _gst_pylon_param_selector_int64_values_cmp,  /* values_cmp        */
-    };
-
-    type =
-        g_param_type_register_static("GstPylonParamSelectorInt64", &pspec_info);
-    g_once_init_leave(&gst_pylon_selector_int64_type, type);
-  }
-
-  return gst_pylon_selector_int64_type;
-}
-
-GParamSpec *gst_pylon_param_spec_selector_int64(
-    GenApi::INodeMap &nodemap, const gchar *feature_name,
-    const gchar *selector_name, guint64 selector_value, const gchar *nick,
-    const gchar *blurb, gint64 min, gint64 max, gint64 def, GParamFlags flags) {
-  GstPylonParamSpecSelectorInt64 *spec;
-  gchar *name = NULL;
-  gint int_flags = static_cast<gint>(flags);
-
-  g_return_val_if_fail(def >= min && def <= max, NULL);
+static gchar *gst_pylon_param_spec_selector_prolog(GenApi::INodeMap &nodemap,
+                                                   const gchar *feature_name,
+                                                   const gchar *selector_name,
+                                                   guint64 selector_value,
+                                                   GParamFlags &flags) {
+  g_return_val_if_fail(feature_name, NULL);
+  g_return_val_if_fail(selector_name, NULL);
 
   Pylon::CEnumParameter param(nodemap, selector_name);
 
   /* Build the property name based on the selector and the feature.
     Since this is no longer a static string, we need to ensure that
     the STATIC_NAME flag is not set */
-  name = g_strdup_printf("%s-%s", feature_name,
-                         param.GetEntry(selector_value)->GetSymbolic().c_str());
-  int_flags &= ~G_PARAM_STATIC_NAME;
+  gchar *name =
+      g_strdup_printf("%s-%s", feature_name,
+                      param.GetEntry(selector_value)->GetSymbolic().c_str());
 
+  gint int_flags = flags & ~G_PARAM_STATIC_NAME;
   int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
 
-  spec = static_cast<GstPylonParamSpecSelectorInt64 *>(
-      g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_INT64, name, nick,
-                            blurb, static_cast<GParamFlags>(int_flags)));
+  flags = static_cast<GParamFlags>(int_flags);
 
-  spec->selector = g_strdup(selector_name);
-  spec->feature = g_strdup(feature_name);
-  spec->selector_value = selector_value;
+  return name;
+}
 
-  spec->base = g_param_spec_int64(name, nick, blurb, min, max, def,
-                                  static_cast<GParamFlags>(int_flags));
+static void gst_pylon_param_spec_data_free(
+    GstPylonParamSpecSelectorData *self) {
+  g_return_if_fail(self);
+
+  g_free(self->selector);
+  g_free(self->feature);
+
+  g_slice_free(GstPylonParamSpecSelectorData, self);
+}
+
+static void gst_pylon_param_spec_selector_epilog(GParamSpec *spec,
+                                                 const gchar *feature_name,
+                                                 const gchar *selector_name,
+                                                 guint64 selector_value) {
+  static GQuark quark = g_quark_from_static_string(QSTRING);
+
+  g_return_if_fail(feature_name);
+  g_return_if_fail(selector_name);
+
+  GstPylonParamSpecSelectorData *data =
+      g_slice_new0(GstPylonParamSpecSelectorData);
+  data->selector = g_strdup(selector_name);
+  data->feature = g_strdup(feature_name);
+  data->selector_value = selector_value;
+
+  g_param_spec_set_qdata_full(spec, quark, data,
+                              (GDestroyNotify)gst_pylon_param_spec_data_free);
+}
+
+GParamSpec *gst_pylon_param_spec_selector_int64(
+    GenApi::INodeMap &nodemap, const gchar *feature_name,
+    const gchar *selector_name, guint64 selector_value, const gchar *nick,
+    const gchar *blurb, gint64 min, gint64 max, gint64 def, GParamFlags flags) {
+  g_return_val_if_fail(def >= min && def <= max, NULL);
+
+  gchar *name = gst_pylon_param_spec_selector_prolog(
+      nodemap, feature_name, selector_name, selector_value, flags);
+
+  GParamSpec *spec =
+      g_param_spec_int64(name, nick, blurb, min, max, def, flags);
   g_free(name);
 
-  return G_PARAM_SPEC(spec);
+  gst_pylon_param_spec_selector_epilog(spec, feature_name, selector_name,
+                                       selector_value);
+
+  return spec;
 }
 
-/* --- Selector boolean type functions --- */
-
-static void _gst_pylon_param_selector_bool_init(GParamSpec *pspec) {
-  g_return_if_fail(pspec);
-
-  GstPylonParamSpecSelectorBool *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
-
-  spec->feature = NULL;
-  spec->selector = NULL;
-  spec->selector_value = G_GUINT64_CONSTANT(0);
-  spec->base = NULL;
-}
-
-static void _gst_pylon_param_selector_bool_finalize(GParamSpec *pspec) {
-  g_return_if_fail(pspec);
-
-  GstPylonParamSpecSelectorBool *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
-
-  g_free(spec->feature);
-  g_free(spec->selector);
-  g_param_spec_unref(spec->base);
-}
-
-static void _gst_pylon_param_selector_bool_set_default(GParamSpec *pspec,
-                                                       GValue *value) {
-  g_return_if_fail(pspec);
-  g_return_if_fail(value);
-
-  GstPylonParamSpecSelectorBool *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
-
-  g_param_value_set_default(spec->base, value);
-}
-
-static gboolean _gst_pylon_param_selector_bool_validate(GParamSpec *pspec,
-                                                        GValue *value) {
-  g_return_val_if_fail(pspec, FALSE);
-  g_return_val_if_fail(value, FALSE);
-
-  GstPylonParamSpecSelectorBool *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
-
-  return g_param_value_validate(spec->base, value);
-}
-
-static gint _gst_pylon_param_selector_bool_values_cmp(GParamSpec *pspec,
-                                                      const GValue *value1,
-                                                      const GValue *value2) {
-  g_return_val_if_fail(pspec, 0);
-  g_return_val_if_fail(value1, 0);
-  g_return_val_if_fail(value2, 0);
-
-  GstPylonParamSpecSelectorBool *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_BOOL(pspec);
-
-  return g_param_values_cmp(spec->base, value1, value2);
-}
-
-GType gst_pylon_param_spec_selector_bool_get_type(void) {
-  static GType gst_pylon_selector_bool_type = 0;
-
-  /* register GST_PYLON_TYPE_PARAM_SELECTOR_BOOL */
-  if (g_once_init_enter(&gst_pylon_selector_bool_type)) {
-    GType type;
-    static GParamSpecTypeInfo pspec_info = {
-        sizeof(GstPylonParamSpecSelectorBool),      /* instance_size     */
-        0,                                          /* n_preallocs       */
-        _gst_pylon_param_selector_bool_init,        /* instance_init     */
-        G_TYPE_BOOLEAN,                             /* value_type        */
-        _gst_pylon_param_selector_bool_finalize,    /* finalize          */
-        _gst_pylon_param_selector_bool_set_default, /* value_set_default */
-        _gst_pylon_param_selector_bool_validate,    /* value_validate    */
-        _gst_pylon_param_selector_bool_values_cmp,  /* values_cmp        */
-    };
-
-    type =
-        g_param_type_register_static("GstPylonParamSelectorBool", &pspec_info);
-    g_once_init_leave(&gst_pylon_selector_bool_type, type);
-  }
-
-  return gst_pylon_selector_bool_type;
-}
-
-GParamSpec *gst_pylon_param_spec_selector_bool(
+GParamSpec *gst_pylon_param_spec_selector_boolean(
     GenApi::INodeMap &nodemap, const gchar *feature_name,
     const gchar *selector_name, guint64 selector_value, const gchar *nick,
     const gchar *blurb, gboolean def, GParamFlags flags) {
-  GstPylonParamSpecSelectorBool *spec;
-  gchar *name = NULL;
-  gint int_flags = static_cast<gint>(flags);
+  gchar *name = gst_pylon_param_spec_selector_prolog(
+      nodemap, feature_name, selector_name, selector_value, flags);
 
-  Pylon::CEnumParameter param(nodemap, selector_name);
-
-  /* Build the property name based on the selector and the feature.
-     Since this is no longer a static string, we need to ensure that
-     the STATIC_NAME flag is not set */
-  name = g_strdup_printf("%s-%s", feature_name,
-                         param.GetEntry(selector_value)->GetSymbolic().c_str());
-  int_flags &= ~G_PARAM_STATIC_NAME;
-
-  int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
-
-  spec = static_cast<GstPylonParamSpecSelectorBool *>(
-      g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_BOOL, name, nick,
-                            blurb, static_cast<GParamFlags>(int_flags)));
-
-  spec->selector = g_strdup(selector_name);
-  spec->feature = g_strdup(feature_name);
-  spec->selector_value = selector_value;
-
-  spec->base = g_param_spec_boolean(name, nick, blurb, def,
-                                    static_cast<GParamFlags>(int_flags));
+  GParamSpec *spec = g_param_spec_boolean(name, nick, blurb, def, flags);
   g_free(name);
 
-  return G_PARAM_SPEC(spec);
-}
+  gst_pylon_param_spec_selector_epilog(spec, feature_name, selector_name,
+                                       selector_value);
 
-/* --- Selector float type functions --- */
-
-static void _gst_pylon_param_selector_float_init(GParamSpec *pspec) {
-  g_return_if_fail(pspec);
-
-  GstPylonParamSpecSelectorFloat *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
-
-  spec->feature = NULL;
-  spec->selector = NULL;
-  spec->selector_value = G_GUINT64_CONSTANT(0);
-  spec->base = NULL;
-}
-
-static void _gst_pylon_param_selector_float_finalize(GParamSpec *pspec) {
-  g_return_if_fail(pspec);
-
-  GstPylonParamSpecSelectorFloat *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
-
-  g_free(spec->feature);
-  g_free(spec->selector);
-  g_param_spec_unref(spec->base);
-}
-
-static void _gst_pylon_param_selector_float_set_default(GParamSpec *pspec,
-                                                        GValue *value) {
-  g_return_if_fail(pspec);
-  g_return_if_fail(value);
-
-  GstPylonParamSpecSelectorFloat *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
-
-  g_param_value_set_default(spec->base, value);
-}
-
-static gboolean _gst_pylon_param_selector_float_validate(GParamSpec *pspec,
-                                                         GValue *value) {
-  g_return_val_if_fail(pspec, FALSE);
-  g_return_val_if_fail(value, FALSE);
-
-  GstPylonParamSpecSelectorFloat *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
-
-  return g_param_value_validate(spec->base, value);
-}
-
-static gint _gst_pylon_param_selector_float_values_cmp(GParamSpec *pspec,
-                                                       const GValue *value1,
-                                                       const GValue *value2) {
-  g_return_val_if_fail(pspec, 0);
-  g_return_val_if_fail(value1, 0);
-  g_return_val_if_fail(value2, 0);
-
-  GstPylonParamSpecSelectorFloat *spec =
-      GST_PYLON_PARAM_SPEC_SELECTOR_FLOAT(pspec);
-
-  return g_param_values_cmp(spec->base, value1, value2);
-}
-
-GType gst_pylon_param_spec_selector_float_get_type(void) {
-  static GType gst_pylon_selector_float_type = 0;
-
-  /* register GST_PYLON_TYPE_PARAM_SELECTOR_FLOAT */
-  if (g_once_init_enter(&gst_pylon_selector_float_type)) {
-    GType type;
-    static GParamSpecTypeInfo pspec_info = {
-        sizeof(GstPylonParamSpecSelectorFloat),      /* instance_size     */
-        0,                                           /* n_preallocs       */
-        _gst_pylon_param_selector_float_init,        /* instance_init     */
-        G_TYPE_FLOAT,                                /* value_type        */
-        _gst_pylon_param_selector_float_finalize,    /* finalize          */
-        _gst_pylon_param_selector_float_set_default, /* value_set_default */
-        _gst_pylon_param_selector_float_validate,    /* value_validate    */
-        _gst_pylon_param_selector_float_values_cmp,  /* values_cmp        */
-    };
-
-    type =
-        g_param_type_register_static("GstPylonParamSelectorFloat", &pspec_info);
-    g_once_init_leave(&gst_pylon_selector_float_type, type);
-  }
-
-  return gst_pylon_selector_float_type;
+  return spec;
 }
 
 GParamSpec *gst_pylon_param_spec_selector_float(
@@ -374,236 +139,35 @@ GParamSpec *gst_pylon_param_spec_selector_float(
     const gchar *selector_name, guint64 selector_value, const gchar *nick,
     const gchar *blurb, gdouble min, gdouble max, gdouble def,
     GParamFlags flags) {
-  GstPylonParamSpecSelectorFloat *spec;
-  gchar *name = NULL;
-  gint int_flags = static_cast<gint>(flags);
-
   g_return_val_if_fail(def >= min && def <= max, NULL);
 
-  Pylon::CEnumParameter param(nodemap, selector_name);
+  gchar *name = gst_pylon_param_spec_selector_prolog(
+      nodemap, feature_name, selector_name, selector_value, flags);
 
-  /* Build the property name based on the selector and the feature.
-    Since this is no longer a static string, we need to ensure that
-    the STATIC_NAME flag is not set */
-  name = g_strdup_printf("%s-%s", feature_name,
-                         param.GetEntry(selector_value)->GetSymbolic().c_str());
-  int_flags &= ~G_PARAM_STATIC_NAME;
-
-  int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
-
-  spec = static_cast<GstPylonParamSpecSelectorFloat *>(
-      g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_FLOAT, name, nick,
-                            blurb, static_cast<GParamFlags>(int_flags)));
-
-  spec->selector = g_strdup(selector_name);
-  spec->feature = g_strdup(feature_name);
-  spec->selector_value = selector_value;
-
-  spec->base = g_param_spec_float(name, nick, blurb, min, max, def,
-                                  static_cast<GParamFlags>(int_flags));
+  GParamSpec *spec =
+      g_param_spec_float(name, nick, blurb, min, max, def, flags);
   g_free(name);
 
-  return G_PARAM_SPEC(spec);
+  gst_pylon_param_spec_selector_epilog(spec, feature_name, selector_name,
+                                       selector_value);
+
+  return spec;
 }
 
-/* --- Selector string type functions --- */
-
-static void _gst_pylon_param_selector_str_init(GParamSpec *pspec) {
-  g_return_if_fail(pspec);
-
-  GstPylonParamSpecSelectorStr *spec = GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
-
-  spec->feature = NULL;
-  spec->selector = NULL;
-  spec->selector_value = G_GUINT64_CONSTANT(0);
-  spec->base = NULL;
-}
-
-static void _gst_pylon_param_selector_str_finalize(GParamSpec *pspec) {
-  g_return_if_fail(pspec);
-
-  GstPylonParamSpecSelectorStr *spec = GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
-
-  g_free(spec->feature);
-  g_free(spec->selector);
-  g_param_spec_unref(spec->base);
-}
-
-static void _gst_pylon_param_selector_str_set_default(GParamSpec *pspec,
-                                                      GValue *value) {
-  g_return_if_fail(pspec);
-  g_return_if_fail(value);
-
-  GstPylonParamSpecSelectorStr *spec = GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
-
-  g_param_value_set_default(spec->base, value);
-}
-
-static gboolean _gst_pylon_param_selector_str_validate(GParamSpec *pspec,
-                                                       GValue *value) {
-  g_return_val_if_fail(pspec, FALSE);
-  g_return_val_if_fail(value, FALSE);
-
-  GstPylonParamSpecSelectorStr *spec = GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
-
-  return g_param_value_validate(spec->base, value);
-}
-
-static gint _gst_pylon_param_selector_str_values_cmp(GParamSpec *pspec,
-                                                     const GValue *value1,
-                                                     const GValue *value2) {
-  g_return_val_if_fail(pspec, 0);
-  g_return_val_if_fail(value1, 0);
-  g_return_val_if_fail(value2, 0);
-
-  GstPylonParamSpecSelectorStr *spec = GST_PYLON_PARAM_SPEC_SELECTOR_STR(pspec);
-
-  return g_param_values_cmp(spec->base, value1, value2);
-}
-
-GType gst_pylon_param_spec_selector_str_get_type(void) {
-  static GType gst_pylon_selector_str_type = 0;
-
-  /* register GST_PYLON_TYPE_PARAM_SELECTOR_STR */
-  if (g_once_init_enter(&gst_pylon_selector_str_type)) {
-    GType type;
-    static GParamSpecTypeInfo pspec_info = {
-        sizeof(GstPylonParamSpecSelectorStr),      /* instance_size     */
-        0,                                         /* n_preallocs       */
-        _gst_pylon_param_selector_str_init,        /* instance_init     */
-        G_TYPE_STRING,                             /* value_type        */
-        _gst_pylon_param_selector_str_finalize,    /* finalize          */
-        _gst_pylon_param_selector_str_set_default, /* value_set_default */
-        _gst_pylon_param_selector_str_validate,    /* value_validate    */
-        _gst_pylon_param_selector_str_values_cmp,  /* values_cmp        */
-    };
-
-    type =
-        g_param_type_register_static("GstPylonParamSelectorStr", &pspec_info);
-    g_once_init_leave(&gst_pylon_selector_str_type, type);
-  }
-
-  return gst_pylon_selector_str_type;
-}
-
-GParamSpec *gst_pylon_param_spec_selector_str(
+GParamSpec *gst_pylon_param_spec_selector_string(
     GenApi::INodeMap &nodemap, const gchar *feature_name,
     const gchar *selector_name, guint64 selector_value, const gchar *nick,
     const gchar *blurb, const gchar *def, GParamFlags flags) {
-  GstPylonParamSpecSelectorStr *spec;
-  gchar *name = NULL;
-  gint int_flags = static_cast<gint>(flags);
+  gchar *name = gst_pylon_param_spec_selector_prolog(
+      nodemap, feature_name, selector_name, selector_value, flags);
 
-  Pylon::CEnumParameter param(nodemap, selector_name);
-
-  /* Build the property name based on the selector and the feature.
-     Since this is no longer a static string, we need to ensure that
-     the STATIC_NAME flag is not set */
-  name = g_strdup_printf("%s-%s", feature_name,
-                         param.GetEntry(selector_value)->GetSymbolic().c_str());
-  int_flags &= ~G_PARAM_STATIC_NAME;
-
-  int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
-
-  spec = static_cast<GstPylonParamSpecSelectorStr *>(
-      g_param_spec_internal(GST_PYLON_TYPE_PARAM_SELECTOR_STR, name, nick,
-                            blurb, static_cast<GParamFlags>(int_flags)));
-
-  spec->selector = g_strdup(selector_name);
-  spec->feature = g_strdup(feature_name);
-  spec->selector_value = selector_value;
-
-  spec->base = g_param_spec_string(name, nick, blurb, def,
-                                   static_cast<GParamFlags>(int_flags));
+  GParamSpec *spec = g_param_spec_string(name, nick, blurb, def, flags);
   g_free(name);
 
-  return G_PARAM_SPEC(spec);
-}
+  gst_pylon_param_spec_selector_epilog(spec, feature_name, selector_name,
+                                       selector_value);
 
-/* --- Selector enumeration type functions --- */
-
-static void _gst_pylon_param_selector_enum_init(GParamSpec *pspec) {
-  g_return_if_fail(pspec);
-
-  GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
-
-  spec->feature = NULL;
-  spec->selector = NULL;
-  spec->selector_value = G_GUINT64_CONSTANT(0);
-  spec->base = NULL;
-}
-
-static void _gst_pylon_param_selector_enum_finalize(GParamSpec *pspec) {
-  g_return_if_fail(pspec);
-
-  GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
-
-  g_free(spec->feature);
-  g_free(spec->selector);
-  g_param_spec_unref(spec->base);
-}
-
-static void _gst_pylon_param_selector_enum_set_default(GParamSpec *pspec,
-                                                       GValue *value) {
-  g_return_if_fail(pspec);
-  g_return_if_fail(value);
-
-  GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
-
-  g_param_value_set_default(spec->base, value);
-}
-
-static gboolean _gst_pylon_param_selector_enum_validate(GParamSpec *pspec,
-                                                        GValue *value) {
-  g_return_val_if_fail(pspec, FALSE);
-  g_return_val_if_fail(value, FALSE);
-
-  GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
-
-  return g_param_value_validate(spec->base, value);
-}
-
-static gint _gst_pylon_param_selector_enum_values_cmp(GParamSpec *pspec,
-                                                      const GValue *value1,
-                                                      const GValue *value2) {
-  g_return_val_if_fail(pspec, 0);
-  g_return_val_if_fail(value1, 0);
-  g_return_val_if_fail(value2, 0);
-
-  GstPylonParamSpecSelectorEnum *spec = (GstPylonParamSpecSelectorEnum *)pspec;
-
-  return g_param_values_cmp(spec->base, value1, value2);
-}
-
-GType gst_pylon_param_spec_selector_enum_register(
-    GenApi::INodeMap &nodemap, const gchar *feature_name,
-    GType enum_feature_type, const gchar *device_fullname) {
-  GType selector_type = G_TYPE_INVALID;
-
-  gchar *full_name = g_strdup_printf("%s_%s", device_fullname, feature_name);
-  gchar *name = gst_pylon_param_spec_sanitize_name(full_name);
-  g_free(full_name);
-
-  selector_type = g_type_from_name(name);
-  /* register GST_PYLON_TYPE_PARAM_SELECTOR_ENUM */
-  if (0 == selector_type) {
-    GParamSpecTypeInfo pspec_info = {
-        sizeof(GstPylonParamSpecSelectorEnum),      /* instance_size     */
-        0,                                          /* n_preallocs       */
-        _gst_pylon_param_selector_enum_init,        /* instance_init     */
-        enum_feature_type,                          /* value_type        */
-        _gst_pylon_param_selector_enum_finalize,    /* finalize          */
-        _gst_pylon_param_selector_enum_set_default, /* value_set_default */
-        _gst_pylon_param_selector_enum_validate,    /* value_validate    */
-        _gst_pylon_param_selector_enum_values_cmp,  /* values_cmp        */
-    };
-
-    selector_type = g_param_type_register_static(name, &pspec_info);
-  }
-
-  g_free(name);
-
-  return selector_type;
+  return spec;
 }
 
 GParamSpec *gst_pylon_param_spec_selector_enum(
@@ -611,33 +175,24 @@ GParamSpec *gst_pylon_param_spec_selector_enum(
     const gchar *selector_name, guint64 selector_value, const gchar *nick,
     const gchar *blurb, GType type, gint64 def, GParamFlags flags,
     const gchar *device_fullname) {
-  GstPylonParamSpecSelectorEnum *spec;
-  gchar *name = NULL;
-  gint int_flags = static_cast<gint>(flags);
+  gchar *name = gst_pylon_param_spec_selector_prolog(
+      nodemap, feature_name, selector_name, selector_value, flags);
 
-  Pylon::CEnumParameter param(nodemap, selector_name);
-
-  /* Build the property name based on the selector and the feature.
-    Since this is no longer a static string, we need to ensure that
-    the STATIC_NAME flag is not set */
-  name = g_strdup_printf("%s-%s", feature_name,
-                         param.GetEntry(selector_value)->GetSymbolic().c_str());
-  int_flags &= ~G_PARAM_STATIC_NAME;
-
-  int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
-
-  spec = static_cast<GstPylonParamSpecSelectorEnum *>(g_param_spec_internal(
-      gst_pylon_param_spec_selector_enum_register(nodemap, name, type,
-                                                  device_fullname),
-      name, nick, blurb, static_cast<GParamFlags>(int_flags)));
-
-  spec->selector = g_strdup(selector_name);
-  spec->feature = g_strdup(feature_name);
-  spec->selector_value = selector_value;
-
-  spec->base = g_param_spec_enum(name, nick, blurb, type, def,
-                                 static_cast<GParamFlags>(int_flags));
+  GParamSpec *spec = g_param_spec_enum(name, nick, blurb, type, def, flags);
   g_free(name);
 
-  return G_PARAM_SPEC(spec);
+  gst_pylon_param_spec_selector_epilog(spec, feature_name, selector_name,
+                                       selector_value);
+
+  return spec;
+}
+
+GstPylonParamSpecSelectorData *gst_pylon_param_spec_selector_get_data(
+    GParamSpec *spec) {
+  static GQuark quark = g_quark_from_static_string(QSTRING);
+
+  g_return_val_if_fail(spec, NULL);
+
+  return static_cast<GstPylonParamSpecSelectorData *>(
+      g_param_spec_get_qdata(spec, quark));
 }
