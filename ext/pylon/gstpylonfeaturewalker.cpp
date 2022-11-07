@@ -150,8 +150,12 @@ static void gst_pylon_camera_install_specs(
 
   if (!specs_list.empty()) {
     for (const auto& pspec : specs_list) {
-      g_object_class_install_property(oclass, nprop, pspec);
-      nprop++;
+      if (!g_object_class_find_property(oclass, pspec->name)) {
+        g_object_class_install_property(oclass, nprop, pspec);
+        nprop++;
+      } else {
+        g_param_spec_unref(pspec);
+      }
     }
   } else {
     throw Pylon::GenericException(
