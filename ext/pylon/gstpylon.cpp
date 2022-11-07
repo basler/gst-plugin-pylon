@@ -494,16 +494,19 @@ static void gst_pylon_meta_fill_result_chunks(
 
     std::vector<std::string> enum_values;
     try {
-      selector_node = gst_pylon_process_selector_features(node, enum_values);
+      enum_values = gst_pylon_process_selector_features(node, &selector_node);
     } catch (const Pylon::GenericException &e) {
       GST_WARNING_OBJECT(self->gstpylonsrc, "Chunk %s not added: %s",
                          node->GetName().c_str(), e.GetDescription());
       continue;
     }
 
-    Pylon::CEnumParameter param;
-    if (selector_node) {
-      param.Attach(selector_node);
+    Pylon::CEnumParameter param(selector_node);
+
+    /* If the number of selector values (stored in enum_values) is 1, leave
+     * selector_node NULL, hence treating the feature as a "direct" one. */
+    if (1 == enum_values.size()) {
+      selector_node = NULL;
     }
 
     for (auto const &sel_pair : enum_values) {
