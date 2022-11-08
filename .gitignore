@@ -19,7 +19,3 @@ Build
 
 # qtcreator
 .qtc_clangd/
-
-# dynamic limits cmake
-/docs/cpp-dynamic-ranges-prototype/build/
-/docs/notebooks/
