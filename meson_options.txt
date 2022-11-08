@@ -1,6 +1,7 @@
 # Common feature options
 option('examples', type : 'feature', value : 'auto', yield : true)
 option('tests', type : 'feature', value : 'auto', yield : true)
+option('prototypes', type : 'feature', value : 'auto', yield : true)
 option('gobject-cast-checks', type : 'feature', value : 'auto', yield : true,
        description: 'Enable run-time GObject cast checks (auto = enabled for development, disabled for stable releases)')
 option('glib-asserts', type : 'feature', value : 'enabled', yield : true,

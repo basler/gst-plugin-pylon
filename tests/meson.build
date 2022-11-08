@@ -5,3 +5,7 @@ endif
 if not get_option('examples').disabled()
   subdir('examples')
 endif
+
+if not get_option('prototypes').disabled()
+  subdir('prototypes')
+endif
