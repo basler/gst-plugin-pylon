@@ -654,10 +654,10 @@ static void gst_pylon_query_format(
   g_return_if_fail(outvalue);
 
   GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
-  Pylon::CEnumParameter pixelFormat(nodemap, "PixelFormat");
+  Pylon::CEnumParameter pixelformat(nodemap, "PixelFormat");
 
   GenApi::StringList_t genapi_formats;
-  pixelFormat.GetSettableValues(genapi_formats);
+  pixelformat.GetSettableValues(genapi_formats);
 
   /* Convert GenApi formats to Gst formats */
   std::vector<std::string> gst_formats =
@@ -755,6 +755,10 @@ static void gst_pylon_query_caps(
 
   GValue value = G_VALUE_INIT;
 
+  /* Save offset to later reset values after querying */
+  gint64 orig_offset_x = self->camera->OffsetX.GetValue();
+  gint64 orig_offset_y = self->camera->OffsetY.GetValue();
+
   const std::vector<std::pair<GstPylonQuery, const std::string>> queries = {
       {gst_pylon_query_width, "width"},
       {gst_pylon_query_height, "height"},
@@ -778,6 +782,10 @@ static void gst_pylon_query_caps(
     gst_structure_set_value(st, name, &value);
     g_value_unset(&value);
   }
+
+  /* Reset offset after querying */
+  self->camera->OffsetX.SetValue(orig_offset_x);
+  self->camera->OffsetY.SetValue(orig_offset_y);
 }
 
 GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
@@ -815,7 +823,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   GstStructure *st = gst_caps_get_structure(conf, 0);
 
   GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
-  Pylon::CEnumParameter pixelFormat(nodemap, "PixelFormat");
+  Pylon::CEnumParameter pixelformat(nodemap, "PixelFormat");
 
   try {
     const std::string gst_format = gst_structure_get_string(st, "format");
@@ -852,7 +860,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
       /* In case of ambiguous format mapping choose first */
       for (auto &fmt : pfnc_formats) {
-        fmt_valid = pixelFormat.TrySetValue(fmt.c_str());
+        fmt_valid = pixelformat.TrySetValue(fmt.c_str());
         if (fmt_valid) break;
       }
     }
