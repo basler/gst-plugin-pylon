@@ -654,10 +654,10 @@ static void gst_pylon_query_format(
   g_return_if_fail(outvalue);
 
   GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
-  Pylon::CEnumParameter pixelFormat(nodemap, "PixelFormat");
+  Pylon::CEnumParameter pixelformat(nodemap, "PixelFormat");
 
   GenApi::StringList_t genapi_formats;
-  pixelFormat.GetSettableValues(genapi_formats);
+  pixelformat.GetSettableValues(genapi_formats);
 
   /* Convert GenApi formats to Gst formats */
   std::vector<std::string> gst_formats =
@@ -815,7 +815,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   GstStructure *st = gst_caps_get_structure(conf, 0);
 
   GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
-  Pylon::CEnumParameter pixelFormat(nodemap, "PixelFormat");
+  Pylon::CEnumParameter pixelformat(nodemap, "PixelFormat");
 
   try {
     const std::string gst_format = gst_structure_get_string(st, "format");
@@ -852,7 +852,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
       /* In case of ambiguous format mapping choose first */
       for (auto &fmt : pfnc_formats) {
-        fmt_valid = pixelFormat.TrySetValue(fmt.c_str());
+        fmt_valid = pixelformat.TrySetValue(fmt.c_str());
         if (fmt_valid) break;
       }
     }
