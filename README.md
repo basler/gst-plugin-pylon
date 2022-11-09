@@ -460,7 +460,8 @@ Installation on macOS is currently not supported due to conflicts between meson 
 This target will be integrated after a Basler pylon 7.x release for macOS
 
 # Known issues
-* Due to an issue in the pipeline parser typos and unsupported feature names are silently ignored. We work on providing an upstream fix to provide full error reporting capability in the pipeline parser.
+
+* Due to an old issue in the pipeline parser, typos and unsupported feature names will be silently ignored on old GStreamer versions. Typos on top-level properties will be ignored on versions prior to 1.18. Typos on child::properties will be ignored on versions prior to 1.21.
 
 * Bayer formats need to be 4 byte aligned to be properly processed by GStreamer. If no size is specified (or a range is provided) a word aligned width will be automatically selected. If the width is hardcoded and it is not word aligned, the pipeline will fail displaying an error.
  
