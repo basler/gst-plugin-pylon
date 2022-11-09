@@ -755,6 +755,10 @@ static void gst_pylon_query_caps(
 
   GValue value = G_VALUE_INIT;
 
+  /* Save offset to later reset values after querying */
+  gint64 orig_offset_x = self->camera->OffsetX.GetValue();
+  gint64 orig_offset_y = self->camera->OffsetY.GetValue();
+
   const std::vector<std::pair<GstPylonQuery, const std::string>> queries = {
       {gst_pylon_query_width, "width"},
       {gst_pylon_query_height, "height"},
@@ -778,6 +782,10 @@ static void gst_pylon_query_caps(
     gst_structure_set_value(st, name, &value);
     g_value_unset(&value);
   }
+
+  /* Reset offset after querying */
+  self->camera->OffsetX.SetValue(orig_offset_x);
+  self->camera->OffsetY.SetValue(orig_offset_y);
 }
 
 GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
