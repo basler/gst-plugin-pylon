@@ -196,6 +196,7 @@ main (int argc, char **argv)
   GstElement *element = NULL;
   GstChildProxy *child_proxy = NULL;
   gint device = 0;
+  gint num_subdevices = 0;
   gint ret = EXIT_FAILURE;
 
   /* Make sure we have at least an emulator running */
@@ -212,30 +213,39 @@ main (int argc, char **argv)
 
   child_proxy = GST_CHILD_PROXY (element);
 
+  /* After selecting each device, a number of child subdevices may be accessed */
+  num_subdevices = gst_child_proxy_get_children_count (child_proxy);
+
   for (device = 0;; device++) {
-    GObject *cam = NULL, *stream = NULL;
+    gint i = 0;
+    GObject *subdevice = NULL;
 
     g_object_set (element, "device-index", device, NULL);
-    cam = gst_child_proxy_get_child_by_name (child_proxy, "cam");
-    stream = gst_child_proxy_get_child_by_name (child_proxy, "stream");
 
-    if (NULL == cam || NULL == stream) {
-      /* No more devices */
-      break;
+    for (i = 0; i < num_subdevices; ++i) {
+      subdevice = gst_child_proxy_get_child_by_index (child_proxy, i);
+
+      if (NULL == subdevice) {
+        /* No more devices */
+        goto no_more_devices;
+      }
+
+      /* Only print main title if there is a subdevice available */
+      if (0 == i) {
+        g_print
+            ("**************************\nDevice Index: %d\n**************************\n",
+            device);
+      }
+
+      g_print ("\n%s:\n==========================\n",
+          GST_OBJECT_NAME (subdevice));
+      print_device_properties (subdevice);
+
+      gst_object_unref (subdevice);
     }
-
-    g_print ("**************************\n%s\n**************************\n",
-        GST_OBJECT_NAME (cam));
-
-    g_print ("\nCAMERA:\n=======\n");
-    print_device_properties (cam);
-    g_print ("\nSTREAM GRABBER:\n===============\n");
-    print_device_properties (stream);
-
-    gst_object_unref (cam);
-    gst_object_unref (stream);
   }
 
+no_more_devices:
   gst_object_unref (element);
 
 out:
