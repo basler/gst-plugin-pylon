@@ -91,7 +91,7 @@ GType gst_pylon_object_register(Pylon::String_t device_name,
 
   GType type = g_type_from_name(type_name);
   if (!type) {
-    type = g_type_register_static(G_TYPE_OBJECT, type_name, &typeinfo,
+    type = g_type_register_static(GST_TYPE_OBJECT, type_name, &typeinfo,
                                   static_cast<GTypeFlags>(0));
   }
 
@@ -360,12 +360,11 @@ GObject* gst_pylon_object_new(
   gchar* type_name = gst_pylon_param_spec_sanitize_name(device_name.c_str());
 
   GType type = g_type_from_name(type_name);
-  g_free(type_name);
-
-  GObject* obj = G_OBJECT(g_object_new(type, NULL));
+  GObject* obj = G_OBJECT(g_object_new(type, "name", type_name, NULL));
   GstPylonObject* self = (GstPylonObject*)obj;
   GstPylonObjectPrivate* priv =
       (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  g_free(type_name);
 
   priv->camera = camera;
   priv->nodemap = nodemap;
