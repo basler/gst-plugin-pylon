@@ -548,6 +548,10 @@ static void gst_pylon_add_result_meta(
   meta->offset.offset_y = grab_result_ptr->GetOffsetY();
   meta->timestamp = grab_result_ptr->GetTimeStamp();
 
+  GstCaps *ref = gst_caps_from_string("timestamp/x-pylon");
+  gst_buffer_add_reference_timestamp_meta(
+      buf, ref, grab_result_ptr->GetTimeStamp(), GST_CLOCK_TIME_NONE);
+
   if (grab_result_ptr->IsChunkDataAvailable()) {
     gst_pylon_meta_fill_result_chunks(self, buf, grab_result_ptr, meta);
   }

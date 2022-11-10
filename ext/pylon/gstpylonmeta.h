@@ -56,6 +56,7 @@ struct _GstPylonMeta
   guint64 block_id;
   GstPylonOffset offset;
   GstClockTime timestamp;
+  GstReferenceTimestampMeta gsttimestamp;
 };
 
 GstPylonMeta *gst_buffer_add_pylon_meta (GstBuffer * buffer);
