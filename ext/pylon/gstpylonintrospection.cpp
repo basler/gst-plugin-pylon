@@ -164,11 +164,8 @@ static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
 
   /* Check if feature is writable in PLAYING state */
   if (is_read_write || is_write_only) {
-    GenICam::gcstring value;
-    GenICam::gcstring attribute;
-    if (node->GetProperty("TLParamsLocked", value, attribute)) {
-      Pylon::CIntegerParameter tl_params_locked(nodemap, "TLParamsLocked");
-
+    Pylon::CIntegerParameter tl_params_locked(nodemap, "TLParamsLocked");
+    if (tl_params_locked.IsValid()) {
       /* Check if feature is writable at runtime by checking if it is still
        * writable after setting TLParamsLocked to 1. */
       tl_params_locked.SetValue(1);
