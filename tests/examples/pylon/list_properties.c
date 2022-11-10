@@ -200,7 +200,7 @@ main (int argc, char **argv)
   gint ret = EXIT_FAILURE;
 
   /* Make sure we have at least an emulator running */
-  g_setenv ("PYLON_CAMEMU", "1", TRUE);
+  g_setenv ("PYLON_CAMEMU", "1", FALSE);
 
   gst_init (&argc, &argv);
 
