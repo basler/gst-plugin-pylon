@@ -131,9 +131,9 @@ struct _GstPylon {
   GstPylonImageHandler image_handler;
   GstPylonDisconnectHandler disconnect_handler;
 
-  std::string device_user_name;
-  std::string device_serial_number;
-  gint device_index;
+  std::string requested_device_user_name;
+  std::string requested_device_serial_number;
+  gint requested_device_index;
 };
 
 static const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
@@ -174,6 +174,11 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
 
   g_return_val_if_fail(self, NULL);
   g_return_val_if_fail(err && *err == NULL, NULL);
+
+  self->requested_device_index = device_index;
+  self->requested_device_user_name = device_user_name ? device_user_name : "";
+  self->requested_device_serial_number =
+      device_serial_number ? device_serial_number : "";
 
   try {
     Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
@@ -251,11 +256,6 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
     self->gstream_grabber = gst_pylon_object_new(
         self->camera, gst_pylon_get_sgrabber_name(*self->camera),
         &sgrabber_nodemap);
-
-    self->device_index = device_index;
-    self->device_user_name = device_user_name ? device_user_name : "";
-    self->device_serial_number =
-        device_serial_number ? device_serial_number : "";
 
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
@@ -1015,7 +1015,7 @@ gboolean gst_pylon_is_same_device(GstPylon *self, const gint device_index,
   std::string user_name = device_user_name ? device_user_name : "";
   std::string serial_number = device_serial_number ? device_serial_number : "";
 
-  return self->device_index == device_index &&
-         self->device_user_name == user_name &&
-         self->device_serial_number == serial_number;
+  return self->requested_device_index == device_index &&
+         self->requested_device_user_name == user_name &&
+         self->requested_device_serial_number == serial_number;
 }
