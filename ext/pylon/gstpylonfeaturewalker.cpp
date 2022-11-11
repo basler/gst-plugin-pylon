@@ -185,7 +185,8 @@ void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
     if (node->IsFeature() && (node->GetVisibility() != GenApi::Invisible) &&
         sel_node && GenApi::IsAvailable(node) && !sel_node->IsSelector() &&
         propfilter_set.find(std::string(node->GetName())) ==
-            propfilter_set.end()) {
+            propfilter_set.end() &&
+        node->GetPrincipalInterfaceType() != GenApi::intfICategory) {
       GenICam::gcstring value;
       GenICam::gcstring attrib;
 
