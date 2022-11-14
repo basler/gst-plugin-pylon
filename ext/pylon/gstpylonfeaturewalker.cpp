@@ -53,12 +53,13 @@ static std::unordered_set<std::string> propfilter_set = {
     "AcquisitionFrameRate",
     "AcquisitionFrameRateAbs"};
 
-GenApi::INode* gst_pylon_process_selector_features(
-    GenApi::INode* node, std::vector<std::string>& enum_values) {
-  g_return_val_if_fail(node, NULL);
-
-  GenApi::INode* selector_node = NULL;
+std::vector<std::string> gst_pylon_process_selector_features(
+    GenApi::INode* node, GenApi::INode** selector_node) {
+  std::vector<std::string> enum_values;
   std::string error_msg;
+
+  g_return_val_if_fail(node, enum_values);
+  g_return_val_if_fail(selector_node, enum_values);
 
   auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
   if (!sel_node) {
@@ -72,7 +73,7 @@ GenApi::INode* gst_pylon_process_selector_features(
   sel_node->GetSelectingFeatures(selectors);
   if (selectors.empty()) {
     enum_values.push_back("direct-feature");
-    return selector_node;
+    return enum_values;
   }
 
   /* At the time being features with multiple selectors are not supported */
@@ -93,6 +94,8 @@ GenApi::INode* gst_pylon_process_selector_features(
     throw Pylon::GenericException(error_msg.c_str(), __FILE__, __LINE__);
   }
 
+  *selector_node = selector->GetNode();
+
   /* Add selector enum values */
   GenApi::NodeList_t enum_entries;
   /* Calculate prefix length to strip */
@@ -106,13 +109,7 @@ GenApi::INode* gst_pylon_process_selector_features(
     enum_values.push_back(enum_name.substr(prefix_len));
   }
 
-  /* If the number of selector values (stored in enum_values) is 1, leave
-   * selector_node NULL, hence treating the feature as a "direct" one. */
-  if (1 < enum_values.size()) {
-    selector_node = selector->GetNode();
-  }
-
-  return selector_node;
+  return enum_values;
 }
 
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
@@ -124,12 +121,15 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
 
   g_return_val_if_fail(node, specs_list);
 
-  std::vector<std::string> enum_values;
-  selector_node = gst_pylon_process_selector_features(node, enum_values);
+  std::vector<std::string> enum_values =
+      gst_pylon_process_selector_features(node, &selector_node);
 
-  Pylon::CEnumParameter param;
-  if (selector_node) {
-    param.Attach(selector_node);
+  Pylon::CEnumParameter param(selector_node);
+
+  /* If the number of selector values (stored in enum_values) is 1, leave
+   * selector_node NULL, hence treating the feature as a "direct" one. */
+  if (1 == enum_values.size()) {
+    selector_node = NULL;
   }
 
   for (auto const& sel_pair : enum_values) {
