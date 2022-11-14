@@ -549,7 +549,7 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   gint denominator = 0;
   gint width = 0;
   static const gint byte_alignment = 4;
-  const gchar *error_msg = NULL;
+  gchar *error_msg = NULL;
   GError *error = NULL;
   gboolean ret = FALSE;
   const gchar *action = NULL;
@@ -561,7 +561,9 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
 
   if (gst_pylon_src_is_bayer (st) && 0 != width % byte_alignment) {
     action = "configure";
-    error_msg = "Bayer formats require the width to be word aligned (4 bytes).";
+    error_msg =
+        g_strdup
+        ("Bayer formats require the width to be word aligned (4 bytes).");
     goto error;
   }
 
@@ -598,12 +600,13 @@ gst_pylon_src_set_caps (GstBaseSrc * src, GstCaps * caps)
   goto out;
 
 log_error:
-  error_msg = error->message;
+  error_msg = g_strdup (error->message);
   g_error_free (error);
 
 error:
   GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
       ("Failed to %s camera.", action), ("%s", error_msg));
+  g_free (error_msg);
 
 out:
   return ret;
