@@ -164,11 +164,8 @@ static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
 
   /* Check if feature is writable in PLAYING state */
   if (is_read_write || is_write_only) {
-    GenICam::gcstring value;
-    GenICam::gcstring attribute;
-    if (node->GetProperty("TLParamsLocked", value, attribute)) {
-      Pylon::CIntegerParameter tl_params_locked(nodemap, "TLParamsLocked");
-
+    Pylon::CIntegerParameter tl_params_locked(nodemap, "TLParamsLocked");
+    if (tl_params_locked.IsValid()) {
       /* Check if feature is writable at runtime by checking if it is still
        * writable after setting TLParamsLocked to 1. */
       tl_params_locked.SetValue(1);
@@ -318,41 +315,99 @@ gst_pylon_create_set_value_actions(std::vector<GenApi::INode *> node_list) {
 
   for (const auto &node : node_list) {
     std::vector<GstPylonActions *> values;
-    if (GenApi::intfIBoolean == node->GetPrincipalInterfaceType()) {
-      Pylon::CBooleanParameter param(node);
-      values.push_back(
-          new GstPylonTypeAction<Pylon::CBooleanParameter, gboolean>(param,
-                                                                     TRUE));
-      values.push_back(
-          new GstPylonTypeAction<Pylon::CBooleanParameter, gboolean>(param,
-                                                                     FALSE));
-    } else if (GenApi::intfIFloat == node->GetPrincipalInterfaceType()) {
-      Pylon::CFloatParameter param(node);
-      values.push_back(new GstPylonTypeAction<Pylon::CFloatParameter, gdouble>(
-          param, param.GetMin()));
-      values.push_back(new GstPylonTypeAction<Pylon::CFloatParameter, gdouble>(
-          param, param.GetMax()));
-    } else if (GenApi::intfIInteger == node->GetPrincipalInterfaceType()) {
-      Pylon::CIntegerParameter param(node);
-      values.push_back(new GstPylonTypeAction<Pylon::CIntegerParameter, gint64>(
-          param, param.GetMin()));
-      values.push_back(new GstPylonTypeAction<Pylon::CIntegerParameter, gint64>(
-          param, param.GetMax()));
-    } else if (GenApi::intfIEnumeration == node->GetPrincipalInterfaceType()) {
-      Pylon::CEnumParameter param(node);
-      GenApi::StringList_t symbolics;
-      param.GetSymbolics(symbolics);
-      for (const auto &symbolic : symbolics) {
+    switch (node->GetPrincipalInterfaceType()) {
+      case GenApi::intfIBoolean: {
+        Pylon::CBooleanParameter param(node);
         values.push_back(
-            new GstPylonTypeAction<Pylon::CEnumParameter, Pylon::String_t>(
-                param, symbolic));
+            new GstPylonTypeAction<Pylon::CBooleanParameter, gboolean>(param,
+                                                                       TRUE));
+        values.push_back(
+            new GstPylonTypeAction<Pylon::CBooleanParameter, gboolean>(param,
+                                                                       FALSE));
+        break;
       }
-    } else {
-      std::string msg = "Action in unsupported for node of type " +
-                        std::to_string(node->GetPrincipalInterfaceType());
-      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+      case GenApi::intfIFloat: {
+        Pylon::CFloatParameter param(node);
+        values.push_back(
+            new GstPylonTypeAction<Pylon::CFloatParameter, gdouble>(
+                param, param.GetMin()));
+        values.push_back(
+            new GstPylonTypeAction<Pylon::CFloatParameter, gdouble>(
+                param, param.GetMax()));
+        break;
+      }
+      case GenApi::intfIInteger: {
+        Pylon::CIntegerParameter param(node);
+        values.push_back(
+            new GstPylonTypeAction<Pylon::CIntegerParameter, gint64>(
+                param, param.GetMin()));
+        values.push_back(
+            new GstPylonTypeAction<Pylon::CIntegerParameter, gint64>(
+                param, param.GetMax()));
+        break;
+      }
+      case GenApi::intfIEnumeration: {
+        Pylon::CEnumParameter param(node);
+        GenApi::StringList_t symbolics;
+        param.GetSymbolics(symbolics);
+        for (const auto &symbolic : symbolics) {
+          values.push_back(
+              new GstPylonTypeAction<Pylon::CEnumParameter, Pylon::String_t>(
+                  param, symbolic));
+        }
+        break;
+      }
+      default:
+        std::string msg = "Action in unsupported for node of type " +
+                          std::to_string(node->GetPrincipalInterfaceType());
+        throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
     actions_list.push_back(values);
+  }
+
+  return actions_list;
+}
+
+static std::vector<GstPylonActions *> gst_pylon_create_reset_value_actions(
+    std::vector<GenApi::INode *> node_list) {
+  std::vector<GstPylonActions *> actions_list;
+
+  for (const auto &node : node_list) {
+    std::vector<GstPylonActions *> values;
+    switch (node->GetPrincipalInterfaceType()) {
+      case GenApi::intfIBoolean: {
+        Pylon::CBooleanParameter param(node);
+        actions_list.push_back(
+            new GstPylonTypeAction<Pylon::CBooleanParameter, gboolean>(
+                param, param.GetValue()));
+        break;
+      }
+      case GenApi::intfIFloat: {
+        Pylon::CFloatParameter param(node);
+        actions_list.push_back(
+            new GstPylonTypeAction<Pylon::CFloatParameter, gdouble>(
+                param, param.GetValue()));
+        break;
+      }
+      case GenApi::intfIInteger: {
+        Pylon::CIntegerParameter param(node);
+        actions_list.push_back(
+            new GstPylonTypeAction<Pylon::CIntegerParameter, gint64>(
+                param, param.GetValue()));
+        break;
+      }
+      case GenApi::intfIEnumeration: {
+        Pylon::CEnumParameter param(node);
+        actions_list.push_back(
+            new GstPylonTypeAction<Pylon::CEnumParameter, Pylon::String_t>(
+                param, param.GetValue()));
+        break;
+      }
+      default:
+        std::string msg = "Action in unsupported for node of type " +
+                          std::to_string(node->GetPrincipalInterfaceType());
+        throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    }
   }
 
   return actions_list;
@@ -398,6 +453,10 @@ static void gst_pylon_find_limits(GenApi::INode *node,
   std::vector<GenApi::INode *> available_parent_inv =
       gst_pylon_get_available_features(parent_invalidators);
 
+  /* Save current set of values */
+  std::vector<GstPylonActions *> reset_list =
+      gst_pylon_create_reset_value_actions(available_parent_inv);
+
   /* Create list of extreme value settings per invalidator */
   std::vector<std::vector<GstPylonActions *>> actions_list =
       gst_pylon_create_set_value_actions(available_parent_inv);
@@ -426,11 +485,23 @@ static void gst_pylon_find_limits(GenApi::INode *node,
   maximum_under_all_settings =
       *std::max_element(max_values.begin(), max_values.end());
 
+  /* Reset to old values */
+  for (const auto &action : reset_list) {
+    try {
+      action->set_value();
+    } catch (const Pylon::GenericException &e) {
+      continue;
+    }
+  }
+
   /* Clean up */
   for (const auto &actions : actions_list) {
     for (const auto &action : actions) {
       delete action;
     }
+  }
+  for (const auto &action : reset_list) {
+    delete action;
   }
 }
 

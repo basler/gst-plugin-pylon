@@ -33,7 +33,6 @@
 #include "gstpylonobject.h"
 
 #include "gstpylonfeaturewalker.h"
-#include "gstpylonintrospection.h"
 #include "gstpylonparamspecs.h"
 
 typedef struct _GstPylonObjectPrivate GstPylonObjectPrivate;
