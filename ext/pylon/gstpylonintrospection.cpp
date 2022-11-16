@@ -453,7 +453,7 @@ static void gst_pylon_find_limits(GenApi::INode *node,
   std::vector<GenApi::INode *> available_parent_inv =
       gst_pylon_get_available_features(parent_invalidators);
 
-  /* save current set of values */
+  /* Save current set of values */
   std::vector<GstPylonActions *> reset_list =
       gst_pylon_create_reset_value_actions(available_parent_inv);
 
@@ -485,7 +485,7 @@ static void gst_pylon_find_limits(GenApi::INode *node,
   maximum_under_all_settings =
       *std::max_element(max_values.begin(), max_values.end());
 
-  /* reset to old values */
+  /* Reset to old values */
   for (const auto &action : reset_list) {
     try {
       action->set_value();
