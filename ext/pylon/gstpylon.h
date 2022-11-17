@@ -58,7 +58,8 @@ void gst_pylon_free(GstPylon *self);
 gboolean gst_pylon_start(GstPylon *self, GError **err);
 gboolean gst_pylon_stop(GstPylon *self, GError **err);
 void gst_pylon_interrupt_capture(GstPylon *self);
-gsize gst_pylon_get_stride (GstPylon *self);
+gsize gst_pylon_get_stride(GstPylon *self);
+guint64 gst_pylon_get_offset(GstPylon *self);
 gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
                            GstPylonCaptureErrorEnum capture_error,
                            GError **err);
@@ -73,8 +74,9 @@ gchar *gst_pylon_stream_grabber_get_string_properties();
 GObject *gst_pylon_get_camera(GstPylon *self);
 GObject *gst_pylon_get_stream_grabber(GstPylon *self);
 
-gboolean gst_pylon_is_same_device (GstPylon *self, const gint device_index,
-    const gchar *device_user_name, const gchar *device_serial_number);
+gboolean gst_pylon_is_same_device(GstPylon *self, const gint device_index,
+                                  const gchar *device_user_name,
+                                  const gchar *device_serial_number);
 
 GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
 #define GST_CAT_DEFAULT gst_pylon_src_debug_category

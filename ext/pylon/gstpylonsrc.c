@@ -60,7 +60,6 @@ struct _GstPylonSrc
 {
   GstPushSrc base_pylonsrc;
   GstPylon *pylon;
-  guint64 offset;
   GstClockTime duration;
   GstVideoInfo video_info;
   gsize stride;
@@ -303,7 +302,6 @@ gst_pylon_src_init (GstPylonSrc * self)
   GstBaseSrc *base = GST_BASE_SRC (self);
 
   self->pylon = NULL;
-  self->offset = G_GUINT64_CONSTANT (0);
   self->duration = GST_CLOCK_TIME_NONE;
   self->stride = G_GUINT64_CONSTANT (0);
   self->device_user_name = PROP_DEVICE_USER_NAME_DEFAULT;
@@ -694,7 +692,6 @@ gst_pylon_src_start (GstBaseSrc * src)
     goto log_gst_error;
   }
 
-  self->offset = G_GUINT64_CONSTANT (0);
   self->duration = GST_CLOCK_TIME_NONE;
 
   goto out;
@@ -796,6 +793,7 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf,
   GstClockTime abs_time = GST_CLOCK_TIME_NONE;
   GstClockTime base_time = GST_CLOCK_TIME_NONE;
   GstClockTime timestamp = GST_CLOCK_TIME_NONE;
+  guint64 offset = G_GUINT64_CONSTANT (0);
   GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
   guint width = 0;
   guint height = 0;
@@ -828,10 +826,11 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf,
   }
 
   timestamp = abs_time - base_time;
+  offset = gst_pylon_get_offset (self->pylon);
 
   GST_BUFFER_TIMESTAMP (buf) = timestamp;
-  GST_BUFFER_OFFSET (buf) = self->offset;
-  GST_BUFFER_OFFSET_END (buf) = self->offset + 1;
+  GST_BUFFER_OFFSET (buf) = offset;
+  GST_BUFFER_OFFSET_END (buf) = offset + 1;
 
   /* add video meta data */
   format = GST_VIDEO_INFO_FORMAT (&self->video_info);
@@ -880,7 +879,6 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
   }
 
   gst_plyon_src_add_metadata (self, *buf, gst_pylon_get_stride (self->pylon));
-  self->offset++;
 
   GST_LOG_OBJECT (self, "Created buffer %" GST_PTR_FORMAT, *buf);
 
