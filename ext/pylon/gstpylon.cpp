@@ -138,6 +138,8 @@ struct _GstPylon {
   std::string requested_device_user_name;
   std::string requested_device_serial_number;
   gint requested_device_index;
+
+  gsize stride;
 };
 
 static const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
@@ -226,6 +228,8 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
   self->requested_device_user_name = device_user_name ? device_user_name : "";
   self->requested_device_serial_number =
       device_serial_number ? device_serial_number : "";
+
+  self->stride = 0;
 
   try {
     Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
@@ -552,10 +556,15 @@ static void gst_pylon_add_result_meta(
   gst_buffer_add_reference_timestamp_meta(
       buf, ref, grab_result_ptr->GetTimeStamp(), GST_CLOCK_TIME_NONE);
 
+  /* Assuming pylon formats come in a single plane */
+  grab_result_ptr->GetStride(self->stride);
+
   if (grab_result_ptr->IsChunkDataAvailable()) {
     gst_pylon_meta_fill_result_chunks(self, buf, grab_result_ptr, meta);
   }
 }
+
+gsize gst_pylon_get_stride(GstPylon *self) { return self->stride; }
 
 static void free_ptr_grab_result(gpointer data) {
   g_return_if_fail(data);

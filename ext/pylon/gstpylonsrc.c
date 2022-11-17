@@ -63,6 +63,7 @@ struct _GstPylonSrc
   guint64 offset;
   GstClockTime duration;
   GstVideoInfo video_info;
+  gsize stride;
 
   gchar *device_user_name;
   gchar *device_serial_number;
@@ -93,7 +94,8 @@ static gboolean gst_pylon_src_start (GstBaseSrc * src);
 static gboolean gst_pylon_src_stop (GstBaseSrc * src);
 static gboolean gst_pylon_src_unlock (GstBaseSrc * src);
 static gboolean gst_pylon_src_query (GstBaseSrc * src, GstQuery * query);
-static void gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf);
+static void gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf,
+    gsize pylon_stride);
 static GstFlowReturn gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf);
 
 static void gst_pylon_src_child_proxy_init (GstChildProxyInterface * iface);
@@ -303,6 +305,7 @@ gst_pylon_src_init (GstPylonSrc * self)
   self->pylon = NULL;
   self->offset = G_GUINT64_CONSTANT (0);
   self->duration = GST_CLOCK_TIME_NONE;
+  self->stride = G_GUINT64_CONSTANT (0);
   self->device_user_name = PROP_DEVICE_USER_NAME_DEFAULT;
   self->device_serial_number = PROP_DEVICE_SERIAL_NUMBER_DEFAULT;
   self->device_index = PROP_DEVICE_INDEX_DEFAULT;
@@ -786,7 +789,8 @@ done:
 
 /* add time metadata to buffer */
 static void
-gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
+gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf,
+    gsize pylon_stride)
 {
   GstClock *clock = NULL;
   GstClockTime abs_time = GST_CLOCK_TIME_NONE;
@@ -835,10 +839,9 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   height = GST_VIDEO_INFO_HEIGHT (&self->video_info);
   n_planes = GST_VIDEO_INFO_N_PLANES (&self->video_info);
 
-  /* stride is being constructed manually since the pylon stride
-   * does not match with the GstVideoInfo obtained stride. */
+  /* assuming pylon formats come in a single plane */
   for (gint p = 0; p < n_planes; p++) {
-    stride[p] = width * GST_VIDEO_INFO_COMP_PSTRIDE (&self->video_info, p);
+    stride[p] = pylon_stride;
   }
 
   gst_buffer_add_video_meta_full (buf, GST_VIDEO_FRAME_FLAG_NONE, format, width,
@@ -876,7 +879,7 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
     goto done;
   }
 
-  gst_plyon_src_add_metadata (self, *buf);
+  gst_plyon_src_add_metadata (self, *buf, gst_pylon_get_stride (self->pylon));
   self->offset++;
 
   GST_LOG_OBJECT (self, "Created buffer %" GST_PTR_FORMAT, *buf);
