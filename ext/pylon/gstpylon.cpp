@@ -549,10 +549,12 @@ static void gst_pylon_add_result_meta(
 
   GstPylonMeta *meta = gst_buffer_add_pylon_meta(buf);
 
+  /* Add meta to GstPylonMeta */
   meta->block_id = grab_result_ptr->GetBlockID();
   meta->offset.offset_x = grab_result_ptr->GetOffsetX();
   meta->offset.offset_y = grab_result_ptr->GetOffsetY();
   meta->timestamp = grab_result_ptr->GetTimeStamp();
+  grab_result_ptr->GetStride(meta->stride);
 
   GstCaps *ref = gst_caps_from_string("timestamp/x-pylon");
   gst_buffer_add_reference_timestamp_meta(
