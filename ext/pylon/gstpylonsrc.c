@@ -51,6 +51,7 @@
 #include "gstpylonsrc.h"
 
 #include "gstpylon.h"
+#include "gstpylonmeta.h"
 
 #include <gst/video/video.h>
 
@@ -795,6 +796,7 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf,
   GstClockTime timestamp = GST_CLOCK_TIME_NONE;
   guint64 offset = G_GUINT64_CONSTANT (0);
   GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
+  GstPylonMeta *pylon_meta = NULL;
   guint width = 0;
   guint height = 0;
   guint n_planes = 0;
@@ -802,6 +804,8 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf,
 
   g_return_if_fail (self);
   g_return_if_fail (buf);
+
+  pylon_meta = (GstPylonMeta *) gst_buffer_get_meta (buf, GST_PYLON_META_INFO);
 
   GST_OBJECT_LOCK (self);
   /* set duration */
@@ -826,7 +830,7 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf,
   }
 
   timestamp = abs_time - base_time;
-  offset = gst_pylon_get_offset (self->pylon);
+  offset = pylon_meta->block_id;
 
   GST_BUFFER_TIMESTAMP (buf) = timestamp;
   GST_BUFFER_OFFSET (buf) = offset;
@@ -840,7 +844,7 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf,
 
   /* assuming pylon formats come in a single plane */
   for (gint p = 0; p < n_planes; p++) {
-    stride[p] = pylon_stride;
+    stride[p] = pylon_meta->stride;
   }
 
   gst_buffer_add_video_meta_full (buf, GST_VIDEO_FRAME_FLAG_NONE, format, width,

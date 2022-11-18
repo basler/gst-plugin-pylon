@@ -138,9 +138,6 @@ struct _GstPylon {
   std::string requested_device_user_name;
   std::string requested_device_serial_number;
   gint requested_device_index;
-
-  gsize stride;
-  guint64 offset;
 };
 
 static const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
@@ -229,9 +226,6 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
   self->requested_device_user_name = device_user_name ? device_user_name : "";
   self->requested_device_serial_number =
       device_serial_number ? device_serial_number : "";
-
-  self->stride = 0;
-  self->offset = 0;
 
   try {
     Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
@@ -547,31 +541,12 @@ static void gst_pylon_add_result_meta(
   g_return_if_fail(self);
   g_return_if_fail(buf);
 
-  GstPylonMeta *meta = gst_buffer_add_pylon_meta(buf);
-
-  /* Add meta to GstPylonMeta */
-  meta->block_id = grab_result_ptr->GetBlockID();
-  meta->offset.offset_x = grab_result_ptr->GetOffsetX();
-  meta->offset.offset_y = grab_result_ptr->GetOffsetY();
-  meta->timestamp = grab_result_ptr->GetTimeStamp();
-  grab_result_ptr->GetStride(meta->stride);
-
-  GstCaps *ref = gst_caps_from_string("timestamp/x-pylon");
-  gst_buffer_add_reference_timestamp_meta(
-      buf, ref, grab_result_ptr->GetTimeStamp(), GST_CLOCK_TIME_NONE);
-
-  /* Assuming pylon formats come in a single plane */
-  grab_result_ptr->GetStride(self->stride);
-  self->offset = grab_result_ptr->GetBlockID();
+  GstPylonMeta *meta = gst_buffer_add_pylon_meta(buf, grab_result_ptr);
 
   if (grab_result_ptr->IsChunkDataAvailable()) {
     gst_pylon_meta_fill_result_chunks(self, buf, grab_result_ptr, meta);
   }
 }
-
-gsize gst_pylon_get_stride(GstPylon *self) { return self->stride; }
-
-guint64 gst_pylon_get_offset(GstPylon *self) { return self->offset; }
 
 static void free_ptr_grab_result(gpointer data) {
   g_return_if_fail(data);

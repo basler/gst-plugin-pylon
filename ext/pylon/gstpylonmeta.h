@@ -35,6 +35,23 @@
 
 #include <gst/gst.h>
 
+#ifdef _MSC_VER                 // MSVC
+#pragma warning(push)
+#pragma warning(disable : 4265)
+#elif __GNUC__                  // GCC, CLANG, MinGW
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#endif
+
+#include <pylon/BaslerUniversalInstantCamera.h>
+#include <pylon/PylonIncludes.h>
+
+#ifdef _MSC_VER                 // MSVC
+#pragma warning(pop)
+#elif __GNUC__                  // GCC, CLANG, MinWG
+#pragma GCC diagnostic pop
+#endif
+
 G_BEGIN_DECLS
 
 #define GST_PYLON_META_API_TYPE (gst_pylon_meta_api_get_type())
@@ -59,7 +76,8 @@ struct _GstPylonMeta
   gsize stride;
 };
 
-GstPylonMeta *gst_buffer_add_pylon_meta (GstBuffer * buffer);
+GstPylonMeta *gst_buffer_add_pylon_meta (GstBuffer * buffer,
+    const Pylon::CBaslerUniversalGrabResultPtr & grab_result_ptr);
 
 GType gst_pylon_meta_api_get_type (void);
 const GstMetaInfo *gst_pylon_meta_get_info (void);
