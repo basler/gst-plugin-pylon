@@ -36,7 +36,7 @@
 #include "gstpylondisconnecthandler.h"
 #include "gstpylonfeaturewalker.h"
 #include "gstpylonimagehandler.h"
-#include "gstpylonmeta.h"
+#include "gstpylonmetaprivate.h"
 #include "gstpylonobject.h"
 
 #include <map>

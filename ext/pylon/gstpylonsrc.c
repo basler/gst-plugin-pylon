@@ -94,8 +94,7 @@ static gboolean gst_pylon_src_start (GstBaseSrc * src);
 static gboolean gst_pylon_src_stop (GstBaseSrc * src);
 static gboolean gst_pylon_src_unlock (GstBaseSrc * src);
 static gboolean gst_pylon_src_query (GstBaseSrc * src, GstQuery * query);
-static void gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf,
-    gsize pylon_stride);
+static void gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf);
 static GstFlowReturn gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf);
 
 static void gst_pylon_src_child_proxy_init (GstChildProxyInterface * iface);
@@ -787,8 +786,7 @@ done:
 
 /* add time metadata to buffer */
 static void
-gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf,
-    gsize pylon_stride)
+gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
 {
   GstClock *clock = NULL;
   GstClockTime abs_time = GST_CLOCK_TIME_NONE;
@@ -805,7 +803,8 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf,
   g_return_if_fail (self);
   g_return_if_fail (buf);
 
-  pylon_meta = (GstPylonMeta *) gst_buffer_get_meta (buf, GST_PYLON_META_INFO);
+  pylon_meta =
+      (GstPylonMeta *) gst_buffer_get_meta (buf, GST_PYLON_META_API_TYPE);
 
   GST_OBJECT_LOCK (self);
   /* set duration */
@@ -882,7 +881,7 @@ gst_pylon_src_create (GstPushSrc * src, GstBuffer ** buf)
     goto done;
   }
 
-  gst_plyon_src_add_metadata (self, *buf, gst_pylon_get_stride (self->pylon));
+  gst_plyon_src_add_metadata (self, *buf);
 
   GST_LOG_OBJECT (self, "Created buffer %" GST_PTR_FORMAT, *buf);
 

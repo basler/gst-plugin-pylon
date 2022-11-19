@@ -30,9 +30,26 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gstpylonmeta.h"
+#include "gstpylonmetaprivate.h"
 
 #include <gst/video/video.h>
+
+#ifdef _MSC_VER  // MSVC
+#pragma warning(push)
+#pragma warning(disable : 4265)
+#elif __GNUC__  // GCC, CLANG, MinGW
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#endif
+
+#include <pylon/BaslerUniversalInstantCamera.h>
+#include <pylon/PylonIncludes.h>
+
+#ifdef _MSC_VER  // MSVC
+#pragma warning(pop)
+#elif __GNUC__  // GCC, CLANG, MinWG
+#pragma GCC diagnostic pop
+#endif
 
 static gboolean gst_pylon_meta_init(GstMeta *meta, gpointer params,
                                     GstBuffer *buffer);
