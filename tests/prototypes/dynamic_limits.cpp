@@ -36,6 +36,8 @@
 #elif __GNUC__  // GCC, CLANG, MinGW
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#pragma GCC diagnostic ignored "-Woverloaded-virtual"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
 #include <pylon/PylonIncludes.h>
