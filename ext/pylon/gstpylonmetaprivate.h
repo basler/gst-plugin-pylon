@@ -55,8 +55,9 @@
 
 G_BEGIN_DECLS
 
-GstPylonMeta *gst_buffer_add_pylon_meta (GstBuffer * buffer,
-    const Pylon::CBaslerUniversalGrabResultPtr & grab_result_ptr);
+void gst_buffer_add_pylon_meta(
+    GstElement *self, GstBuffer *buffer,
+    const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
 
 G_END_DECLS
 

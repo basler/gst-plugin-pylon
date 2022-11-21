@@ -30,6 +30,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "gstpylonfeaturewalker.h"
 #include "gstpylonmetaprivate.h"
 
 #include <gst/video/video.h>
@@ -50,6 +51,16 @@
 #elif __GNUC__  // GCC, CLANG, MinWG
 #pragma GCC diagnostic pop
 #endif
+
+/* prototypes */
+static void gst_pylon_add_chunk_as_meta(GstElement *self, GstBuffer *buf,
+                                        GstStructure *st, GenApi::INode *node,
+                                        GenApi::INode *selector_node,
+                                        const guint64 &selector_value);
+static void gst_pylon_meta_fill_result_chunks(
+    GstElement *self, GstBuffer *buf,
+    const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr,
+    GstPylonMeta *meta);
 
 static gboolean gst_pylon_meta_init(GstMeta *meta, gpointer params,
                                     GstBuffer *buffer);
@@ -78,10 +89,125 @@ const GstMetaInfo *gst_pylon_meta_get_info(void) {
   return info;
 }
 
-GstPylonMeta *gst_buffer_add_pylon_meta(
-    GstBuffer *buffer,
+static void gst_pylon_add_chunk_as_meta(GstElement *self, GstBuffer *buf,
+                                        GstStructure *st, GenApi::INode *node,
+                                        GenApi::INode *selector_node,
+                                        const guint64 &selector_value) {
+  g_return_if_fail(self);
+  g_return_if_fail(buf);
+  g_return_if_fail(st);
+  g_return_if_fail(node);
+
+  GValue value = G_VALUE_INIT;
+  gboolean is_valid = TRUE;
+  gchar *name = NULL;
+
+  if (selector_node) {
+    Pylon::CEnumParameter selparam(selector_node);
+    selparam.SetIntValue(selector_value);
+    name = g_strdup_printf(
+        "%s-%s", node->GetName().c_str(),
+        selparam.GetEntry(selector_value)->GetSymbolic().c_str());
+  } else {
+    name = g_strdup(node->GetName().c_str());
+  }
+
+  GenApi::EInterfaceType iface = node->GetPrincipalInterfaceType();
+  switch (iface) {
+    case GenApi::intfIInteger:
+      g_value_init(&value, G_TYPE_INT64);
+      g_value_set_int64(&value, Pylon::CIntegerParameter(node).GetValue());
+      break;
+    case GenApi::intfIBoolean:
+      g_value_init(&value, G_TYPE_BOOLEAN);
+      g_value_set_boolean(&value, Pylon::CBooleanParameter(node).GetValue());
+      break;
+    case GenApi::intfIFloat:
+      g_value_init(&value, G_TYPE_DOUBLE);
+      g_value_set_double(&value, Pylon::CFloatParameter(node).GetValue());
+      break;
+    case GenApi::intfIString:
+      g_value_init(&value, G_TYPE_STRING);
+      g_value_set_string(&value, Pylon::CStringParameter(node).GetValue());
+      break;
+    case GenApi::intfIEnumeration:
+      g_value_init(&value, G_TYPE_STRING);
+      g_value_set_string(&value,
+                         Pylon::CEnumParameter(node).GetValue().c_str());
+      break;
+    default:
+      is_valid = FALSE;
+      GST_WARNING_OBJECT(
+          self, "Chunk %s not added. Chunk of type %d is not supported", name,
+          node->GetPrincipalInterfaceType());
+      break;
+  }
+
+  if (is_valid) {
+    gst_structure_set_value(st, name, &value);
+  }
+
+  g_value_unset(&value);
+  g_free(name);
+}
+
+static void gst_pylon_meta_fill_result_chunks(
+    GstElement *self, GstBuffer *buf,
+    const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr,
+    GstPylonMeta *meta) {
+  g_return_if_fail(self);
+  g_return_if_fail(buf);
+  g_return_if_fail(meta);
+
+  GstStructure *st = meta->chunks;
+
+  GenApi::INodeMap &chunk_nodemap = grab_result_ptr->GetChunkDataNodeMap();
+  GenApi::NodeList_t chunk_nodes;
+  chunk_nodemap.GetNodes(chunk_nodes);
+
+  for (auto &node : chunk_nodes) {
+    GenApi::INode *selector_node = NULL;
+    guint64 selector_value = 0;
+
+    /* Only take into account valid Chunk nodes */
+    auto sel_node = dynamic_cast<GenApi::ISelector *>(node);
+    if (!GenApi::IsAvailable(node) || !node->IsFeature() ||
+        (node->GetName() == "Root") || !sel_node || sel_node->IsSelector()) {
+      continue;
+    }
+
+    std::vector<std::string> enum_values;
+    try {
+      enum_values = gst_pylon_process_selector_features(node, &selector_node);
+    } catch (const Pylon::GenericException &e) {
+      GST_WARNING_OBJECT(self, "Chunk %s not added: %s",
+                         node->GetName().c_str(), e.GetDescription());
+      continue;
+    }
+
+    Pylon::CEnumParameter param(selector_node);
+
+    /* If the number of selector values (stored in enum_values) is 1, leave
+     * selector_node NULL, hence treating the feature as a "direct" one. */
+    if (1 == enum_values.size()) {
+      selector_node = NULL;
+    }
+
+    for (auto const &sel_pair : enum_values) {
+      if (param.IsValid()) {
+        selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
+      }
+      gst_pylon_add_chunk_as_meta(self, buf, st, node, selector_node,
+                                  selector_value);
+    }
+  }
+}
+
+void gst_buffer_add_pylon_meta(
+    GstElement *self, GstBuffer *buffer,
     const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
-  g_return_val_if_fail(buffer != NULL, NULL);
+  g_return_if_fail(self);
+  g_return_if_fail(buffer != NULL);
 
   GST_LOG("Adding Pylon chunk meta to buffer %p", buffer);
 
@@ -99,7 +225,9 @@ GstPylonMeta *gst_buffer_add_pylon_meta(
   gst_buffer_add_reference_timestamp_meta(
       buffer, ref, grab_result_ptr->GetTimeStamp(), GST_CLOCK_TIME_NONE);
 
-  return meta;
+  if (grab_result_ptr->IsChunkDataAvailable()) {
+    gst_pylon_meta_fill_result_chunks(self, buffer, grab_result_ptr, meta);
+  }
 }
 
 static gboolean gst_pylon_meta_init(GstMeta *meta, gpointer params,
