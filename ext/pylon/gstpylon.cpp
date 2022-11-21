@@ -291,8 +291,10 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
     self->camera->Open();
 
     /* Set the camera to a valid state */
-    std::string default_set = "Auto";
-    gst_pylon_apply_set(self, default_set);
+    if (self->camera->UserSetSelector.IsWritable()) {
+      std::string default_set = "Auto";
+      gst_pylon_apply_set(self, default_set);
+    }
 
     GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
     self->gcamera = gst_pylon_object_new(
