@@ -71,6 +71,9 @@ typedef struct {
 } GstStPixelFormats;
 
 /* prototypes */
+static std::string gst_pylon_query_default_set(
+    const Pylon::CBaslerUniversalInstantCamera &camera);
+static void gst_pylon_apply_set(GstPylon *self, std::string &set);
 static Pylon::String_t gst_pylon_get_camera_fullname(
     Pylon::CBaslerUniversalInstantCamera &camera);
 static Pylon::String_t gst_pylon_get_sgrabber_name(
@@ -103,8 +106,6 @@ static std::vector<std::string> gst_pylon_pfnc_to_gst(
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     GenApi::StringList_t genapi_formats,
     const std::vector<PixelFormatMappingType> &pixel_format_mapping);
-static std::string gst_pylon_query_default_set(
-    const Pylon::CBaslerUniversalInstantCamera &camera);
 static void gst_pylon_append_properties(
     Pylon::CBaslerUniversalInstantCamera *camera,
     Pylon::String_t device_full_name, Pylon::String_t device_type_str,
@@ -163,6 +164,49 @@ static Pylon::String_t gst_pylon_get_camera_fullname(
 static Pylon::String_t gst_pylon_get_sgrabber_name(
     Pylon::CBaslerUniversalInstantCamera &camera) {
   return gst_pylon_get_camera_fullname(camera) + " StreamGrabber";
+}
+
+static std::string gst_pylon_query_default_set(
+    const Pylon::CBaslerUniversalInstantCamera &camera) {
+  std::string set;
+
+  /* Return default for cameras that don't support wake up default sets e.g
+   * CamEmulator */
+  if (!camera.UserSetDefault.IsReadable() &&
+      !camera.UserSetDefaultSelector.IsReadable()) {
+    set = "Default";
+  } else if (camera.UserSetDefault.IsReadable()) {
+    set = std::string(camera.UserSetDefault.ToString());
+  } else {
+    set = std::string(camera.UserSetDefaultSelector.ToString());
+  }
+
+  return set;
+}
+
+static void gst_pylon_apply_set(GstPylon *self, std::string &set) {
+  g_return_if_fail(self);
+
+  /* If auto or nothing is set, return default config */
+  if ("Auto" == set || set.empty()) {
+    set = gst_pylon_query_default_set(*self->camera);
+  }
+
+  if (self->camera->UserSetSelector.CanSetValue(set.c_str())) {
+    self->camera->UserSetSelector.SetValue(set.c_str());
+  } else {
+    GenApi::StringList_t values;
+    self->camera->UserSetSelector.GetSettableValues(values);
+    std::string msg = "Invalid user set, has to be one of the following:\n";
+    msg += "Auto\n";
+
+    for (const auto &value : values) {
+      msg += std::string(value) + "\n";
+    }
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
+
+  self->camera->UserSetLoad.Execute();
 }
 
 GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
@@ -246,6 +290,12 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
                                         Pylon::Cleanup_None);
     self->camera->Open();
 
+    /* Set the camera to a valid state */
+    if (self->camera->UserSetSelector.IsWritable()) {
+      std::string default_set = "Auto";
+      gst_pylon_apply_set(self, default_set);
+    }
+
     GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
     self->gcamera = gst_pylon_object_new(
         self->camera, gst_pylon_get_camera_fullname(*self->camera),
@@ -267,24 +317,6 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
   return self;
 }
 
-static std::string gst_pylon_query_default_set(
-    const Pylon::CBaslerUniversalInstantCamera &camera) {
-  std::string set;
-
-  /* Return default for cameras that don't support wake up default sets e.g
-   * CamEmulator */
-  if (!camera.UserSetDefault.IsReadable() &&
-      !camera.UserSetDefaultSelector.IsReadable()) {
-    set = "Default";
-  } else if (camera.UserSetDefault.IsReadable()) {
-    set = std::string(camera.UserSetDefault.ToString());
-  } else {
-    set = std::string(camera.UserSetDefaultSelector.ToString());
-  }
-
-  return set;
-}
-
 gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
                                    GError **err) {
   g_return_val_if_fail(self, FALSE);
@@ -304,26 +336,7 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
       set = std::string(user_set);
     }
 
-    /* If auto or nothing is set, return default config */
-    if ("Auto" == set || set.empty()) {
-      set = gst_pylon_query_default_set(*self->camera);
-    }
-
-    if (self->camera->UserSetSelector.CanSetValue(set.c_str())) {
-      self->camera->UserSetSelector.SetValue(set.c_str());
-    } else {
-      GenApi::StringList_t values;
-      self->camera->UserSetSelector.GetSettableValues(values);
-      std::string msg = "Invalid user set, has to be one of the following:\n";
-      msg += "Auto\n";
-
-      for (const auto &value : values) {
-        msg += std::string(value) + "\n";
-      }
-      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
-    }
-
-    self->camera->UserSetLoad.Execute();
+    gst_pylon_apply_set(self, set);
 
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
