@@ -61,8 +61,8 @@ static void gst_pylon_meta_add_chunk_as_meta(GstStructure *st,
                                              GenApi::INode *selector_node,
                                              const guint64 &selector_value);
 static void gst_pylon_meta_fill_result_chunks(
-    const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr,
-    GstPylonMeta *self);
+    GstPylonMeta *self,
+    const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
 
 GType gst_pylon_meta_api_get_type(void) {
   static volatile GType type = 0;
@@ -147,9 +147,8 @@ static void gst_pylon_meta_add_chunk_as_meta(GstStructure *st,
 }
 
 static void gst_pylon_meta_fill_result_chunks(
-    const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr,
-    GstPylonMeta *self) {
-  g_return_if_fail(self);
+    GstPylonMeta *self,
+    const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
   g_return_if_fail(self);
 
   GstStructure *st = self->chunks;
@@ -213,7 +212,7 @@ void gst_buffer_add_pylon_meta(
   grab_result_ptr->GetStride(self->stride);
 
   if (grab_result_ptr->IsChunkDataAvailable()) {
-    gst_pylon_meta_fill_result_chunks(grab_result_ptr, self);
+    gst_pylon_meta_fill_result_chunks(self, grab_result_ptr);
   }
 }
 
