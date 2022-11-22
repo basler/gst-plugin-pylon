@@ -33,13 +33,14 @@
 #ifndef __GST_PYLON_META_PRIVATE_H__
 #define __GST_PYLON_META_PRIVATE_H__
 
-#include <gst/gst.h>
 #include "gstpylonmeta.h"
 
-#ifdef _MSC_VER                 // MSVC
+#include <gst/gst.h>
+
+#ifdef _MSC_VER  // MSVC
 #pragma warning(push)
 #pragma warning(disable : 4265)
-#elif __GNUC__                  // GCC, CLANG, MinGW
+#elif __GNUC__  // GCC, CLANG, MinGW
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #endif
@@ -47,16 +48,16 @@
 #include <pylon/BaslerUniversalInstantCamera.h>
 #include <pylon/PylonIncludes.h>
 
-#ifdef _MSC_VER                 // MSVC
+#ifdef _MSC_VER  // MSVC
 #pragma warning(pop)
-#elif __GNUC__                  // GCC, CLANG, MinWG
+#elif __GNUC__  // GCC, CLANG, MinWG
 #pragma GCC diagnostic pop
 #endif
 
 G_BEGIN_DECLS
 
 void gst_buffer_add_pylon_meta(
-    GstElement *self, GstBuffer *buffer,
+    GstElement *gstpylonsrc, GstBuffer *buffer,
     const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
 
 G_END_DECLS
