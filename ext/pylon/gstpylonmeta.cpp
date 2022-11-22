@@ -56,13 +56,11 @@
 static gboolean gst_pylon_meta_init(GstMeta *meta, gpointer params,
                                     GstBuffer *buffer);
 static void gst_pylon_meta_free(GstMeta *meta, GstBuffer *buffer);
-static void gst_pylon_meta_add_chunk_as_meta(GstElement *gstpylonsrc,
-                                             GstBuffer *buf, GstStructure *st,
+static void gst_pylon_meta_add_chunk_as_meta(GstStructure *st,
                                              GenApi::INode *node,
                                              GenApi::INode *selector_node,
                                              const guint64 &selector_value);
 static void gst_pylon_meta_fill_result_chunks(
-    GstElement *gstpylonsrc, GstBuffer *buf,
     const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr,
     GstPylonMeta *self);
 
@@ -89,13 +87,10 @@ const GstMetaInfo *gst_pylon_meta_get_info(void) {
   return info;
 }
 
-static void gst_pylon_meta_add_chunk_as_meta(GstElement *gstpylonsrc,
-                                             GstBuffer *buf, GstStructure *st,
+static void gst_pylon_meta_add_chunk_as_meta(GstStructure *st,
                                              GenApi::INode *node,
                                              GenApi::INode *selector_node,
                                              const guint64 &selector_value) {
-  g_return_if_fail(gstpylonsrc);
-  g_return_if_fail(buf);
   g_return_if_fail(st);
   g_return_if_fail(node);
 
@@ -138,9 +133,8 @@ static void gst_pylon_meta_add_chunk_as_meta(GstElement *gstpylonsrc,
       break;
     default:
       is_valid = FALSE;
-      GST_WARNING_OBJECT(
-          gstpylonsrc, "Chunk %s not added. Chunk of type %d is not supported",
-          name, node->GetPrincipalInterfaceType());
+      GST_WARNING("Chunk %s not added. Chunk of type %d is not supported", name,
+                  node->GetPrincipalInterfaceType());
       break;
   }
 
@@ -153,11 +147,9 @@ static void gst_pylon_meta_add_chunk_as_meta(GstElement *gstpylonsrc,
 }
 
 static void gst_pylon_meta_fill_result_chunks(
-    GstElement *gstpylonsrc, GstBuffer *buf,
     const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr,
     GstPylonMeta *self) {
   g_return_if_fail(self);
-  g_return_if_fail(buf);
   g_return_if_fail(self);
 
   GstStructure *st = self->chunks;
@@ -181,8 +173,8 @@ static void gst_pylon_meta_fill_result_chunks(
     try {
       enum_values = gst_pylon_process_selector_features(node, &selector_node);
     } catch (const Pylon::GenericException &e) {
-      GST_WARNING_OBJECT(self, "Chunk %s not added: %s",
-                         node->GetName().c_str(), e.GetDescription());
+      GST_WARNING("Chunk %s not added: %s", node->GetName().c_str(),
+                  e.GetDescription());
       continue;
     }
 
@@ -198,16 +190,14 @@ static void gst_pylon_meta_fill_result_chunks(
       if (param.IsValid()) {
         selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
       }
-      gst_pylon_meta_add_chunk_as_meta(gstpylonsrc, buf, st, node,
-                                       selector_node, selector_value);
+      gst_pylon_meta_add_chunk_as_meta(st, node, selector_node, selector_value);
     }
   }
 }
 
 void gst_buffer_add_pylon_meta(
-    GstElement *gstpylonsrc, GstBuffer *buffer,
+    GstBuffer *buffer,
     const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
-  g_return_if_fail(gstpylonsrc);
   g_return_if_fail(buffer != NULL);
 
   GST_LOG("Adding Pylon chunk meta to buffer %p", buffer);
@@ -227,8 +217,7 @@ void gst_buffer_add_pylon_meta(
       buffer, ref, grab_result_ptr->GetTimeStamp(), GST_CLOCK_TIME_NONE);
 
   if (grab_result_ptr->IsChunkDataAvailable()) {
-    gst_pylon_meta_fill_result_chunks(gstpylonsrc, buffer, grab_result_ptr,
-                                      self);
+    gst_pylon_meta_fill_result_chunks(grab_result_ptr, self);
   }
 }
 

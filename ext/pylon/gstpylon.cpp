@@ -419,7 +419,7 @@ static void gst_pylon_add_result_meta(
   g_return_if_fail(self);
   g_return_if_fail(buf);
 
-  gst_buffer_add_pylon_meta(self->gstpylonsrc, buf, grab_result_ptr);
+  gst_buffer_add_pylon_meta(buf, grab_result_ptr);
 }
 
 static void free_ptr_grab_result(gpointer data) {
