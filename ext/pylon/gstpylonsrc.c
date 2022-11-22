@@ -790,6 +790,7 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   GstClockTime abs_time = GST_CLOCK_TIME_NONE;
   GstClockTime base_time = GST_CLOCK_TIME_NONE;
   GstClockTime timestamp = GST_CLOCK_TIME_NONE;
+  GstCaps *ref = NULL;
   guint64 offset = G_GUINT64_CONSTANT (0);
   GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
   GstPylonMeta *pylon_meta = NULL;
@@ -832,6 +833,11 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   GST_BUFFER_TIMESTAMP (buf) = timestamp;
   GST_BUFFER_OFFSET (buf) = offset;
   GST_BUFFER_OFFSET_END (buf) = offset + 1;
+
+  /* add pylon timestamp as reference timestamp meta */
+  ref = gst_caps_from_string ("timestamp/x-pylon");
+  gst_buffer_add_reference_timestamp_meta (buf, ref, pylon_meta->timestamp,
+      GST_CLOCK_TIME_NONE);
 
   /* add video meta data */
   format = GST_VIDEO_INFO_FORMAT (&self->video_info);

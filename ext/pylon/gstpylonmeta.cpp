@@ -212,10 +212,6 @@ void gst_buffer_add_pylon_meta(
   self->timestamp = grab_result_ptr->GetTimeStamp();
   grab_result_ptr->GetStride(self->stride);
 
-  GstCaps *ref = gst_caps_from_string("timestamp/x-pylon");
-  gst_buffer_add_reference_timestamp_meta(
-      buffer, ref, grab_result_ptr->GetTimeStamp(), GST_CLOCK_TIME_NONE);
-
   if (grab_result_ptr->IsChunkDataAvailable()) {
     gst_pylon_meta_fill_result_chunks(grab_result_ptr, self);
   }
