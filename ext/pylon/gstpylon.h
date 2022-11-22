@@ -58,8 +58,6 @@ void gst_pylon_free(GstPylon *self);
 gboolean gst_pylon_start(GstPylon *self, GError **err);
 gboolean gst_pylon_stop(GstPylon *self, GError **err);
 void gst_pylon_interrupt_capture(GstPylon *self);
-gsize gst_pylon_get_stride(GstPylon *self);
-guint64 gst_pylon_get_offset(GstPylon *self);
 gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
                            GstPylonCaptureErrorEnum capture_error,
                            GError **err);

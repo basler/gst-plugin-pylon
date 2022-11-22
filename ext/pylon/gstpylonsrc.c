@@ -63,7 +63,6 @@ struct _GstPylonSrc
   GstPylon *pylon;
   GstClockTime duration;
   GstVideoInfo video_info;
-  gsize stride;
 
   gchar *device_user_name;
   gchar *device_serial_number;
@@ -303,7 +302,6 @@ gst_pylon_src_init (GstPylonSrc * self)
 
   self->pylon = NULL;
   self->duration = GST_CLOCK_TIME_NONE;
-  self->stride = G_GUINT64_CONSTANT (0);
   self->device_user_name = PROP_DEVICE_USER_NAME_DEFAULT;
   self->device_serial_number = PROP_DEVICE_SERIAL_NUMBER_DEFAULT;
   self->device_index = PROP_DEVICE_INDEX_DEFAULT;
