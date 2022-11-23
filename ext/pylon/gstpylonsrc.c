@@ -55,8 +55,6 @@
 
 #include <gst/video/video.h>
 
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
-
 struct _GstPylonSrc
 {
   GstPushSrc base_pylonsrc;
@@ -164,6 +162,8 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
 
 /* class initialization */
 GST_DEBUG_CATEGORY (gst_pylon_src_debug_category);
+#define GST_CAT_DEFAULT gst_pylon_src_debug_category
+
 G_DEFINE_TYPE_WITH_CODE (GstPylonSrc, gst_pylon_src, GST_TYPE_PUSH_SRC,
     GST_DEBUG_CATEGORY_INIT (gst_pylon_src_debug_category, "pylonsrc", 0,
         "debug category for pylonsrc element");

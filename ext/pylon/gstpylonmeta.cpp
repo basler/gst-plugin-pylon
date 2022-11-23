@@ -52,6 +52,9 @@
 #pragma GCC diagnostic pop
 #endif
 
+GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
+#define GST_CAT_DEFAULT gst_pylon_src_debug_category
+
 /* prototypes */
 static gboolean gst_pylon_meta_init(GstMeta *meta, gpointer params,
                                     GstBuffer *buffer);
