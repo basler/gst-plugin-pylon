@@ -68,7 +68,7 @@ static void gst_pylon_meta_fill_result_chunks(
     const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
 
 GType gst_pylon_meta_api_get_type(void) {
-  static volatile GType type = 0;
+  static GType type = 0;
   static const gchar *tags[] = {GST_META_TAG_VIDEO_STR, NULL};
 
   if (g_once_init_enter(&type)) {
