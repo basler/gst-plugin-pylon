@@ -41,6 +41,9 @@ GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
 #define GST_CAT_DEFAULT gst_pylon_src_debug_category
 
 /* prototypes */
+static std::vector<std::string> gst_pylon_get_enum_entries(
+    GenApi::IEnumeration* enum_node);
+static std::vector<std::string> gst_pylon_get_int_entries();
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, GenApi::INodeMap& nodemap,
     const gchar* device_fullname);
@@ -55,6 +58,41 @@ static std::unordered_set<std::string> propfilter_set = {
     "AcquisitionFrameRateEnable",
     "AcquisitionFrameRate",
     "AcquisitionFrameRateAbs"};
+
+static std::vector<std::string> gst_pylon_get_enum_entries(
+    GenApi::IEnumeration* enum_node) {
+  GenApi::NodeList_t enum_entries;
+  std::vector<std::string> entry_names;
+
+  g_return_val_if_fail(enum_node, entry_names);
+
+  /* Calculate prefix length to strip */
+  const auto prefix_str = std::string("EnumEntry_") +
+                          enum_node->GetNode()->GetName().c_str() +
+                          std::string("_");
+  auto prefix_len = prefix_str.length();
+
+  /* Add enum values */
+  enum_node->GetEntries(enum_entries);
+
+  for (auto const& e : enum_entries) {
+    auto enum_name = std::string(e->GetName());
+    entry_names.push_back(enum_name.substr(prefix_len));
+  }
+
+  return entry_names;
+}
+
+static std::vector<std::string> gst_pylon_get_int_entries() {
+  std::vector<std::string> entry_names;
+  gint max_int_selector_values = 16;
+
+  for (gint i = 0; i < max_int_selector_values; i++) {
+    entry_names.push_back(std::to_string(i));
+  }
+
+  return entry_names;
+}
 
 std::vector<std::string> gst_pylon_process_selector_features(
     GenApi::INode* node, GenApi::INode** selector_node) {
@@ -88,31 +126,15 @@ std::vector<std::string> gst_pylon_process_selector_features(
     throw Pylon::GenericException(error_msg.c_str(), __FILE__, __LINE__);
   }
 
-  /* At the time being only features with enum selectors are supported */
   auto selector = selectors.at(0);
-  auto enum_node = dynamic_cast<GenApi::IEnumeration*>(selector);
-  if (!enum_node) {
-    error_msg = "\"" + std::string(node->GetDisplayName()) + "\"" +
-                " is not an enumerator selector, ignoring!";
-    throw Pylon::GenericException(error_msg.c_str(), __FILE__, __LINE__);
-  }
-
   *selector_node = selector->GetNode();
 
-  /* Add selector enum values */
-  GenApi::NodeList_t enum_entries;
-  /* Calculate prefix length to strip */
-  const auto prefix_str = std::string("EnumEntry_") +
-                          enum_node->GetNode()->GetName().c_str() +
-                          std::string("_");
-  auto prefix_len = prefix_str.length();
-  enum_node->GetEntries(enum_entries);
-  for (auto const& e : enum_entries) {
-    auto enum_name = std::string(e->GetName());
-    enum_values.push_back(enum_name.substr(prefix_len));
+  auto enum_node = dynamic_cast<GenApi::IEnumeration*>(selector);
+  if (enum_node) {
+    return gst_pylon_get_enum_entries(enum_node);
+  } else {
+    return gst_pylon_get_int_entries();
   }
-
-  return enum_values;
 }
 
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
@@ -135,9 +157,11 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     selector_node = NULL;
   }
 
-  for (auto const& sel_pair : enum_values) {
+  for (guint i = 0; i < enum_values.size(); i++) {
     if (param.IsValid()) {
-      selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
+      selector_value = param.GetEntryByName(enum_values[i].c_str())->GetValue();
+    } else {
+      selector_value = i;
     }
     specs_list.push_back(GstPylonParamFactory::make_param(
         nodemap, node, selector_node, selector_value, device_fullname));
