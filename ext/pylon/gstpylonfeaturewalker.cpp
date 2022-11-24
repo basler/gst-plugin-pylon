@@ -37,6 +37,9 @@
 #include <queue>
 #include <unordered_set>
 
+GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
+#define GST_CAT_DEFAULT gst_pylon_src_debug_category
+
 /* prototypes */
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, GenApi::INodeMap& nodemap,
