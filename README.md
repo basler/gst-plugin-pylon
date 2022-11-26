@@ -121,7 +121,7 @@ The mapping of the camera pixel format names to the gstreamer format names is:
 
 If two pipeline elements don't specify which capabilities to choose, a fixation step gets applied.
 
-This could result in an unexpected pixel format or width/height.
+If _no_ width and height is set with cap-filters, `pylonsrc` will apply the current camera configuration after applying the userset and pfs file.
 
 It is recommended to set a caps-filter to explicitly set the wanted capabilities.
 

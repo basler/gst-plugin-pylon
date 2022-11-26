@@ -53,6 +53,7 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
                         GError **err);
 gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
                                    GError **err);
+
 void gst_pylon_free(GstPylon *self);
 
 gboolean gst_pylon_start(GstPylon *self, GError **err);
@@ -75,6 +76,9 @@ GObject *gst_pylon_get_stream_grabber(GstPylon *self);
 gboolean gst_pylon_is_same_device(GstPylon *self, const gint device_index,
                                   const gchar *device_user_name,
                                   const gchar *device_serial_number);
+
+gboolean gst_pylon_get_startup_geometry(GstPylon *self, gint *start_width,
+                                        gint *start_height);
 
 GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
 #define GST_CAT_DEFAULT gst_pylon_src_debug_category

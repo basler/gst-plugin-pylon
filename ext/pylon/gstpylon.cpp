@@ -345,6 +345,18 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
   return TRUE;
 }
 
+gboolean gst_pylon_get_startup_geometry(GstPylon *self, gint *start_width,
+                                        gint *start_height) {
+  g_return_val_if_fail(self, FALSE);
+  g_return_val_if_fail(start_height, FALSE);
+  g_return_val_if_fail(start_width, FALSE);
+
+  *start_height = self->camera->Height.GetValue();
+  *start_width = self->camera->Width.GetValue();
+
+  return TRUE;
+}
+
 gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
                                   GError **err) {
   g_return_val_if_fail(self, FALSE);
