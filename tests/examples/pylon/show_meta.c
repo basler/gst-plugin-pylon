@@ -32,6 +32,8 @@
 
 /*
  * Example showing how to read the metadata
+ * The application will open a video window and display all
+ * meta data as overlay
  */
 
 #include <gst/gst.h>
@@ -44,6 +46,7 @@
 #include <ext/pylon/gstpylonmeta.h>
 
 #define PYLONSRC_NAME "src"
+#define OVERLAY_NAME "text"
 #define SINK_NAME "sink"
 
 typedef struct _Context Context;
@@ -51,7 +54,8 @@ struct _Context
 {
   GMainLoop *loop;
   GstElement *pylonsrc;
-  GstElement *fakesink;
+  GstElement *overlay;
+  GstElement *autovideosink;
 };
 
 #ifdef G_OS_UNIX
@@ -135,7 +139,7 @@ try_enable_all_chunks (Context * ctx)
   for (size_t i = 0; i < num_properties; i++) {
     const gchar *prop_name = g_param_spec_get_name (property_specs[i]);
     if (g_str_has_prefix (prop_name, "ChunkModeActive")) {
-      printf ("try enable chunk mode\n");
+      g_print ("try enable chunk mode\n");
       g_object_set (cam, prop_name, TRUE, NULL);
       has_chunks = TRUE;
       break;
@@ -143,10 +147,11 @@ try_enable_all_chunks (Context * ctx)
   }
 
   if (has_chunks) {
+    g_print ("-> success\n");
     for (size_t i = 0; i < num_properties; i++) {
       const gchar *prop_name = g_param_spec_get_name (property_specs[i]);
       if (g_str_has_prefix (prop_name, "ChunkEnable")) {
-        printf ("try enable %s\n", prop_name);
+        g_print ("enable %s\n", prop_name);
         g_object_set (cam, prop_name, TRUE, NULL);
       }
     }
@@ -162,28 +167,62 @@ gst_buffer_get_pylon_meta (GstBuffer * buffer)
   return meta;
 }
 
-
 static GstPadProbeReturn
 cb_have_data (GstPad * pad, GstPadProbeInfo * info, gpointer user_data)
 {
   GstBuffer *buffer;
   GstPylonMeta *meta = NULL;
+  Context *ctx = (Context *) user_data;
+  gchar *meta_str = NULL;
+  gchar *tmp_str = NULL;
+  gint64 int_chunk;
+  gdouble float_chunk;
+
+  g_return_val_if_fail (ctx, GST_PAD_PROBE_DROP);
 
   buffer = GST_PAD_PROBE_INFO_BUFFER (info);
   meta = (GstPylonMeta *) gst_buffer_get_pylon_meta (buffer);
-  printf ("-----------------\n");
-  printf ("block_id         %lu\n", meta->block_id);
-  printf ("offsetx          %lu\n", meta->offset.offset_x);
-  printf ("offsety          %lu\n", meta->offset.offset_y);
-  printf ("camera_timestamp %lu\n", meta->timestamp);
-  printf ("stride           %lu\n", meta->stride);
+
+  meta_str =
+      g_strdup_printf
+      ("BlockID   %8lu\noffset %lu/%lu\npylon_timestamp %16lu\n",
+      meta->block_id, meta->offset.offset_x, meta->offset.offset_y,
+      meta->timestamp);
 
   /* show chunks embedded in the stream */
   for (int idx = 0; idx < gst_structure_n_fields (meta->chunks); idx++) {
-    printf ("chunks_available %s\n", gst_structure_nth_field_name (meta->chunks,
-            idx));
+    const gchar *chunk_name = gst_structure_nth_field_name (meta->chunks, idx);
+    GType chunk_type = gst_structure_get_field_type (meta->chunks, chunk_name);
+    /* display double and int types */
+    switch (chunk_type) {
+      case G_TYPE_INT64:
+        gst_structure_get_int64 (meta->chunks, chunk_name, &int_chunk);
+        tmp_str =
+            g_strdup_printf ("%s%-25s %16ld\n", meta_str, chunk_name,
+            int_chunk);
+        g_free (meta_str);
+        meta_str = tmp_str;
+        break;
+      case G_TYPE_DOUBLE:
+        gst_structure_get_double (meta->chunks, chunk_name, &float_chunk);
+        tmp_str =
+            g_strdup_printf ("%s%-25s %16.2f\n", meta_str, chunk_name,
+            float_chunk);
+        g_free (meta_str);
+        meta_str = tmp_str;
+        break;
+
+      default:
+        g_print ("Skip chunk %s\n", chunk_name);
+    }
 
   }
+
+  g_print ("%s\n", meta_str);
+  /* set overlay text */
+  g_object_set (ctx->overlay, "text", meta_str, NULL);
+
+  g_free (meta_str);
   return GST_PAD_PROBE_OK;
 }
 
@@ -196,10 +235,13 @@ main (int argc, char **argv)
   guint bus_watch = 0;
   GError *error = NULL;
   gint ret = EXIT_FAILURE;
+  gulong padid = -1;
   GstPad *pad;
   const gchar *desc =
-      "pylonsrc capture-error=skip num-buffers=10 name=" PYLONSRC_NAME
-      " ! fakesink name=" SINK_NAME;
+      "pylonsrc capture-error=skip num-buffers=10 cam::ExposureAuto=Continuous name="
+      PYLONSRC_NAME
+      " ! textoverlay font-desc=monospace line-alignment=left halignment=left text='GstMETA' name="
+      OVERLAY_NAME " ! queue ! videoconvert ! autovideosink name=" SINK_NAME;
 
   gst_init (&argc, &argv);
 
@@ -217,10 +259,16 @@ main (int argc, char **argv)
     goto free_pipe;
   }
 
-  ctx.fakesink = gst_bin_get_by_name (GST_BIN (pipe), SINK_NAME);
-  if (!ctx.fakesink) {
-    g_printerr ("No fakesink element found\n");
+  ctx.overlay = gst_bin_get_by_name (GST_BIN (pipe), OVERLAY_NAME);
+  if (!ctx.overlay) {
+    g_printerr ("No textoverlay element found\n");
     goto free_pylonsrc;
+  }
+
+  ctx.autovideosink = gst_bin_get_by_name (GST_BIN (pipe), SINK_NAME);
+  if (!ctx.autovideosink) {
+    g_printerr ("No autovideosink element found\n");
+    goto free_overlay;
   }
 
   ctx.loop = g_main_loop_new (NULL, FALSE);
@@ -235,21 +283,20 @@ main (int argc, char **argv)
   bus_watch = gst_bus_add_watch (bus, (GstBusFunc) bus_callback, &ctx);
   gst_object_unref (bus);
 
-  if (GST_STATE_CHANGE_FAILURE == gst_element_set_state (pipe,
-          GST_STATE_PLAYING)) {
-    g_printerr ("Unable to play pipeline\n");
-    goto free_overlay;
-  }
-
   /* attach a probe to the output of pylonsrc */
-  pad = gst_element_get_static_pad (ctx.fakesink, "sink");
-  gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_BUFFER,
-      (GstPadProbeCallback) cb_have_data, NULL, NULL);
+  pad = gst_element_get_static_pad (ctx.pylonsrc, "src");
+  padid = gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_BUFFER,
+      (GstPadProbeCallback) cb_have_data, &ctx, NULL);
   gst_object_unref (pad);
 
   /* try to enable all chunks the camera supports */
   try_enable_all_chunks (&ctx);
 
+  if (GST_STATE_CHANGE_FAILURE == gst_element_set_state (pipe,
+          GST_STATE_PLAYING)) {
+    g_printerr ("Unable to play pipeline\n");
+    goto free_overlay;
+  }
 
   /* Run until an interrupt is received */
   g_main_loop_run (ctx.loop);
@@ -261,8 +308,12 @@ main (int argc, char **argv)
 
   g_print ("bye!\n");
 
+  gst_pad_remove_probe (pad, padid);
+
+  gst_object_unref (ctx.autovideosink);
+
 free_overlay:
-  gst_object_unref (ctx.fakesink);
+  gst_object_unref (ctx.overlay);
 
 free_pylonsrc:
   gst_object_unref (ctx.pylonsrc);
