@@ -41,6 +41,12 @@ pylon_sources = [
   'gstpylondisconnecthandler.cpp'
 ]
 
+pylon_meta_headers = [
+  'gstpylonmeta.h'
+]
+
+install_headers(pylon_meta_headers, subdir : 'gstreamer-1.0/ext/pylon/')
+
 gstpylon = library('gstpylon',
   pylon_sources,
   c_args : gst_plugin_pylon_args,
@@ -51,6 +57,13 @@ gstpylon = library('gstpylon',
   install_dir : plugins_install_dir
 )
 
-pkgconfig.generate(gstpylon, install_dir : plugins_pkgconfig_install_dir)
+# generate pkgconfig file
+pkgconfig.generate(gstpylon, description : 'Basler pylon gstreamer source', install_dir : plugins_pkgconfig_install_dir)
+
+# set dependency for plugin code examples
+gstpylon_dep = declare_dependency(link_with : gstpylon,
+  dependencies : [gstbase_dep, gstvideo_dep, pylon_dep])
+meson.override_dependency('gstpylon', gstpylon_dep)
+
 plugins += [gstpylon]
 
