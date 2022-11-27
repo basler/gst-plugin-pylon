@@ -54,6 +54,8 @@ struct _GstPylonMeta
 
   GstStructure *chunks;
   guint64 block_id;
+  guint64 image_number;
+  guint64 skipped_images;
   GstPylonOffset offset;
   GstClockTime timestamp;
   gsize stride;
