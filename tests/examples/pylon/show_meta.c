@@ -132,6 +132,9 @@ try_enable_all_chunks (Context * ctx)
 
   cp = GST_CHILD_PROXY (ctx->pylonsrc);
   cam = gst_child_proxy_get_child_by_name (cp, "cam");
+  /* fail if child not found */
+  g_return_if_fail (cam);
+
   property_specs = g_object_class_list_properties (G_OBJECT_GET_CLASS (cam),
       &num_properties);
 
@@ -185,9 +188,9 @@ cb_have_data (GstPad * pad, GstPadProbeInfo * info, gpointer user_data)
 
   meta_str =
       g_strdup_printf
-      ("BlockID   %8lu\noffset %lu/%lu\npylon_timestamp %16lu\n",
-      meta->block_id, meta->offset.offset_x, meta->offset.offset_y,
-      meta->timestamp);
+      ("ID/img_num/skipped_num %lu/%lu/%lu\noffset %lu/%lu\npylon_timestamp %16lu\n",
+      meta->block_id, meta->image_number, meta->skipped_images,
+      meta->offset.offset_x, meta->offset.offset_y, meta->timestamp);
 
   /* show chunks embedded in the stream */
   for (int idx = 0; idx < gst_structure_n_fields (meta->chunks); idx++) {
@@ -198,16 +201,14 @@ cb_have_data (GstPad * pad, GstPadProbeInfo * info, gpointer user_data)
       case G_TYPE_INT64:
         gst_structure_get_int64 (meta->chunks, chunk_name, &int_chunk);
         tmp_str =
-            g_strdup_printf ("%s%-25s %16ld\n", meta_str, chunk_name,
-            int_chunk);
+            g_strdup_printf ("%s%s_%ld ", meta_str, chunk_name, int_chunk);
         g_free (meta_str);
         meta_str = tmp_str;
         break;
       case G_TYPE_DOUBLE:
         gst_structure_get_double (meta->chunks, chunk_name, &float_chunk);
         tmp_str =
-            g_strdup_printf ("%s%-25s %16.2f\n", meta_str, chunk_name,
-            float_chunk);
+            g_strdup_printf ("%s%s_%.2f ", meta_str, chunk_name, float_chunk);
         g_free (meta_str);
         meta_str = tmp_str;
         break;
@@ -218,7 +219,6 @@ cb_have_data (GstPad * pad, GstPadProbeInfo * info, gpointer user_data)
 
   }
 
-  g_print ("%s\n", meta_str);
   /* set overlay text */
   g_object_set (ctx->overlay, "text", meta_str, NULL);
 
@@ -238,9 +238,9 @@ main (int argc, char **argv)
   gulong padid = -1;
   GstPad *pad;
   const gchar *desc =
-      "pylonsrc capture-error=skip num-buffers=10 cam::ExposureAuto=Continuous name="
+      "pylonsrc capture-error=skip cam::ExposureAuto=Continuous name="
       PYLONSRC_NAME
-      " ! textoverlay font-desc=monospace line-alignment=left halignment=left text='GstMETA' name="
+      " ! textoverlay font-desc='monospace' line-alignment=left halignment=left  name="
       OVERLAY_NAME " ! queue ! videoconvert ! autovideosink name=" SINK_NAME;
 
   gst_init (&argc, &argv);
