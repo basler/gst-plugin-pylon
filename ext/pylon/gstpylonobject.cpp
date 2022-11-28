@@ -135,6 +135,11 @@ static T gst_pylon_object_get_pylon_property(GenApi::INodeMap& nodemap,
                                              const gchar* name);
 static gint gst_pylon_object_get_enum_property(GenApi::INodeMap& nodemap,
                                                const gchar* name);
+template <typename F, typename P>
+static void gst_pylon_clasify_feature(
+    GParamSpec* pspec, GstPylonObjectPrivate* priv,
+    GstPylonParamSpecSelectorData* selector_data, F get_value,
+    const GValue* value);
 static void gst_pylon_object_set_property(GObject* object, guint property_id,
                                           const GValue* value,
                                           GParamSpec* pspec);
@@ -222,6 +227,23 @@ static gint gst_pylon_object_get_enum_property(GenApi::INodeMap& nodemap,
   return param.GetIntValue();
 }
 
+template <typename F, typename P>
+static void gst_pylon_clasify_feature(
+    GParamSpec* pspec, GstPylonObjectPrivate* priv,
+    GstPylonParamSpecSelectorData* selector_data, F get_value,
+    const GValue* value) {
+  /* The value accepted by the pspec can be a direct feature or a feature that
+   * has a selector. */
+  if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
+    gst_pylon_object_set_pylon_selector<F, P>(
+        *priv->nodemap, get_value, value, selector_data->feature,
+        selector_data->selector, selector_data->selector_value);
+  } else {
+    gst_pylon_object_set_pylon_property<F, P>(*priv->nodemap, get_value, value,
+                                              pspec->name);
+  }
+}
+
 static void gst_pylon_object_set_property(GObject* object, guint property_id,
                                           const GValue* value,
                                           GParamSpec* pspec) {
@@ -236,70 +258,42 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
   }
 
   try {
-    if (G_TYPE_INT64 == value_type) {
-      typedef gint64 (*GGetInt64)(const GValue*);
-      /* The value accepted by the pspec is an INT64, it can be an int
-       * feature or an int selector. */
-      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
-        gst_pylon_object_set_pylon_selector<GGetInt64,
-                                            Pylon::CIntegerParameter>(
-            *priv->nodemap, g_value_get_int64, value, selector_data->feature,
-            selector_data->selector, selector_data->selector_value);
-      } else {
-        gst_pylon_object_set_pylon_property<GGetInt64,
-                                            Pylon::CIntegerParameter>(
-            *priv->nodemap, g_value_get_int64, value, pspec->name);
-      }
-
-    } else if (G_TYPE_BOOLEAN == value_type) {
-      typedef gboolean (*GGetBool)(const GValue*);
-      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
-        gst_pylon_object_set_pylon_selector<GGetBool, Pylon::CBooleanParameter>(
-            *priv->nodemap, g_value_get_boolean, value, selector_data->feature,
-            selector_data->selector, selector_data->selector_value);
-      } else {
-        gst_pylon_object_set_pylon_property<GGetBool, Pylon::CBooleanParameter>(
-            *priv->nodemap, g_value_get_boolean, value, pspec->name);
-      }
-
-    } else if (G_TYPE_FLOAT == value_type) {
-      typedef gfloat (*GGetFloat)(const GValue*);
-      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
-        gst_pylon_object_set_pylon_selector<GGetFloat, Pylon::CFloatParameter>(
-            *priv->nodemap, g_value_get_float, value, selector_data->feature,
-            selector_data->selector, selector_data->selector_value);
-      } else {
-        gst_pylon_object_set_pylon_property<GGetFloat, Pylon::CFloatParameter>(
-            *priv->nodemap, g_value_get_float, value, pspec->name);
-      }
-
-    } else if (G_TYPE_STRING == value_type) {
-      typedef const gchar* (*GGetString)(const GValue*);
-      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
-        gst_pylon_object_set_pylon_selector<GGetString,
-                                            Pylon::CStringParameter>(
-            *priv->nodemap, g_value_get_string, value, selector_data->feature,
-            selector_data->selector, selector_data->selector_value);
-      } else {
-        gst_pylon_object_set_pylon_property<GGetString,
-                                            Pylon::CStringParameter>(
-            *priv->nodemap, g_value_get_string, value, pspec->name);
-      }
-
-    } else if (G_TYPE_ENUM == value_type) {
-      if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
-        gst_pylon_object_set_enum_selector(
-            *priv->nodemap, value, selector_data->feature,
-            selector_data->selector, selector_data->selector_value);
-      } else {
-        gst_pylon_object_set_enum_property(*priv->nodemap, value, pspec->name);
-      }
-
-    } else {
-      g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
-      std::string msg =
-          "Unsupported GType: " + std::string(g_type_name(pspec->value_type));
-      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    switch (value_type) {
+      case G_TYPE_INT64:
+        typedef gint64 (*GGetInt64)(const GValue*);
+        gst_pylon_clasify_feature<GGetInt64, Pylon::CIntegerParameter>(
+            pspec, priv, selector_data, g_value_get_int64, value);
+        break;
+      case G_TYPE_BOOLEAN:
+        typedef gboolean (*GGetBool)(const GValue*);
+        gst_pylon_clasify_feature<GGetBool, Pylon::CBooleanParameter>(
+            pspec, priv, selector_data, g_value_get_boolean, value);
+        break;
+      case G_TYPE_FLOAT:
+        typedef gfloat (*GGetFloat)(const GValue*);
+        gst_pylon_clasify_feature<GGetFloat, Pylon::CFloatParameter>(
+            pspec, priv, selector_data, g_value_get_float, value);
+        break;
+      case G_TYPE_STRING:
+        typedef const gchar* (*GGetString)(const GValue*);
+        gst_pylon_clasify_feature<GGetString, Pylon::CStringParameter>(
+            pspec, priv, selector_data, g_value_get_string, value);
+        break;
+      case G_TYPE_ENUM:
+        if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
+          gst_pylon_object_set_enum_selector(
+              *priv->nodemap, value, selector_data->feature,
+              selector_data->selector, selector_data->selector_value);
+        } else {
+          gst_pylon_object_set_enum_property(*priv->nodemap, value,
+                                             pspec->name);
+        }
+        break;
+      default:
+        g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
+        std::string msg =
+            "Unsupported GType: " + std::string(g_type_name(pspec->value_type));
+        throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
   } catch (const Pylon::GenericException& e) {
     GST_ERROR("Unable to set pylon property \"%s\" on \"%s\": %s", pspec->name,
