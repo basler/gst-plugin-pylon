@@ -139,7 +139,7 @@ static T gst_pylon_object_get_pylon_property(GenApi::INodeMap& nodemap,
 static gint gst_pylon_object_get_enum_property(GenApi::INodeMap& nodemap,
                                                const gchar* name);
 template <typename F, typename P>
-static void gst_pylon_clasify_feature(
+static void gst_pylon_object_clasify_feature(
     GParamSpec* pspec, GstPylonObjectPrivate* priv,
     GstPylonParamSpecSelectorData* selector_data, F get_value,
     const GValue* value);
@@ -241,7 +241,7 @@ static gint gst_pylon_object_get_enum_property(GenApi::INodeMap& nodemap,
 }
 
 template <typename F, typename P>
-static void gst_pylon_clasify_feature(
+static void gst_pylon_object_clasify_feature(
     GParamSpec* pspec, GstPylonObjectPrivate* priv,
     GstPylonParamSpecSelectorData* selector_data, F get_value,
     const GValue* value) {
@@ -274,22 +274,22 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
     switch (value_type) {
       case G_TYPE_INT64:
         typedef gint64 (*GGetInt64)(const GValue*);
-        gst_pylon_clasify_feature<GGetInt64, Pylon::CIntegerParameter>(
+        gst_pylon_object_clasify_feature<GGetInt64, Pylon::CIntegerParameter>(
             pspec, priv, selector_data, g_value_get_int64, value);
         break;
       case G_TYPE_BOOLEAN:
         typedef gboolean (*GGetBool)(const GValue*);
-        gst_pylon_clasify_feature<GGetBool, Pylon::CBooleanParameter>(
+        gst_pylon_object_clasify_feature<GGetBool, Pylon::CBooleanParameter>(
             pspec, priv, selector_data, g_value_get_boolean, value);
         break;
       case G_TYPE_FLOAT:
         typedef gfloat (*GGetFloat)(const GValue*);
-        gst_pylon_clasify_feature<GGetFloat, Pylon::CFloatParameter>(
+        gst_pylon_object_clasify_feature<GGetFloat, Pylon::CFloatParameter>(
             pspec, priv, selector_data, g_value_get_float, value);
         break;
       case G_TYPE_STRING:
         typedef const gchar* (*GGetString)(const GValue*);
-        gst_pylon_clasify_feature<GGetString, Pylon::CStringParameter>(
+        gst_pylon_object_clasify_feature<GGetString, Pylon::CStringParameter>(
             pspec, priv, selector_data, g_value_get_string, value);
         break;
       case G_TYPE_ENUM:
