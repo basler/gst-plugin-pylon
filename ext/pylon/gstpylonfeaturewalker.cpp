@@ -40,10 +40,13 @@
 GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
 #define GST_CAT_DEFAULT gst_pylon_src_debug_category
 
+#define MAX_INT_SELECTOR_ENTRIES 16
+
 /* prototypes */
 static std::vector<std::string> gst_pylon_get_enum_entries(
     GenApi::IEnumeration* enum_node);
-static std::vector<std::string> gst_pylon_get_int_entries();
+static std::vector<std::string> gst_pylon_get_int_entries(
+    GenApi::IInteger* int_node);
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, GenApi::INodeMap& nodemap,
     const gchar* device_fullname);
@@ -83,11 +86,19 @@ static std::vector<std::string> gst_pylon_get_enum_entries(
   return entry_names;
 }
 
-static std::vector<std::string> gst_pylon_get_int_entries() {
+static std::vector<std::string> gst_pylon_get_int_entries(
+    GenApi::IInteger* int_node) {
   std::vector<std::string> entry_names;
-  gint max_int_selector_values = 16;
 
-  for (gint i = 0; i < max_int_selector_values; i++) {
+  g_return_val_if_fail(int_node, entry_names);
+
+  gint num_slector_entries = int_node->GetMax() + 1;
+
+  if (num_slector_entries > MAX_INT_SELECTOR_ENTRIES) {
+    num_slector_entries = MAX_INT_SELECTOR_ENTRIES;
+  }
+
+  for (gint i = 0; i < num_slector_entries; i++) {
     entry_names.push_back(std::to_string(i));
   }
 
@@ -129,11 +140,11 @@ std::vector<std::string> gst_pylon_process_selector_features(
   auto selector = selectors.at(0);
   *selector_node = selector->GetNode();
 
-  auto enum_node = dynamic_cast<GenApi::IEnumeration*>(selector);
-  if (enum_node) {
-    return gst_pylon_get_enum_entries(enum_node);
+  auto entries_node = dynamic_cast<GenApi::IEnumeration*>(selector);
+  if (entries_node) {
+    return gst_pylon_get_enum_entries(entries_node);
   } else {
-    return gst_pylon_get_int_entries();
+    return gst_pylon_get_int_entries(dynamic_cast<GenApi::IInteger*>(selector));
   }
 }
 
