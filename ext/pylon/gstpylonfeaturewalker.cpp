@@ -37,7 +37,9 @@
 #include <queue>
 #include <unordered_set>
 
+extern "C" {
 GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
+}
 #define GST_CAT_DEFAULT gst_pylon_src_debug_category
 
 #define MAX_INT_SELECTOR_ENTRIES 16
