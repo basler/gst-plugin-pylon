@@ -49,7 +49,8 @@ install_headers(pylon_meta_headers, subdir : 'gstreamer-1.0/ext/pylon/')
 
 gstpylon = library('gstpylon',
   pylon_sources,
-  c_args : gst_plugin_pylon_args,
+  c_args : gst_plugin_pylon_args + ['-DBUILDING_EXT_PYLONSRC'],
+  cpp_args : gst_plugin_pylon_args + ['-DBUILDING_EXT_PYLONSRC'],
   link_args : [noseh_link_args, pylon_link_args],
   include_directories : [configinc],
   dependencies : [gstbase_dep, gstvideo_dep, pylon_dep],
