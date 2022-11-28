@@ -479,7 +479,7 @@ static void gst_pylon_find_limits(GenApi::INode *node,
       /* Some states might not be valid, so just skip them */
       try {
         action->set_value();
-      } catch (const Pylon::GenericException &e) {
+      } catch (const Pylon::GenericException &) {
         continue;
       }
     }
@@ -498,7 +498,7 @@ static void gst_pylon_find_limits(GenApi::INode *node,
   for (const auto &action : reset_list) {
     try {
       action->set_value();
-    } catch (const Pylon::GenericException &e) {
+    } catch (const Pylon::GenericException &) {
       continue;
     }
   }

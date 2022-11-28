@@ -898,7 +898,7 @@ static gchar *gst_pylon_get_string_properties(
       get_device_string_properties(&camera, &camera_properties,
                                    DEFAULT_ALIGNMENT);
       camera.Close();
-    } catch (const Pylon::GenericException &e) {
+    } catch (const Pylon::GenericException &) {
       continue;
     }
   }
