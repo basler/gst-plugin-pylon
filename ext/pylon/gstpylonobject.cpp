@@ -121,6 +121,9 @@ static void gst_pylon_object_set_pylon_property(GenApi::INodeMap& nodemap,
 static void gst_pylon_object_set_enum_property(GenApi::INodeMap& nodemap,
                                                const GValue* value,
                                                const gchar* name);
+static void gst_pylon_object_clasify_selector(GenApi::INodeMap& nodemap,
+                                              const gchar* selector_name,
+                                              guint64& selector_value);
 template <typename F, typename P>
 static void gst_pylon_object_set_pylon_selector(
     GenApi::INodeMap& nodemap, F get_value, const GValue* value,
@@ -189,6 +192,18 @@ static void gst_pylon_object_set_enum_property(GenApi::INodeMap& nodemap,
   param.SetIntValue(g_value_get_enum(value));
 }
 
+static void gst_pylon_object_clasify_selector(GenApi::INodeMap& nodemap,
+                                              const gchar* selector_name,
+                                              guint64& selector_value) {
+  if (dynamic_cast<GenApi::IEnumeration*>(nodemap.GetNode(selector_name))) {
+    Pylon::CEnumParameter selparam(nodemap, selector_name);
+    selparam.SetIntValue(selector_value);
+  } else {
+    Pylon::CIntegerParameter selparam(nodemap, selector_name);
+    selparam.SetValue(selector_value);
+  }
+}
+
 template <typename F, typename P>
 static void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
                                                 F get_value,
@@ -196,8 +211,7 @@ static void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
                                                 const gchar* feature_name,
                                                 const gchar* selector_name,
                                                 guint64& selector_value) {
-  Pylon::CEnumParameter selparam(nodemap, selector_name);
-  selparam.SetIntValue(selector_value);
+  gst_pylon_object_clasify_selector(nodemap, selector_name, selector_value);
 
   gst_pylon_object_set_pylon_property<F, P>(nodemap, get_value, value,
                                             feature_name);
@@ -208,8 +222,7 @@ static void gst_pylon_object_set_enum_selector(GenApi::INodeMap& nodemap,
                                                const gchar* feature_name,
                                                const gchar* selector_name,
                                                guint64& selector_value) {
-  Pylon::CEnumParameter selparam(nodemap, selector_name);
-  selparam.SetIntValue(selector_value);
+  gst_pylon_object_clasify_selector(nodemap, selector_name, selector_value);
 
   gst_pylon_object_set_enum_property(nodemap, value, feature_name);
 }
