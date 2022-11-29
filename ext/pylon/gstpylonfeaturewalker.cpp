@@ -140,12 +140,25 @@ std::vector<std::string> gst_pylon_process_selector_features(
   auto selector = selectors.at(0);
   *selector_node = selector->GetNode();
 
-  auto entries_node = dynamic_cast<GenApi::IEnumeration*>(selector);
-  if (entries_node) {
-    return gst_pylon_get_enum_entries(entries_node);
-  } else {
-    return gst_pylon_get_int_entries(dynamic_cast<GenApi::IInteger*>(selector));
+  gint selector_type = (*selector_node)->GetPrincipalInterfaceType();
+  switch (selector_type) {
+    case GenApi::intfIEnumeration:
+      enum_values = gst_pylon_get_enum_entries(
+          dynamic_cast<GenApi::IEnumeration*>(selector));
+      break;
+    case GenApi::intfIInteger:
+      enum_values =
+          gst_pylon_get_int_entries(dynamic_cast<GenApi::IInteger*>(selector));
+      break;
+    default:
+      error_msg = "Selector \"" + std::string((*selector_node)->GetName()) +
+                  "\"" + " is of invalid type " +
+                  std::to_string(selector_type) + ", ignoring feature " + "\"" +
+                  std::string(node->GetDisplayName()) + "\"";
+      throw Pylon::GenericException(error_msg.c_str(), __FILE__, __LINE__);
   }
+
+  return enum_values;
 }
 
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
