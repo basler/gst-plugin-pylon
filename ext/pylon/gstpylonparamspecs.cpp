@@ -58,12 +58,18 @@ static gchar *gst_pylon_param_spec_selector_prolog(GenApi::INodeMap &nodemap,
 
   Pylon::CEnumParameter param(nodemap, selector_name);
 
+  std::string selector_value_str;
+  if (param.IsValid()) {
+    selector_value_str = param.GetEntry(selector_value)->GetSymbolic();
+  } else {
+    selector_value_str = std::to_string(selector_value);
+  }
+
   /* Build the property name based on the selector and the feature.
     Since this is no longer a static string, we need to ensure that
     the STATIC_NAME flag is not set */
   gchar *name =
-      g_strdup_printf("%s-%s", feature_name,
-                      param.GetEntry(selector_value)->GetSymbolic().c_str());
+      g_strdup_printf("%s-%s", feature_name, selector_value_str.c_str());
 
   gint int_flags = flags & ~G_PARAM_STATIC_NAME;
   int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
