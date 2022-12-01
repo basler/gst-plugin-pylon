@@ -843,6 +843,7 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   ref = gst_caps_from_string ("timestamp/x-pylon");
   gst_buffer_add_reference_timestamp_meta (buf, ref, pylon_meta->timestamp,
       GST_CLOCK_TIME_NONE);
+  gst_caps_unref (ref);
 
   /* add video meta data */
   format = GST_VIDEO_INFO_FORMAT (&self->video_info);
