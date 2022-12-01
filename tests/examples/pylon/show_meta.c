@@ -55,7 +55,6 @@ struct _Context
   GMainLoop *loop;
   GstElement *pylonsrc;
   GstElement *overlay;
-  GstElement *autovideosink;
 };
 
 #ifdef G_OS_UNIX
@@ -241,7 +240,7 @@ main (int argc, char **argv)
       "pylonsrc capture-error=skip cam::ExposureAuto=Continuous name="
       PYLONSRC_NAME
       " ! textoverlay font-desc='monospace' line-alignment=left halignment=left  name="
-      OVERLAY_NAME " ! queue ! videoconvert ! autovideosink name=" SINK_NAME;
+      OVERLAY_NAME " ! queue ! videoconvert ! autovideosink";
 
   gst_init (&argc, &argv);
 
@@ -264,14 +263,6 @@ main (int argc, char **argv)
     g_printerr ("No textoverlay element found\n");
     goto free_pylonsrc;
   }
-
-  ctx.autovideosink = gst_bin_get_by_name (GST_BIN (pipe), SINK_NAME);
-  if (!ctx.autovideosink) {
-    g_printerr ("No autovideosink element found\n");
-    goto free_overlay;
-  }
-
-  ctx.loop = g_main_loop_new (NULL, FALSE);
 #ifdef G_OS_UNIX
   g_unix_signal_add (SIGINT, (GSourceFunc) sig_handler, &ctx);
 #endif
@@ -299,6 +290,7 @@ main (int argc, char **argv)
   }
 
   /* Run until an interrupt is received */
+  ctx.loop = g_main_loop_new (NULL, FALSE);
   g_main_loop_run (ctx.loop);
 
   gst_element_set_state (pipe, GST_STATE_NULL);
@@ -309,8 +301,6 @@ main (int argc, char **argv)
   g_print ("bye!\n");
 
   gst_pad_remove_probe (pad, padid);
-
-  gst_object_unref (ctx.autovideosink);
 
 free_overlay:
   gst_object_unref (ctx.overlay);
