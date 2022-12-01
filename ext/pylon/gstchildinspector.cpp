@@ -32,7 +32,7 @@
 
 #include "gstchildinspector.h"
 
-#include "gstpylonparamspecs.h"
+#include "gst/pylon/gstpylonparamspecs.h"
 
 extern "C" {
 GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);

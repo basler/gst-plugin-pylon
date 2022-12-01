@@ -198,7 +198,7 @@ glib_deps = [dependency('glib-2.0', version : glib_req),
              dependency('gobject-2.0')]
 
 gst_plugin_pylon_args = ['-DHAVE_CONFIG_H']
-configinc = include_directories('.')
+configinc = include_directories(['.', 'gst-libs'])
 #libsinc = include_directories('gst-libs')
 
 # Disable compiler warnings for unused variables and args if gst debug system is disabled
@@ -232,6 +232,7 @@ if get_option('default_library') == 'shared'
   plugins_pkgconfig_install_dir = disabler()
 endif
 
+subdir('gst-libs')
 subdir('ext')
 subdir('tests')
 subdir('docs')

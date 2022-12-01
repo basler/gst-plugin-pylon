@@ -51,7 +51,7 @@
 #include "gstpylonsrc.h"
 
 #include "gstpylon.h"
-#include "gstpylonmeta.h"
+#include "gst/pylon/gstpylonmeta.h"
 
 #include <gst/video/video.h>
 

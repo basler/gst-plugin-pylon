@@ -43,7 +43,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <ext/pylon/gstpylonmeta.h>
+#include <gst/pylon/gstpylonmeta.h>
 
 #define PYLONSRC_NAME "src"
 #define OVERLAY_NAME "text"

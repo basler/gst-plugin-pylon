@@ -32,8 +32,8 @@
 
 #include "gstpylonobject.h"
 
-#include "gstpylonfeaturewalker.h"
-#include "gstpylonparamspecs.h"
+#include "gst/pylon/gstpylonfeaturewalker.h"
+#include "gst/pylon/gstpylonparamspecs.h"
 
 extern "C" {
 GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);

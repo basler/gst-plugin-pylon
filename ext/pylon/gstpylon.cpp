@@ -32,11 +32,11 @@
 
 #include "gstpylon.h"
 
+#include "gst/pylon/gstpylonmetaprivate.h"
+#include "gst/pylon/gstpylonobject.h"
 #include "gstchildinspector.h"
 #include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
-#include "gstpylonmetaprivate.h"
-#include "gstpylonobject.h"
 
 #include <map>
 

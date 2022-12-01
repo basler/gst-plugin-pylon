@@ -17,12 +17,12 @@ foreach example : examples
 endforeach
 
 # demonstrate usage of pylonsrc with access to metadata
-pylonsrc_dep = dependency('gstpylon')
+gstpylon_dep = dependency('gstpylon')
+
 foreach example_meta : examples_meta
   executable(example_meta, example_meta + '.c',
-    dependencies: [gstvideo_dep, gst_dep, pylonsrc_dep],
+    dependencies: [gstvideo_dep, gst_dep, gstpylon_dep],
     c_args : gst_plugin_pylon_args,
     include_directories : [configinc],
     install: false)
 endforeach
-
