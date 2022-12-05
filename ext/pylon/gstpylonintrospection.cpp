@@ -353,12 +353,12 @@ gst_pylon_create_set_value_actions(std::vector<GenApi::INode *> node_list) {
       }
       case GenApi::intfIEnumeration: {
         Pylon::CEnumParameter param(node);
-        GenApi::StringList_t symbolics;
-        param.GetSymbolics(symbolics);
-        for (const auto &symbolic : symbolics) {
+        GenApi::StringList_t settable_values;
+        param.GetSettableValues(settable_values);
+        for (const auto &value : settable_values) {
           values.push_back(
               new GstPylonTypeAction<Pylon::CEnumParameter, Pylon::String_t>(
-                  param, symbolic));
+                  param, value));
         }
         break;
       }
