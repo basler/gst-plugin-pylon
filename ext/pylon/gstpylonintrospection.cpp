@@ -36,7 +36,9 @@
 
 #include <algorithm>
 #include <numeric>
+#include <set>
 #include <unordered_map>
+#include <vector>
 
 GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
 #define GST_CAT_DEFAULT gst_pylon_src_debug_category
@@ -103,7 +105,7 @@ static void gst_pylon_add_all_property_values(
     GenApi::INode *feature_node, std::string value,
     std::unordered_map<std::string, GenApi::INode *> &invalidators);
 static std::vector<GenApi::INode *> gst_pylon_get_available_features(
-    std::vector<GenApi::INode *> feature_list);
+    std::set<GenApi::INode *> feature_list);
 template <class Type>
 static std::vector<std::vector<Type>> gst_pylon_cartesian_product(
     std::vector<std::vector<Type>> &v);
@@ -248,7 +250,7 @@ static void gst_pylon_add_all_property_values(
 }
 
 static std::vector<GenApi::INode *> gst_pylon_get_available_features(
-    std::vector<GenApi::INode *> feature_list) {
+    std::set<GenApi::INode *> feature_list) {
   std::vector<GenApi::INode *> available_features;
   for (const auto &feature : feature_list) {
     if (GenApi::IsAvailable(feature)) {
@@ -443,13 +445,15 @@ static void gst_pylon_find_limits(GenApi::INode *node,
     return;
   }
 
-  /* Find all features that control the node */
-  std::vector<GenApi::INode *> parent_invalidators;
+  /* Find all features that control the node and
+   * store results in a set to remove duplicates*/
+  std::set<GenApi::INode *> parent_invalidators;
   for (const auto &inv : invalidators) {
     std::vector<GenApi::INode *> parent_features =
         gst_pylon_find_parent_features(inv.second);
-    parent_invalidators.insert(parent_invalidators.end(),
-                               parent_features.begin(), parent_features.end());
+    for (const auto &p_feat : parent_features) {
+      parent_invalidators.insert(p_feat);
+    }
   }
 
   /* Filter parent invalidators to only available ones */
