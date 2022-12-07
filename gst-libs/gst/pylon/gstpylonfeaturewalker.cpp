@@ -109,7 +109,7 @@ static std::vector<std::string> gst_pylon_get_int_entries(
   return entry_names;
 }
 
-std::vector<std::string> gst_pylon_process_selector_features(
+std::vector<std::string> GstPylonFeatureWalker::process_selector_features(
     GenApi::INode* node, GenApi::INode** selector_node) {
   std::vector<std::string> enum_values;
   std::string error_msg;
@@ -176,7 +176,7 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   g_return_val_if_fail(node, specs_list);
 
   std::vector<std::string> enum_values =
-      gst_pylon_process_selector_features(node, &selector_node);
+      GstPylonFeatureWalker::process_selector_features(node, &selector_node);
 
   /* If the number of selector values (stored in enum_values) is 1, leave
    * selector_node NULL, hence treating the feature as a "direct" one. */
