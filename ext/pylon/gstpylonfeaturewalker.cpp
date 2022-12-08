@@ -92,13 +92,12 @@ static std::vector<std::string> gst_pylon_get_int_entries(
 
   g_return_val_if_fail(int_node, entry_names);
 
-  gint num_slector_entries = int_node->GetMax() + 1;
-
-  if (num_slector_entries > MAX_INT_SELECTOR_ENTRIES) {
-    num_slector_entries = MAX_INT_SELECTOR_ENTRIES;
-  }
-
-  for (gint i = 0; i < num_slector_entries; i++) {
+  for (gint i = int_node->GetMin(); i <= int_node->GetMax();
+       i += int_node->GetInc()) {
+    /* Limit integer based selectors to MAX_INT_SELECTOR_ENTRIES */
+    if (i > MAX_INT_SELECTOR_ENTRIES) {
+      break;
+    }
     entry_names.push_back(std::to_string(i));
   }
 
@@ -167,13 +166,12 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   GenApi::INode* selector_node = NULL;
   guint64 selector_value = 0;
   std::vector<GParamSpec*> specs_list;
+  Pylon::CEnumParameter param;
 
   g_return_val_if_fail(node, specs_list);
 
   std::vector<std::string> enum_values =
       gst_pylon_process_selector_features(node, &selector_node);
-
-  Pylon::CEnumParameter param(selector_node);
 
   /* If the number of selector values (stored in enum_values) is 1, leave
    * selector_node NULL, hence treating the feature as a "direct" one. */
@@ -182,10 +180,18 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   }
 
   for (guint i = 0; i < enum_values.size(); i++) {
-    if (param.IsValid()) {
-      selector_value = param.GetEntryByName(enum_values[i].c_str())->GetValue();
-    } else {
-      selector_value = i;
+    if (NULL != selector_node) {
+      switch (selector_node->GetPrincipalInterfaceType()) {
+        case GenApi::intfIEnumeration:
+          param.Attach(selector_node);
+          selector_value =
+              param.GetEntryByName(enum_values[i].c_str())->GetValue();
+          break;
+        case GenApi::intfIInteger:
+          selector_value = std::stoi(enum_values[i]);
+          break;
+        default:; /* do nothing */
+      }
     }
     specs_list.push_back(GstPylonParamFactory::make_param(
         nodemap, node, selector_node, selector_value, device_fullname));

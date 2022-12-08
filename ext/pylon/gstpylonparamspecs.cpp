@@ -62,7 +62,11 @@ static gchar *gst_pylon_param_spec_selector_prolog(GenApi::INodeMap &nodemap,
   if (param.IsValid()) {
     selector_value_str = param.GetEntry(selector_value)->GetSymbolic();
   } else {
-    selector_value_str = std::to_string(selector_value);
+    /* Strip 'Selector' suffix for integer selectables */
+    auto selector_prefix = std::string(selector_name);
+    const auto suffix_pos = selector_prefix.find("Selector");
+    selector_value_str =
+        selector_prefix.substr(0, suffix_pos) + std::to_string(selector_value);
   }
 
   /* Build the property name based on the selector and the feature.
