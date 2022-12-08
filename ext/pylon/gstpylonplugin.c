@@ -35,6 +35,7 @@
 #endif
 
 #include "gstpylonsrc.h"
+#include <pylon/PylonVersionNumber.h>
 
 static gboolean
 plugin_init (GstPlugin * plugin)
@@ -44,5 +45,8 @@ plugin_init (GstPlugin * plugin)
 }
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR,
-    pylon, "Basler/Pylon plugin", plugin_init, VERSION,
-    GST_PACKAGE_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)
+    pylon,
+    "Basler/Pylon plugin for pylon SDK " PYLON_VERSIONSTRING_MAJOR "."
+    PYLON_VERSIONSTRING_MINOR "." PYLON_VERSIONSTRING_SUBMINOR "("
+    PYLON_VERSIONSTRING_BUILD ")", plugin_init, VERSION, GST_PACKAGE_LICENSE,
+    GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)
