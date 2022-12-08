@@ -299,7 +299,7 @@ list of configuration options. On Debian-based systems, make sure you
 configure the project as:
 
 ```bash
-meson builddir --prefix /usr/
+meson setup builddir --prefix /usr/
 ```
 
 Build, test and install the project:
@@ -348,7 +348,7 @@ cd -
 
 3. Configure and build as usual, specifying the custom subproject:
 ```
-PYLON_ROOT=/opt/pylon meson builddir --prefix /usr -Dcustom_subprojects=gst-plugin-pylon
+PYLON_ROOT=/opt/pylon meson setup builddir --prefix /usr -Dcustom_subprojects=gst-plugin-pylon
 ninja -C builddir
 ```
 
@@ -371,7 +371,7 @@ If you are a maintainer or plan to extend the plug-in, we recommend
 the following configuration:
 
 ```
-meson builddir --prefix /usr/ --werror --buildtype=debug -Dgobject-cast-checks=enabled -Dglib-asserts=enabled -Dglib-checks=enabled
+meson setup builddir --prefix /usr/ --werror --buildtype=debug -Dgobject-cast-checks=enabled -Dglib-asserts=enabled -Dglib-checks=enabled
 ```
 
 ### Cross compilation for linux targets
@@ -415,14 +415,14 @@ set CMAKE_PREFIX_PATH=C:\Program Files\Basler\pylon 7\Development\CMake\pylon\
 Then the plugin can be compiled and installed using Ninja:
 
 ```
-meson build --prefix=%GSTREAMER_1_0_ROOT_MSVC_X86_64%
+meson setup build --prefix=%GSTREAMER_1_0_ROOT_MSVC_X86_64%
 ninja -C build
 ```
 
 Or made available as a Visual Studio project:
 
 ```
-meson build --prefix=%GSTREAMER_1_0_ROOT_MSVC_X86_64% --backend=vs2022
+meson setup build --prefix=%GSTREAMER_1_0_ROOT_MSVC_X86_64% --backend=vs2022
 ```
 
 This will generate a Visual Studio solution in the build directory
