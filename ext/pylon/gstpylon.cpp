@@ -831,7 +831,8 @@ static void gst_pylon_append_properties(
   g_return_if_fail(camera);
   g_return_if_fail(device_properties);
 
-  GType device_type = gst_pylon_object_register(device_full_name, nodemap);
+  GType device_type = gst_pylon_object_register(
+      device_full_name, camera->GetDeviceInfo().GetDeviceVersion(), nodemap);
   GObject *device_obj = G_OBJECT(g_object_new(device_type, NULL));
 
   gchar *device_name = g_strdup_printf(

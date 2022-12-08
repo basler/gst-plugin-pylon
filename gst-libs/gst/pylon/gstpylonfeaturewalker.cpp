@@ -226,9 +226,11 @@ static void gst_pylon_camera_install_specs(
   }
 }
 
-void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
-                                               GenApi::INodeMap& nodemap,
-                                               const gchar* device_fullname) {
+static void gst_pylon_check_for_feature_cache(const gchar* device_fullname) {}
+
+void GstPylonFeatureWalker::install_properties(
+    GObjectClass* oclass, GenApi::INodeMap& nodemap,
+    const gchar* device_fullname, const gchar* device_firmware_version) {
   g_return_if_fail(oclass);
 
   gint nprop = 1;

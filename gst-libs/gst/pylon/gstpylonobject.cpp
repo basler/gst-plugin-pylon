@@ -50,6 +50,7 @@ struct _GstPylonObjectPrivate {
 typedef struct _GstPylonObjectDeviceMembers GstPylonObjectDeviceMembers;
 struct _GstPylonObjectDeviceMembers {
   const gchar* device_name;
+  const gchar* device_firmware_version;
   GenApi::INodeMap& nodemap;
 };
 
@@ -75,9 +76,11 @@ static inline gpointer gst_pylon_object_get_instance_private(
 }
 
 GType gst_pylon_object_register(const Pylon::String_t& device_name,
+                                const Pylon::String_t& device_firmware_version,
                                 GenApi::INodeMap& exemplar) {
   GstPylonObjectDeviceMembers* device_members = new GstPylonObjectDeviceMembers(
-      {g_strdup(device_name.c_str()), exemplar});
+      {g_strdup(device_name.c_str()), g_strdup(device_firmware_version.c_str()),
+       exemplar});
 
   GTypeInfo typeinfo = {
       sizeof(GstPylonObjectClass),
@@ -113,9 +116,9 @@ GType gst_pylon_object_register(const Pylon::String_t& device_name,
  ***********************************************************/
 
 /* prototypes */
-static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
-                                                GenApi::INodeMap& nodemap,
-                                                const gchar* device_fullname);
+static void gst_pylon_object_install_properties(
+    GstPylonObjectClass* klass, GenApi::INodeMap& nodemap,
+    const gchar* device_fullname, const gchar* device_firmware_version);
 template <typename F, typename P>
 static void gst_pylon_object_set_pylon_property(GenApi::INodeMap& nodemap,
                                                 F get_value,
@@ -153,14 +156,15 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec);
 static void gst_pylon_object_finalize(GObject* self);
 
-static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
-                                                GenApi::INodeMap& nodemap,
-                                                const gchar* device_name) {
+static void gst_pylon_object_install_properties(
+    GstPylonObjectClass* klass, GenApi::INodeMap& nodemap,
+    const gchar* device_name, const gchar* device_firmware_version) {
   g_return_if_fail(klass);
 
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
-  GstPylonFeatureWalker::install_properties(oclass, nodemap, device_name);
+  GstPylonFeatureWalker::install_properties(oclass, nodemap, device_name,
+                                            device_firmware_version);
 }
 
 static void gst_pylon_object_class_init(
@@ -172,7 +176,8 @@ static void gst_pylon_object_class_init(
   oclass->finalize = gst_pylon_object_finalize;
 
   gst_pylon_object_install_properties(klass, device_members->nodemap,
-                                      device_members->device_name);
+                                      device_members->device_name,
+                                      device_members->device_firmware_version);
 
   delete (device_members);
 }
