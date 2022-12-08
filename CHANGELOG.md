@@ -1,6 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [next]
+
+### Changed
+- Breaking change for width/height fixation:
+  * old: prefer max(1080P, camera.max)
+  * new: prefer current camera value after user-set and pfs-file
+
+
 ## [0.4.0] - 2022-10-06
 
 ### Added

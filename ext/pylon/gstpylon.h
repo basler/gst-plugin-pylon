@@ -62,6 +62,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
                            GstPylonCaptureErrorEnum capture_error,
                            GError **err);
 GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err);
+gboolean gst_pylon_get_startup_geometry(GstPylon *self, gint *start_width,
+                                        gint *start_height);
 gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
                                      GError **err);
 gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
