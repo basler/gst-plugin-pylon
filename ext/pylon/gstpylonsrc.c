@@ -496,16 +496,15 @@ gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
   GstCaps *outcaps = NULL;
   GstStructure *st = NULL;
   const GValue *width_field = NULL;
-  static const gint WIDTH_1080P = 1920;
-  static const gint HEIGHT_1080P = 1080;
+  static const gint width_1080p = 1920;
+  static const gint height_1080p = 1080;
   static const gint preferred_framerate_num = 30;
   static const gint preferred_framerate_den = 1;
   gint preferred_width_adjusted = 0;
 
   /* get the configured width/height after applying userset and pfs */
-
-  gint preferred_width = WIDTH_1080P;
-  gint preferred_height = HEIGHT_1080P;
+  gint preferred_width = width_1080p;
+  gint preferred_height = height_1080p;
   gst_pylon_get_startup_geometry (self->pylon, &preferred_width,
       &preferred_height);
 
@@ -536,7 +535,7 @@ gst_pylon_src_fixate (GstBaseSrc * src, GstCaps * caps)
 
   gst_caps_append_structure (outcaps, st);
 
-  /* Fixate the remainder of the fields */
+  /* fixate the remainder of the fields */
   outcaps = gst_caps_fixate (outcaps);
 
   GST_INFO_OBJECT (self, "Fixated caps to %" GST_PTR_FORMAT, outcaps);
