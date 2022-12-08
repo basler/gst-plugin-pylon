@@ -94,8 +94,7 @@ static std::vector<std::string> gst_pylon_get_int_entries(
 
   for (gint i = int_node->GetMin(); i <= int_node->GetMax();
        i += int_node->GetInc()) {
-    // limit integer based selectors
-    // to MAX_INT_SELECTOR_ENTRIES
+    /* Limit integer based selectors to MAX_INT_SELECTOR_ENTRIES */
     if (i > MAX_INT_SELECTOR_ENTRIES) {
       break;
     }
