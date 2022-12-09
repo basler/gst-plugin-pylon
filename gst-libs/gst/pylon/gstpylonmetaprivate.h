@@ -56,7 +56,15 @@
 
 G_BEGIN_DECLS
 
-void gst_buffer_add_pylon_meta(
+#ifndef EXT_PYLONSRC_API
+# ifdef BUILDING_EXT_PYLONSRC
+#  define EXT_PYLONSRC_API GST_API_EXPORT         /* from config.h */
+# else
+#  define EXT_PYLONSRC_API GST_API_IMPORT
+# endif
+#endif
+
+EXT_PYLONSRC_API void gst_buffer_add_pylon_meta(
     GstBuffer *buffer,
     const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
 

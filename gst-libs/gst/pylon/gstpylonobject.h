@@ -56,6 +56,15 @@
 
 G_BEGIN_DECLS
 
+#ifndef EXT_PYLONSRC_API
+# ifdef BUILDING_EXT_PYLONSRC
+#  define EXT_PYLONSRC_API GST_API_EXPORT         /* from config.h */
+# else
+#  define EXT_PYLONSRC_API GST_API_IMPORT
+# endif
+#endif
+
+
 G_DECLARE_DERIVABLE_TYPE (GstPylonObject, gst_pylon_object,
     GST, PYLON_OBJECT, GstObject)
 
@@ -63,8 +72,8 @@ struct _GstPylonObjectClass {
   GstObjectClass parent_class;
 };
 
-GType gst_pylon_object_register (Pylon::String_t device_name, GenApi::INodeMap& nodemap);
-GObject* gst_pylon_object_new(
+EXT_PYLONSRC_API GType gst_pylon_object_register (Pylon::String_t device_name, GenApi::INodeMap& nodemap);
+EXT_PYLONSRC_API GObject* gst_pylon_object_new(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
     Pylon::String_t device_name, GenApi::INodeMap* nodemap);
 

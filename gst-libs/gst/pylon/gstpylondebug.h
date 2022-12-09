@@ -37,10 +37,20 @@
 
 G_BEGIN_DECLS
 
-GST_API_EXPORT
+#ifndef EXT_PYLONSRC_API
+# ifdef BUILDING_EXT_PYLONSRC
+#  define EXT_PYLONSRC_API GST_API_EXPORT         /* from config.h */
+# else
+#  define EXT_PYLONSRC_API GST_API_IMPORT
+# endif
+#endif
+
+
+
+EXT_PYLONSRC_API
 GstDebugCategory *gst_pylon_debug;
 
-GST_API_EXPORT
+EXT_PYLONSRC_API
 void gst_pylon_debug_init (void);
 
 #define GST_CAT_DEFAULT gst_pylon_debug

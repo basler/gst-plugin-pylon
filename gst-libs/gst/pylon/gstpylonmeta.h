@@ -35,25 +35,16 @@
 
 #include <gst/gst.h>
 
-// FIXME: howto properly user GST_API_EXPORT in external plugin
-#if defined(_MSC_VER)
-#define EXT_PYLONSRC_API_EXPORT __declspec(dllexport)
-#define EXT_PYLONSRC_API_IMPORT __declspec(dllimport)
-#elif defined(__GNUC__)
-#define EXT_PYLONSRC_API_EXPORT __attribute__((visibility("default")))
-#define EXT_PYLONSRC_API_IMPORT
-#else
-#define EXT_PYLONSRC_API_EXPORT
-#define EXT_PYLONSRC_API_IMPORT
-#endif
-
-#ifdef BUILDING_EXT_PYLONSRC
-#define EXT_PYLONSRC_API EXT_PYLONSRC_API_EXPORT        /* from config.h */
-#else
-#define EXT_PYLONSRC_API EXT_PYLONSRC_API_IMPORT
-#endif
-
 G_BEGIN_DECLS
+
+#ifndef EXT_PYLONSRC_API
+# ifdef BUILDING_EXT_PYLONSRC
+#  define EXT_PYLONSRC_API GST_API_EXPORT         /* from config.h */
+# else
+#  define EXT_PYLONSRC_API GST_API_IMPORT
+# endif
+#endif
+
 #define GST_PYLON_META_API_TYPE (gst_pylon_meta_api_get_type())
 #define GST_PYLON_META_INFO (gst_pylon_meta_get_info())
 typedef struct _GstPylonOffset GstPylonOffset;
