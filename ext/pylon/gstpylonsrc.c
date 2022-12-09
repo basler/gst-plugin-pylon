@@ -52,6 +52,7 @@
 
 #include "gstpylon.h"
 #include "gst/pylon/gstpylonmeta.h"
+#include "gst/pylon/gstpylondebug.h"
 
 #include <gst/video/video.h>
 
@@ -161,12 +162,8 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
 
 
 /* class initialization */
-GST_DEBUG_CATEGORY (gst_pylon_src_debug_category);
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
-
 G_DEFINE_TYPE_WITH_CODE (GstPylonSrc, gst_pylon_src, GST_TYPE_PUSH_SRC,
-    GST_DEBUG_CATEGORY_INIT (gst_pylon_src_debug_category, "pylonsrc", 0,
-        "debug category for pylonsrc element");
+    gst_pylon_debug_init ();
     G_IMPLEMENT_INTERFACE (GST_TYPE_CHILD_PROXY, gst_pylon_src_child_proxy_init)
     );
 

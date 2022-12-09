@@ -30,14 +30,13 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gstchildinspector.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
+#include "gst/pylon/gstpylondebug.h"
 #include "gst/pylon/gstpylonparamspecs.h"
-
-extern "C" {
-GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
-}
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
+#include "gstchildinspector.h"
 
 typedef struct _GstChildInspectorFlag GstChildInspectorFlag;
 typedef struct _GstChildInspectorType GstChildInspectorType;

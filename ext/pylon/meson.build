@@ -14,7 +14,7 @@ gstpylon_plugin = library('gstpylon',
   cpp_args : gst_plugin_pylon_args,
   link_args : [noseh_link_args],
   include_directories : [configinc],
-  dependencies : [gstbase_dep, gstvideo_dep, gstpylon_dep],
+  dependencies : [gstpylon_dep],
   install : true,
   install_dir : plugins_install_dir
 )

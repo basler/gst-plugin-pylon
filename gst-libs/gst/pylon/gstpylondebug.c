@@ -34,19 +34,17 @@
 #include "config.h"
 #endif
 
-#include "gst/pylon/gstpylondebug.h"
-#include "gstpylondisconnecthandler.h"
+#include "gstpylondebug.h"
 
-void GstPylonDisconnectHandler::SetData(GstElement *gstpylnsrc,
-                                        GstPylonImageHandler *image_handler) {
-  this->gstpylnsrc = gstpylnsrc;
-  this->image_handler = image_handler;
-}
+GST_DEBUG_CATEGORY (gst_pylon_debug);
 
-void GstPylonDisconnectHandler::OnCameraDeviceRemoved(
-    Pylon::CBaslerUniversalInstantCamera &camera) {
-  GST_ELEMENT_ERROR(this->gstpylnsrc, LIBRARY, FAILED,
-                    ("Connection to camera was lost."),
-                    ("The camera has been removed from the computer."));
-  this->image_handler->InterruptWaitForImage();
+void
+gst_pylon_debug_init (void)
+{
+  if (g_once_init_enter (&gst_pylon_debug)) {
+    GST_DEBUG_CATEGORY (cat_done);
+    GST_DEBUG_CATEGORY_INIT (cat_done, "pylonsrc", 0,
+        "debug category for pylonsrc element");
+    g_once_init_leave (&gst_pylon_debug, cat_done);
+  }
 }

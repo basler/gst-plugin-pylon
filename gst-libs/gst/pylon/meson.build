@@ -28,6 +28,7 @@ else
 endif
 
 gstpylon_sources = [
+  'gstpylondebug.c',
   'gstpylonintrospection.cpp',
   'gstpylonfeaturewalker.cpp',
   'gstpylonmeta.cpp',
@@ -36,6 +37,7 @@ gstpylon_sources = [
 ]
 
 gstpylon_headers = [
+  'gstpylondebug.h',
   'gstpylonintrospection.cpp',
   'gstpylonfeaturewalker.h',
   'gstpylonmeta.h',

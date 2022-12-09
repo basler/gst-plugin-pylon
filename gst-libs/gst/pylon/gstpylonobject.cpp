@@ -30,15 +30,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "gstpylondebug.h"
+#include "gstpylonfeaturewalker.h"
 #include "gstpylonobject.h"
-
-#include "gst/pylon/gstpylonfeaturewalker.h"
-#include "gst/pylon/gstpylonparamspecs.h"
-
-extern "C" {
-GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
-}
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
+#include "gstpylonparamspecs.h"
 
 typedef struct _GstPylonObjectPrivate GstPylonObjectPrivate;
 struct _GstPylonObjectPrivate {

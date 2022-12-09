@@ -30,7 +30,13 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "gstpylondebug.h"
 #include "gstpylonfeaturewalker.h"
+#include "gstpylonmeta.h"
 #include "gstpylonmetaprivate.h"
 
 #include <gst/video/video.h>
@@ -52,10 +58,6 @@
 #pragma GCC diagnostic pop
 #endif
 
-extern "C" {
-GST_DEBUG_CATEGORY(gst_pylon_src_debug_category);
-}
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
 /* prototypes */
 static gboolean gst_pylon_meta_init(GstMeta *meta, gpointer params,
                                     GstBuffer *buffer);

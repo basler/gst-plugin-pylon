@@ -30,11 +30,15 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gstpylon.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
+#include "gst/pylon/gstpylondebug.h"
 #include "gst/pylon/gstpylonmetaprivate.h"
 #include "gst/pylon/gstpylonobject.h"
 #include "gstchildinspector.h"
+#include "gstpylon.h"
 #include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
 
@@ -63,10 +67,6 @@ typedef struct {
   std::string gst_name;
 } PixelFormatMappingType;
 
-extern "C" {
-GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
-}
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
 /* Mapping of GstStructure with its corresponding formats */
 typedef struct {
   const std::string st_name;
