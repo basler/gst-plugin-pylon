@@ -62,11 +62,6 @@ if cc.has_link_argument('-Wl,-Bsymbolic-functions')
   add_project_link_arguments('-Wl,-Bsymbolic-functions', language : 'c')
 endif
 
-# Symbol visibility
-if cc.has_argument('-fvisibility=hidden')
-  add_project_arguments('-fvisibility=hidden', language: 'c')
-endif
-
 # Disable strict aliasing
 if cc.has_argument('-fno-strict-aliasing')
   add_project_arguments('-fno-strict-aliasing', language: 'c')
@@ -137,6 +132,19 @@ cdata.set_quoted('GST_PACKAGE_LICENSE', 'BSD')
 cdata.set_quoted('PACKAGE', 'gst-plugin-pylon')
 cdata.set_quoted('LOCALEDIR', join_paths(get_option('prefix'), get_option('localedir')))
 
+# Symbol visibility
+if cc.get_id() == 'msvc'
+  export_define = '__declspec(dllexport) extern'
+elif cc.has_argument('-fvisibility=hidden')
+  add_project_arguments('-fvisibility=hidden', language: 'c')
+  export_define = 'extern __attribute__ ((visibility ("default")))'
+else
+  export_define = 'extern'
+endif
+
+# Passing this through the command line would be too messy
+cdata.set('GST_API_EXPORT', export_define)
+
 warning_flags = [
   '-Wmissing-declarations',
   '-Wredundant-decls',
@@ -198,7 +206,7 @@ glib_deps = [dependency('glib-2.0', version : glib_req),
              dependency('gobject-2.0')]
 
 gst_plugin_pylon_args = ['-DHAVE_CONFIG_H']
-configinc = include_directories('.')
+configinc = include_directories(['.', 'gst-libs'])
 #libsinc = include_directories('gst-libs')
 
 # Disable compiler warnings for unused variables and args if gst debug system is disabled
@@ -232,6 +240,7 @@ if get_option('default_library') == 'shared'
   plugins_pkgconfig_install_dir = disabler()
 endif
 
+subdir('gst-libs')
 subdir('ext')
 subdir('tests')
 subdir('docs')

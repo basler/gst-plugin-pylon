@@ -30,8 +30,12 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gstpylonintrospection.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
+#include "gstpylondebug.h"
+#include "gstpylonintrospection.h"
 #include "gstpylonparamspecs.h"
 
 #include <algorithm>
@@ -39,9 +43,6 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
-
-GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
 
 class GstPylonActions {
  public:
@@ -477,7 +478,7 @@ static void gst_pylon_find_limits(GenApi::INode *node,
       /* Some states might not be valid, so just skip them */
       try {
         action->set_value();
-      } catch (const Pylon::GenericException &e) {
+      } catch (const Pylon::GenericException &) {
         continue;
       }
     }
@@ -496,7 +497,7 @@ static void gst_pylon_find_limits(GenApi::INode *node,
   for (const auto &action : reset_list) {
     try {
       action->set_value();
-    } catch (const Pylon::GenericException &e) {
+    } catch (const Pylon::GenericException &) {
       continue;
     }
   }

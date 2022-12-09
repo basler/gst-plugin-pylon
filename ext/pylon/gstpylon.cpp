@@ -30,13 +30,17 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gstpylon.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
+#include "gst/pylon/gstpylondebug.h"
+#include "gst/pylon/gstpylonmetaprivate.h"
+#include "gst/pylon/gstpylonobject.h"
 #include "gstchildinspector.h"
+#include "gstpylon.h"
 #include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
-#include "gstpylonmetaprivate.h"
-#include "gstpylonobject.h"
 
 #include <map>
 
@@ -62,9 +66,6 @@ typedef struct {
   std::string pfnc_name;
   std::string gst_name;
 } PixelFormatMappingType;
-
-GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
 
 /* Mapping of GstStructure with its corresponding formats */
 typedef struct {
@@ -897,7 +898,7 @@ static gchar *gst_pylon_get_string_properties(
       get_device_string_properties(&camera, &camera_properties,
                                    DEFAULT_ALIGNMENT);
       camera.Close();
-    } catch (const Pylon::GenericException &e) {
+    } catch (const Pylon::GenericException &) {
       continue;
     }
   }

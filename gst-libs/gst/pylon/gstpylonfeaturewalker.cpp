@@ -30,15 +30,16 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gstpylonfeaturewalker.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
+#include "gstpylondebug.h"
+#include "gstpylonfeaturewalker.h"
 #include "gstpylonintrospection.h"
 
 #include <queue>
 #include <unordered_set>
-
-GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
 
 #define MAX_INT_SELECTOR_ENTRIES 16
 
@@ -79,6 +80,10 @@ static std::vector<std::string> gst_pylon_get_enum_entries(
   enum_node->GetEntries(enum_entries);
 
   for (auto const& e : enum_entries) {
+    if (!GenApi::IsImplemented(e)) {
+      /* Skip all entries that don't exist on this device */
+      continue;
+    }
     auto enum_name = std::string(e->GetName());
     entry_names.push_back(enum_name.substr(prefix_len));
   }

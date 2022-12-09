@@ -34,13 +34,11 @@
 #include "config.h"
 #endif
 
+#include "gstpylondebug.h"
 #include "gstpylonparamspecs.h"
 
 #define QSTRING "GstPylonParamSpecSelector"
 #define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
-
-GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
 
 gchar *gst_pylon_param_spec_sanitize_name(const gchar *name) {
   g_return_val_if_fail(name, NULL);

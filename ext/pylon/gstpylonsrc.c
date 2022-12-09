@@ -51,7 +51,8 @@
 #include "gstpylonsrc.h"
 
 #include "gstpylon.h"
-#include "gstpylonmeta.h"
+#include "gst/pylon/gstpylonmeta.h"
+#include "gst/pylon/gstpylondebug.h"
 
 #include <gst/video/video.h>
 
@@ -161,12 +162,8 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
 
 
 /* class initialization */
-GST_DEBUG_CATEGORY (gst_pylon_src_debug_category);
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
-
 G_DEFINE_TYPE_WITH_CODE (GstPylonSrc, gst_pylon_src, GST_TYPE_PUSH_SRC,
-    GST_DEBUG_CATEGORY_INIT (gst_pylon_src_debug_category, "pylonsrc", 0,
-        "debug category for pylonsrc element");
+    gst_pylon_debug_init ();
     G_IMPLEMENT_INTERFACE (GST_TYPE_CHILD_PROXY, gst_pylon_src_child_proxy_init)
     );
 
@@ -843,6 +840,7 @@ gst_plyon_src_add_metadata (GstPylonSrc * self, GstBuffer * buf)
   ref = gst_caps_from_string ("timestamp/x-pylon");
   gst_buffer_add_reference_timestamp_meta (buf, ref, pylon_meta->timestamp,
       GST_CLOCK_TIME_NONE);
+  gst_caps_unref (ref);
 
   /* add video meta data */
   format = GST_VIDEO_INFO_FORMAT (&self->video_info);

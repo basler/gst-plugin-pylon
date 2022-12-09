@@ -30,7 +30,13 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "gstpylondebug.h"
 #include "gstpylonfeaturewalker.h"
+#include "gstpylonmeta.h"
 #include "gstpylonmetaprivate.h"
 
 #include <gst/video/video.h>
@@ -51,9 +57,6 @@
 #elif __GNUC__  // GCC, CLANG, MinWG
 #pragma GCC diagnostic pop
 #endif
-
-GST_DEBUG_CATEGORY_EXTERN(gst_pylon_src_debug_category);
-#define GST_CAT_DEFAULT gst_pylon_src_debug_category
 
 /* prototypes */
 static gboolean gst_pylon_meta_init(GstMeta *meta, gpointer params,
@@ -208,7 +211,9 @@ void gst_buffer_add_pylon_meta(
       (GstPylonMeta *)gst_buffer_add_meta(buffer, GST_PYLON_META_INFO, NULL);
 
   /* Add meta to GstPylonMeta */
-  self->block_id = grab_result_ptr->GetBlockID();
+  self->block_id = grab_result_ptr->GetImageNumber();
+  self->image_number = grab_result_ptr->GetImageNumber();
+  self->skipped_images = grab_result_ptr->GetNumberOfSkippedImages();
   self->offset.offset_x = grab_result_ptr->GetOffsetX();
   self->offset.offset_y = grab_result_ptr->GetOffsetY();
   self->timestamp = grab_result_ptr->GetTimeStamp();
