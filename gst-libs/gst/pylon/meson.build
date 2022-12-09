@@ -37,12 +37,8 @@ gstpylon_sources = [
 ]
 
 gstpylon_headers = [
-  'gstpylondebug.h',
-  'gstpylonintrospection.cpp',
-  'gstpylonfeaturewalker.h',
   'gstpylonmeta.h',
-  'gstpylonobject.h',
-  'gstpylonparamspecs.cpp',
+  'gstpylon-prelude.h'
 ]
 
 install_headers(gstpylon_headers, subdir : 'gstreamer-1.0/gst/pylon/')
@@ -67,3 +63,4 @@ gstpylon_dep = declare_dependency(link_with : gstpylon,
 
 # For examples to mimic what they would to on an installed setud
 meson.override_dependency('gstpylon', gstpylon_dep)
+
