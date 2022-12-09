@@ -239,9 +239,14 @@ static gchar* gst_pylon_check_for_feature_cache(
       g_strdup_printf("%s_%s", device_fullname, device_firmware_version);
   gchar* filename_hash = g_compute_checksum_for_string(
       G_CHECKSUM_SHA256, filename, strlen(filename));
-  gchar* filepath = g_strdup_printf("%s/%s/%s", g_get_user_cache_dir(),
-                                    "gstpylon", filename_hash);
+  gchar* dirpath = g_strdup_printf("%s/%s", g_get_user_cache_dir(), "gstpylon");
+  gchar* filepath = g_strdup_printf("%s/%s", dirpath, filename_hash);
 
+  /* Create gstpylon directory */
+  gint dir_permissions = 0775;
+  g_mkdir_with_parents(dirpath, dir_permissions);
+
+  g_free(dirpath);
   g_free(filename_hash);
   g_free(filename);
 
@@ -255,6 +260,7 @@ void GstPylonFeatureWalker::install_properties(
 
   gchar* filepath = gst_pylon_check_for_feature_cache(device_fullname,
                                                       device_firmware_version);
+  g_free(filepath);
 
   gint nprop = 1;
   GenApi::INode* root_node = nodemap.GetNode("Root");
@@ -298,6 +304,4 @@ void GstPylonFeatureWalker::install_properties(
       }
     }
   }
-
-  g_free(filepath);
 }
