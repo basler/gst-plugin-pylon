@@ -23,6 +23,8 @@ To display the video stream of a single Basler camera is as simple as:
 gst-launch-1.0 pylonsrc ! videoconvert ! autovideosink
 ```
 
+The dynamic registration of camera features in the plugin can take ~5s on some camera models. An optimization is scheduled for the next release.
+
 The following sections describe how to select and configure the camera.
 
 ## Camera selection
@@ -239,11 +241,20 @@ Configure a hardware trigger on Line1 for the trigger FrameStart:
 gst-launch-1.0 pylonsrc cam::TriggerSource-FrameStart=Line1 cam::TriggerMode-FrameStart=On ! videoconvert ! autovideosink
 ```
 
-### Chunks
+### Chunks and Capture metadata
 
 Chunk support is available. The selected chunks will be appended to each gstreamer buffer as meta data.
 
 The `cam::ChunkModeActive` feature needs to be set to `true` for chunks to be enabled.
+
+The pylon image meta data ( pylon GrabResult ) is appended per default. The values available are:
+
+* GrabResult
+* BlockID
+* ImageNumber
+* SkippedImages
+* OffsetX/Y
+* Camera Timestamp
 
 **Example**
 
@@ -251,6 +262,12 @@ Enable Timestamp, ExposureTime and CounterValue chunks:
 ```
 gst-launch-1.0 pylonsrc cam::ChunkModeActive=True cam::ChunkEnable-Timestamp=True cam::ChunkEnable-ExposureTime=true cam::ChunkEnable-CounterValue=true ! videoconvert ! autovideosink
 ```
+
+**GstMetaPylon**
+
+The plugin meta data is defined in [gstpylonmeta.h](gst-libs/gst/pylon/gstpylonmeta.h).
+
+A programming sample using these defintions to decode the data is in [show_meta](tests/examples/pylon/show_meta.c) 
 
 # Building
 
@@ -301,6 +318,8 @@ list of configuration options. On Debian-based systems, make sure you
 configure the project as:
 
 ```bash
+git clone https://github.com/basler/gst-plugin-pylon.git
+cd gst-plugin-pylon
 meson setup builddir --prefix /usr/
 ```
 
@@ -417,6 +436,8 @@ set CMAKE_PREFIX_PATH=C:\Program Files\Basler\pylon 7\Development\CMake\pylon\
 Then the plugin can be compiled and installed using Ninja:
 
 ```
+git clone https://github.com/basler/gst-plugin-pylon.git
+cd gst-plugin-pylon
 meson setup build --prefix=%GSTREAMER_1_0_ROOT_MSVC_X86_64%
 ninja -C build
 ```
