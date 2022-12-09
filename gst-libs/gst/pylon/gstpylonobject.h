@@ -56,15 +56,6 @@
 
 G_BEGIN_DECLS
 
-#ifndef EXT_PYLONSRC_API
-# ifdef BUILDING_EXT_PYLONSRC
-#  define EXT_PYLONSRC_API GST_API_EXPORT         /* from config.h */
-# else
-#  define EXT_PYLONSRC_API GST_API_IMPORT
-# endif
-#endif
-
-
 G_DECLARE_DERIVABLE_TYPE (GstPylonObject, gst_pylon_object,
     GST, PYLON_OBJECT, GstObject)
 

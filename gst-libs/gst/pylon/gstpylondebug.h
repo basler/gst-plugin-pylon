@@ -34,27 +34,15 @@
 #define __GST_PYLON_DEBUG_H__
 
 #include <gst/gst.h>
+#include <gst/pylon/gstpylon-prelude.h>
 
 G_BEGIN_DECLS
 
-#ifndef EXT_PYLONSRC_API
-# ifdef BUILDING_EXT_PYLONSRC
-#  define EXT_PYLONSRC_API GST_API_EXPORT         /* from config.h */
-# else
-#  define EXT_PYLONSRC_API GST_API_IMPORT
-# endif
-#endif
+EXT_PYLONSRC_API GstDebugCategory* gst_pylon_debug;
 
-
-
-EXT_PYLONSRC_API
-GstDebugCategory *gst_pylon_debug;
-
-EXT_PYLONSRC_API
-void gst_pylon_debug_init (void);
+EXT_PYLONSRC_API void gst_pylon_debug_init(void);
 
 #define GST_CAT_DEFAULT gst_pylon_debug
 
 G_END_DECLS
-
-#endif // __GST_PYLON_DEBUG_H__
+#endif  // __GST_PYLON_DEBUG_H__

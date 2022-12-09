@@ -34,16 +34,9 @@
 #define __GST_PYLON_META_H__
 
 #include <gst/gst.h>
+#include <gst/pylon/gstpylon-prelude.h>
 
 G_BEGIN_DECLS
-
-#ifndef EXT_PYLONSRC_API
-# ifdef BUILDING_EXT_PYLONSRC
-#  define EXT_PYLONSRC_API GST_API_EXPORT         /* from config.h */
-# else
-#  define EXT_PYLONSRC_API GST_API_IMPORT
-# endif
-#endif
 
 #define GST_PYLON_META_API_TYPE (gst_pylon_meta_api_get_type())
 #define GST_PYLON_META_INFO (gst_pylon_meta_get_info())
