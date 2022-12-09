@@ -287,7 +287,7 @@ static void find_limits(GenApi::INode* feature_node,
     for (const auto& action : actions) {
       try {
         action->set_value();
-      } catch (const Pylon::GenericException& e) {
+      } catch (const Pylon::GenericException&) {
         continue;
       }
     }
@@ -373,7 +373,7 @@ static vector<GenApi::INode*> walk_nodes(Pylon::CInstantCamera& camera) {
   return node_list;
 }
 
-int main(int /*argc*/, char* /*argv*/ []) {
+int main(int /*argc*/, char* /*argv*/[]) {
   int exitCode = 0;
 
   Pylon::PylonInitialize();

@@ -175,12 +175,14 @@ jobs:
 
             # run tests gcc
             export GST_PLUGIN_PATH=$PWD/install_gcc/lib/aarch64-linux-gnu/gstreamer-1.0
+            export LD_LIBRARY_PATH=$PWD/install_gcc/lib/aarch64-linux-gnu
             export PYLON_CAMEMU=1
             gst-inspect-1.0 pylonsrc
             gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
 
             # run tests clang
             export GST_PLUGIN_PATH=$PWD/install_clang/lib/aarch64-linux-gnu/gstreamer-1.0
+            export LD_LIBRARY_PATH=$PWD/install_clang/lib/aarch64-linux-gnu
             export PYLON_CAMEMU=1
             gst-inspect-1.0 pylonsrc
             gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
@@ -245,6 +247,7 @@ jobs:
       - name: run tests gcc
         run: |
           export GST_PLUGIN_PATH=$PWD/install_gcc/lib/x86_64-linux-gnu/gstreamer-1.0
+          export LD_LIBRARY_PATH=$PWD/install_gcc/lib/x86_64-linux-gnu/
           export PYLON_CAMEMU=1
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
@@ -252,6 +255,7 @@ jobs:
       - name: run tests clang
         run: |
           export GST_PLUGIN_PATH=$PWD/install_clang/lib/x86_64-linux-gnu/gstreamer-1.0
+          export LD_LIBRARY_PATH=$PWD/install_clang/lib/x86_64-linux-gnu/
           export PYLON_CAMEMU=1
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink

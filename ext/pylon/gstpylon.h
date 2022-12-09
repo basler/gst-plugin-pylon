@@ -78,9 +78,6 @@ gboolean gst_pylon_is_same_device(GstPylon *self, const gint device_index,
                                   const gchar *device_user_name,
                                   const gchar *device_serial_number);
 
-gboolean gst_pylon_get_startup_geometry(GstPylon *self, gint *start_width,
-                                        gint *start_height);
-
 G_END_DECLS
 
 #endif

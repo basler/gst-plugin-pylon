@@ -30,38 +30,29 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_PYLON_META_PRIVATE_H__
-#define __GST_PYLON_META_PRIVATE_H__
+#ifndef __GST_PYLON_PRELUDE_H__
+#define __GST_PYLON_PRELUDE_H__
 
 #include <gst/gst.h>
-#include <gst/pylon/gstpylon-prelude.h>
-#include <gst/pylon/gstpylonmeta.h>
 
-
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(push)
-#pragma warning(disable : 4265)
-#elif __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+/* backport definition to support ubuntu 18.04 */
+#ifndef GST_API_IMPORT
+# if defined(_MSC_VER) && !defined(GST_STATIC_COMPILATION)
+#  define GST_API_IMPORT __declspec(dllimport) extern
+# else
+#  define GST_API_IMPORT extern
+# endif
 #endif
 
-#include <pylon/BaslerUniversalInstantCamera.h>
-#include <pylon/PylonIncludes.h>
 
-#ifdef _MSC_VER  // MSVC
-#pragma warning(pop)
-#elif __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
+
+
+#ifndef EXT_PYLONSRC_API
+# ifdef BUILDING_EXT_PYLONSRC
+#  define EXT_PYLONSRC_API GST_API_EXPORT         /* from config.h */
+# else
+#  define EXT_PYLONSRC_API GST_API_IMPORT
+# endif
 #endif
 
-G_BEGIN_DECLS
-
-EXT_PYLONSRC_API void gst_buffer_add_pylon_meta(
-    GstBuffer *buffer,
-    const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
-
-G_END_DECLS
-
-#endif
+#endif /* __GST_PYLON_PRELUDE_H__ */
