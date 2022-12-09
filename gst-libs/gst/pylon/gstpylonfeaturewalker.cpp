@@ -80,6 +80,10 @@ static std::vector<std::string> gst_pylon_get_enum_entries(
   enum_node->GetEntries(enum_entries);
 
   for (auto const& e : enum_entries) {
+    if (!GenApi::IsImplemented(e)) {
+      /* skip all entries that don't exist on this device */
+      continue;
+    }
     auto enum_name = std::string(e->GetName());
     entry_names.push_back(enum_name.substr(prefix_len));
   }
