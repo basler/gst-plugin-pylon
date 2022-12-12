@@ -107,8 +107,13 @@ static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     const std::vector<PixelFormatMappingType> &pixel_format_mapping);
 static void gst_pylon_append_properties(
     Pylon::CBaslerUniversalInstantCamera *camera,
+<<<<<<< HEAD
     const Pylon::String_t &device_full_name,
     const Pylon::String_t &device_type_str, GenApi::INodeMap &nodemap,
+=======
+    Pylon::String_t device_full_name, Pylon::String_t device_type_str,
+    Pylon::String_t cache_filename, GenApi::INodeMap &nodemap,
+>>>>>>> Construct unique cache filenames for camera and stream grabber
     gchar **device_properties, guint alignment);
 static void gst_pylon_append_camera_properties(
     Pylon::CBaslerUniversalInstantCamera *camera, gchar **camera_properties,
@@ -825,14 +830,14 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
 static void gst_pylon_append_properties(
     Pylon::CBaslerUniversalInstantCamera *camera,
-    const Pylon::String_t &device_full_name,
-    const Pylon::String_t &device_type_str, GenApi::INodeMap &nodemap,
+    const Pylon::String_t &device_full_name, const Pylon::String_t &device_type_str,
+    const Pylon::String_t &cache_filename, GenApi::INodeMap &nodemap,
     gchar **device_properties, guint alignment) {
   g_return_if_fail(camera);
   g_return_if_fail(device_properties);
 
-  GType device_type = gst_pylon_object_register(
-      device_full_name, camera->GetDeviceInfo().GetDeviceVersion(), nodemap);
+  GType device_type =
+      gst_pylon_object_register(device_full_name, cache_filename, nodemap);
   GObject *device_obj = G_OBJECT(g_object_new(device_type, NULL));
 
   gchar *device_name = g_strdup_printf(
@@ -864,9 +869,12 @@ static void gst_pylon_append_camera_properties(
   GenApi::INodeMap &nodemap = camera->GetNodeMap();
   Pylon::String_t camera_name = gst_pylon_get_camera_fullname(*camera);
   Pylon::String_t device_type = "Camera";
+  Pylon::String_t cache_filename = camera->DeviceModelName.GetValue() + "_" +
+                                   camera->DeviceFirmwareVersion.GetValue() +
+                                   "_" + VERSION;
 
-  gst_pylon_append_properties(camera, camera_name, device_type, nodemap,
-                              camera_properties, alignment);
+  gst_pylon_append_properties(camera, camera_name, device_type, cache_filename,
+                              nodemap, camera_properties, alignment);
 }
 
 static void gst_pylon_append_stream_grabber_properties(
@@ -876,12 +884,15 @@ static void gst_pylon_append_stream_grabber_properties(
   g_return_if_fail(sgrabber_properties);
 
   GenApi::INodeMap &nodemap = camera->GetStreamGrabberNodeMap();
-  ;
   Pylon::String_t sgrabber_name = gst_pylon_get_sgrabber_name(*camera);
   Pylon::String_t device_type = "Stream Grabber";
+  Pylon::String_t cache_filename =
+      camera->GetDeviceInfo().GetModelName() + "_" +
+      Pylon::VersionInfo::getVersionString() + "_" + VERSION;
 
-  gst_pylon_append_properties(camera, sgrabber_name, device_type, nodemap,
-                              sgrabber_properties, alignment);
+  gst_pylon_append_properties(camera, sgrabber_name, device_type,
+                              cache_filename, nodemap, sgrabber_properties,
+                              alignment);
 }
 
 static gchar *gst_pylon_get_string_properties(

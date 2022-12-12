@@ -56,8 +56,7 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
 static void gst_pylon_camera_install_specs(
     const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
     gint& nprop);
-static gchar* gst_pylon_check_for_feature_cache(
-    const gchar* device_fullname, const gchar* device_firmware_version);
+static gchar* gst_pylon_check_for_feature_cache(const gchar* cache_filename);
 
 static std::unordered_set<std::string> propfilter_set = {
     "Width",
@@ -231,32 +230,29 @@ static void gst_pylon_camera_install_specs(
   }
 }
 
-static gchar* gst_pylon_check_for_feature_cache(
-    const gchar* device_fullname, const gchar* device_firmware_version) {
-  g_return_val_if_fail(device_fullname, NULL);
-  g_return_val_if_fail(device_firmware_version, NULL);
+static gchar* gst_pylon_check_for_feature_cache(const gchar* cache_filename) {
+  g_return_val_if_fail(cache_filename, NULL);
 
-  gchar* filename =
-      g_strdup_printf("%s_%s", device_fullname, device_firmware_version);
   gchar* filename_hash = g_compute_checksum_for_string(
-      G_CHECKSUM_SHA256, filename, strlen(filename));
+      G_CHECKSUM_SHA256, cache_filename, strlen(cache_filename));
   gchar* dirpath = g_strdup_printf("%s/%s", g_get_user_cache_dir(), "gstpylon");
-  gchar* filepath = g_strdup_printf("%s/%s", dirpath, filename_hash);
 
   /* Create gstpylon directory */
   gint dir_permissions = 0775;
   g_mkdir_with_parents(dirpath, dir_permissions);
 
+  gchar* filepath = g_strdup_printf("%s/%s", dirpath, filename_hash);
+
   g_free(dirpath);
   g_free(filename_hash);
-  g_free(filename);
 
   return filepath;
 }
 
-void GstPylonFeatureWalker::install_properties(
-    GObjectClass* oclass, GenApi::INodeMap& nodemap,
-    const gchar* device_fullname, const gchar* device_firmware_version) {
+void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
+                                               GenApi::INodeMap& nodemap,
+                                               const gchar* device_fullname,
+                                               const gchar* cache_filename) {
   g_return_if_fail(oclass);
 
   /* Start KeyFile object to hold property cache */
