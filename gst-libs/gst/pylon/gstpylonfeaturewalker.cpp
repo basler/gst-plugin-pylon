@@ -57,6 +57,8 @@ static void gst_pylon_camera_install_specs(
     const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
     gint& nprop);
 static gchar* gst_pylon_check_for_feature_cache(const gchar* cache_filename);
+static void gst_pylon_create_cache_file(GKeyFile* feature_cache,
+                                        const gchar* cache_filename);
 
 static std::unordered_set<std::string> propfilter_set = {
     "Width",
@@ -249,6 +251,27 @@ static gchar* gst_pylon_check_for_feature_cache(const gchar* cache_filename) {
   return filepath;
 }
 
+static void gst_pylon_create_cache_file(GKeyFile* feature_cache,
+                                        const gchar* cache_filename) {
+  g_return_if_fail(feature_cache);
+  g_return_if_fail(cache_filename);
+
+  gsize len = 0;
+  gchar* feature_cache_str = g_key_file_to_data(feature_cache, &len, NULL);
+  gchar* filepath = gst_pylon_check_for_feature_cache(cache_filename);
+
+  GError* file_err = NULL;
+  gboolean ret =
+      g_file_set_contents(filepath, feature_cache_str, len, &file_err);
+  if (!ret) {
+    GST_WARNING("Feature cache could not be generated. %s", file_err->message);
+    g_error_free(file_err);
+  }
+
+  g_free(feature_cache_str);
+  g_free(filepath);
+}
+
 void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
                                                GenApi::INodeMap& nodemap,
                                                const gchar* device_fullname,
@@ -301,5 +324,6 @@ void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
     }
   }
 
+  gst_pylon_create_cache_file(feature_cache, cache_filename);
   g_key_file_free(feature_cache);
 }
