@@ -49,8 +49,8 @@ struct _GstPylonObjectPrivate {
 
 typedef struct _GstPylonObjectDeviceMembers GstPylonObjectDeviceMembers;
 struct _GstPylonObjectDeviceMembers {
-  const gchar* device_name;
-  const gchar* cache_filename;
+  const std::string device_name;
+  const std::string cache_filename;
   GenApi::INodeMap& nodemap;
 };
 
@@ -75,12 +75,11 @@ static inline gpointer gst_pylon_object_get_instance_private(
   return (G_STRUCT_MEMBER_P(self, GstPylonObject_private_offset));
 }
 
-GType gst_pylon_object_register(const Pylon::String_t& device_name,
-                                const Pylon::String_t& cache_filename,
+GType gst_pylon_object_register(const std::string& device_name,
+                                const std::string& cache_filename,
                                 GenApi::INodeMap& exemplar) {
-  GstPylonObjectDeviceMembers* device_members = new GstPylonObjectDeviceMembers(
-      {g_strdup(device_name.c_str()), g_strdup(cache_filename.c_str()),
-       exemplar});
+  GstPylonObjectDeviceMembers* device_members =
+      new GstPylonObjectDeviceMembers({device_name, cache_filename, exemplar});
 
   GTypeInfo typeinfo = {
       sizeof(GstPylonObjectClass),
@@ -116,10 +115,9 @@ GType gst_pylon_object_register(const Pylon::String_t& device_name,
  ***********************************************************/
 
 /* prototypes */
-static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
-                                                GenApi::INodeMap& nodemap,
-                                                const gchar* device_fullname,
-                                                const gchar* cache_filename);
+static void gst_pylon_object_install_properties(
+    GstPylonObjectClass* klass, GenApi::INodeMap& nodemap,
+    const std::string device_fullname, const std::string cache_filename);
 template <typename F, typename P>
 static void gst_pylon_object_set_pylon_property(GenApi::INodeMap& nodemap,
                                                 F get_value,
@@ -159,8 +157,8 @@ static void gst_pylon_object_finalize(GObject* self);
 
 static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
                                                 GenApi::INodeMap& nodemap,
-                                                const gchar* device_name,
-                                                const gchar* cache_filename) {
+                                                std::string device_name,
+                                                std::string cache_filename) {
   g_return_if_fail(klass);
 
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
@@ -384,7 +382,7 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
 
 GObject* gst_pylon_object_new(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const Pylon::String_t& device_name, GenApi::INodeMap* nodemap) {
+    const std::string& device_name, GenApi::INodeMap* nodemap) {
   gchar* type_name = gst_pylon_param_spec_sanitize_name(device_name.c_str());
 
   GType type = g_type_from_name(type_name);

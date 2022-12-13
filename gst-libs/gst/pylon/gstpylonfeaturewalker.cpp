@@ -52,13 +52,14 @@ static std::vector<std::string> gst_pylon_get_int_entries(
     GenApi::IInteger* int_node);
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, GenApi::INodeMap& nodemap,
-    const gchar* device_fullname, GKeyFile* feature_cache);
+    const std::string device_fullname, GKeyFile* feature_cache);
 static void gst_pylon_camera_install_specs(
     const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
     gint& nprop);
-static gchar* gst_pylon_check_for_feature_cache(const gchar* cache_filename);
+static gchar* gst_pylon_check_for_feature_cache(
+    const std::string cache_filename);
 static void gst_pylon_create_cache_file(GKeyFile* feature_cache,
-                                        const gchar* cache_filename);
+                                        const std::string cache_filename);
 
 static std::unordered_set<std::string> propfilter_set = {
     "Width",
@@ -172,7 +173,7 @@ std::vector<std::string> GstPylonFeatureWalker::process_selector_features(
 
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, GenApi::INodeMap& nodemap,
-    const gchar* device_fullname, GKeyFile* feature_cache) {
+    const std::string device_fullname, GKeyFile* feature_cache) {
   GenApi::INode* selector_node = NULL;
   guint64 selector_value = 0;
   std::vector<GParamSpec*> specs_list;
@@ -232,11 +233,11 @@ static void gst_pylon_camera_install_specs(
   }
 }
 
-static gchar* gst_pylon_check_for_feature_cache(const gchar* cache_filename) {
-  g_return_val_if_fail(cache_filename, NULL);
-
-  gchar* filename_hash = g_compute_checksum_for_string(
-      G_CHECKSUM_SHA256, cache_filename, strlen(cache_filename));
+static gchar* gst_pylon_check_for_feature_cache(
+    const std::string cache_filename) {
+  gchar* filename_hash =
+      g_compute_checksum_for_string(G_CHECKSUM_SHA256, cache_filename.c_str(),
+                                    strlen(cache_filename.c_str()));
   gchar* dirpath = g_strdup_printf("%s/%s", g_get_user_cache_dir(), "gstpylon");
 
   /* Create gstpylon directory */
@@ -252,13 +253,12 @@ static gchar* gst_pylon_check_for_feature_cache(const gchar* cache_filename) {
 }
 
 static void gst_pylon_create_cache_file(GKeyFile* feature_cache,
-                                        const gchar* cache_filename) {
+                                        const std::string cache_filename) {
   g_return_if_fail(feature_cache);
-  g_return_if_fail(cache_filename);
 
   gsize len = 0;
   gchar* feature_cache_str = g_key_file_to_data(feature_cache, &len, NULL);
-  gchar* filepath = gst_pylon_check_for_feature_cache(cache_filename);
+  gchar* filepath = gst_pylon_check_for_feature_cache(cache_filename.c_str());
 
   GError* file_err = NULL;
   gboolean ret =
@@ -272,10 +272,9 @@ static void gst_pylon_create_cache_file(GKeyFile* feature_cache,
   g_free(filepath);
 }
 
-void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
-                                               GenApi::INodeMap& nodemap,
-                                               const gchar* device_fullname,
-                                               const gchar* cache_filename) {
+void GstPylonFeatureWalker::install_properties(
+    GObjectClass* oclass, GenApi::INodeMap& nodemap,
+    const std::string device_fullname, const std::string cache_filename) {
   g_return_if_fail(oclass);
 
   /* Start KeyFile object to hold property cache */
@@ -308,7 +307,7 @@ void GstPylonFeatureWalker::install_properties(GObjectClass* oclass,
         gst_pylon_camera_install_specs(specs_list, oclass, nprop);
       } catch (const Pylon::GenericException& e) {
         GST_FIXME("Unable to install property \"%s\" on device \"%s\": %s",
-                  node->GetDisplayName().c_str(), device_fullname,
+                  node->GetDisplayName().c_str(), device_fullname.c_str(),
                   e.GetDescription());
       }
     }

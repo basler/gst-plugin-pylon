@@ -63,12 +63,12 @@ struct _GstPylonObjectClass {
   GstObjectClass parent_class;
 };
 
-EXT_PYLONSRC_API GType gst_pylon_object_register(const Pylon::String_t& device_name,
-                                                 const Pylon::String_t& cache_filename,
+EXT_PYLONSRC_API GType gst_pylon_object_register(const std::string& device_name,
+                                                 const std::string& cache_filename,
                                                  GenApi::INodeMap& nodemap);
 EXT_PYLONSRC_API GObject* gst_pylon_object_new(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const Pylon::String_t& device_name, GenApi::INodeMap* nodemap);
+    const std::string& device_name, GenApi::INodeMap* nodemap);
 
 G_END_DECLS
 
