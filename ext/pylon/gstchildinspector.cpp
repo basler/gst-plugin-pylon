@@ -101,7 +101,7 @@ static GString *gst_child_inspector_build_string_for_enum(GParamSpecEnum *penum,
   GString *desc = g_string_new(NULL);
   GEnumValue *iter = NULL;
 
-  g_string_append_printf(desc, "Enum \"%s\" Default: %d, \"%s\"",
+  g_string_append_printf(desc, R"(Enum "%s" Default: %d, "%s")",
                          g_type_name(type), def, sdef);
   g_free(sdef);
 
