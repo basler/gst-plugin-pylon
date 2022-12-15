@@ -39,6 +39,8 @@
 #include "gstpylonobject.h"
 #include "gstpylonparamspecs.h"
 
+#include <utility>
+
 typedef struct _GstPylonObjectPrivate GstPylonObjectPrivate;
 struct _GstPylonObjectPrivate {
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera;
@@ -72,7 +74,7 @@ static inline gpointer gst_pylon_object_get_instance_private(
   return (G_STRUCT_MEMBER_P(self, GstPylonObject_private_offset));
 }
 
-GType gst_pylon_object_register(Pylon::String_t device_name,
+GType gst_pylon_object_register(const Pylon::String_t& device_name,
                                 GenApi::INodeMap& exemplar) {
   GstPylonObjectDeviceMembers* device_members = new GstPylonObjectDeviceMembers(
       {g_strdup(device_name.c_str()), exemplar});
@@ -375,7 +377,7 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
 
 GObject* gst_pylon_object_new(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    Pylon::String_t device_name, GenApi::INodeMap* nodemap) {
+    const Pylon::String_t& device_name, GenApi::INodeMap* nodemap) {
   gchar* type_name = gst_pylon_param_spec_sanitize_name(device_name.c_str());
 
   GType type = g_type_from_name(type_name);
@@ -385,7 +387,7 @@ GObject* gst_pylon_object_new(
       (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
   g_free(type_name);
 
-  priv->camera = camera;
+  priv->camera = std::move(camera);
   priv->nodemap = nodemap;
 
   return obj;

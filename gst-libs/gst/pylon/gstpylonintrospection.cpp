@@ -106,7 +106,7 @@ static void gst_pylon_add_all_property_values(
     GenApi::INode *feature_node, std::string value,
     std::unordered_map<std::string, GenApi::INode *> &invalidators);
 static std::vector<GenApi::INode *> gst_pylon_get_available_features(
-    std::set<GenApi::INode *> feature_list);
+    const std::set<GenApi::INode *> &feature_list);
 template <class Type>
 static std::vector<std::vector<Type>> gst_pylon_cartesian_product(
     std::vector<std::vector<Type>> &v);
@@ -116,9 +116,10 @@ static T gst_pylon_check_for_feature_invalidators(
     std::unordered_map<std::string, GenApi::INode *> &invalidators);
 template <class P, class T>
 static T gst_pylon_query_feature_limits(GenApi::INode *feature_node,
-                                        std::string limit);
+                                        const std::string &limit);
 static std::vector<std::vector<GstPylonActions *>>
-gst_pylon_create_set_value_actions(std::vector<GenApi::INode *> node_list);
+gst_pylon_create_set_value_actions(
+    const std::vector<GenApi::INode *> &node_list);
 template <class P, class T>
 static void gst_pylon_find_limits(
     GenApi::INode *node, double &minimum_under_all_settings,
@@ -251,7 +252,7 @@ static void gst_pylon_add_all_property_values(
 }
 
 static std::vector<GenApi::INode *> gst_pylon_get_available_features(
-    std::set<GenApi::INode *> feature_list) {
+    const std::set<GenApi::INode *> &feature_list) {
   std::vector<GenApi::INode *> available_features;
   for (const auto &feature : feature_list) {
     if (GenApi::IsAvailable(feature)) {
@@ -281,7 +282,7 @@ static std::vector<std::vector<Type>> gst_pylon_cartesian_product(
 
 template <class P, class T>
 static T gst_pylon_query_feature_limits(GenApi::INode *node,
-                                        std::string limit) {
+                                        const std::string &limit) {
   g_return_val_if_fail(node, 0);
 
   P param(node);
@@ -316,7 +317,8 @@ static T gst_pylon_check_for_feature_invalidators(
 }
 
 static std::vector<std::vector<GstPylonActions *>>
-gst_pylon_create_set_value_actions(std::vector<GenApi::INode *> node_list) {
+gst_pylon_create_set_value_actions(
+    const std::vector<GenApi::INode *> &node_list) {
   std::vector<std::vector<GstPylonActions *>> actions_list;
 
   for (const auto &node : node_list) {
@@ -375,7 +377,7 @@ gst_pylon_create_set_value_actions(std::vector<GenApi::INode *> node_list) {
 }
 
 static std::vector<GstPylonActions *> gst_pylon_create_reset_value_actions(
-    std::vector<GenApi::INode *> node_list) {
+    const std::vector<GenApi::INode *> &node_list) {
   std::vector<GstPylonActions *> actions_list;
 
   for (const auto &node : node_list) {

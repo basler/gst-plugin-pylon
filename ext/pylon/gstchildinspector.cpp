@@ -101,7 +101,7 @@ static GString *gst_child_inspector_build_string_for_enum(GParamSpecEnum *penum,
   GString *desc = g_string_new(NULL);
   GEnumValue *iter = NULL;
 
-  g_string_append_printf(desc, "Enum \"%s\" Default: %d, \"%s\"",
+  g_string_append_printf(desc, R"(Enum "%s" Default: %d, "%s")",
                          g_type_name(type), def, sdef);
   g_free(sdef);
 
@@ -279,7 +279,7 @@ gchar *gst_child_inspector_property_to_string(GObject *object,
 gchar *gst_child_inspector_properties_to_string(GObject *object,
                                                 guint alignment, gchar *title) {
   GParamSpec **property_specs = NULL;
-  guint num_properties, i = 0;
+  guint num_properties = 0, i = 0;
   GString *props = NULL;
   gchar *prop = NULL;
 

@@ -32,10 +32,8 @@
 
 #include "gstpylonimagehandler.h"
 
-GstPylonImageHandler::GstPylonImageHandler() {
-  this->ptr_grab_result = NULL;
-  this->grab_result_ready = false;
-}
+GstPylonImageHandler::GstPylonImageHandler()
+    : ptr_grab_result(NULL), grab_result_ready(false) {}
 
 void GstPylonImageHandler::OnImageGrabbed(
     Pylon::CBaslerUniversalInstantCamera &camera,
