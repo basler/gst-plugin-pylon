@@ -56,10 +56,6 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
 static void gst_pylon_camera_install_specs(
     const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
     gint& nprop);
-static gchar* gst_pylon_check_for_feature_cache(
-    const std::string cache_filename);
-static void gst_pylon_create_cache_file(GKeyFile* feature_cache,
-                                        const std::string cache_filename);
 
 static std::unordered_set<std::string> propfilter_set = {
     "Width",
@@ -233,52 +229,13 @@ static void gst_pylon_camera_install_specs(
   }
 }
 
-static gchar* gst_pylon_check_for_feature_cache(
-    const std::string cache_filename) {
-  gchar* filename_hash =
-      g_compute_checksum_for_string(G_CHECKSUM_SHA256, cache_filename.c_str(),
-                                    strlen(cache_filename.c_str()));
-  gchar* dirpath = g_strdup_printf("%s/%s", g_get_user_cache_dir(), "gstpylon");
-
-  /* Create gstpylon directory */
-  gint dir_permissions = 0775;
-  g_mkdir_with_parents(dirpath, dir_permissions);
-
-  gchar* filepath = g_strdup_printf("%s/%s", dirpath, filename_hash);
-
-  g_free(dirpath);
-  g_free(filename_hash);
-
-  return filepath;
-}
-
-static void gst_pylon_create_cache_file(GKeyFile* feature_cache,
-                                        const std::string cache_filename) {
-  g_return_if_fail(feature_cache);
-
-  gsize len = 0;
-  gchar* feature_cache_str = g_key_file_to_data(feature_cache, &len, NULL);
-  gchar* filepath = gst_pylon_check_for_feature_cache(cache_filename.c_str());
-
-  GError* file_err = NULL;
-  gboolean ret =
-      g_file_set_contents(filepath, feature_cache_str, len, &file_err);
-  if (!ret) {
-    GST_WARNING("Feature cache could not be generated. %s", file_err->message);
-    g_error_free(file_err);
-  }
-
-  g_free(feature_cache_str);
-  g_free(filepath);
-}
-
 void GstPylonFeatureWalker::install_properties(
     GObjectClass* oclass, GenApi::INodeMap& nodemap,
     const std::string device_fullname, GstPylonCache& feature_cache) {
   g_return_if_fail(oclass);
 
-  /* Start KeyFile object to hold property cache */
-  GKeyFile* feature_cache_dict = g_key_file_new();
+  /* Get KeyFile object to hold property cache */
+  GKeyFile* feature_cache_dict = feature_cache.GetCacheDict();
 
   gint nprop = 1;
   GenApi::INode* root_node = nodemap.GetNode("Root");
@@ -323,5 +280,5 @@ void GstPylonFeatureWalker::install_properties(
     }
   }
 
-  g_key_file_free(feature_cache_dict);
+  feature_cache.CreateCacheFile();
 }
