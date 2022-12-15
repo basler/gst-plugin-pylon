@@ -60,7 +60,10 @@ GstPylonCache::GstPylonCache(const std::string name)
 
 GstPylonCache::~GstPylonCache() { g_key_file_free(this->feature_cache_dict); }
 
-GKeyFile* GstPylonCache::GetCacheDict() { return this->feature_cache_dict; }
+void GstPylonCache::SetCacheValue(std::string key, std::string value) {
+  g_key_file_set_string(this->feature_cache_dict, "gstpylon", key.c_str(),
+                        value.c_str());
+}
 
 void GstPylonCache::CreateCacheFile() {
   gsize len = 0;

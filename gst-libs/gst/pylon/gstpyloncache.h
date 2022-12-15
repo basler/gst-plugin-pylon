@@ -57,7 +57,7 @@ class GstPylonCache {
  public:
   GstPylonCache(const std::string name);
   ~GstPylonCache();
-  GKeyFile* GetCacheDict();
+  void SetCacheValue(std::string key, std::string value);
   void CreateCacheFile();
 
  private:

@@ -33,6 +33,8 @@
 #ifndef _GST_PYLON_INTROSPECTION_H_
 #define _GST_PYLON_INTROSPECTION_H_
 
+#include "gstpyloncache.h"
+
 #include <gst/gst.h>
 
 #ifdef _MSC_VER  // MSVC
@@ -59,7 +61,7 @@ class GstPylonParamFactory {
   static GParamSpec *make_param(GenApi::INodeMap &nodemap, GenApi::INode *node,
                                 GenApi::INode *selector, guint64 selector_value,
                                 const std::string device_fullname,
-                                GKeyFile *feature_cache);
+                                GstPylonCache &feature_cache);
 };
 
 #endif

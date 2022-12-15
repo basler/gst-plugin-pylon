@@ -67,12 +67,10 @@ class GstPylonTypeAction : public GstPylonActions {
 /* prototypes */
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
                                              GenApi::INode *node,
-                                             GKeyFile *feature_cache);
-static GParamSpec *gst_pylon_make_spec_selector_int64(GenApi::INodeMap &nodemap,
-                                                      GenApi::INode *node,
-                                                      GenApi::INode *selector,
-                                                      guint64 selector_value,
-                                                      GKeyFile *feature_cache);
+                                             GstPylonCache &feature_cache);
+static GParamSpec *gst_pylon_make_spec_selector_int64(
+    GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
+    guint64 selector_value, GstPylonCache &feature_cache);
 static GParamSpec *gst_pylon_make_spec_bool(GenApi::INodeMap &nodemap,
                                             GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_selector_bool(GenApi::INodeMap &nodemap,
@@ -81,12 +79,10 @@ static GParamSpec *gst_pylon_make_spec_selector_bool(GenApi::INodeMap &nodemap,
                                                      guint64 selector_value);
 static GParamSpec *gst_pylon_make_spec_float(GenApi::INodeMap &nodemap,
                                              GenApi::INode *node,
-                                             GKeyFile *feature_cache);
-static GParamSpec *gst_pylon_make_spec_selector_float(GenApi::INodeMap &nodemap,
-                                                      GenApi::INode *node,
-                                                      GenApi::INode *selector,
-                                                      guint64 selector_value,
-                                                      GKeyFile *feature_cache);
+                                             GstPylonCache &feature_cache);
+static GParamSpec *gst_pylon_make_spec_selector_float(
+    GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
+    guint64 selector_value, GstPylonCache &feature_cache);
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INodeMap &nodemap,
                                            GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_selector_str(GenApi::INodeMap &nodemap,
@@ -135,7 +131,7 @@ static void gst_pylon_query_feature_properties(GenApi::INodeMap &nodemap,
                                                GParamFlags &flags,
                                                T &minimum_under_all_settings,
                                                T &maximum_under_all_settings,
-                                               GKeyFile *feature_cache);
+                                               GstPylonCache &feature_cache);
 static gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode *node);
 static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
                                           GenApi::INode *node);
@@ -532,7 +528,7 @@ static void gst_pylon_query_feature_properties(GenApi::INodeMap &nodemap,
                                                GParamFlags &flags,
                                                T &minimum_under_all_settings,
                                                T &maximum_under_all_settings,
-                                               GKeyFile *feature_cache) {
+                                               GstPylonCache &feature_cache) {
   g_return_if_fail(node);
 
   flags = gst_pylon_query_access(nodemap, node);
@@ -542,13 +538,12 @@ static void gst_pylon_query_feature_properties(GenApi::INodeMap &nodemap,
   std::string limits_and_flags =
       std::to_string(minimum_under_all_settings) + " " +
       std::to_string(maximum_under_all_settings) + " " + std::to_string(flags);
-  g_key_file_set_string(feature_cache, "gstpylon", node->GetName().c_str(),
-                        limits_and_flags.c_str());
+  feature_cache.SetCacheValue(std::string(node->GetName()), limits_and_flags);
 }
 
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
                                              GenApi::INode *node,
-                                             GKeyFile *feature_cache) {
+                                             GstPylonCache &feature_cache) {
   g_return_val_if_fail(node, NULL);
 
   Pylon::CIntegerParameter param(node);
@@ -564,11 +559,9 @@ static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
                             param.GetValue(), flags);
 }
 
-static GParamSpec *gst_pylon_make_spec_selector_int64(GenApi::INodeMap &nodemap,
-                                                      GenApi::INode *node,
-                                                      GenApi::INode *selector,
-                                                      guint64 selector_value,
-                                                      GKeyFile *feature_cache) {
+static GParamSpec *gst_pylon_make_spec_selector_int64(
+    GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
+    guint64 selector_value, GstPylonCache &feature_cache) {
   g_return_val_if_fail(node, NULL);
   g_return_val_if_fail(selector, NULL);
 
@@ -614,7 +607,7 @@ static GParamSpec *gst_pylon_make_spec_selector_bool(GenApi::INodeMap &nodemap,
 
 static GParamSpec *gst_pylon_make_spec_float(GenApi::INodeMap &nodemap,
                                              GenApi::INode *node,
-                                             GKeyFile *feature_cache) {
+                                             GstPylonCache &feature_cache) {
   g_return_val_if_fail(node, NULL);
 
   Pylon::CFloatParameter param(node);
@@ -630,11 +623,9 @@ static GParamSpec *gst_pylon_make_spec_float(GenApi::INodeMap &nodemap,
                             param.GetValue(), flags);
 }
 
-static GParamSpec *gst_pylon_make_spec_selector_float(GenApi::INodeMap &nodemap,
-                                                      GenApi::INode *node,
-                                                      GenApi::INode *selector,
-                                                      guint64 selector_value,
-                                                      GKeyFile *feature_cache) {
+static GParamSpec *gst_pylon_make_spec_selector_float(
+    GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
+    guint64 selector_value, GstPylonCache &feature_cache) {
   g_return_val_if_fail(node, NULL);
   g_return_val_if_fail(selector, NULL);
 
@@ -760,7 +751,7 @@ GParamSpec *GstPylonParamFactory::make_param(GenApi::INodeMap &nodemap,
                                              GenApi::INode *selector,
                                              guint64 selector_value,
                                              const std::string device_fullname,
-                                             GKeyFile *feature_cache) {
+                                             GstPylonCache &feature_cache) {
   g_return_val_if_fail(node, NULL);
 
   GParamSpec *spec = NULL;
