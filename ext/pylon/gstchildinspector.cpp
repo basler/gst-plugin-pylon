@@ -279,7 +279,7 @@ gchar *gst_child_inspector_property_to_string(GObject *object,
 gchar *gst_child_inspector_properties_to_string(GObject *object,
                                                 guint alignment, gchar *title) {
   GParamSpec **property_specs = NULL;
-  guint num_properties, i = 0;
+  guint num_properties = 0, i = 0;
   GString *props = NULL;
   gchar *prop = NULL;
 
