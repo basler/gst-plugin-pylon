@@ -33,6 +33,8 @@
 #ifndef _GST_PYLON_FEATURE_WALKER_H_
 #define _GST_PYLON_FEATURE_WALKER_H_
 
+#include "gstpyloncache.h"
+
 #include <gst/gst.h>
 
 #ifdef _MSC_VER  // MSVC
@@ -58,7 +60,7 @@ class GstPylonFeatureWalker {
   static void install_properties(GObjectClass* oclass,
                                  GenApi::INodeMap& nodemap,
                                  const std::string device_fullname,
-                                 std::string cache_filename);
+                                 GstPylonCache& feature_cache);
   static std::vector<std::string> process_selector_features(
       GenApi::INode* node, GenApi::INode** selector_node);
 };

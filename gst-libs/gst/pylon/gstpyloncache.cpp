@@ -30,48 +30,6 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_OBJECT_H_
-#define _GST_PYLON_OBJECT_H_
-
 #include "gstpyloncache.h"
 
-#include <gst/gst.h>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(push)
-#pragma warning(disable : 4265)
-#elif __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
-#include <pylon/BaslerUniversalInstantCamera.h>
-#include <pylon/PylonIncludes.h>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(pop)
-#elif __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
-#endif
-
-G_BEGIN_DECLS
-
-G_DECLARE_DERIVABLE_TYPE(GstPylonObject, gst_pylon_object, GST, PYLON_OBJECT,
-                         GstObject)
-
-struct _GstPylonObjectClass {
-  GstObjectClass parent_class;
-};
-
-EXT_PYLONSRC_API GType gst_pylon_object_register(const std::string& device_name,
-                                                 GstPylonCache& feature_cache,
-                                                 GenApi::INodeMap& nodemap);
-EXT_PYLONSRC_API GObject* gst_pylon_object_new(
-    std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const std::string& device_name, GenApi::INodeMap* nodemap);
-
-G_END_DECLS
-
-#endif
+GstPylonCache::GstPylonCache(const std::string name) : cache_file_name(name) {}

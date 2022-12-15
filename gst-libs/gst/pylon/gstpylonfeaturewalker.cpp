@@ -274,11 +274,11 @@ static void gst_pylon_create_cache_file(GKeyFile* feature_cache,
 
 void GstPylonFeatureWalker::install_properties(
     GObjectClass* oclass, GenApi::INodeMap& nodemap,
-    const std::string device_fullname, const std::string cache_filename) {
+    const std::string device_fullname, GstPylonCache& feature_cache) {
   g_return_if_fail(oclass);
 
   /* Start KeyFile object to hold property cache */
-  GKeyFile* feature_cache = g_key_file_new();
+  GKeyFile* feature_cache_dict = g_key_file_new();
 
   gint nprop = 1;
   GenApi::INode* root_node = nodemap.GetNode("Root");
@@ -303,7 +303,7 @@ void GstPylonFeatureWalker::install_properties(
 
       try {
         std::vector<GParamSpec*> specs_list = gst_pylon_camera_handle_node(
-            node, nodemap, device_fullname, feature_cache);
+            node, nodemap, device_fullname, feature_cache_dict);
         gst_pylon_camera_install_specs(specs_list, oclass, nprop);
       } catch (const Pylon::GenericException& e) {
         GST_FIXME("Unable to install property \"%s\" on device \"%s\": %s",
@@ -323,6 +323,5 @@ void GstPylonFeatureWalker::install_properties(
     }
   }
 
-  gst_pylon_create_cache_file(feature_cache, cache_filename);
-  g_key_file_free(feature_cache);
+  g_key_file_free(feature_cache_dict);
 }

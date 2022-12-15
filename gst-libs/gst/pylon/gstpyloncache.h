@@ -30,10 +30,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_OBJECT_H_
-#define _GST_PYLON_OBJECT_H_
-
-#include "gstpyloncache.h"
+#ifndef _GST_PYLON_CACHE_H_
+#define _GST_PYLON_CACHE_H_
 
 #include <gst/gst.h>
 
@@ -47,7 +45,6 @@
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
-#include <pylon/BaslerUniversalInstantCamera.h>
 #include <pylon/PylonIncludes.h>
 
 #ifdef _MSC_VER  // MSVC
@@ -56,22 +53,13 @@
 #pragma GCC diagnostic pop
 #endif
 
-G_BEGIN_DECLS
+class GstPylonCache {
+ public:
+  GstPylonCache(const std::string name);
+  void CreateCacheFile();
 
-G_DECLARE_DERIVABLE_TYPE(GstPylonObject, gst_pylon_object, GST, PYLON_OBJECT,
-                         GstObject)
-
-struct _GstPylonObjectClass {
-  GstObjectClass parent_class;
+ private:
+  const std::string cache_file_name;
 };
-
-EXT_PYLONSRC_API GType gst_pylon_object_register(const std::string& device_name,
-                                                 GstPylonCache& feature_cache,
-                                                 GenApi::INodeMap& nodemap);
-EXT_PYLONSRC_API GObject* gst_pylon_object_new(
-    std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const std::string& device_name, GenApi::INodeMap* nodemap);
-
-G_END_DECLS
 
 #endif

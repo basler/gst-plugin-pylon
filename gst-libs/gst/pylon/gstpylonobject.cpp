@@ -49,8 +49,8 @@ struct _GstPylonObjectPrivate {
 
 typedef struct _GstPylonObjectDeviceMembers GstPylonObjectDeviceMembers;
 struct _GstPylonObjectDeviceMembers {
-  const std::string device_name;
-  const std::string cache_filename;
+  const std::string& device_name;
+  GstPylonCache& feature_cache;
   GenApi::INodeMap& nodemap;
 };
 
@@ -76,10 +76,10 @@ static inline gpointer gst_pylon_object_get_instance_private(
 }
 
 GType gst_pylon_object_register(const std::string& device_name,
-                                const std::string& cache_filename,
+                                GstPylonCache& feature_cache,
                                 GenApi::INodeMap& exemplar) {
   GstPylonObjectDeviceMembers* device_members =
-      new GstPylonObjectDeviceMembers({device_name, cache_filename, exemplar});
+      new GstPylonObjectDeviceMembers({device_name, feature_cache, exemplar});
 
   GTypeInfo typeinfo = {
       sizeof(GstPylonObjectClass),
@@ -115,9 +115,10 @@ GType gst_pylon_object_register(const std::string& device_name,
  ***********************************************************/
 
 /* prototypes */
-static void gst_pylon_object_install_properties(
-    GstPylonObjectClass* klass, GenApi::INodeMap& nodemap,
-    const std::string device_fullname, const std::string cache_filename);
+static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
+                                                GenApi::INodeMap& nodemap,
+                                                const std::string& device_name,
+                                                GstPylonCache& feature_cache);
 template <typename F, typename P>
 static void gst_pylon_object_set_pylon_property(GenApi::INodeMap& nodemap,
                                                 F get_value,
@@ -157,14 +158,14 @@ static void gst_pylon_object_finalize(GObject* self);
 
 static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
                                                 GenApi::INodeMap& nodemap,
-                                                std::string device_name,
-                                                std::string cache_filename) {
+                                                const std::string& device_name,
+                                                GstPylonCache& feature_cache) {
   g_return_if_fail(klass);
 
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
   GstPylonFeatureWalker::install_properties(oclass, nodemap, device_name,
-                                            cache_filename);
+                                            feature_cache);
 }
 
 static void gst_pylon_object_class_init(
@@ -177,7 +178,7 @@ static void gst_pylon_object_class_init(
 
   gst_pylon_object_install_properties(klass, device_members->nodemap,
                                       device_members->device_name,
-                                      device_members->cache_filename);
+                                      device_members->feature_cache);
 
   delete (device_members);
 }

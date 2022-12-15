@@ -34,6 +34,7 @@
 #include "config.h"
 #endif
 
+#include "gst/pylon/gstpyloncache.h"
 #include "gst/pylon/gstpylondebug.h"
 #include "gst/pylon/gstpylonmetaprivate.h"
 #include "gst/pylon/gstpylonobject.h"
@@ -108,7 +109,7 @@ static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
 static void gst_pylon_append_properties(
     Pylon::CBaslerUniversalInstantCamera *camera,
     const std::string &device_full_name, const std::string &device_type_str,
-    const std::string &cache_filename, GenApi::INodeMap &nodemap,
+    GstPylonCache &feature_cache, GenApi::INodeMap &nodemap,
     gchar **device_properties, guint alignment);
 static void gst_pylon_append_camera_properties(
     Pylon::CBaslerUniversalInstantCamera *camera, gchar **camera_properties,
@@ -826,13 +827,13 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 static void gst_pylon_append_properties(
     Pylon::CBaslerUniversalInstantCamera *camera,
     const std::string &device_full_name, const std::string &device_type_str,
-    const std::string &cache_filename, GenApi::INodeMap &nodemap,
+    GstPylonCache &feature_cache, GenApi::INodeMap &nodemap,
     gchar **device_properties, guint alignment) {
   g_return_if_fail(camera);
   g_return_if_fail(device_properties);
 
   GType device_type =
-      gst_pylon_object_register(device_full_name, cache_filename, nodemap);
+      gst_pylon_object_register(device_full_name, feature_cache, nodemap);
   GObject *device_obj = G_OBJECT(g_object_new(device_type, NULL));
 
   gchar *device_name = g_strdup_printf(
@@ -867,8 +868,9 @@ static void gst_pylon_append_camera_properties(
   std::string cache_filename =
       std::string(camera->DeviceModelName.GetValue() + "_" +
                   camera->DeviceFirmwareVersion.GetValue() + "_" + VERSION);
+  GstPylonCache feature_cache(cache_filename);
 
-  gst_pylon_append_properties(camera, camera_name, device_type, cache_filename,
+  gst_pylon_append_properties(camera, camera_name, device_type, feature_cache,
                               nodemap, camera_properties, alignment);
 }
 
@@ -884,10 +886,10 @@ static void gst_pylon_append_stream_grabber_properties(
   std::string cache_filename =
       std::string(camera->GetDeviceInfo().GetModelName() + "_" +
                   Pylon::VersionInfo::getVersionString() + "_" + VERSION);
+  GstPylonCache feature_cache(cache_filename);
 
-  gst_pylon_append_properties(camera, sgrabber_name, device_type,
-                              cache_filename, nodemap, sgrabber_properties,
-                              alignment);
+  gst_pylon_append_properties(camera, sgrabber_name, device_type, feature_cache,
+                              nodemap, sgrabber_properties, alignment);
 }
 
 static gchar *gst_pylon_get_string_properties(
