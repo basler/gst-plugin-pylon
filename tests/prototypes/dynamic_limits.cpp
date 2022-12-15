@@ -58,7 +58,7 @@ using namespace std;
 #include <vector>
 
 static GenApi::INode* find_limit_node(GenApi::INode* feature_node,
-                                      const GenICam::gcstring limit) {
+                                      const GenICam::gcstring& limit) {
   GenApi::INode* limit_node = NULL;
   GenICam::gcstring value;
   GenICam::gcstring attribute;
@@ -112,7 +112,7 @@ static void add_all_property_values(
 }
 
 static vector<GenApi::INode*> get_available_features(
-    vector<GenApi::INode*> feature_list) {
+    const vector<GenApi::INode*>& feature_list) {
   vector<GenApi::INode*> available_features;
   for (const auto& feature : feature_list) {
     if (GenApi::IsAvailable(feature)) {
@@ -140,7 +140,7 @@ static vector<vector<Type>> cartesian(vector<vector<Type>>& v) {
 }
 
 static double query_feature_limits(GenApi::INode* feature_node,
-                                   std::string limit) {
+                                   const std::string& limit) {
   if (GenApi::intfIInteger == feature_node->GetPrincipalInterfaceType()) {
     if ("max" == limit) {
       return Pylon::CIntegerParameter(feature_node).GetMax();
@@ -157,7 +157,8 @@ static double query_feature_limits(GenApi::INode* feature_node,
 }
 
 static double check_for_feature_invalidators(
-    GenApi::INode* feature_node, GenApi::INode* limit_node, std::string limit,
+    GenApi::INode* feature_node, GenApi::INode* limit_node,
+    const std::string& limit,
     unordered_map<std::string, GenApi::INode*>& invalidators) {
   double limit_under_all_settings = 0;
   GenICam::gcstring value;
@@ -195,7 +196,7 @@ class ValueAction : public Actions {
 };
 
 static vector<vector<Actions*>> create_set_value_actions(
-    vector<GenApi::INode*> node_list) {
+    const vector<GenApi::INode*>& node_list) {
   vector<vector<Actions*>> actions_list;
 
   for (const auto& node : node_list) {

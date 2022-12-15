@@ -92,7 +92,7 @@ static void gst_pylon_query_height(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue);
 static void gst_pylon_query_caps(
     GstPylon *self, GstStructure *st,
-    std::vector<PixelFormatMappingType> pixel_format_mapping);
+    const std::vector<PixelFormatMappingType> &pixel_format_mapping);
 static void gst_pylon_add_result_meta(
     GstPylon *self, GstBuffer *buf,
     Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
@@ -103,12 +103,13 @@ static std::vector<std::string> gst_pylon_pfnc_to_gst(
     const std::string &genapi_format,
     const std::vector<PixelFormatMappingType> &pixel_format_mapping);
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
-    GenApi::StringList_t genapi_formats,
+    const GenApi::StringList_t &genapi_formats,
     const std::vector<PixelFormatMappingType> &pixel_format_mapping);
 static void gst_pylon_append_properties(
     Pylon::CBaslerUniversalInstantCamera *camera,
-    Pylon::String_t device_full_name, Pylon::String_t device_type_str,
-    GenApi::INodeMap &nodemap, gchar **device_properties, guint alignment);
+    const Pylon::String_t &device_full_name,
+    const Pylon::String_t &device_type_str, GenApi::INodeMap &nodemap,
+    gchar **device_properties, guint alignment);
 static void gst_pylon_append_camera_properties(
     Pylon::CBaslerUniversalInstantCamera *camera, gchar **camera_properties,
     guint alignment);
@@ -550,7 +551,7 @@ static std::vector<std::string> gst_pylon_pfnc_to_gst(
 }
 
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
-    GenApi::StringList_t genapi_formats,
+    const GenApi::StringList_t &genapi_formats,
     const std::vector<PixelFormatMappingType> &pixel_format_mapping) {
   std::vector<std::string> formats_list;
 
@@ -669,7 +670,7 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
 
 static void gst_pylon_query_caps(
     GstPylon *self, GstStructure *st,
-    std::vector<PixelFormatMappingType> pixel_format_mapping) {
+    const std::vector<PixelFormatMappingType> &pixel_format_mapping) {
   g_return_if_fail(self);
   g_return_if_fail(st);
 
@@ -824,8 +825,9 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
 static void gst_pylon_append_properties(
     Pylon::CBaslerUniversalInstantCamera *camera,
-    Pylon::String_t device_full_name, Pylon::String_t device_type_str,
-    GenApi::INodeMap &nodemap, gchar **device_properties, guint alignment) {
+    const Pylon::String_t &device_full_name,
+    const Pylon::String_t &device_type_str, GenApi::INodeMap &nodemap,
+    gchar **device_properties, guint alignment) {
   g_return_if_fail(camera);
   g_return_if_fail(device_properties);
 
