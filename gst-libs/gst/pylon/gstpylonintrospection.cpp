@@ -125,6 +125,10 @@ static void gst_pylon_find_limits(
     GenApi::INode *node, double &minimum_under_all_settings,
     double &maximum_under_all_settings,
     std::vector<GenApi::INode *> &invalidators_result);
+template <class T>
+static std::string gst_pylon_build_cache_value_string(
+    GParamFlags &flags, T &minimum_under_all_settings,
+    T &maximum_under_all_settings);
 template <class P, class T>
 static void gst_pylon_query_feature_properties(GenApi::INodeMap &nodemap,
                                                GenApi::INode *node,
@@ -522,6 +526,29 @@ static void gst_pylon_find_limits(GenApi::INode *node,
   }
 }
 
+template <class T>
+static std::string gst_pylon_build_cache_value_string(
+    GParamFlags &flags, T &minimum_under_all_settings,
+    T &maximum_under_all_settings) {
+  std::string limits_and_flags;
+  gint numerator = 0;
+  gint denominator = 0;
+
+  gst_util_double_to_fraction(minimum_under_all_settings, &numerator,
+                              &denominator);
+  limits_and_flags +=
+      std::to_string(numerator) + "," + std::to_string(denominator);
+  limits_and_flags += " ";
+  gst_util_double_to_fraction(maximum_under_all_settings, &numerator,
+                              &denominator);
+  limits_and_flags +=
+      std::to_string(numerator) + "," + std::to_string(denominator);
+  limits_and_flags += " ";
+  limits_and_flags += std::to_string(flags);
+
+  return limits_and_flags;
+}
+
 template <class P, class T>
 static void gst_pylon_query_feature_properties(GenApi::INodeMap &nodemap,
                                                GenApi::INode *node,
@@ -535,9 +562,9 @@ static void gst_pylon_query_feature_properties(GenApi::INodeMap &nodemap,
   gst_pylon_find_limits<P, T>(node, minimum_under_all_settings,
                               maximum_under_all_settings);
 
-  std::string limits_and_flags =
-      std::to_string(minimum_under_all_settings) + " " +
-      std::to_string(maximum_under_all_settings) + " " + std::to_string(flags);
+  std::string limits_and_flags = gst_pylon_build_cache_value_string<T>(
+      flags, minimum_under_all_settings, maximum_under_all_settings);
+
   feature_cache.SetCacheValue(std::string(node->GetName()), limits_and_flags);
 }
 
