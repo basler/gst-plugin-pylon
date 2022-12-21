@@ -32,11 +32,30 @@
 
 #include "gstpyloncache.h"
 
-/* prototypes */
-static gchar* gst_pylon_check_for_feature_cache(
-    const std::string cache_filename);
+#include <errno.h>
 
-static gchar* gst_pylon_check_for_feature_cache(
+#ifdef _MSC_VER  // MSVC
+#pragma warning(push)
+#pragma warning(disable : 4265)
+#elif __GNUC__  // GCC, CLANG, MinGW
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#endif
+
+#include <pylon/PylonIncludes.h>
+
+#ifdef _MSC_VER  // MSVC
+#pragma warning(pop)
+#elif __GNUC__  // GCC, CLANG, MinWG
+#pragma GCC diagnostic pop
+#endif
+
+#define DIRERR -1
+
+/* prototypes */
+static gchar* gst_pylon_cache_create_filepath(const std::string cache_filename);
+
+static gchar* gst_pylon_cache_create_filepath(
     const std::string cache_filename) {
   gchar* filename_hash =
       g_compute_checksum_for_string(G_CHECKSUM_SHA256, cache_filename.c_str(),
@@ -45,7 +64,12 @@ static gchar* gst_pylon_check_for_feature_cache(
 
   /* Create gstpylon directory */
   gint dir_permissions = 0775;
-  g_mkdir_with_parents(dirpath, dir_permissions);
+  gint ret = g_mkdir_with_parents(dirpath, dir_permissions);
+  if (DIRERR == ret) {
+    std::string msg = "Failed to create " + std::string(dirpath) + ": " +
+                      std::string(strerror(errno));
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
 
   gchar* filepath = g_strdup_printf("%s/%s", dirpath, filename_hash);
 
@@ -70,14 +94,15 @@ void GstPylonCache::CreateCacheFile() {
   gchar* feature_cache_str =
       g_key_file_to_data(this->feature_cache_dict, &len, NULL);
   gchar* filepath =
-      gst_pylon_check_for_feature_cache(this->cache_file_name.c_str());
+      gst_pylon_cache_create_filepath(this->cache_file_name.c_str());
 
   GError* file_err = NULL;
   gboolean ret =
       g_file_set_contents(filepath, feature_cache_str, len, &file_err);
   if (!ret) {
-    GST_WARNING("Feature cache could not be generated. %s", file_err->message);
+    std::string file_err_str = std::string(file_err->message);
     g_error_free(file_err);
+    throw Pylon::GenericException(file_err_str.c_str(), __FILE__, __LINE__);
   }
 
   g_free(feature_cache_str);

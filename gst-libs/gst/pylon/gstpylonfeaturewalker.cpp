@@ -277,5 +277,9 @@ void GstPylonFeatureWalker::install_properties(
     }
   }
 
-  feature_cache.CreateCacheFile();
+  try {
+    feature_cache.CreateCacheFile();
+  } catch (const Pylon::GenericException& e) {
+    GST_WARNING("Feature cache could not be generated. %s", e.GetDescription());
+  }
 }
