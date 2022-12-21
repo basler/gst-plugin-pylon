@@ -69,41 +69,63 @@ static std::string gst_pylon_cache_create_filepath(
   /* Create gstpylon directory */
   gint dir_permissions = 0775;
   gint ret = g_mkdir_with_parents(dirpath.c_str(), dir_permissions);
+  std::string filepath = dirpath + "/" + filename_hash_str + ".config";
   if (DIRERR == ret) {
     std::string msg =
         "Failed to create " + dirpath + ": " + std::string(strerror(errno));
-    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    GST_WARNING("%s", msg.c_str());
   }
-
-  std::string filepath = dirpath + "/" + filename_hash_str + ".config";
 
   return filepath;
 }
 
 GstPylonCache::GstPylonCache(const std::string& name)
-    : cache_file_name(name), feature_cache_dict(g_key_file_new()) {}
+    : filepath(gst_pylon_cache_create_filepath(name)),
+      feature_cache_dict(g_key_file_new()),
+      keyfile_groupname("gstpylon") {}
 
-GstPylonCache::~GstPylonCache() { g_key_file_free(this->feature_cache_dict); }
+GstPylonCache::~GstPylonCache() {
+  g_key_file_free(this->feature_cache_dict);
+  free(this->filepath);
+}
 
-void GstPylonCache::SetCacheValue(const std::string& key,
-                                  const std::string& value) {
-  g_key_file_set_string(this->feature_cache_dict, "gstpylon", key.c_str(),
+gboolean GstPylonCache::IsCacheValid() {
+  gboolean ret = TRUE;
+
+  /* Check if file exists */
+  ret = g_file_test(this->filepath, G_FILE_TEST_EXISTS);
+  if (!ret) {
+    return FALSE;
+  }
+
+  /* Check if file contents are valid, this also sets the content of the
+   * GKeyFile object if valid */
+  ret = g_key_file_load_from_file(this->feature_cache_dict, this->filepath,
+                                  G_KEY_FILE_NONE, NULL);
+  if (!ret) {
+    return FALSE;
+  }
+
+  /* Check if the 'GstPylonCacheIsNew' flag is in the file */
+  if (!g_key_file_get_string(this->feature_cache_dict,
+                             this->keyfile_groupname.c_str(),
+                             "GstPylonCacheIsNew", NULL)) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+void GstPylonCache::SetCacheValue(std::string& key, std::string& value) {
+  g_key_file_set_string(this->feature_cache_dict,
+                        this->keyfile_groupname.c_str(), key.c_str(),
                         value.c_str());
 }
 
 void GstPylonCache::CreateCacheFile() {
-  gsize len = 0;
-  gchar* feature_cache =
-      g_key_file_to_data(this->feature_cache_dict, &len, NULL);
-  std::string feature_cache_str = feature_cache;
-  g_free(feature_cache);
-
-  std::string filepath =
-      gst_pylon_cache_create_filepath(this->cache_file_name.c_str());
-
   GError* file_err = NULL;
-  gboolean ret = g_file_set_contents(filepath.c_str(),
-                                     feature_cache_str.c_str(), len, &file_err);
+  gboolean ret = g_key_file_save_to_file(this->feature_cache_dict,
+                                         this->filepath, &file_err);
   if (!ret) {
     std::string file_err_str = file_err->message;
     g_error_free(file_err);

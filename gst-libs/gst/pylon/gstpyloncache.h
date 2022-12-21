@@ -41,12 +41,14 @@ class GstPylonCache {
  public:
   GstPylonCache(const std::string& name);
   ~GstPylonCache();
-  void SetCacheValue(const std::string& key, const std::string& value);
+  gboolean IsCacheValid();
+  void SetCacheValue(std::string& key, std::string& value);
   void CreateCacheFile();
 
  private:
-  const std::string cache_file_name;
+  gchar* filepath;
   GKeyFile* feature_cache_dict;
+  std::string keyfile_groupname;
 };
 
 #endif
