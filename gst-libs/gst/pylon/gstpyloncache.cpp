@@ -75,7 +75,7 @@ static std::string gst_pylon_cache_create_filepath(
     throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
   }
 
-  std::string filepath = dirpath + "/" + filename_hash_str;
+  std::string filepath = dirpath + "/" + filename_hash_str + ".config";
 
   return filepath;
 }
