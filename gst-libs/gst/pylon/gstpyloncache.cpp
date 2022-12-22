@@ -82,11 +82,12 @@ static std::string gst_pylon_cache_create_filepath(
 GstPylonCache::GstPylonCache(const std::string& name)
     : filepath(gst_pylon_cache_create_filepath(name)),
       feature_cache_dict(g_key_file_new()),
-      keyfile_groupname("gstpylon") {}
+      keyfile_groupname("gstpylon"),
+      is_cache_new(TRUE) {}
 
 GstPylonCache::~GstPylonCache() {
   g_key_file_free(this->feature_cache_dict);
-  free(this->filepath);
+  g_free(this->filepath);
 }
 
 gboolean GstPylonCache::IsCacheValid() {
@@ -106,15 +107,12 @@ gboolean GstPylonCache::IsCacheValid() {
     return FALSE;
   }
 
-  /* Check if the 'GstPylonCacheIsNew' flag is in the file */
-  if (!g_key_file_get_string(this->feature_cache_dict,
-                             this->keyfile_groupname.c_str(),
-                             "GstPylonCacheIsNew", NULL)) {
-    return FALSE;
-  }
+  this->is_cache_new = FALSE;
 
   return TRUE;
 }
+
+gboolean GstPylonCache::IsCacheNew() { return this->is_cache_new; }
 
 void GstPylonCache::SetCacheValue(std::string& key, std::string& value) {
   g_key_file_set_string(this->feature_cache_dict,

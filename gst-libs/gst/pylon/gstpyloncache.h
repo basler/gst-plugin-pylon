@@ -37,18 +37,60 @@
 
 #include <string>
 
+#define MIN_VALUE_INDEX 0
+#define MAX_VALUE_INDEX 1
+#define FLAGS_VALUE_INDEX 2
+#define NUMERATOR_INDEX 0
+#define DENOMINATOR_INDEX 1
+
 class GstPylonCache {
  public:
-  GstPylonCache(const std::string& name);
+  GstPylonCache(const std::string &name);
   ~GstPylonCache();
   gboolean IsCacheValid();
-  void SetCacheValue(std::string& key, std::string& value);
+  gboolean IsCacheNew();
+  void SetCacheValue(std::string &key, std::string &value);
   void CreateCacheFile();
 
+  template <class T>
+  void GetKeyValues(std::string key, T &min, T &max, GParamFlags &flags);
+
  private:
-  gchar* filepath;
-  GKeyFile* feature_cache_dict;
+  gchar *filepath;
+  GKeyFile *feature_cache_dict;
   std::string keyfile_groupname;
+  gboolean is_cache_new;
 };
+
+template <class T>
+void GstPylonCache::GetKeyValues(std::string key, T &min, T &max,
+                                 GParamFlags &flags) {
+  GError *err;
+
+  gchar *values_str =
+      g_key_file_get_string(this->feature_cache_dict,
+                            this->keyfile_groupname.c_str(), key.c_str(), &err);
+  if (!values_str) {
+    GST_ERROR("Could not read values for feature %s from file %s: %s",
+              key.c_str(), this->filepath, err->message);
+    g_error_free(err);
+    return;
+  }
+
+  gchar **values_list = g_strsplit(values_str, " ", -1);
+  gchar **min_limit = g_strsplit(values_list[MIN_VALUE_INDEX], ",", -1);
+  gchar **max_limit = g_strsplit(values_list[MAX_VALUE_INDEX], ",", -1);
+
+  min = (std::stod(min_limit[NUMERATOR_INDEX]) /
+         std::stod(min_limit[DENOMINATOR_INDEX]));
+  max = (std::stod(max_limit[NUMERATOR_INDEX]) /
+         std::stod(max_limit[DENOMINATOR_INDEX]));
+  flags = static_cast<GParamFlags>(std::stoi(values_list[FLAGS_VALUE_INDEX]));
+
+  g_strfreev(min_limit);
+  g_strfreev(max_limit);
+  g_strfreev(values_list);
+  g_free(values_str);
+}
 
 #endif

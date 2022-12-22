@@ -560,14 +560,20 @@ static void gst_pylon_query_feature_properties(GenApi::INodeMap &nodemap,
                                                GstPylonCache &feature_cache) {
   g_return_if_fail(node);
 
-  flags = gst_pylon_query_access(nodemap, node);
-  gst_pylon_find_limits<P, T>(node, minimum_under_all_settings,
-                              maximum_under_all_settings);
+  if (feature_cache.IsCacheNew()) {
+    flags = gst_pylon_query_access(nodemap, node);
+    gst_pylon_find_limits<P, T>(node, minimum_under_all_settings,
+                                maximum_under_all_settings);
 
-  std::string limits_and_flags = gst_pylon_build_cache_value_string<T>(
-      flags, minimum_under_all_settings, maximum_under_all_settings);
+    std::string limits_and_flags = gst_pylon_build_cache_value_string<T>(
+        flags, minimum_under_all_settings, maximum_under_all_settings);
 
-  feature_cache.SetCacheValue(std::string(node->GetName()), limits_and_flags);
+    feature_cache.SetCacheValue(std::string(node->GetName()), limits_and_flags);
+  } else {
+    feature_cache.GetKeyValues<T>(std::string(node->GetName()),
+                                  minimum_under_all_settings,
+                                  maximum_under_all_settings, flags);
+  }
 }
 
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
