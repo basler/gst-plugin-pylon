@@ -705,8 +705,8 @@ static void gst_pylon_query_caps(
   }
 
   /* Reset offset after querying */
-  self->camera->OffsetX.SetValue(orig_offset_x);
-  self->camera->OffsetY.SetValue(orig_offset_y);
+  self->camera->OffsetX.TrySetValue(orig_offset_x);
+  self->camera->OffsetY.TrySetValue(orig_offset_y);
 }
 
 GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
