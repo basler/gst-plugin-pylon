@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 2022-12-28
+
+### Fixed
+- Properly handle cameras, where OffsetX/Y is readonly after applying startup settings ( Fixes #26)
+
+
 ## [0.5.0] - 2022-12-09
 
 ### Added
