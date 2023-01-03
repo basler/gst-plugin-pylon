@@ -38,8 +38,15 @@ gstpylon_sources = [
 ]
 
 gstpylon_headers = [
+  'gstpylon-prelude.h',
   'gstpylonmeta.h',
-  'gstpylon-prelude.h'
+  'gstpylondebug.h',
+  'gstpylonfeaturewalker.h',
+  'gstpylonintrospection.h',
+  'gstpylonmetaprivate.h',
+  'gstpylonobject.h',
+  'gstpylonparamspecs.h',
+  'gstpyloncache.h'
 ]
 
 install_headers(gstpylon_headers, subdir : 'gstreamer-1.0/gst/pylon/')
