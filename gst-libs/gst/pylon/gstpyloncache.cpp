@@ -61,7 +61,7 @@ static std::string gst_pylon_cache_create_filepath(
   gchar* filename_hash =
       g_compute_checksum_for_string(G_CHECKSUM_SHA256, cache_filename.c_str(),
                                     strlen(cache_filename.c_str()));
-  std::string filename_hash_str = std::string(filename_hash);
+  std::string filename_hash_str = filename_hash;
   g_free(filename_hash);
 
   std::string dirpath = std::string(g_get_user_cache_dir()) + "/" + "gstpylon";
@@ -70,8 +70,8 @@ static std::string gst_pylon_cache_create_filepath(
   gint dir_permissions = 0775;
   gint ret = g_mkdir_with_parents(dirpath.c_str(), dir_permissions);
   if (DIRERR == ret) {
-    std::string msg = "Failed to create " + std::string(dirpath) + ": " +
-                      std::string(strerror(errno));
+    std::string msg =
+        "Failed to create " + dirpath + ": " + std::string(strerror(errno));
     throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
   }
 
@@ -95,7 +95,7 @@ void GstPylonCache::CreateCacheFile() {
   gsize len = 0;
   gchar* feature_cache =
       g_key_file_to_data(this->feature_cache_dict, &len, NULL);
-  std::string feature_cache_str = std::string(feature_cache);
+  std::string feature_cache_str = feature_cache;
   g_free(feature_cache);
 
   std::string filepath =
@@ -105,7 +105,7 @@ void GstPylonCache::CreateCacheFile() {
   gboolean ret = g_file_set_contents(filepath.c_str(),
                                      feature_cache_str.c_str(), len, &file_err);
   if (!ret) {
-    std::string file_err_str = std::string(file_err->message);
+    std::string file_err_str = file_err->message;
     g_error_free(file_err);
     throw Pylon::GenericException(file_err_str.c_str(), __FILE__, __LINE__);
   }
