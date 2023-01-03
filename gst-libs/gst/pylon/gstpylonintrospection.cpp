@@ -127,8 +127,8 @@ static void gst_pylon_find_limits(
     std::vector<GenApi::INode *> &invalidators_result);
 template <class T>
 static std::string gst_pylon_build_cache_value_string(
-    GParamFlags &flags, T &minimum_under_all_settings,
-    T &maximum_under_all_settings);
+    GParamFlags flags, T minimum_under_all_settings,
+    T maximum_under_all_settings);
 template <class P, class T>
 static void gst_pylon_query_feature_properties(GenApi::INodeMap &nodemap,
                                                GenApi::INode *node,
@@ -528,21 +528,23 @@ static void gst_pylon_find_limits(GenApi::INode *node,
 
 template <class T>
 static std::string gst_pylon_build_cache_value_string(
-    GParamFlags &flags, T &minimum_under_all_settings,
-    T &maximum_under_all_settings) {
+    GParamFlags flags, T minimum_under_all_settings,
+    T maximum_under_all_settings) {
   std::string limits_and_flags;
   gint numerator = 0;
   gint denominator = 0;
 
+  /* Values are stored as nominator.denominator so that a cache file with double
+   * values can be read and be valid independent of locale */
   gst_util_double_to_fraction(minimum_under_all_settings, &numerator,
                               &denominator);
   limits_and_flags +=
-      std::to_string(numerator) + "," + std::to_string(denominator);
+      std::to_string(numerator) + "." + std::to_string(denominator);
   limits_and_flags += " ";
   gst_util_double_to_fraction(maximum_under_all_settings, &numerator,
                               &denominator);
   limits_and_flags +=
-      std::to_string(numerator) + "," + std::to_string(denominator);
+      std::to_string(numerator) + "." + std::to_string(denominator);
   limits_and_flags += " ";
   limits_and_flags += std::to_string(flags);
 
