@@ -33,9 +33,8 @@
 #ifndef _GST_PYLON_FEATURE_WALKER_H_
 #define _GST_PYLON_FEATURE_WALKER_H_
 
-#include "gstpyloncache.h"
-
 #include <gst/gst.h>
+#include <gst/pylon/gstpyloncache.h>
 
 #ifdef _MSC_VER  // MSVC
 #pragma warning(push)
