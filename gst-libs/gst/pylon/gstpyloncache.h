@@ -78,8 +78,8 @@ void GstPylonCache::GetKeyValues(std::string key, T &min, T &max,
   }
 
   gchar **values_list = g_strsplit(values_str, " ", -1);
-  gchar **min_limit = g_strsplit(values_list[MIN_VALUE_INDEX], ",", -1);
-  gchar **max_limit = g_strsplit(values_list[MAX_VALUE_INDEX], ",", -1);
+  gchar **min_limit = g_strsplit(values_list[MIN_VALUE_INDEX], ".", -1);
+  gchar **max_limit = g_strsplit(values_list[MAX_VALUE_INDEX], ".", -1);
 
   min = (std::stod(min_limit[NUMERATOR_INDEX]) /
          std::stod(min_limit[DENOMINATOR_INDEX]));
