@@ -49,14 +49,14 @@ class GstPylonCache {
   ~GstPylonCache();
   gboolean IsCacheValid();
   gboolean IsCacheNew();
-  void SetCacheValue(std::string &key, std::string &value);
+  void SetCacheValue(const std::string &key, const std::string &value);
   void CreateCacheFile();
 
   template <class T>
   void GetKeyValues(std::string key, T &min, T &max, GParamFlags &flags);
 
  private:
-  gchar *filepath;
+  std::string filepath;
   GKeyFile *feature_cache_dict;
   std::string keyfile_groupname;
   gboolean is_cache_new;
@@ -72,7 +72,7 @@ void GstPylonCache::GetKeyValues(std::string key, T &min, T &max,
                             this->keyfile_groupname.c_str(), key.c_str(), &err);
   if (!values_str) {
     GST_ERROR("Could not read values for feature %s from file %s: %s",
-              key.c_str(), this->filepath, err->message);
+              key.c_str(), this->filepath.c_str(), err->message);
     g_error_free(err);
     return;
   }
