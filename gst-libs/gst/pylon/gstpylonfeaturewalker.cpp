@@ -52,7 +52,7 @@ static std::vector<std::string> gst_pylon_get_int_entries(
     GenApi::IInteger* int_node);
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, GenApi::INodeMap& nodemap,
-    const std::string device_fullname, GstPylonCache& feature_cache);
+    const std::string& device_fullname, GstPylonCache& feature_cache);
 static void gst_pylon_camera_install_specs(
     const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
     gint& nprop);
@@ -169,7 +169,7 @@ std::vector<std::string> GstPylonFeatureWalker::process_selector_features(
 
 static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, GenApi::INodeMap& nodemap,
-    const std::string device_fullname, GstPylonCache& feature_cache) {
+    const std::string& device_fullname, GstPylonCache& feature_cache) {
   GenApi::INode* selector_node = NULL;
   guint64 selector_value = 0;
   std::vector<GParamSpec*> specs_list;
@@ -231,7 +231,7 @@ static void gst_pylon_camera_install_specs(
 
 void GstPylonFeatureWalker::install_properties(
     GObjectClass* oclass, GenApi::INodeMap& nodemap,
-    const std::string device_fullname, GstPylonCache& feature_cache) {
+    const std::string& device_fullname, GstPylonCache& feature_cache) {
   g_return_if_fail(oclass);
 
   gint nprop = 1;

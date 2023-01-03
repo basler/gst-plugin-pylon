@@ -34,13 +34,14 @@
 #define _GST_PYLON_CACHE_H_
 
 #include <gst/gst.h>
+
 #include <string>
 
 class GstPylonCache {
  public:
-  GstPylonCache(const std::string name);
+  GstPylonCache(const std::string& name);
   ~GstPylonCache();
-  void SetCacheValue(std::string key, std::string value);
+  void SetCacheValue(const std::string& key, const std::string& value);
   void CreateCacheFile();
 
  private:

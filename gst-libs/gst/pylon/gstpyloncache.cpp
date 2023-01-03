@@ -53,58 +53,60 @@
 #define DIRERR -1
 
 /* prototypes */
-static gchar* gst_pylon_cache_create_filepath(const std::string cache_filename);
+static std::string gst_pylon_cache_create_filepath(
+    const std::string& cache_filename);
 
-static gchar* gst_pylon_cache_create_filepath(
-    const std::string cache_filename) {
+static std::string gst_pylon_cache_create_filepath(
+    const std::string& cache_filename) {
   gchar* filename_hash =
       g_compute_checksum_for_string(G_CHECKSUM_SHA256, cache_filename.c_str(),
                                     strlen(cache_filename.c_str()));
-  gchar* dirpath = g_strdup_printf("%s/%s", g_get_user_cache_dir(), "gstpylon");
+  std::string filename_hash_str = std::string(filename_hash);
+  g_free(filename_hash);
+
+  std::string dirpath = std::string(g_get_user_cache_dir()) + "/" + "gstpylon";
 
   /* Create gstpylon directory */
   gint dir_permissions = 0775;
-  gint ret = g_mkdir_with_parents(dirpath, dir_permissions);
+  gint ret = g_mkdir_with_parents(dirpath.c_str(), dir_permissions);
   if (DIRERR == ret) {
     std::string msg = "Failed to create " + std::string(dirpath) + ": " +
                       std::string(strerror(errno));
     throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
   }
 
-  gchar* filepath = g_strdup_printf("%s/%s", dirpath, filename_hash);
-
-  g_free(dirpath);
-  g_free(filename_hash);
+  std::string filepath = dirpath + "/" + filename_hash_str;
 
   return filepath;
 }
 
-GstPylonCache::GstPylonCache(const std::string name)
+GstPylonCache::GstPylonCache(const std::string& name)
     : cache_file_name(name), feature_cache_dict(g_key_file_new()) {}
 
 GstPylonCache::~GstPylonCache() { g_key_file_free(this->feature_cache_dict); }
 
-void GstPylonCache::SetCacheValue(std::string key, std::string value) {
+void GstPylonCache::SetCacheValue(const std::string& key,
+                                  const std::string& value) {
   g_key_file_set_string(this->feature_cache_dict, "gstpylon", key.c_str(),
                         value.c_str());
 }
 
 void GstPylonCache::CreateCacheFile() {
   gsize len = 0;
-  gchar* feature_cache_str =
+  gchar* feature_cache =
       g_key_file_to_data(this->feature_cache_dict, &len, NULL);
-  gchar* filepath =
+  std::string feature_cache_str = std::string(feature_cache);
+  g_free(feature_cache);
+
+  std::string filepath =
       gst_pylon_cache_create_filepath(this->cache_file_name.c_str());
 
   GError* file_err = NULL;
-  gboolean ret =
-      g_file_set_contents(filepath, feature_cache_str, len, &file_err);
+  gboolean ret = g_file_set_contents(filepath.c_str(),
+                                     feature_cache_str.c_str(), len, &file_err);
   if (!ret) {
     std::string file_err_str = std::string(file_err->message);
     g_error_free(file_err);
     throw Pylon::GenericException(file_err_str.c_str(), __FILE__, __LINE__);
   }
-
-  g_free(feature_cache_str);
-  g_free(filepath);
 }

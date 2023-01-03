@@ -91,13 +91,13 @@ static GParamSpec *gst_pylon_make_spec_selector_str(GenApi::INodeMap &nodemap,
                                                     guint64 selector_value);
 static GType gst_pylon_make_enum_type(GenApi::INodeMap &nodemap,
                                       GenApi::INode *node,
-                                      const std::string device_fullname);
+                                      const std::string &device_fullname);
 static GParamSpec *gst_pylon_make_spec_enum(GenApi::INodeMap &nodemap,
                                             GenApi::INode *node,
-                                            const std::string device_fullname);
+                                            const std::string &device_fullname);
 static GParamSpec *gst_pylon_make_spec_selector_enum(
     GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
-    guint64 selector_value, const std::string device_fullname);
+    guint64 selector_value, const std::string &device_fullname);
 static GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *feature_node,
                                                 const GenICam::gcstring &limit);
 static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
@@ -698,7 +698,7 @@ static GParamSpec *gst_pylon_make_spec_selector_str(GenApi::INodeMap &nodemap,
 
 static GType gst_pylon_make_enum_type(GenApi::INodeMap &nodemap,
                                       GenApi::INode *node,
-                                      const std::string device_fullname) {
+                                      const std::string &device_fullname) {
   /* When registering enums to the GType system, their string pointers
      must remain valid throughout the application lifespan. To achieve this
      we are saving all found enums into a static hash table
@@ -745,9 +745,9 @@ static GType gst_pylon_make_enum_type(GenApi::INodeMap &nodemap,
   return type;
 }
 
-static GParamSpec *gst_pylon_make_spec_enum(GenApi::INodeMap &nodemap,
-                                            GenApi::INode *node,
-                                            const std::string device_fullname) {
+static GParamSpec *gst_pylon_make_spec_enum(
+    GenApi::INodeMap &nodemap, GenApi::INode *node,
+    const std::string &device_fullname) {
   g_return_val_if_fail(node, NULL);
 
   Pylon::CEnumParameter param(node);
@@ -760,7 +760,7 @@ static GParamSpec *gst_pylon_make_spec_enum(GenApi::INodeMap &nodemap,
 
 static GParamSpec *gst_pylon_make_spec_selector_enum(
     GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
-    guint64 selector_value, const std::string device_fullname) {
+    guint64 selector_value, const std::string &device_fullname) {
   g_return_val_if_fail(node, NULL);
   g_return_val_if_fail(selector, NULL);
 
@@ -777,7 +777,7 @@ GParamSpec *GstPylonParamFactory::make_param(GenApi::INodeMap &nodemap,
                                              GenApi::INode *node,
                                              GenApi::INode *selector,
                                              guint64 selector_value,
-                                             const std::string device_fullname,
+                                             const std::string &device_fullname,
                                              GstPylonCache &feature_cache) {
   g_return_val_if_fail(node, NULL);
 
