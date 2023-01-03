@@ -176,7 +176,8 @@ static void gst_pylon_meta_fill_result_chunks(
 
     std::vector<std::string> enum_values;
     try {
-      enum_values = gst_pylon_process_selector_features(node, &selector_node);
+      enum_values = GstPylonFeatureWalker::process_selector_features(
+          node, &selector_node);
     } catch (const Pylon::GenericException &e) {
       GST_WARNING("Chunk %s not added: %s", node->GetName().c_str(),
                   e.GetDescription());

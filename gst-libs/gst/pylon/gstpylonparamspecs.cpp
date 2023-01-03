@@ -184,8 +184,7 @@ GParamSpec *gst_pylon_param_spec_selector_string(
 GParamSpec *gst_pylon_param_spec_selector_enum(
     GenApi::INodeMap &nodemap, const gchar *feature_name,
     const gchar *selector_name, guint64 selector_value, const gchar *nick,
-    const gchar *blurb, GType type, gint64 def, GParamFlags flags,
-    const gchar *device_fullname) {
+    const gchar *blurb, GType type, gint64 def, GParamFlags flags) {
   gchar *name = gst_pylon_param_spec_selector_prolog(
       nodemap, feature_name, selector_name, selector_value, flags);
 

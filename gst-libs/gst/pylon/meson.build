@@ -28,17 +28,25 @@ else
 endif
 
 gstpylon_sources = [
+  'gstpyloncache.cpp',
   'gstpylondebug.c',
-  'gstpylonintrospection.cpp',
   'gstpylonfeaturewalker.cpp',
+  'gstpylonintrospection.cpp',
   'gstpylonmeta.cpp',
   'gstpylonobject.cpp',
-  'gstpylonparamspecs.cpp',
+  'gstpylonparamspecs.cpp'
 ]
 
 gstpylon_headers = [
+  'gstpylon-prelude.h',
+  'gstpyloncache.h',
+  'gstpylondebug.h',
+  'gstpylonfeaturewalker.h',
+  'gstpylonintrospection.h',
   'gstpylonmeta.h',
-  'gstpylon-prelude.h'
+  'gstpylonmetaprivate.h',
+  'gstpylonobject.h',
+  'gstpylonparamspecs.h'
 ]
 
 install_headers(gstpylon_headers, subdir : 'gstreamer-1.0/gst/pylon/')
