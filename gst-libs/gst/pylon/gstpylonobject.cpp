@@ -418,7 +418,9 @@ GObject* gst_pylon_object_new(
   GType type = g_type_from_name(type_name.c_str());
 
   if (!type) {
-    std::string msg = "Camera " + type_name + " is not available";
+    std::string msg = "Camera \'" +
+                      std::string(camera->GetDeviceInfo().GetFriendlyName()) +
+                      "\' is not available.";
     throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
   }
 
