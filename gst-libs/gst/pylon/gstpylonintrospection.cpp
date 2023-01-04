@@ -38,6 +38,8 @@
 #include "gstpylonintrospection.h"
 #include "gstpylonparamspecs.h"
 
+#include <pylon/PixelType.h>
+
 #include <algorithm>
 #include <numeric>
 #include <set>
@@ -370,6 +372,13 @@ gst_pylon_create_set_value_actions(
         GenApi::StringList_t settable_values;
         param.GetSettableValues(settable_values);
         for (const auto &value : settable_values) {
+          /* skip unsupported packed mono and bayer formats */
+          if (node->GetName() == "PixelFormat" &&
+              (Pylon::IsMonoPacked(static_cast<Pylon::EPixelType>(
+                   param.GetEntryByName(value)->GetValue())) ||
+               Pylon::IsBayerPacked(static_cast<Pylon::EPixelType>(
+                   param.GetEntryByName(value)->GetValue()))))
+            continue;
           values.push_back(
               new GstPylonTypeAction<Pylon::CEnumParameter, Pylon::String_t>(
                   param, value));
