@@ -416,6 +416,12 @@ GObject* gst_pylon_object_new(
       gst_pylon_param_spec_sanitize_name(device_name.c_str());
 
   GType type = g_type_from_name(type_name.c_str());
+
+  if (!type) {
+    std::string msg = "Camera " + type_name + " is not available";
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
+
   GObject* obj = G_OBJECT(g_object_new(type, "name", type_name.c_str(), NULL));
   GstPylonObject* self = (GstPylonObject*)obj;
   GstPylonObjectPrivate* priv =
