@@ -115,7 +115,7 @@ static vector<GenApi::INode*> get_available_features(
     const vector<GenApi::INode*>& feature_list) {
   vector<GenApi::INode*> available_features;
   for (const auto& feature : feature_list) {
-    if (GenApi::IsAvailable(feature)) {
+    if (GenApi::IsImplemented(feature)) {
       available_features.push_back(feature);
     }
   }
@@ -354,7 +354,7 @@ static vector<GenApi::INode*> walk_nodes(Pylon::CInstantCamera& camera) {
     auto node = worklist.front();
     worklist.pop();
 
-    if (GenApi::IsAvailable(node)) {
+    if (GenApi::IsImplemented(node)) {
       if (has_ranges(node)) {
         node_list.push_back(node);
       }

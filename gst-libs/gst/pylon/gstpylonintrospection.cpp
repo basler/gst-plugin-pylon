@@ -266,7 +266,7 @@ static std::vector<GenApi::INode *> gst_pylon_get_available_features(
     const std::set<GenApi::INode *> &feature_list) {
   std::vector<GenApi::INode *> available_features;
   for (const auto &feature : feature_list) {
-    if (GenApi::IsAvailable(feature)) {
+    if (GenApi::IsImplemented(feature)) {
       available_features.push_back(feature);
     }
   }

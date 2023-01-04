@@ -250,7 +250,7 @@ void GstPylonFeatureWalker::install_properties(
      * selectors and are available */
     auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
     if (node->IsFeature() && (node->GetVisibility() != GenApi::Invisible) &&
-        sel_node && GenApi::IsAvailable(node) && !sel_node->IsSelector() &&
+        sel_node && GenApi::IsImplemented(node) && !sel_node->IsSelector() &&
         propfilter_set.find(std::string(node->GetName())) ==
             propfilter_set.end() &&
         node->GetPrincipalInterfaceType() != GenApi::intfICategory) {
