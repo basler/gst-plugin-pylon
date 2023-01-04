@@ -40,10 +40,14 @@
 #define QSTRING "GstPylonParamSpecSelector"
 #define VALID_CHARS G_CSET_a_2_z G_CSET_A_2_Z G_CSET_DIGITS
 
-gchar *gst_pylon_param_spec_sanitize_name(const gchar *name) {
+std::string gst_pylon_param_spec_sanitize_name(const gchar *name) {
   g_return_val_if_fail(name, NULL);
+  gchar *sanitzed_name =
+      g_strcanon(g_strdup_printf("_%s", name), VALID_CHARS, '_');
+  std::string sanitzed_name_str = sanitzed_name;
+  g_free(sanitzed_name);
 
-  return g_strcanon(g_strdup_printf("_%s", name), VALID_CHARS, '_');
+  return sanitzed_name_str;
 }
 
 gchar *gst_pylon_create_selected_name(GenApi::INodeMap &nodemap,

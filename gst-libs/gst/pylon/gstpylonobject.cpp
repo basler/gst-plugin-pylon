@@ -94,15 +94,14 @@ GType gst_pylon_object_register(const std::string& device_name,
   };
 
   /* Convert camera name to a valid string */
-  gchar* type_name = gst_pylon_param_spec_sanitize_name(device_name.c_str());
+  std::string type_name =
+      gst_pylon_param_spec_sanitize_name(device_name.c_str());
 
-  GType type = g_type_from_name(type_name);
+  GType type = g_type_from_name(type_name.c_str());
   if (!type) {
-    type = g_type_register_static(GST_TYPE_OBJECT, type_name, &typeinfo,
+    type = g_type_register_static(GST_TYPE_OBJECT, type_name.c_str(), &typeinfo,
                                   static_cast<GTypeFlags>(0));
   }
-
-  g_free(type_name);
 
   GstPylonObject_private_offset =
       g_type_add_instance_private(type, sizeof(GstPylonObjectPrivate));
@@ -413,14 +412,14 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
 GObject* gst_pylon_object_new(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
     const std::string& device_name, GenApi::INodeMap* nodemap) {
-  gchar* type_name = gst_pylon_param_spec_sanitize_name(device_name.c_str());
+  std::string type_name =
+      gst_pylon_param_spec_sanitize_name(device_name.c_str());
 
-  GType type = g_type_from_name(type_name);
-  GObject* obj = G_OBJECT(g_object_new(type, "name", type_name, NULL));
+  GType type = g_type_from_name(type_name.c_str());
+  GObject* obj = G_OBJECT(g_object_new(type, "name", type_name.c_str(), NULL));
   GstPylonObject* self = (GstPylonObject*)obj;
   GstPylonObjectPrivate* priv =
       (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
-  g_free(type_name);
 
   priv->camera = std::move(camera);
   priv->nodemap = nodemap;
