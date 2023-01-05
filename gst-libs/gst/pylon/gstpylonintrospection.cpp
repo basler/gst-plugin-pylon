@@ -36,6 +36,7 @@
 
 #include "gstpylondebug.h"
 #include "gstpylonintrospection.h"
+#include "gstpylonobject.h"
 #include "gstpylonparamspecs.h"
 
 #include <pylon/PixelType.h>
@@ -135,12 +136,14 @@ static std::string gst_pylon_build_cache_value_string(
 static void gst_pylon_query_feature_properties_double(
     GenApi::INodeMap &nodemap, GenApi::INode *node,
     GstPylonCache &feature_cache, GParamFlags &flags,
-    gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings);
+    gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings,
+    GenApi::INode *selector = NULL, gint64 selector_value = 0);
 
 static void gst_pylon_query_feature_properties_integer(
     GenApi::INodeMap &nodemap, GenApi::INode *node,
     GstPylonCache &feature_cache, GParamFlags &flags,
-    gint64 &minimum_under_all_settings, gint64 &maximum_under_all_settings);
+    gint64 &minimum_under_all_settings, gint64 &maximum_under_all_settings,
+    GenApi::INode *selector = NULL, gint64 selector_value = 0);
 
 static gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode *node);
 static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
@@ -542,41 +545,73 @@ static void gst_pylon_find_limits(GenApi::INode *node,
 void gst_pylon_query_feature_properties_double(
     GenApi::INodeMap &nodemap, GenApi::INode *node,
     GstPylonCache &feature_cache, GParamFlags &flags,
-    gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings) {
+    gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings,
+    GenApi::INode *selector, gint64 selector_value) {
   g_return_if_fail(node);
 
+  gchar *feature_cache_name = NULL;
+  if (selector) {
+    /* set selector value value */
+    gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
+                                        selector_value);
+
+    feature_cache_name = gst_pylon_create_selected_name(
+        nodemap, node->GetName().c_str(), selector->GetName().c_str(),
+        selector_value);
+  } else {
+    feature_cache_name = g_strdup(node->GetName().c_str());
+  }
+
   /* if access to a feature cache entry fails, create new props dynamically */
-  if (!feature_cache.GetDoubleProps(std::string(node->GetName()),
+  if (!feature_cache.GetDoubleProps(feature_cache_name,
                                     minimum_under_all_settings,
                                     maximum_under_all_settings, flags)) {
     flags = gst_pylon_query_access(nodemap, node);
     gst_pylon_find_limits<Pylon::CFloatParameter, gdouble>(
         node, minimum_under_all_settings, maximum_under_all_settings);
 
-    feature_cache.SetDoubleProps(std::string(node->GetName()),
-                                 minimum_under_all_settings,
+    feature_cache.SetDoubleProps(feature_cache_name, minimum_under_all_settings,
                                  maximum_under_all_settings, flags);
   }
+
+  g_free(feature_cache_name);
 }
 
 void gst_pylon_query_feature_properties_integer(
     GenApi::INodeMap &nodemap, GenApi::INode *node,
     GstPylonCache &feature_cache, GParamFlags &flags,
-    gint64 &minimum_under_all_settings, gint64 &maximum_under_all_settings) {
+    gint64 &minimum_under_all_settings, gint64 &maximum_under_all_settings,
+    GenApi::INode *selector, gint64 selector_value) {
   g_return_if_fail(node);
 
+  gchar *feature_cache_name = NULL;
+  if (selector) {
+    /* set selector value value */
+    gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
+                                        selector_value);
+
+    feature_cache_name = gst_pylon_create_selected_name(
+        nodemap, node->GetName().c_str(), selector->GetName().c_str(),
+        selector_value);
+
+  } else {
+    feature_cache_name = g_strdup(node->GetName().c_str());
+  }
+
   /* if access to a feature cache entry fails, create new props dynamically */
-  if (!feature_cache.GetIntProps(std::string(node->GetName()),
+  if (!feature_cache.GetIntProps(node->GetName().c_str(),
                                  minimum_under_all_settings,
                                  maximum_under_all_settings, flags)) {
     flags = gst_pylon_query_access(nodemap, node);
     gst_pylon_find_limits<Pylon::CIntegerParameter, gint64>(
         node, minimum_under_all_settings, maximum_under_all_settings);
 
-    feature_cache.SetIntProps(std::string(node->GetName()),
+    feature_cache.SetIntProps(node->GetName().c_str(),
                               minimum_under_all_settings,
                               maximum_under_all_settings, flags);
   }
+
+  g_free(feature_cache_name);
 }
 
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,

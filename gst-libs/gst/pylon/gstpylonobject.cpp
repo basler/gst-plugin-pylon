@@ -126,10 +126,6 @@ static void gst_pylon_object_set_pylon_feature(GenApi::INodeMap& nodemap,
                                                F get_value, const GValue* value,
                                                const gchar* name);
 
-static void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
-                                                const gchar* selector_name,
-                                                gint64& selector_value);
-
 template <typename F, typename P>
 static void gst_pylon_object_set_pylon_selected_feature(
     GenApi::INodeMap& nodemap, F get_value, const GValue* value,
@@ -245,9 +241,9 @@ void gst_pylon_object_get_pylon_feature<GSetString, Pylon::CStringParameter>(
   set_value(value, param.GetValue().c_str());
 }
 
-static void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
-                                                const gchar* selector_name,
-                                                gint64& selector_value) {
+void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
+                                         const gchar* selector_name,
+                                         gint64& selector_value) {
   gint selector_type =
       nodemap.GetNode(selector_name)->GetPrincipalInterfaceType();
   switch (selector_type) {
