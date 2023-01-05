@@ -156,7 +156,7 @@ GParamSpec *gst_pylon_param_spec_selector_float(
       nodemap, feature_name, selector_name, selector_value, flags);
 
   GParamSpec *spec =
-      g_param_spec_float(name, nick, blurb, min, max, def, flags);
+      g_param_spec_double(name, nick, blurb, min, max, def, flags);
   g_free(name);
 
   gst_pylon_param_spec_selector_epilog(spec, feature_name, selector_name,
