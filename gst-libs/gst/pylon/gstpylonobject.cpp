@@ -128,7 +128,7 @@ static void gst_pylon_object_set_pylon_feature(GenApi::INodeMap& nodemap,
 
 static void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
                                                 const gchar* selector_name,
-                                                guint64& selector_value);
+                                                gint64& selector_value);
 
 template <typename F, typename P>
 static void gst_pylon_object_set_pylon_selected_feature(
@@ -217,7 +217,7 @@ void gst_pylon_object_set_pylon_feature<GGetEnum, Pylon::CEnumParameter>(
 
 static void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
                                                 const gchar* selector_name,
-                                                guint64& selector_value) {
+                                                gint64& selector_value) {
   gint selector_type =
       nodemap.GetNode(selector_name)->GetPrincipalInterfaceType();
   switch (selector_type) {

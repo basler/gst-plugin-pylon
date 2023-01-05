@@ -75,7 +75,7 @@ typedef struct _GstPylonParamSpecSelectorData GstPylonParamSpecSelectorData;
 struct _GstPylonParamSpecSelectorData {
   gchar* feature;
   gchar* selector;
-  guint64 selector_value;
+  gint64 selector_value;
 };
 
 /* --- GParamSpec prototypes --- */
