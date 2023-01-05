@@ -131,13 +131,17 @@ template <class T>
 static std::string gst_pylon_build_cache_value_string(
     GParamFlags flags, T minimum_under_all_settings,
     T maximum_under_all_settings);
-template <class P, class T>
-static void gst_pylon_query_feature_properties(GenApi::INodeMap &nodemap,
-                                               GenApi::INode *node,
-                                               GstPylonCache &feature_cache,
-                                               GParamFlags &flags,
-                                               T &minimum_under_all_settings,
-                                               T &maximum_under_all_settings);
+
+static void gst_pylon_query_feature_properties_float(
+    GenApi::INodeMap &nodemap, GenApi::INode *node,
+    GstPylonCache &feature_cache, GParamFlags &flags,
+    gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings);
+
+static void gst_pylon_query_feature_properties_integer(
+    GenApi::INodeMap &nodemap, GenApi::INode *node,
+    GstPylonCache &feature_cache, GParamFlags &flags,
+    gint64 &minimum_under_all_settings, gint64 &maximum_under_all_settings);
+
 static gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode *node);
 static GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
                                           GenApi::INode *node);
@@ -535,53 +539,43 @@ static void gst_pylon_find_limits(GenApi::INode *node,
   }
 }
 
-template <class T>
-static std::string gst_pylon_build_cache_value_string(
-    GParamFlags flags, T minimum_under_all_settings,
-    T maximum_under_all_settings) {
-  std::string limits_and_flags;
-  gint numerator = 0;
-  gint denominator = 0;
-
-  /* Values are stored as nominator.denominator so that a cache file with double
-   * values can be read and be valid independent of locale */
-  gst_util_double_to_fraction(minimum_under_all_settings, &numerator,
-                              &denominator);
-  limits_and_flags +=
-      std::to_string(numerator) + "." + std::to_string(denominator);
-  limits_and_flags += " ";
-  gst_util_double_to_fraction(maximum_under_all_settings, &numerator,
-                              &denominator);
-  limits_and_flags +=
-      std::to_string(numerator) + "." + std::to_string(denominator);
-  limits_and_flags += " ";
-  limits_and_flags += std::to_string(flags);
-
-  return limits_and_flags;
-}
-
-template <class P, class T>
-static void gst_pylon_query_feature_properties(GenApi::INodeMap &nodemap,
-                                               GenApi::INode *node,
-                                               GstPylonCache &feature_cache,
-                                               GParamFlags &flags,
-                                               T &minimum_under_all_settings,
-                                               T &maximum_under_all_settings) {
+void gst_pylon_query_feature_properties_float(
+    GenApi::INodeMap &nodemap, GenApi::INode *node,
+    GstPylonCache &feature_cache, GParamFlags &flags,
+    gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings) {
   g_return_if_fail(node);
 
-  if (feature_cache.IsCacheNew()) {
+  /* if access to a feature cache entry fails, create new props dynamically */
+  if (!feature_cache.GetDoubleProps(std::string(node->GetName()),
+                                    minimum_under_all_settings,
+                                    maximum_under_all_settings, flags)) {
     flags = gst_pylon_query_access(nodemap, node);
-    gst_pylon_find_limits<P, T>(node, minimum_under_all_settings,
-                                maximum_under_all_settings);
+    gst_pylon_find_limits<Pylon::CFloatParameter, gdouble>(
+        node, minimum_under_all_settings, maximum_under_all_settings);
 
-    std::string limits_and_flags = gst_pylon_build_cache_value_string<T>(
-        flags, minimum_under_all_settings, maximum_under_all_settings);
+    feature_cache.SetDoubleProps(std::string(node->GetName()),
+                                 minimum_under_all_settings,
+                                 maximum_under_all_settings, flags);
+  }
+}
 
-    feature_cache.SetCacheValue(std::string(node->GetName()), limits_and_flags);
-  } else {
-    feature_cache.GetKeyValues<T>(std::string(node->GetName()),
-                                  minimum_under_all_settings,
-                                  maximum_under_all_settings, flags);
+void gst_pylon_query_feature_properties_integer(
+    GenApi::INodeMap &nodemap, GenApi::INode *node,
+    GstPylonCache &feature_cache, GParamFlags &flags,
+    gint64 &minimum_under_all_settings, gint64 &maximum_under_all_settings) {
+  g_return_if_fail(node);
+
+  /* if access to a feature cache entry fails, create new props dynamically */
+  if (!feature_cache.GetIntProps(std::string(node->GetName()),
+                                 minimum_under_all_settings,
+                                 maximum_under_all_settings, flags)) {
+    flags = gst_pylon_query_access(nodemap, node);
+    gst_pylon_find_limits<Pylon::CIntegerParameter, gint64>(
+        node, minimum_under_all_settings, maximum_under_all_settings);
+
+    feature_cache.SetIntProps(std::string(node->GetName()),
+                              minimum_under_all_settings,
+                              maximum_under_all_settings, flags);
   }
 }
 
@@ -595,8 +589,8 @@ static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
   gint64 min_value = 0;
   GParamFlags flags = G_PARAM_READABLE;
 
-  gst_pylon_query_feature_properties<Pylon::CIntegerParameter, gint64>(
-      nodemap, node, feature_cache, flags, min_value, max_value);
+  gst_pylon_query_feature_properties_integer(nodemap, node, feature_cache,
+                                             flags, min_value, max_value);
 
   return g_param_spec_int64(node->GetName(), node->GetDisplayName(),
                             node->GetToolTip(), min_value, max_value,
@@ -614,8 +608,8 @@ static GParamSpec *gst_pylon_make_spec_selector_int64(
   gint64 min_value = 0;
   GParamFlags flags = G_PARAM_READABLE;
 
-  gst_pylon_query_feature_properties<Pylon::CIntegerParameter, gint64>(
-      nodemap, node, feature_cache, flags, min_value, max_value);
+  gst_pylon_query_feature_properties_integer(nodemap, node, feature_cache,
+                                             flags, min_value, max_value);
 
   return gst_pylon_param_spec_selector_int64(
       nodemap, node->GetName(), selector->GetName(), selector_value,
@@ -659,8 +653,8 @@ static GParamSpec *gst_pylon_make_spec_float(GenApi::INodeMap &nodemap,
   gdouble min_value = 0;
   GParamFlags flags = G_PARAM_READABLE;
 
-  gst_pylon_query_feature_properties<Pylon::CFloatParameter, gdouble>(
-      nodemap, node, feature_cache, flags, min_value, max_value);
+  gst_pylon_query_feature_properties_float(nodemap, node, feature_cache, flags,
+                                           min_value, max_value);
 
   return g_param_spec_float(node->GetName(), node->GetDisplayName(),
                             node->GetToolTip(), min_value, max_value,
@@ -678,8 +672,8 @@ static GParamSpec *gst_pylon_make_spec_selector_float(
   gdouble min_value = 0;
   GParamFlags flags = G_PARAM_READABLE;
 
-  gst_pylon_query_feature_properties<Pylon::CFloatParameter, gdouble>(
-      nodemap, node, feature_cache, flags, min_value, max_value);
+  gst_pylon_query_feature_properties_float(nodemap, node, feature_cache, flags,
+                                           min_value, max_value);
 
   return gst_pylon_param_spec_selector_float(
       nodemap, node->GetName(), selector->GetName(), selector_value,
