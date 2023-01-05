@@ -165,24 +165,21 @@ bool GstPylonCache::GetDoubleAttribute(const char *feature,
   return true;
 }
 
-void GstPylonCache::SetIntProps(const std::string &key, const gint64 min,
+void GstPylonCache::SetIntProps(const gchar *feature_name, const gint64 min,
                                 const gint64 max, const GParamFlags flags) {
-  const char *feature_name = key.c_str();
   SetIntegerAttribute(feature_name, "min", min);
   SetIntegerAttribute(feature_name, "max", max);
   SetIntegerAttribute(feature_name, "flags", static_cast<gint64>(flags));
 }
-void GstPylonCache::SetDoubleProps(const std::string &key, const gdouble min,
+void GstPylonCache::SetDoubleProps(const gchar *feature_name, const gdouble min,
                                    const gdouble max, const GParamFlags flags) {
-  const char *feature_name = key.c_str();
   SetDoubleAttribute(feature_name, "min", min);
   SetDoubleAttribute(feature_name, "max", max);
   SetIntegerAttribute(feature_name, "flags", static_cast<gint64>(flags));
 }
 
-bool GstPylonCache::GetIntProps(const std::string &key, gint64 &min,
+bool GstPylonCache::GetIntProps(const gchar *feature_name, gint64 &min,
                                 gint64 &max, GParamFlags &flags) {
-  const char *feature_name = key.c_str();
   if (!GetIntegerAttribute(feature_name, "min", min)) return false;
   if (!GetIntegerAttribute(feature_name, "max", max)) return false;
   gint64 flag_val = 0;
@@ -193,9 +190,8 @@ bool GstPylonCache::GetIntProps(const std::string &key, gint64 &min,
   return true;
 }
 
-bool GstPylonCache::GetDoubleProps(const std::string &key, gdouble &min,
+bool GstPylonCache::GetDoubleProps(const char *feature_name, gdouble &min,
                                    gdouble &max, GParamFlags &flags) {
-  const char *feature_name = key.c_str();
   if (!GetDoubleAttribute(feature_name, "min", min)) return false;
   if (!GetDoubleAttribute(feature_name, "max", max)) return false;
 

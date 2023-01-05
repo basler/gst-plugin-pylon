@@ -37,9 +37,7 @@
 
 #include <string>
 
-#define MIN_VALUE_INDEX 0
-#define MAX_VALUE_INDEX 1
-#define FLAGS_VALUE_INDEX 2
+G_BEGIN_DECLS
 
 class GstPylonCache {
  public:
@@ -48,11 +46,11 @@ class GstPylonCache {
   gboolean IsCacheValid();
   gboolean IsEmpty();
 
-  void SetIntProps(const std::string &key, const gint64 min,const gint64 max,const GParamFlags flags);
-  void SetDoubleProps(const std::string &key, const gdouble min,const gdouble max,const GParamFlags flags);
+  void SetIntProps(const gchar *feature_name, const gint64 min,const gint64 max,const GParamFlags flags);
+  void SetDoubleProps(const gchar *feature_name, const gdouble min,const gdouble max,const GParamFlags flags);
 
-  bool GetIntProps(const std::string &key, gint64 &min,gint64 &max,GParamFlags &flags);
-  bool GetDoubleProps(const std::string &key, gdouble &min,gdouble &max,GParamFlags &flags);
+  bool GetIntProps(const gchar *feature_name, gint64 &min,gint64 &max,GParamFlags &flags);
+  bool GetDoubleProps(const gchar *feature_name, gdouble &min,gdouble &max,GParamFlags &flags);
 
   /* persist cache to filesystem */
   void CreateCacheFile();
@@ -70,5 +68,7 @@ class GstPylonCache {
   GKeyFile *feature_cache_dict;
   gboolean is_empty;
 };
+
+G_END_DECLS
 
 #endif
