@@ -186,16 +186,15 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     selector_node = NULL;
   }
 
-  for (guint i = 0; i < enum_values.size(); i++) {
+  for (auto& enum_value : enum_values) {
     if (NULL != selector_node) {
       switch (selector_node->GetPrincipalInterfaceType()) {
         case GenApi::intfIEnumeration:
           param.Attach(selector_node);
-          selector_value =
-              param.GetEntryByName(enum_values[i].c_str())->GetValue();
+          selector_value = param.GetEntryByName(enum_value.c_str())->GetValue();
           break;
         case GenApi::intfIInteger:
-          selector_value = std::stoi(enum_values[i]);
+          selector_value = std::stoi(enum_value);
           break;
         default:; /* do nothing */
       }
@@ -260,7 +259,9 @@ void GstPylonFeatureWalker::install_properties(
       try {
         std::vector<GParamSpec*> specs_list = gst_pylon_camera_handle_node(
             node, nodemap, device_fullname, feature_cache);
+
         gst_pylon_camera_install_specs(specs_list, oclass, nprop);
+
       } catch (const Pylon::GenericException& e) {
         GST_FIXME("Unable to install property \"%s\" on device \"%s\": %s",
                   node->GetDisplayName().c_str(), device_fullname.c_str(),
