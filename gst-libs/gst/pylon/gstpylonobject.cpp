@@ -139,9 +139,6 @@ template <typename T, typename P>
 static T gst_pylon_object_get_pylon_property(GenApi::INodeMap& nodemap,
                                              const gchar* name);
 
-static gint gst_pylon_object_get_enum_property(GenApi::INodeMap& nodemap,
-                                               const gchar* name);
-
 template <typename F, typename P>
 static void gst_pylon_object_feature_set_value(
     GParamSpec* pspec, GstPylonObjectPrivate* priv,
@@ -167,6 +164,13 @@ typedef gboolean (*GGetBool)(const GValue*);
 typedef gfloat (*GGetFloat)(const GValue*);
 typedef const gchar* (*GGetString)(const GValue*);
 typedef gint (*GGetEnum)(const GValue*);
+
+/* gst value set fptr */
+typedef void (*GSetInt64)(GValue*, gint64);
+typedef void (*GSetBool)(GValue*, gboolean);
+typedef void (*GSetFloat)(GValue*, gfloat);
+typedef void (*GSetString)(GValue*, const gchar*);
+typedef void (*GSetEnum)(GValue*, gint);
 
 /* implementations */
 
@@ -199,6 +203,7 @@ static void gst_pylon_object_class_init(
 
 static void gst_pylon_object_init(GstPylonObject* self) {}
 
+/* set pylon feature from gst property */
 template <class F, typename P>
 static void gst_pylon_object_set_pylon_feature(GenApi::INodeMap& nodemap,
                                                F get_value, const GValue* value,
@@ -213,6 +218,31 @@ void gst_pylon_object_set_pylon_feature<GGetEnum, Pylon::CEnumParameter>(
     const gchar* name) {
   Pylon::CEnumParameter param(nodemap, name);
   param.SetIntValue(get_value(value));
+}
+
+/* get gst property from pylon feature */
+template <class F, typename P>
+static void gst_pylon_object_get_pylon_feature(GenApi::INodeMap& nodemap,
+                                               F set_value, GValue* value,
+                                               const gchar* name) {
+  P param(nodemap, name);
+  set_value(value, param.GetValue());
+}
+
+template <>
+void gst_pylon_object_get_pylon_feature<GSetEnum, Pylon::CEnumParameter>(
+    GenApi::INodeMap& nodemap, GSetEnum set_value, GValue* value,
+    const gchar* name) {
+  Pylon::CEnumParameter param(nodemap, name);
+  set_value(value, param.GetIntValue());
+}
+
+template <>
+void gst_pylon_object_get_pylon_feature<GSetString, Pylon::CStringParameter>(
+    GenApi::INodeMap& nodemap, GSetString set_value, GValue* value,
+    const gchar* name) {
+  Pylon::CStringParameter param(nodemap, name);
+  set_value(value, param.GetValue().c_str());
 }
 
 static void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
@@ -236,28 +266,11 @@ static void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
   }
 }
 
-template <typename F, typename P>
-static void gst_pylon_object_set_pylon_selected_feature(
-    GenApi::INodeMap& nodemap, F get_value, const GValue* value,
-    const gchar* feature_name, const gchar* selector_name,
-    guint64& selector_value) {
-  gst_pylon_object_set_pylon_selector(nodemap, selector_name, selector_value);
-
-  gst_pylon_object_set_pylon_feature<F, P>(nodemap, get_value, value,
-                                           feature_name);
-}
-
 template <typename T, typename P>
 static T gst_pylon_object_get_pylon_property(GenApi::INodeMap& nodemap,
                                              const gchar* name) {
   P param(nodemap, name);
   return param.GetValue();
-}
-
-static gint gst_pylon_object_get_enum_property(GenApi::INodeMap& nodemap,
-                                               const gchar* name) {
-  Pylon::CEnumParameter param(nodemap, name);
-  return param.GetIntValue();
 }
 
 template <typename F, typename P>
@@ -272,6 +285,20 @@ static void gst_pylon_object_feature_set_value(
                                         selector_data->selector_value);
   }
   gst_pylon_object_set_pylon_feature<F, P>(*priv->nodemap, get_value, value,
+                                           pspec->name);
+}
+
+template <typename F, typename P>
+static void gst_pylon_object_feature_get_value(
+    GParamSpec* pspec, GstPylonObjectPrivate* priv,
+    GstPylonParamSpecSelectorData* selector_data, F set_value, GValue* value) {
+  /* The value accepted by the pspec can be a direct feature or a feature that
+   * has a selector. */
+  if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
+    gst_pylon_object_set_pylon_selector(*priv->nodemap, selector_data->selector,
+                                        selector_data->selector_value);
+  }
+  gst_pylon_object_get_pylon_feature<F, P>(*priv->nodemap, set_value, value,
                                            pspec->name);
 }
 
@@ -329,35 +356,33 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
   GstPylonObject* self = (GstPylonObject*)object;
   GstPylonObjectPrivate* priv =
       (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  GstPylonParamSpecSelectorData* selector_data = NULL;
+
+  if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
+    selector_data = gst_pylon_param_spec_selector_get_data(pspec);
+  }
 
   try {
     switch (g_type_fundamental(pspec->value_type)) {
       case G_TYPE_INT64:
-        g_value_set_int64(value, gst_pylon_object_get_pylon_property<
-                                     gint64, Pylon::CIntegerParameter>(
-                                     *priv->nodemap, pspec->name));
+        gst_pylon_object_feature_get_value<GSetInt64, Pylon::CIntegerParameter>(
+            pspec, priv, selector_data, g_value_set_int64, value);
         break;
       case G_TYPE_BOOLEAN:
-        g_value_set_boolean(value, gst_pylon_object_get_pylon_property<
-                                       gboolean, Pylon::CBooleanParameter>(
-                                       *priv->nodemap, pspec->name));
+        gst_pylon_object_feature_get_value<GSetBool, Pylon::CBooleanParameter>(
+            pspec, priv, selector_data, g_value_set_boolean, value);
         break;
       case G_TYPE_FLOAT:
-        g_value_set_float(
-            value,
-            gst_pylon_object_get_pylon_property<gfloat, Pylon::CFloatParameter>(
-                *priv->nodemap, pspec->name));
+        gst_pylon_object_feature_get_value<GSetFloat, Pylon::CFloatParameter>(
+            pspec, priv, selector_data, g_value_set_float, value);
         break;
       case G_TYPE_STRING:
-        g_value_set_string(
-            value, gst_pylon_object_get_pylon_property<GenICam::gcstring,
-                                                       Pylon::CStringParameter>(
-                       *priv->nodemap, pspec->name)
-                       .c_str());
+        gst_pylon_object_feature_get_value<GSetString, Pylon::CStringParameter>(
+            pspec, priv, selector_data, g_value_set_string, value);
         break;
       case G_TYPE_ENUM:
-        g_value_set_enum(value, gst_pylon_object_get_enum_property(
-                                    *priv->nodemap, pspec->name));
+        gst_pylon_object_feature_get_value<GSetEnum, Pylon::CEnumParameter>(
+            pspec, priv, selector_data, g_value_set_enum, value);
         break;
       default:
         g_warning("Unsupported GType: %s", g_type_name(pspec->value_type));
