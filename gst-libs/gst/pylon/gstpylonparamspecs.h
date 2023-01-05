@@ -89,7 +89,7 @@ GParamSpec* gst_pylon_param_spec_selector_boolean(
     GenApi::INodeMap& nodemap, const gchar* selector_name,
     const gchar* feature_name, guint64 selector_value, const gchar* nick,
     const gchar* blurb, gboolean def, GParamFlags flags) G_GNUC_MALLOC;
-GParamSpec* gst_pylon_param_spec_selector_float(
+GParamSpec* gst_pylon_param_spec_selector_double(
     GenApi::INodeMap& nodemap, const gchar* feature_name,
     const gchar* selector_name, guint64 selector_value, const gchar* nick,
     const gchar* blurb, gdouble min, gdouble max, gdouble def,

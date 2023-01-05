@@ -53,9 +53,9 @@ static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
 static gchar *gst_child_inspector_type_bool_to_string(GParamSpec *pspec,
                                                       GValue *value,
                                                       gint alignment);
-static gchar *gst_child_inspector_type_float_to_string(GParamSpec *pspec,
-                                                       GValue *value,
-                                                       gint alignment);
+static gchar *gst_child_inspector_type_double_to_string(GParamSpec *pspec,
+                                                        GValue *value,
+                                                        gint alignment);
 static gchar *gst_child_inspector_type_string_to_string(GParamSpec *pspec,
                                                         GValue *value,
                                                         gint alignment);
@@ -84,7 +84,7 @@ static GstChildInspectorFlag flags[] = {
 static GstChildInspectorType types[] = {
     {G_TYPE_INT64, gst_child_inspector_type_int64_to_string},
     {G_TYPE_BOOLEAN, gst_child_inspector_type_bool_to_string},
-    {G_TYPE_FLOAT, gst_child_inspector_type_float_to_string},
+    {G_TYPE_DOUBLE, gst_child_inspector_type_double_to_string},
     {G_TYPE_STRING, gst_child_inspector_type_string_to_string},
     {G_TYPE_ENUM, gst_child_inspector_type_enum_to_string},
     {0, NULL}};
@@ -140,17 +140,17 @@ static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
                          g_value_get_int64(value));
 }
 
-static gchar *gst_child_inspector_type_float_to_string(GParamSpec *pspec,
-                                                       GValue *value,
-                                                       gint alignment) {
+static gchar *gst_child_inspector_type_double_to_string(GParamSpec *pspec,
+                                                        GValue *value,
+                                                        gint alignment) {
   g_return_val_if_fail(pspec, NULL);
   g_return_val_if_fail(value, NULL);
 
-  GParamSpecFloat *pfloat = G_PARAM_SPEC_FLOAT(pspec);
+  GParamSpecDouble *pdouble = G_PARAM_SPEC_DOUBLE(pspec);
 
-  return g_strdup_printf("Float. Range: %.2f - %.2f Default: %.2f",
-                         pfloat->minimum, pfloat->maximum,
-                         g_value_get_float(value));
+  return g_strdup_printf("Double. Range: %.2f - %.2f Default: %.2f",
+                         pdouble->minimum, pdouble->maximum,
+                         g_value_get_double(value));
 }
 
 static gchar *gst_child_inspector_type_bool_to_string(GParamSpec *pspec,

@@ -161,14 +161,14 @@ static void gst_pylon_object_finalize(GObject* self);
 /* gst value get fptr */
 typedef gint64 (*GGetInt64)(const GValue*);
 typedef gboolean (*GGetBool)(const GValue*);
-typedef gfloat (*GGetFloat)(const GValue*);
+typedef gdouble (*GGetDouble)(const GValue*);
 typedef const gchar* (*GGetString)(const GValue*);
 typedef gint (*GGetEnum)(const GValue*);
 
 /* gst value set fptr */
 typedef void (*GSetInt64)(GValue*, gint64);
 typedef void (*GSetBool)(GValue*, gboolean);
-typedef void (*GSetFloat)(GValue*, gfloat);
+typedef void (*GSetDouble)(GValue*, gdouble);
 typedef void (*GSetString)(GValue*, const gchar*);
 typedef void (*GSetEnum)(GValue*, gint);
 
@@ -325,9 +325,9 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
         gst_pylon_object_feature_set_value<GGetBool, Pylon::CBooleanParameter>(
             pspec, priv, selector_data, g_value_get_boolean, value);
         break;
-      case G_TYPE_FLOAT:
-        gst_pylon_object_feature_set_value<GGetFloat, Pylon::CFloatParameter>(
-            pspec, priv, selector_data, g_value_get_float, value);
+      case G_TYPE_DOUBLE:
+        gst_pylon_object_feature_set_value<GGetDouble, Pylon::CFloatParameter>(
+            pspec, priv, selector_data, g_value_get_double, value);
         break;
       case G_TYPE_STRING:
         gst_pylon_object_feature_set_value<GGetString, Pylon::CStringParameter>(
@@ -372,9 +372,9 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
         gst_pylon_object_feature_get_value<GSetBool, Pylon::CBooleanParameter>(
             pspec, priv, selector_data, g_value_set_boolean, value);
         break;
-      case G_TYPE_FLOAT:
-        gst_pylon_object_feature_get_value<GSetFloat, Pylon::CFloatParameter>(
-            pspec, priv, selector_data, g_value_set_float, value);
+      case G_TYPE_DOUBLE:
+        gst_pylon_object_feature_get_value<GSetDouble, Pylon::CFloatParameter>(
+            pspec, priv, selector_data, g_value_set_double, value);
         break;
       case G_TYPE_STRING:
         gst_pylon_object_feature_get_value<GSetString, Pylon::CStringParameter>(

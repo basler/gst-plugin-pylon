@@ -79,10 +79,10 @@ static GParamSpec *gst_pylon_make_spec_selector_bool(GenApi::INodeMap &nodemap,
                                                      GenApi::INode *node,
                                                      GenApi::INode *selector,
                                                      guint64 selector_value);
-static GParamSpec *gst_pylon_make_spec_float(GenApi::INodeMap &nodemap,
-                                             GenApi::INode *node,
-                                             GstPylonCache &feature_cache);
-static GParamSpec *gst_pylon_make_spec_selector_float(
+static GParamSpec *gst_pylon_make_spec_double(GenApi::INodeMap &nodemap,
+                                              GenApi::INode *node,
+                                              GstPylonCache &feature_cache);
+static GParamSpec *gst_pylon_make_spec_selector_double(
     GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
     guint64 selector_value, GstPylonCache &feature_cache);
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INodeMap &nodemap,
@@ -132,7 +132,7 @@ static std::string gst_pylon_build_cache_value_string(
     GParamFlags flags, T minimum_under_all_settings,
     T maximum_under_all_settings);
 
-static void gst_pylon_query_feature_properties_float(
+static void gst_pylon_query_feature_properties_double(
     GenApi::INodeMap &nodemap, GenApi::INode *node,
     GstPylonCache &feature_cache, GParamFlags &flags,
     gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings);
@@ -539,7 +539,7 @@ static void gst_pylon_find_limits(GenApi::INode *node,
   }
 }
 
-void gst_pylon_query_feature_properties_float(
+void gst_pylon_query_feature_properties_double(
     GenApi::INodeMap &nodemap, GenApi::INode *node,
     GstPylonCache &feature_cache, GParamFlags &flags,
     gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings) {
@@ -643,9 +643,9 @@ static GParamSpec *gst_pylon_make_spec_selector_bool(GenApi::INodeMap &nodemap,
       gst_pylon_query_access(nodemap, node));
 }
 
-static GParamSpec *gst_pylon_make_spec_float(GenApi::INodeMap &nodemap,
-                                             GenApi::INode *node,
-                                             GstPylonCache &feature_cache) {
+static GParamSpec *gst_pylon_make_spec_double(GenApi::INodeMap &nodemap,
+                                              GenApi::INode *node,
+                                              GstPylonCache &feature_cache) {
   g_return_val_if_fail(node, NULL);
 
   Pylon::CFloatParameter param(node);
@@ -653,15 +653,15 @@ static GParamSpec *gst_pylon_make_spec_float(GenApi::INodeMap &nodemap,
   gdouble min_value = 0;
   GParamFlags flags = G_PARAM_READABLE;
 
-  gst_pylon_query_feature_properties_float(nodemap, node, feature_cache, flags,
-                                           min_value, max_value);
+  gst_pylon_query_feature_properties_double(nodemap, node, feature_cache, flags,
+                                            min_value, max_value);
 
-  return g_param_spec_float(node->GetName(), node->GetDisplayName(),
-                            node->GetToolTip(), min_value, max_value,
-                            param.GetValue(), flags);
+  return g_param_spec_double(node->GetName(), node->GetDisplayName(),
+                             node->GetToolTip(), min_value, max_value,
+                             param.GetValue(), flags);
 }
 
-static GParamSpec *gst_pylon_make_spec_selector_float(
+static GParamSpec *gst_pylon_make_spec_selector_double(
     GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
     guint64 selector_value, GstPylonCache &feature_cache) {
   g_return_val_if_fail(node, NULL);
@@ -672,10 +672,10 @@ static GParamSpec *gst_pylon_make_spec_selector_float(
   gdouble min_value = 0;
   GParamFlags flags = G_PARAM_READABLE;
 
-  gst_pylon_query_feature_properties_float(nodemap, node, feature_cache, flags,
-                                           min_value, max_value);
+  gst_pylon_query_feature_properties_double(nodemap, node, feature_cache, flags,
+                                            min_value, max_value);
 
-  return gst_pylon_param_spec_selector_float(
+  return gst_pylon_param_spec_selector_double(
       nodemap, node->GetName(), selector->GetName(), selector_value,
       node->GetDisplayName(), node->GetToolTip(), min_value, max_value,
       param.GetValue(), flags);
@@ -814,9 +814,9 @@ GParamSpec *GstPylonParamFactory::make_param(GenApi::INodeMap &nodemap,
       break;
     case GenApi::intfIFloat:
       if (!selector) {
-        spec = gst_pylon_make_spec_float(nodemap, node, feature_cache);
+        spec = gst_pylon_make_spec_double(nodemap, node, feature_cache);
       } else {
-        spec = gst_pylon_make_spec_selector_float(
+        spec = gst_pylon_make_spec_selector_double(
             nodemap, node, selector, selector_value, feature_cache);
       }
       break;

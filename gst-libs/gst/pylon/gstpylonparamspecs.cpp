@@ -145,7 +145,7 @@ GParamSpec *gst_pylon_param_spec_selector_boolean(
   return spec;
 }
 
-GParamSpec *gst_pylon_param_spec_selector_float(
+GParamSpec *gst_pylon_param_spec_selector_double(
     GenApi::INodeMap &nodemap, const gchar *feature_name,
     const gchar *selector_name, guint64 selector_value, const gchar *nick,
     const gchar *blurb, gdouble min, gdouble max, gdouble def,
