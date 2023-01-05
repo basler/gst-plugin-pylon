@@ -148,7 +148,7 @@ static gchar *gst_child_inspector_type_double_to_string(GParamSpec *pspec,
 
   GParamSpecDouble *pdouble = G_PARAM_SPEC_DOUBLE(pspec);
 
-  return g_strdup_printf("Double. Range: %.2f - %.2f Default: %.2f",
+  return g_strdup_printf("Double. Range: %.2g - %.2g Default: %.2g",
                          pdouble->minimum, pdouble->maximum,
                          g_value_get_double(value));
 }
