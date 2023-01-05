@@ -187,21 +187,28 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   }
 
   for (auto& enum_value : enum_values) {
-    if (NULL != selector_node) {
-      switch (selector_node->GetPrincipalInterfaceType()) {
-        case GenApi::intfIEnumeration:
-          param.Attach(selector_node);
-          selector_value = param.GetEntryByName(enum_value.c_str())->GetValue();
-          break;
-        case GenApi::intfIInteger:
-          selector_value = std::stoi(enum_value);
-          break;
-        default:; /* do nothing */
+    try {
+      if (NULL != selector_node) {
+        switch (selector_node->GetPrincipalInterfaceType()) {
+          case GenApi::intfIEnumeration:
+            param.Attach(selector_node);
+            selector_value =
+                param.GetEntryByName(enum_value.c_str())->GetValue();
+            break;
+          case GenApi::intfIInteger:
+            selector_value = std::stoi(enum_value);
+            break;
+          default:; /* do nothing */
+        }
       }
+      specs_list.push_back(GstPylonParamFactory::make_param(
+          nodemap, node, selector_node, selector_value, device_fullname,
+          feature_cache));
+    } catch (const Pylon::GenericException& e) {
+      GST_FIXME("Unable to fully install property \"%s\" on device \"%s\": %s",
+                node->GetDisplayName().c_str(), device_fullname.c_str(),
+                e.GetDescription());
     }
-    specs_list.push_back(GstPylonParamFactory::make_param(
-        nodemap, node, selector_node, selector_value, device_fullname,
-        feature_cache));
   }
 
   return specs_list;

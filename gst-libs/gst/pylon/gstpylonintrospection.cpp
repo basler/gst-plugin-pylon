@@ -644,7 +644,8 @@ static GParamSpec *gst_pylon_make_spec_selector_int64(
   GParamFlags flags = G_PARAM_READABLE;
 
   gst_pylon_query_feature_properties_integer(nodemap, node, feature_cache,
-                                             flags, min_value, max_value);
+                                             flags, min_value, max_value,
+                                             selector, selector_value);
 
   return gst_pylon_param_spec_selector_int64(
       nodemap, node->GetName(), selector->GetName(), selector_value,
@@ -708,7 +709,8 @@ static GParamSpec *gst_pylon_make_spec_selector_double(
   GParamFlags flags = G_PARAM_READABLE;
 
   gst_pylon_query_feature_properties_double(nodemap, node, feature_cache, flags,
-                                            min_value, max_value);
+                                            min_value, max_value, selector,
+                                            selector_value);
 
   return gst_pylon_param_spec_selector_double(
       nodemap, node->GetName(), selector->GetName(), selector_value,
