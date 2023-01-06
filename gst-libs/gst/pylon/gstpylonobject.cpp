@@ -283,8 +283,13 @@ static void gst_pylon_object_feature_set_value(
     gst_pylon_object_set_pylon_feature<F, P>(*priv->nodemap, get_value, value,
                                              selector_data->feature);
   } else {
+    /* decanonicalize gst to pylon name */
+    gchar** split = g_strsplit(pspec->name, "-", -1);
+    gchar* name_pylon = g_strjoinv("_", split);
+    g_strfreev(split);
     gst_pylon_object_set_pylon_feature<F, P>(*priv->nodemap, get_value, value,
-                                             pspec->name);
+                                             name_pylon);
+    g_free(name_pylon);
   }
 }
 
@@ -300,8 +305,13 @@ static void gst_pylon_object_feature_get_value(
     gst_pylon_object_get_pylon_feature<F, P>(*priv->nodemap, set_value, value,
                                              selector_data->feature);
   } else {
+    /* decanonicalize gst to pylon name */
+    gchar** split = g_strsplit(pspec->name, "-", -1);
+    gchar* name_pylon = g_strjoinv("_", split);
+    g_strfreev(split);
     gst_pylon_object_get_pylon_feature<F, P>(*priv->nodemap, set_value, value,
-                                             pspec->name);
+                                             name_pylon);
+    g_free(name_pylon);
   }
 }
 
