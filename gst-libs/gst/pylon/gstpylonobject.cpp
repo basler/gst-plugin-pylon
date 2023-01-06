@@ -280,12 +280,8 @@ static void gst_pylon_object_feature_set_value(
   if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
     gst_pylon_object_set_pylon_selector(*priv->nodemap, selector_data->selector,
                                         selector_data->selector_value);
-    /* strip off selector */
-    gchar** featurename_split_list = NULL;
-    featurename_split_list = g_strsplit(pspec->name, "-", -1);
     gst_pylon_object_set_pylon_feature<F, P>(*priv->nodemap, get_value, value,
-                                             featurename_split_list[0]);
-    g_strfreev(featurename_split_list);
+                                             selector_data->feature);
   } else {
     gst_pylon_object_set_pylon_feature<F, P>(*priv->nodemap, get_value, value,
                                              pspec->name);
@@ -301,12 +297,8 @@ static void gst_pylon_object_feature_get_value(
   if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
     gst_pylon_object_set_pylon_selector(*priv->nodemap, selector_data->selector,
                                         selector_data->selector_value);
-    /* strip off selector */
-    gchar** featurename_split_list = NULL;
-    featurename_split_list = g_strsplit(pspec->name, "-", -1);
     gst_pylon_object_get_pylon_feature<F, P>(*priv->nodemap, set_value, value,
-                                             featurename_split_list[0]);
-    g_strfreev(featurename_split_list);
+                                             selector_data->feature);
   } else {
     gst_pylon_object_get_pylon_feature<F, P>(*priv->nodemap, set_value, value,
                                              pspec->name);
