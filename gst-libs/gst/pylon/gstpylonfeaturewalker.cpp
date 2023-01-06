@@ -63,7 +63,8 @@ static std::unordered_set<std::string> propfilter_set = {
     "PixelFormat",
     "AcquisitionFrameRateEnable",
     "AcquisitionFrameRate",
-    "AcquisitionFrameRateAbs"};
+    "AcquisitionFrameRateAbs",
+    "ChunkData"};
 
 static std::vector<std::string> gst_pylon_get_enum_entries(
     GenApi::IEnumeration* enum_node) {
