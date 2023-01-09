@@ -37,9 +37,7 @@
 
 #include <string>
 
-G_BEGIN_DECLS
-
-class GstPylonCache {
+class GST_PLUGIN_EXPORT GstPylonCache {
  public:
   GstPylonCache(const std::string &name);
   ~GstPylonCache();
@@ -68,7 +66,5 @@ class GstPylonCache {
   GKeyFile *feature_cache_dict;
   gboolean is_empty;
 };
-
-G_END_DECLS
 
 #endif
