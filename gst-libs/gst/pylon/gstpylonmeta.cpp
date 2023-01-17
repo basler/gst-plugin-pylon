@@ -169,7 +169,7 @@ static void gst_pylon_meta_fill_result_chunks(
 
     /* Only take into account valid Chunk nodes */
     auto sel_node = dynamic_cast<GenApi::ISelector *>(node);
-    if (!GenApi::IsImplemented(node) || !node->IsFeature() ||
+    if (!GenApi::IsAvailable(node) || !node->IsFeature() ||
         (node->GetName() == "Root") || !sel_node || sel_node->IsSelector()) {
       continue;
     }
