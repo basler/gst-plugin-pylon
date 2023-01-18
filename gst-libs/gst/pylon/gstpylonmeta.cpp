@@ -239,3 +239,9 @@ static void gst_pylon_meta_free(GstMeta *meta, GstBuffer *buffer) {
 
   gst_structure_free(pylon_meta->chunks);
 }
+
+GstPylonMeta * gst_buffer_get_pylon_meta (GstBuffer * buffer)
+{
+    return reinterpret_cast<GstPylonMeta*>(gst_buffer_get_meta (buffer, GST_PYLON_META_API_TYPE));
+}
+

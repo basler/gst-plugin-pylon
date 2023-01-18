@@ -244,6 +244,7 @@ subdir('gst-libs')
 subdir('ext')
 subdir('tests')
 subdir('docs')
+subdir('bindings')
 
 configure_file(output : 'config.h', configuration : cdata)
 
