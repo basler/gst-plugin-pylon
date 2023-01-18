@@ -12,7 +12,6 @@ Build
 # Meson
 /build
 /_build
-/subprojects
 
 # vscode
 .vscode/
