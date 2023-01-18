@@ -33,6 +33,7 @@
 #include "gstpyloncache.h"
 
 #include <errno.h>
+#include <glib/gfileutils.h>
 
 #ifdef _MSC_VER  // MSVC
 #pragma warning(push)
@@ -112,8 +113,25 @@ gboolean GstPylonCache::IsEmpty() { return this->is_empty; }
 
 void GstPylonCache::CreateCacheFile() {
   GError *file_err = NULL;
+
+#if defined(GLIB_VERSION_2_66) && GLIB_VERSION_MIN_REQUIRED >= GLIB_VERSION_2_66
+  gchar *contents = NULL;
+  gsize length = 0;
+
+  contents = g_key_file_to_data(this->feature_cache_dict, &length, NULL);
+  g_assert(contents != NULL);
+
+  gboolean ret = g_file_set_contents_full(
+      this->filepath.c_str(), contents, length,
+      static_cast<GFileSetContentsFlags>(G_FILE_SET_CONTENTS_CONSISTENT), 0666,
+      &file_err);
+
+  g_free(contents);
+#else
   gboolean ret = g_key_file_save_to_file(this->feature_cache_dict,
                                          this->filepath.c_str(), &file_err);
+#endif
+
   if (!ret) {
     std::string file_err_str = file_err->message;
     g_error_free(file_err);
