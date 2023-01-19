@@ -57,6 +57,7 @@ static void gst_pylon_camera_install_specs(
     const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
     gint& nprop);
 
+/* filter for features and categories */
 static std::unordered_set<std::string> propfilter_set = {
     "Width",
     "Height",
@@ -64,7 +65,20 @@ static std::unordered_set<std::string> propfilter_set = {
     "AcquisitionFrameRateEnable",
     "AcquisitionFrameRate",
     "AcquisitionFrameRateAbs",
-    "ChunkData"};
+    "ChunkData",
+    "AcquisitionStart",
+    "AcquisitionStop",
+    "UserSetLoad",
+    "UserSetSave",
+    "TriggerSoftware",
+    "DeviceReset",
+    "DeviceRegistersStreamingStart",
+    "DeviceRegistersStreamingEnd"};
+
+/* filter for selector nodes */
+static std::unordered_set<std::string> selectorfilter_set = {
+    "DeviceLinkSelector",
+};
 
 static std::vector<std::string> gst_pylon_get_enum_entries(
     GenApi::IEnumeration* enum_node) {
@@ -126,14 +140,10 @@ std::vector<std::string> GstPylonFeatureWalker::process_selector_features(
     throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
   }
 
-  /* If the feature has no selectors then it is a "direct" feature, it does not
-   * depend on any other selector */
   GenApi::FeatureList_t selectors;
+  bool is_direct_feature = false;
+
   sel_node->GetSelectingFeatures(selectors);
-  if (selectors.empty()) {
-    enum_values.push_back("direct-feature");
-    return enum_values;
-  }
 
   /* At the time being features with multiple selectors are not supported */
   guint max_selectors = 1;
@@ -142,6 +152,25 @@ std::vector<std::string> GstPylonFeatureWalker::process_selector_features(
                 " has more than " + std::to_string(max_selectors) +
                 " selectors, ignoring!";
     throw Pylon::GenericException(error_msg.c_str(), __FILE__, __LINE__);
+  }
+
+  /* If the feature has no selectors then it is a "direct" feature, it does not
+   * depend on any other selector
+   */
+  if (selectors.empty()) {
+    is_direct_feature = true;
+  } else {
+    /* If the selecrtor is in negative list it is a "direct" feature and
+     * selector is ignored  */
+    auto selector = selectors.at(0);
+    is_direct_feature |=
+        selectorfilter_set.find(std::string(selector->GetNode()->GetName())) !=
+        selectorfilter_set.end();
+  }
+
+  if (is_direct_feature) {
+    enum_values.push_back("direct-feature");
+    return enum_values;
   }
 
   auto selector = selectors.at(0);
@@ -207,7 +236,7 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
           feature_cache));
     } catch (const Pylon::GenericException& e) {
       GST_FIXME("Unable to fully install property \"%s\" on device \"%s\": %s",
-                node->GetDisplayName().c_str(), device_fullname.c_str(),
+                node->GetName().c_str(), device_fullname.c_str(),
                 e.GetDescription());
     }
   }
