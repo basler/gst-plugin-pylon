@@ -379,7 +379,7 @@ gst_pylon_create_set_value_actions(
         GenApi::StringList_t settable_values;
         param.GetSettableValues(settable_values);
         for (const auto &value : settable_values) {
-          /* skip unsupported packed mono and bayer formats */
+          /* Skip unsupported packed mono and bayer formats */
           if (node->GetName() == "PixelFormat" &&
               (Pylon::IsMonoPacked(static_cast<Pylon::EPixelType>(
                    param.GetEntryByName(value)->GetValue())) ||
@@ -551,7 +551,7 @@ void gst_pylon_query_feature_properties_double(
 
   gchar *feature_cache_name = NULL;
   if (selector) {
-    /* set selector value value */
+    /* Set selector value value */
     gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
                                         selector_value);
 
@@ -562,7 +562,7 @@ void gst_pylon_query_feature_properties_double(
     feature_cache_name = g_strdup(node->GetName().c_str());
   }
 
-  /* if access to a feature cache entry fails, create new props dynamically */
+  /* If access to a feature cache entry fails, create new props dynamically */
   if (!feature_cache.GetDoubleProps(feature_cache_name,
                                     minimum_under_all_settings,
                                     maximum_under_all_settings, flags)) {
@@ -586,7 +586,7 @@ void gst_pylon_query_feature_properties_integer(
 
   gchar *feature_cache_name = NULL;
   if (selector) {
-    /* set selector value value */
+    /* Set selector value value */
     gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
                                         selector_value);
 
@@ -598,7 +598,7 @@ void gst_pylon_query_feature_properties_integer(
     feature_cache_name = g_strdup(node->GetName().c_str());
   }
 
-  /* if access to a feature cache entry fails, create new props dynamically */
+  /* If access to a feature cache entry fails, create new props dynamically */
   if (!feature_cache.GetIntProps(node->GetName().c_str(),
                                  minimum_under_all_settings,
                                  maximum_under_all_settings, flags)) {

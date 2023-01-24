@@ -120,7 +120,7 @@ static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
                                                 const std::string& device_name,
                                                 GstPylonCache& feature_cache);
 
-/* set a pylon feature from a gstreamer gst property */
+/* Set a pylon feature from a gstreamer gst property */
 template <typename F, typename P>
 static void gst_pylon_object_set_pylon_feature(GenApi::INodeMap& nodemap,
                                                F get_value, const GValue* value,
@@ -154,14 +154,14 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec);
 static void gst_pylon_object_finalize(GObject* self);
 
-/* gst value get fptr */
+/* GValue get fptr */
 typedef gint64 (*GGetInt64)(const GValue*);
 typedef gboolean (*GGetBool)(const GValue*);
 typedef gdouble (*GGetDouble)(const GValue*);
 typedef const gchar* (*GGetString)(const GValue*);
 typedef gint (*GGetEnum)(const GValue*);
 
-/* gst value set fptr */
+/* GValue set fptr */
 typedef void (*GSetInt64)(GValue*, gint64);
 typedef void (*GSetBool)(GValue*, gboolean);
 typedef void (*GSetDouble)(GValue*, gdouble);
@@ -199,7 +199,7 @@ static void gst_pylon_object_class_init(
 
 static void gst_pylon_object_init(GstPylonObject* self) {}
 
-/* set pylon feature from gst property */
+/* Set pylon feature from gst property */
 template <class F, typename P>
 static void gst_pylon_object_set_pylon_feature(GenApi::INodeMap& nodemap,
                                                F get_value, const GValue* value,
@@ -216,7 +216,7 @@ void gst_pylon_object_set_pylon_feature<GGetEnum, Pylon::CEnumParameter>(
   param.SetIntValue(get_value(value));
 }
 
-/* get gst property from pylon feature */
+/* Get gst property from pylon feature */
 template <class F, typename P>
 static void gst_pylon_object_get_pylon_feature(GenApi::INodeMap& nodemap,
                                                F set_value, GValue* value,
@@ -283,7 +283,7 @@ static void gst_pylon_object_feature_set_value(
     gst_pylon_object_set_pylon_feature<F, P>(*priv->nodemap, get_value, value,
                                              selector_data->feature);
   } else {
-    /* decanonicalize gst to pylon name */
+    /* Decanonicalize gst to pylon name */
     gchar** split = g_strsplit(pspec->name, "-", -1);
     gchar* name_pylon = g_strjoinv("_", split);
     g_strfreev(split);
@@ -305,7 +305,7 @@ static void gst_pylon_object_feature_get_value(
     gst_pylon_object_get_pylon_feature<F, P>(*priv->nodemap, set_value, value,
                                              selector_data->feature);
   } else {
-    /* decanonicalize gst to pylon name */
+    /* Decanonicalize gst to pylon name */
     gchar** split = g_strsplit(pspec->name, "-", -1);
     gchar* name_pylon = g_strjoinv("_", split);
     g_strfreev(split);

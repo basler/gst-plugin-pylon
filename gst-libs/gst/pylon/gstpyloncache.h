@@ -44,23 +44,29 @@ class GST_PLUGIN_EXPORT GstPylonCache {
   gboolean IsCacheValid();
   gboolean IsEmpty();
 
-  void SetIntProps(const gchar *feature_name, const gint64 min,const gint64 max,const GParamFlags flags);
-  void SetDoubleProps(const gchar *feature_name, const gdouble min,const gdouble max,const GParamFlags flags);
+  void SetIntProps(const gchar *feature_name, const gint64 min,
+                   const gint64 max, const GParamFlags flags);
+  void SetDoubleProps(const gchar *feature_name, const gdouble min,
+                      const gdouble max, const GParamFlags flags);
 
-  bool GetIntProps(const gchar *feature_name, gint64 &min,gint64 &max,GParamFlags &flags);
-  bool GetDoubleProps(const gchar *feature_name, gdouble &min,gdouble &max,GParamFlags &flags);
+  bool GetIntProps(const gchar *feature_name, gint64 &min, gint64 &max,
+                   GParamFlags &flags);
+  bool GetDoubleProps(const gchar *feature_name, gdouble &min, gdouble &max,
+                      GParamFlags &flags);
 
-  /* persist cache to filesystem */
+  /* Persist cache to filesystem */
   void CreateCacheFile();
 
  private:
+  void SetIntegerAttribute(const char *feature, const char *attribute,
+                           const gint64 val);
+  void SetDoubleAttribute(const char *feature, const char *attribute,
+                          gdouble val);
 
-  void SetIntegerAttribute(const char *feature, const char* attribute, const gint64 val);
-  void SetDoubleAttribute(const char *feature, const char* attribute, gdouble val);
-
-  bool GetIntegerAttribute(const char *feature, const char* attribute, gint64 &val);
-  bool GetDoubleAttribute(const char *feature, const char* attribute, gdouble &val);
-
+  bool GetIntegerAttribute(const char *feature, const char *attribute,
+                           gint64 &val);
+  bool GetDoubleAttribute(const char *feature, const char *attribute,
+                          gdouble &val);
 
   std::string filepath;
   GKeyFile *feature_cache_dict;
