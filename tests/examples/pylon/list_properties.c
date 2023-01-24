@@ -89,12 +89,12 @@ int64_to_string (GParamSpec * spec)
 }
 
 static gchar *
-float_to_string (GParamSpec * spec)
+double_to_string (GParamSpec * spec)
 {
-  GParamSpecFloat *pfloat = G_PARAM_SPEC_FLOAT (spec);
+  GParamSpecDouble *pdouble = G_PARAM_SPEC_DOUBLE (spec);
 
-  return g_strdup_printf ("Float. Range: %.2f - %.2f Default: %.2f",
-      pfloat->minimum, pfloat->maximum, pfloat->default_value);
+  return g_strdup_printf ("Double. Range: %.2f - %.2f Default: %.2f",
+      pdouble->minimum, pdouble->maximum, pdouble->default_value);
 }
 
 static gchar *
@@ -146,8 +146,8 @@ property_to_string (GParamSpec * spec)
     case G_TYPE_STRING:
       details = string_to_string (spec);
       break;
-    case G_TYPE_FLOAT:
-      details = float_to_string (spec);
+    case G_TYPE_DOUBLE:
+      details = double_to_string (spec);
       break;
     case G_TYPE_ENUM:
       details = enum_to_string (spec);

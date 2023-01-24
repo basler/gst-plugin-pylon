@@ -37,16 +37,40 @@
 
 #include <string>
 
-class GstPylonCache {
+class GST_PLUGIN_EXPORT GstPylonCache {
  public:
-  GstPylonCache(const std::string& name);
+  GstPylonCache(const std::string &name);
   ~GstPylonCache();
-  void SetCacheValue(const std::string& key, const std::string& value);
+  gboolean IsCacheValid();
+  gboolean IsEmpty();
+
+  void SetIntProps(const gchar *feature_name, const gint64 min,
+                   const gint64 max, const GParamFlags flags);
+  void SetDoubleProps(const gchar *feature_name, const gdouble min,
+                      const gdouble max, const GParamFlags flags);
+
+  bool GetIntProps(const gchar *feature_name, gint64 &min, gint64 &max,
+                   GParamFlags &flags);
+  bool GetDoubleProps(const gchar *feature_name, gdouble &min, gdouble &max,
+                      GParamFlags &flags);
+
+  /* Persist cache to filesystem */
   void CreateCacheFile();
 
  private:
-  const std::string cache_file_name;
-  GKeyFile* feature_cache_dict;
+  void SetIntegerAttribute(const char *feature, const char *attribute,
+                           const gint64 val);
+  void SetDoubleAttribute(const char *feature, const char *attribute,
+                          gdouble val);
+
+  bool GetIntegerAttribute(const char *feature, const char *attribute,
+                           gint64 &val);
+  bool GetDoubleAttribute(const char *feature, const char *attribute,
+                          gdouble &val);
+
+  std::string filepath;
+  GKeyFile *feature_cache_dict;
+  gboolean is_empty;
 };
 
 #endif

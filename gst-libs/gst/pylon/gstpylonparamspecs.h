@@ -75,7 +75,7 @@ typedef struct _GstPylonParamSpecSelectorData GstPylonParamSpecSelectorData;
 struct _GstPylonParamSpecSelectorData {
   gchar* feature;
   gchar* selector;
-  guint64 selector_value;
+  gint64 selector_value;
 };
 
 /* --- GParamSpec prototypes --- */
@@ -89,7 +89,7 @@ GParamSpec* gst_pylon_param_spec_selector_boolean(
     GenApi::INodeMap& nodemap, const gchar* selector_name,
     const gchar* feature_name, guint64 selector_value, const gchar* nick,
     const gchar* blurb, gboolean def, GParamFlags flags) G_GNUC_MALLOC;
-GParamSpec* gst_pylon_param_spec_selector_float(
+GParamSpec* gst_pylon_param_spec_selector_double(
     GenApi::INodeMap& nodemap, const gchar* feature_name,
     const gchar* selector_name, guint64 selector_value, const gchar* nick,
     const gchar* blurb, gdouble min, gdouble max, gdouble def,
@@ -107,6 +107,11 @@ GParamSpec* gst_pylon_param_spec_selector_enum(
 
 gchar* gst_pylon_param_spec_sanitize_name(const gchar* name);
 GstPylonParamSpecSelectorData* gst_pylon_param_spec_selector_get_data(GParamSpec* spec);
+gchar *gst_pylon_create_selected_name(GenApi::INodeMap &nodemap,
+                                                   const gchar *feature_name,
+                                                   const gchar *selector_name,
+                                                   guint64 selector_value);
+
 
 G_END_DECLS
 

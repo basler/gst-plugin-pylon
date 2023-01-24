@@ -178,7 +178,7 @@ cb_have_data (GstPad * pad, GstPadProbeInfo * info, gpointer user_data)
   gchar *meta_str = NULL;
   gchar *tmp_str = NULL;
   gint64 int_chunk;
-  gdouble float_chunk;
+  gdouble double_chunk;
 
   g_return_val_if_fail (ctx, GST_PAD_PROBE_DROP);
 
@@ -205,9 +205,9 @@ cb_have_data (GstPad * pad, GstPadProbeInfo * info, gpointer user_data)
         meta_str = tmp_str;
         break;
       case G_TYPE_DOUBLE:
-        gst_structure_get_double (meta->chunks, chunk_name, &float_chunk);
+        gst_structure_get_double (meta->chunks, chunk_name, &double_chunk);
         tmp_str =
-            g_strdup_printf ("%s%s_%.2f ", meta_str, chunk_name, float_chunk);
+            g_strdup_printf ("%s%s_%.2f ", meta_str, chunk_name, double_chunk);
         g_free (meta_str);
         meta_str = tmp_str;
         break;

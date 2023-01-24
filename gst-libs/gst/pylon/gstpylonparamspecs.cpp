@@ -46,11 +46,10 @@ gchar *gst_pylon_param_spec_sanitize_name(const gchar *name) {
   return g_strcanon(g_strdup_printf("_%s", name), VALID_CHARS, '_');
 }
 
-static gchar *gst_pylon_param_spec_selector_prolog(GenApi::INodeMap &nodemap,
-                                                   const gchar *feature_name,
-                                                   const gchar *selector_name,
-                                                   guint64 selector_value,
-                                                   GParamFlags &flags) {
+gchar *gst_pylon_create_selected_name(GenApi::INodeMap &nodemap,
+                                      const gchar *feature_name,
+                                      const gchar *selector_name,
+                                      guint64 selector_value) {
   g_return_val_if_fail(feature_name, NULL);
   g_return_val_if_fail(selector_name, NULL);
 
@@ -72,6 +71,20 @@ static gchar *gst_pylon_param_spec_selector_prolog(GenApi::INodeMap &nodemap,
     the STATIC_NAME flag is not set */
   gchar *name =
       g_strdup_printf("%s-%s", feature_name, selector_value_str.c_str());
+
+  return name;
+}
+
+static gchar *gst_pylon_param_spec_selector_prolog(GenApi::INodeMap &nodemap,
+                                                   const gchar *feature_name,
+                                                   const gchar *selector_name,
+                                                   guint64 selector_value,
+                                                   GParamFlags &flags) {
+  g_return_val_if_fail(feature_name, NULL);
+  g_return_val_if_fail(selector_name, NULL);
+
+  gchar *name = gst_pylon_create_selected_name(nodemap, feature_name,
+                                               selector_name, selector_value);
 
   gint int_flags = flags & ~G_PARAM_STATIC_NAME;
   int_flags |= GST_PYLON_PARAM_IS_SELECTOR;
@@ -145,7 +158,7 @@ GParamSpec *gst_pylon_param_spec_selector_boolean(
   return spec;
 }
 
-GParamSpec *gst_pylon_param_spec_selector_float(
+GParamSpec *gst_pylon_param_spec_selector_double(
     GenApi::INodeMap &nodemap, const gchar *feature_name,
     const gchar *selector_name, guint64 selector_value, const gchar *nick,
     const gchar *blurb, gdouble min, gdouble max, gdouble def,
@@ -156,7 +169,7 @@ GParamSpec *gst_pylon_param_spec_selector_float(
       nodemap, feature_name, selector_name, selector_value, flags);
 
   GParamSpec *spec =
-      g_param_spec_float(name, nick, blurb, min, max, def, flags);
+      g_param_spec_double(name, nick, blurb, min, max, def, flags);
   g_free(name);
 
   gst_pylon_param_spec_selector_epilog(spec, feature_name, selector_name,

@@ -63,7 +63,8 @@ static std::unordered_set<std::string> propfilter_set = {
     "PixelFormat",
     "AcquisitionFrameRateEnable",
     "AcquisitionFrameRate",
-    "AcquisitionFrameRateAbs"};
+    "AcquisitionFrameRateAbs",
+    "ChunkData"};
 
 static std::vector<std::string> gst_pylon_get_enum_entries(
     GenApi::IEnumeration* enum_node) {
@@ -186,23 +187,29 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     selector_node = NULL;
   }
 
-  for (guint i = 0; i < enum_values.size(); i++) {
-    if (NULL != selector_node) {
-      switch (selector_node->GetPrincipalInterfaceType()) {
-        case GenApi::intfIEnumeration:
-          param.Attach(selector_node);
-          selector_value =
-              param.GetEntryByName(enum_values[i].c_str())->GetValue();
-          break;
-        case GenApi::intfIInteger:
-          selector_value = std::stoi(enum_values[i]);
-          break;
-        default:; /* do nothing */
+  for (auto& enum_value : enum_values) {
+    try {
+      if (NULL != selector_node) {
+        switch (selector_node->GetPrincipalInterfaceType()) {
+          case GenApi::intfIEnumeration:
+            param.Attach(selector_node);
+            selector_value =
+                param.GetEntryByName(enum_value.c_str())->GetValue();
+            break;
+          case GenApi::intfIInteger:
+            selector_value = std::stoi(enum_value);
+            break;
+          default:; /* do nothing */
+        }
       }
+      specs_list.push_back(GstPylonParamFactory::make_param(
+          nodemap, node, selector_node, selector_value, device_fullname,
+          feature_cache));
+    } catch (const Pylon::GenericException& e) {
+      GST_FIXME("Unable to fully install property \"%s\" on device \"%s\": %s",
+                node->GetDisplayName().c_str(), device_fullname.c_str(),
+                e.GetDescription());
     }
-    specs_list.push_back(GstPylonParamFactory::make_param(
-        nodemap, node, selector_node, selector_value, device_fullname,
-        feature_cache));
   }
 
   return specs_list;
@@ -234,6 +241,8 @@ void GstPylonFeatureWalker::install_properties(
     const std::string& device_fullname, GstPylonCache& feature_cache) {
   g_return_if_fail(oclass);
 
+  gboolean is_cache_valid = feature_cache.IsCacheValid();
+
   gint nprop = 1;
   GenApi::INode* root_node = nodemap.GetNode("Root");
   auto worklist = std::queue<GenApi::INode*>();
@@ -248,7 +257,7 @@ void GstPylonFeatureWalker::install_properties(
      * selectors and are available */
     auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
     if (node->IsFeature() && (node->GetVisibility() != GenApi::Invisible) &&
-        sel_node && GenApi::IsAvailable(node) && !sel_node->IsSelector() &&
+        sel_node && GenApi::IsImplemented(node) && !sel_node->IsSelector() &&
         propfilter_set.find(std::string(node->GetName())) ==
             propfilter_set.end() &&
         node->GetPrincipalInterfaceType() != GenApi::intfICategory) {
@@ -258,7 +267,9 @@ void GstPylonFeatureWalker::install_properties(
       try {
         std::vector<GParamSpec*> specs_list = gst_pylon_camera_handle_node(
             node, nodemap, device_fullname, feature_cache);
+
         gst_pylon_camera_install_specs(specs_list, oclass, nprop);
+
       } catch (const Pylon::GenericException& e) {
         GST_FIXME("Unable to install property \"%s\" on device \"%s\": %s",
                   node->GetDisplayName().c_str(), device_fullname.c_str(),
@@ -277,9 +288,12 @@ void GstPylonFeatureWalker::install_properties(
     }
   }
 
-  try {
-    feature_cache.CreateCacheFile();
-  } catch (const Pylon::GenericException& e) {
-    GST_WARNING("Feature cache could not be generated. %s", e.GetDescription());
+  if (!is_cache_valid) {
+    try {
+      feature_cache.CreateCacheFile();
+    } catch (const Pylon::GenericException& e) {
+      GST_WARNING("Feature cache could not be generated. %s",
+                  e.GetDescription());
+    }
   }
 }
