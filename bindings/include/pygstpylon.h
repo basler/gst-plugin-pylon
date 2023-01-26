@@ -33,15 +33,14 @@
 #ifndef PYGSTPYLON_H
 #define PYGSTPYLON_H
 
+#include <gst/gst.h>
+#include <pybind11/pybind11.h>
+
 #include <memory>
 #include <optional>
-#include <pybind11/pybind11.h>
-#include <gst/gst.h>
-
 
 namespace py = pybind11;
 
-namespace pygstpylon {
-}
+namespace pygstpylon {}
 
 #endif /* PYGSTPYLON_H */

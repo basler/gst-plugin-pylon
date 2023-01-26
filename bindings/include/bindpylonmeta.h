@@ -38,7 +38,7 @@
 namespace py = pybind11;
 
 namespace pygstpylon {
-    void bindpylonmeta(py::module &m);
+void bindpylonmeta(py::module &m);
 }
 
 #endif

@@ -29,15 +29,15 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef BINDACCESSFUNCTIONS_H
+#define BINDACCESSFUNCTIONS_H
 
-#include <iostream>
 #include "pybind11/pybind11.h"
 #include "pygstpylon.h"
 
 namespace py = pybind11;
-
-using namespace std;
-
 namespace pygstpylon {
-    void bindaccessfunctions(py::module &m);
+void bindaccessfunctions(py::module &m);
 }
+
+#endif
