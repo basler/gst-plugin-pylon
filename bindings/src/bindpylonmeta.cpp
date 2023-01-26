@@ -45,6 +45,12 @@ void bindpylonmeta(py::module &m) {
       .def_readonly("skipped_images", &GstPylonMeta::skipped_images)
       .def_readonly("timestamp", &GstPylonMeta::timestamp)
       .def_readonly("stride", &GstPylonMeta::stride)
+      .def_property_readonly(
+          "offset_x",
+          [](const GstPylonMeta &self) { return self.offset.offset_x; })
+      .def_property_readonly(
+          "offset_y",
+          [](const GstPylonMeta &self) { return self.offset.offset_y; })
       .def_property_readonly("chunks", [](const GstPylonMeta &self) {
         py::dict dict;
         gint64 int_chunk;
