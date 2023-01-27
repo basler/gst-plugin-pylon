@@ -32,8 +32,16 @@
 #ifndef BINDACCESSFUNCTIONS_H
 #define BINDACCESSFUNCTIONS_H
 
-#include "pybind11/pybind11.h"
-#include "pygstpylon.h"
+#if __GNUC__  // GCC, CLANG, MinGW
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wredundant-decls"
+#endif
+
+#include <pybind11/pybind11.h>
+
+#if __GNUC__  // GCC, CLANG, MinWG
+#pragma GCC diagnostic pop
+#endif
 
 namespace py = pybind11;
 namespace pygstpylon {

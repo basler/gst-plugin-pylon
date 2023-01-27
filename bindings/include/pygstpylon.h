@@ -33,11 +33,16 @@
 #ifndef PYGSTPYLON_H
 #define PYGSTPYLON_H
 
-#include <gst/gst.h>
+#if __GNUC__  // GCC, CLANG, MinGW
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wredundant-decls"
+#endif
+
 #include <pybind11/pybind11.h>
 
-#include <memory>
-#include <optional>
+#if __GNUC__  // GCC, CLANG, MinWG
+#pragma GCC diagnostic pop
+#endif
 
 namespace py = pybind11;
 

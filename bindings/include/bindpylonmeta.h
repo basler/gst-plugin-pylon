@@ -33,7 +33,16 @@
 #ifndef BINDPYLONMETA_H
 #define BINDPYLONMETA_H
 
-#include "pygstpylon.h"
+#if __GNUC__  // GCC, CLANG, MinGW
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wredundant-decls"
+#endif
+
+#include <pybind11/pybind11.h>
+
+#if __GNUC__  // GCC, CLANG, MinWG
+#pragma GCC diagnostic pop
+#endif
 
 namespace py = pybind11;
 

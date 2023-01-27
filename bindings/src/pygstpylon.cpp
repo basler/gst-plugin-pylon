@@ -39,7 +39,6 @@
 #include "pygstpylon.h"
 
 using namespace std;
-namespace py = pybind11;
 
 namespace pygstpylon {
 
