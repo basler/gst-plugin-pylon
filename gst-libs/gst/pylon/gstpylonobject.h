@@ -35,25 +35,7 @@
 
 #include <gst/gst.h>
 #include <gst/pylon/gstpyloncache.h>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(push)
-#pragma warning(disable : 4265)
-#elif __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
-#include <pylon/BaslerUniversalInstantCamera.h>
-#include <pylon/PylonIncludes.h>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(pop)
-#elif __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
-#endif
+#include <gst/pylon/gstpylonincludes.h>
 
 G_BEGIN_DECLS
 
@@ -72,8 +54,8 @@ EXT_PYLONSRC_API GObject* gst_pylon_object_new(
     const std::string& device_name, GenApi::INodeMap* nodemap);
 
 void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
-                                                const gchar* selector_name,
-                                                gint64& selector_value);
+                                         const gchar* selector_name,
+                                         gint64& selector_value);
 
 G_END_DECLS
 

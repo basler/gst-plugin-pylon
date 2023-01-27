@@ -36,26 +36,10 @@
 #include "gstpylonimagehandler.h"
 
 #include <gst/gst.h>
+#include <gst/pylon/gstpylonincludes.h>
 
 #include <condition_variable>
 #include <mutex>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(push)
-#pragma warning(disable : 4265)
-#elif __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#endif
-
-#include <pylon/BaslerUniversalInstantCamera.h>
-#include <pylon/PylonIncludes.h>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(pop)
-#elif __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
-#endif
 
 class GstPylonDisconnectHandler
     : public Pylon::CBaslerUniversalConfigurationEventHandler {
