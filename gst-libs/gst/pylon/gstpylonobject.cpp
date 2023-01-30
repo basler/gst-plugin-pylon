@@ -45,6 +45,7 @@ typedef struct _GstPylonObjectPrivate GstPylonObjectPrivate;
 struct _GstPylonObjectPrivate {
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera;
   GenApi::INodeMap* nodemap;
+  gboolean enable_correction;
 };
 
 typedef struct _GstPylonObjectDeviceMembers GstPylonObjectDeviceMembers;
