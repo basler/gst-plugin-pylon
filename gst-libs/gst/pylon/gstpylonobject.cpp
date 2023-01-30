@@ -122,7 +122,7 @@ static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
 
 /* Set a pylon feature from a gstreamer gst property */
 template <typename F, typename P>
-static void gst_pylon_object_set_pylon_feature(GenApi::INodeMap& nodemap,
+static void gst_pylon_object_set_pylon_feature(GstPylonObjectPrivate* priv,
                                                F get_value, const GValue* value,
                                                const gchar* name);
 
@@ -201,18 +201,42 @@ static void gst_pylon_object_init(GstPylonObject* self) {}
 
 /* Set pylon feature from gst property */
 template <class F, typename P>
-static void gst_pylon_object_set_pylon_feature(GenApi::INodeMap& nodemap,
+static void gst_pylon_object_set_pylon_feature(GstPylonObjectPrivate* priv,
                                                F get_value, const GValue* value,
                                                const gchar* name) {
-  P param(nodemap, name);
+  P param(*priv->nodemap, name);
   param.SetValue(get_value(value));
 }
 
 template <>
-void gst_pylon_object_set_pylon_feature<GGetEnum, Pylon::CEnumParameter>(
-    GenApi::INodeMap& nodemap, GGetEnum get_value, const GValue* value,
+void gst_pylon_object_set_pylon_feature<GGetInt64, Pylon::CIntegerParameter>(
+    GstPylonObjectPrivate* priv, GGetInt64 get_value, const GValue* value,
     const gchar* name) {
-  Pylon::CEnumParameter param(nodemap, name);
+  Pylon::CIntegerParameter param(*priv->nodemap, name);
+
+  if(priv->enable_correction)
+    param.SetValue(get_value(value), Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);
+  else
+    param.SetValue(get_value(value));
+}
+
+template <>
+void gst_pylon_object_set_pylon_feature<GGetDouble, Pylon::CFloatParameter>(
+    GstPylonObjectPrivate* priv, GGetDouble get_value, const GValue* value,
+    const gchar* name) {
+  Pylon::CFloatParameter param(*priv->nodemap, name);
+
+  if(priv->enable_correction)
+    param.SetValue(get_value(value), Pylon::EFloatValueCorrection::FloatValueCorrection_ClipToRange);
+  else
+     param.SetValue(get_value(value));
+}
+
+template <>
+void gst_pylon_object_set_pylon_feature<GGetEnum, Pylon::CEnumParameter>(
+    GstPylonObjectPrivate* priv, GGetEnum get_value, const GValue* value,
+    const gchar* name) {
+  Pylon::CEnumParameter param(*priv->nodemap, name);
   param.SetIntValue(get_value(value));
 }
 
@@ -280,14 +304,14 @@ static void gst_pylon_object_feature_set_value(
   if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
     gst_pylon_object_set_pylon_selector(*priv->nodemap, selector_data->selector,
                                         selector_data->selector_value);
-    gst_pylon_object_set_pylon_feature<F, P>(*priv->nodemap, get_value, value,
+    gst_pylon_object_set_pylon_feature<F, P>(priv, get_value, value,
                                              selector_data->feature);
   } else {
     /* Decanonicalize gst to pylon name */
     gchar** split = g_strsplit(pspec->name, "-", -1);
     gchar* name_pylon = g_strjoinv("_", split);
     g_strfreev(split);
-    gst_pylon_object_set_pylon_feature<F, P>(*priv->nodemap, get_value, value,
+    gst_pylon_object_set_pylon_feature<F, P>(priv, get_value, value,
                                              name_pylon);
     g_free(name_pylon);
   }
@@ -435,6 +459,7 @@ GObject* gst_pylon_object_new(
 
   priv->camera = std::move(camera);
   priv->nodemap = nodemap;
+  priv->enable_correction = enable_correction;
 
   return obj;
 }
