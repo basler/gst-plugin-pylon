@@ -59,7 +59,6 @@ G_BEGIN_DECLS
 #define GST_PYLON_PARAM_IS_SELECTOR (1 << (G_PARAM_USER_SHIFT + 1))
 #define GST_PYLON_PARAM_FLAG_IS_SET(pspec, flag) ((pspec)->flags & (flag))
 
-
 /* --- typedefs & structures --- */
 
 typedef struct _GstPylonParamSpecSelectorData GstPylonParamSpecSelectorData;
@@ -101,12 +100,14 @@ GParamSpec* gst_pylon_param_spec_selector_string(
 GParamSpec* gst_pylon_param_spec_selector_enum(
     GenApi::INodeMap& nodemap, const gchar* feature_name,
     const gchar* selector_name, guint64 selector_value, const gchar* nick,
-    const gchar* blurb, GType type, gint64 def, GParamFlags flags) G_GNUC_MALLOC;
+    const gchar* blurb, GType type, gint64 def,
+    GParamFlags flags) G_GNUC_MALLOC;
 
 /* --- Utility prototypes --- */
 
-gchar* gst_pylon_param_spec_sanitize_name(const gchar* name);
-GstPylonParamSpecSelectorData* gst_pylon_param_spec_selector_get_data(GParamSpec* spec);
+std::string gst_pylon_param_spec_sanitize_name(const gchar* name);
+GstPylonParamSpecSelectorData* gst_pylon_param_spec_selector_get_data(
+    GParamSpec* spec);
 gchar *gst_pylon_create_selected_name(GenApi::INodeMap &nodemap,
                                                    const gchar *feature_name,
                                                    const gchar *selector_name,

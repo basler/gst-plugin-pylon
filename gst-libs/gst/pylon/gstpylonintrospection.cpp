@@ -759,10 +759,10 @@ static GType gst_pylon_make_enum_type(GenApi::INodeMap &nodemap,
 
   gchar *full_name = g_strdup_printf("%s_%s", device_fullname.c_str(),
                                      node->GetName().c_str());
-  gchar *name = gst_pylon_param_spec_sanitize_name(full_name);
+  std::string name = gst_pylon_param_spec_sanitize_name(full_name);
   g_free(full_name);
 
-  GType type = g_type_from_name(name);
+  GType type = g_type_from_name(name.c_str());
 
   if (!type) {
     std::vector<GEnumValue> enumvalues;
@@ -784,11 +784,9 @@ static GType gst_pylon_make_enum_type(GenApi::INodeMap &nodemap,
     GEnumValue sentinel = {0};
     enumvalues.push_back(sentinel);
 
-    type = g_enum_register_static(name, enumvalues.data());
+    type = g_enum_register_static(name.c_str(), enumvalues.data());
     persistent_values.insert({type, std::move(enumvalues)});
   }
-
-  g_free(name);
 
   return type;
 }

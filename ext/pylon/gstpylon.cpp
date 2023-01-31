@@ -281,14 +281,6 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
     device_info = device_list.at(device_index);
 
     self->camera->Attach(factory.CreateDevice(device_info));
-
-    self->camera->RegisterImageEventHandler(&self->image_handler,
-                                            Pylon::RegistrationMode_Append,
-                                            Pylon::Cleanup_None);
-    self->disconnect_handler.SetData(self->gstpylonsrc, &self->image_handler);
-    self->camera->RegisterConfiguration(&self->disconnect_handler,
-                                        Pylon::RegistrationMode_Append,
-                                        Pylon::Cleanup_None);
     self->camera->Open();
 
     /* Set the camera to a valid state */
@@ -307,6 +299,16 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
     self->gstream_grabber = gst_pylon_object_new(
         self->camera, gst_pylon_get_sgrabber_name(*self->camera),
         &sgrabber_nodemap);
+
+    /* Register event handlers after device instances are requested so they do
+     * not get registered if creating the device instances fails */
+    self->camera->RegisterImageEventHandler(&self->image_handler,
+                                            Pylon::RegistrationMode_Append,
+                                            Pylon::Cleanup_None);
+    self->disconnect_handler.SetData(self->gstpylonsrc, &self->image_handler);
+    self->camera->RegisterConfiguration(&self->disconnect_handler,
+                                        Pylon::RegistrationMode_Append,
+                                        Pylon::Cleanup_None);
 
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
