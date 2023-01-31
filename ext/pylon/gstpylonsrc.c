@@ -240,10 +240,10 @@ gst_pylon_src_class_init (GstPylonSrcClass * klass)
   g_object_class_install_property (gobject_class, PROP_ENABLE_CORRECTION,
       g_param_spec_boolean ("enable-correction",
           "Enable correction",
-          "If enabled, the values from other parameters will be automatically corrected. " 
+          "If enabled, the values from other parameters will be automatically corrected. "
           " If any of the properties holds an incorrect value given an specific configuration "
           "it will be corrected",
-          PROP_ENABLE_CORRECTION_DEFAULT, 
+          PROP_ENABLE_CORRECTION_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
   g_object_class_install_property (gobject_class, PROP_CAPTURE_ERROR,
@@ -357,7 +357,7 @@ gst_pylon_src_set_property (GObject * object, guint property_id,
       self->pfs_location = g_value_dup_string (value);
       break;
     case PROP_ENABLE_CORRECTION:
-      self->enable_correction = g_value_get_boolean(value);
+      self->enable_correction = g_value_get_boolean (value);
       break;
     case PROP_CAPTURE_ERROR:
       self->capture_error = g_value_get_enum (value);
@@ -397,7 +397,7 @@ gst_pylon_src_get_property (GObject * object, guint property_id,
       g_value_set_string (value, self->pfs_location);
       break;
     case PROP_ENABLE_CORRECTION:
-      g_value_set_boolean(value, self->enable_correction);
+      g_value_set_boolean (value, self->enable_correction);
       break;
     case PROP_CAPTURE_ERROR:
       g_value_set_enum (value, self->capture_error);
@@ -680,11 +680,13 @@ gst_pylon_src_start (GstBaseSrc * src)
       "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s \n\tPFS filepath: %s \n\tEnable correction: %s."
       "If defined, the PFS file will override the user set configuration.",
       self->device_user_name, self->device_serial_number, self->device_index,
-      self->user_set, self->pfs_location, ((self->enable_correction) ? "True" : "False"));
+      self->user_set, self->pfs_location,
+      ((self->enable_correction) ? "True" : "False"));
 
   self->pylon =
       gst_pylon_new (GST_ELEMENT_CAST (self), self->device_user_name,
-      self->device_serial_number, self->device_index, self->enable_correction, &error);
+      self->device_serial_number, self->device_index, self->enable_correction,
+      &error);
   GST_OBJECT_UNLOCK (self);
 
   if (error) {
