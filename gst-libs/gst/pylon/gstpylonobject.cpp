@@ -214,9 +214,14 @@ void gst_pylon_object_set_pylon_feature<GGetInt64, Pylon::CIntegerParameter>(
     const gchar* name) {
   Pylon::CIntegerParameter param(*priv->nodemap, name);
 
-  if(priv->enable_correction)
-    param.SetValue(get_value(value), Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);
-  else
+  if (priv->enable_correction) {
+    GST_WARNING(
+        "Value correction enabled. Values outside of valid ranges will be "
+        "automatically corrected.");
+    param.SetValue(
+        get_value(value),
+        Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);
+  } else
     param.SetValue(get_value(value));
 }
 
@@ -226,10 +231,15 @@ void gst_pylon_object_set_pylon_feature<GGetDouble, Pylon::CFloatParameter>(
     const gchar* name) {
   Pylon::CFloatParameter param(*priv->nodemap, name);
 
-  if(priv->enable_correction)
-    param.SetValue(get_value(value), Pylon::EFloatValueCorrection::FloatValueCorrection_ClipToRange);
-  else
-     param.SetValue(get_value(value));
+  if (priv->enable_correction) {
+    GST_WARNING(
+        "Value correction enabled. Values outside of valid ranges will be "
+        "automatically corrected.");
+    param.SetValue(
+        get_value(value),
+        Pylon::EFloatValueCorrection::FloatValueCorrection_ClipToRange);
+  } else
+    param.SetValue(get_value(value));
 }
 
 template <>
@@ -436,7 +446,8 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
 
 GObject* gst_pylon_object_new(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const std::string& device_name, GenApi::INodeMap* nodemap) {
+    const std::string& device_name, GenApi::INodeMap* nodemap,
+    gboolean enable_correction) {
   std::string type_name =
       gst_pylon_param_spec_sanitize_name(device_name.c_str());
 
