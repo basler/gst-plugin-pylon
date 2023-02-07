@@ -13,6 +13,10 @@ gst_dep = dependency('gstreamer-1.0', version : gst_req)
 gst_version = gst_dep.version()
 message('Building against GStreamer ' + gst_version)
 
+git_version = vcs_tag(command : ['git', 'describe', '--tags'],
+  input: 'version.h.in', output: 'version.h', replace_string: '@GIT_VERSION@',
+  fallback: 'no git')
+
 version_arr = gst_version.split('.')
 gst_version_major = version_arr[0].to_int()
 gst_version_minor = version_arr[1].to_int()

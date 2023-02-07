@@ -9,7 +9,7 @@ pylon_sources = [
 ]
 
 gstpylon_plugin = library('gstpylon',
-  pylon_sources,
+  pylon_sources + git_version,
   c_args : gst_plugin_pylon_args,
   cpp_args : gst_plugin_pylon_args,
   link_args : [noseh_link_args],
