@@ -91,6 +91,7 @@ if glib_checks.disabled() or (glib_checks.auto() and not gst_version_is_dev)
   add_project_arguments('-DG_DISABLE_CHECKS', language: 'c')
 endif
 
+
 cdata = configuration_data()
 
 check_headers = [
@@ -244,7 +245,14 @@ subdir('gst-libs')
 subdir('ext')
 subdir('tests')
 subdir('docs')
-subdir('bindings')
+
+meta_python_bindings = get_option('meta-python-bindings')
+if meta_python_bindings.enabled()
+  message('Meta python bindings enabled')
+  subdir('bindings')
+else
+  message('Meta python bindings disabled')
+endif
 
 configure_file(output : 'config.h', configuration : cdata)
 
