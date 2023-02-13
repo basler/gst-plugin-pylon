@@ -246,7 +246,7 @@ subdir('ext')
 subdir('tests')
 subdir('docs')
 
-meta_python_bindings = get_option('meta-python-bindings')
+meta_python_bindings = get_option('python-bindings')
 if meta_python_bindings.enabled()
   message('Meta python bindings enabled')
   subdir('bindings')
