@@ -273,6 +273,8 @@ A programming sample using these defintions to decode the data is in [show_meta]
 
 To access the metadata a Python support library is available. The `pygstpylon` provides the required access helper to decode the metadata from plugins and probes.
 
+Note that Python bindings are disabled by default, refer to the build section for instructions on how to enable them.
+
 One usage example to access camera chunk and metadata from a python plugin is in [snapshot_gpio.py](tests/examples/python/snapshot_gpio.py)
 
 This sample plugin will check the LineStatusAll chunk to detect an edge on one of the inputs to output a single image while per default all images get dropped.
