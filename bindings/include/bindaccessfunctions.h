@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 Basler AG
+/* Copyright (C) 2023 Basler AG
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,16 +32,7 @@
 #ifndef BINDACCESSFUNCTIONS_H
 #define BINDACCESSFUNCTIONS_H
 
-#if __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wredundant-decls"
-#endif
-
 #include <pybind11/pybind11.h>
-
-#if __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
-#endif
 
 namespace py = pybind11;
 namespace pygstpylon {

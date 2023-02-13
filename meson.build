@@ -91,7 +91,6 @@ if glib_checks.disabled() or (glib_checks.auto() and not gst_version_is_dev)
   add_project_arguments('-DG_DISABLE_CHECKS', language: 'c')
 endif
 
-
 cdata = configuration_data()
 
 check_headers = [

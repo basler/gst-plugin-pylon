@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 Basler AG
+/* Copyright (C) 2023 Basler AG
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,11 +32,6 @@
 
 #ifndef PYGSTPYLON_H
 #define PYGSTPYLON_H
-
-#if __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wredundant-decls"
-#endif
 
 #include <pybind11/pybind11.h>
 
