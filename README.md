@@ -346,6 +346,12 @@ cd gst-plugin-pylon
 meson setup builddir --prefix /usr/
 ```
 
+If you want to enable Python bindings, run the following command instead when setting up the meson project, since the bindings are disabled by default:
+
+```bash
+meson setup builddir --prefix /usr/ -Dpython-bindings=enabled
+```
+
 Build, test and install the project:
 
 ```bash
