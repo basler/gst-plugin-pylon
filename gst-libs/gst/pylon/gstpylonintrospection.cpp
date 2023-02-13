@@ -70,7 +70,7 @@ class GstPylonTypeAction : public GstPylonActions {
 /* prototypes */
 GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *feature_node,
                                          const GenICam::gcstring &limit);
-std::vector<GenApi::INode *> gst_pylon_find_parent_features(
+static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
     GenApi::INode *feature_node);
 void gst_pylon_add_all_property_values(
     GenApi::INode *feature_node, std::string value,
@@ -183,7 +183,36 @@ GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *node,
   return limit_node;
 }
 
-std::vector<GenApi::INode *> gst_pylon_find_parent_features(
+/* identify the first category a node belongs to */
+static const std::string gst_pylon_find_node_category(GenApi::INode *node) {
+  std::string category = "";
+  g_return_val_if_fail(node, category);
+
+  GenApi::INode *curr_node = node;
+
+  while (true) {
+    if (curr_node->IsFeature() &&
+        curr_node->GetPrincipalInterfaceType() == GenApi::intfICategory) {
+      category = curr_node->GetName();
+      break;
+    } else {
+      GenApi::NodeList_t parents;
+      curr_node->GetParents(parents);
+      if (parents.size() == 0) {
+        /* no parents and still no Category found, abort */
+        break;
+      } else if (parents.size() >= 1) {
+        /* yes there are genicam nodes that belong to multiple categories ...
+         * but we ignore this here */
+        curr_node = parents[0];
+      }
+    }
+  }
+
+  return category;
+}
+
+static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
     GenApi::INode *node) {
   std::vector<GenApi::INode *> parent_features;
 
@@ -235,6 +264,17 @@ std::vector<GenApi::INode *> gst_pylon_get_available_features(
     }
   }
   return available_features;
+}
+
+static std::vector<GenApi::INode *> gst_pylon_get_valid_categories(
+    const std::vector<GenApi::INode *> &feature_list) {
+  std::vector<GenApi::INode *> valid_features;
+  for (const auto &feature : feature_list) {
+    if (gst_pylon_find_node_category(feature) != "MultipleROI") {
+      valid_features.push_back(feature);
+    }
+  }
+  return valid_features;
 }
 
 template <class Type>
@@ -349,7 +389,8 @@ std::vector<std::vector<GstPylonActions *>> gst_pylon_create_set_value_actions(
       default:
         std::string msg = "Action in unsupported for node of type " +
                           std::to_string(node->GetPrincipalInterfaceType());
-        throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+        GST_LOG("%s", msg.c_str());
+        continue;
     }
     actions_list.push_back(values);
   }
@@ -395,7 +436,8 @@ std::vector<GstPylonActions *> gst_pylon_create_reset_value_actions(
       default:
         std::string msg = "Action in unsupported for node of type " +
                           std::to_string(node->GetPrincipalInterfaceType());
-        throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+        GST_LOG("%s", msg.c_str());
+        continue;
     }
   }
 
@@ -442,6 +484,20 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
   /* Filter parent invalidators to only available ones */
   std::vector<GenApi::INode *> available_parent_inv =
       gst_pylon_get_available_features(parent_invalidators);
+
+  /* workaround for ace2/dart2 exposuretime and short exposuretime*/
+  if (node->GetName() == "ExposureTime" &&
+      available_parent_inv.end() !=
+          std::find_if(available_parent_inv.begin(), available_parent_inv.end(),
+                       [](const GenApi::INode *n) {
+                         return n->GetName() == "BslExposureTimeMode";
+                       })) {
+    minimum_under_all_settings = 1.0;
+    maximum_under_all_settings = 1e+07;
+    return;
+  }
+
+  available_parent_inv = gst_pylon_get_valid_categories(available_parent_inv);
 
   /* Save current set of values */
   std::vector<GstPylonActions *> reset_list =
