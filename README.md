@@ -286,7 +286,7 @@ The below usage example will show live video and store a snapshot if the gpio ed
 export GST_PLUGIN_PATH=<gst-plugin-pylon>/tests/examples
 gst-launch-1.0 pylonsrc cam::ChunkModeActive=True cam::ChunkEnable-LineStatusAll=True \
         ! tee name=t \
-        t. ! queue ! pylongpiosnapshot_py line-source=4 rising-edge=true ! videoconvert ! pngenc ! multifilesink location=image%05d.png async=false\
+        t. ! queue ! pylongpiosnapshot_py trigger-source=4 rising-edge=true ! videoconvert ! pngenc ! multifilesink location=image%05d.png async=false\
         t. ! queue ! videoconvert  ! autovideosink 
 ```
 
