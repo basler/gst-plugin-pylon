@@ -15,7 +15,7 @@ message('Building against GStreamer ' + gst_version)
 
 git_version = vcs_tag(command : ['git', 'describe', '--tags'],
   input: 'version.h.in', output: 'version.h', replace_string: '@GIT_VERSION@',
-  fallback: 'no git')
+  fallback: meson.project_version() + '-local')
 
 version_arr = gst_version.split('.')
 gst_version_major = version_arr[0].to_int()
