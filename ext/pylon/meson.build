@@ -1,7 +1,7 @@
 
 pylon_sources = [
-  'gstpylonsrc.c',
-  'gstpylonplugin.c',
+  'gstpylonsrc.cpp',
+  'gstpylonplugin.cpp',
   'gstchildinspector.cpp',
   'gstpylon.cpp',
   'gstpylonimagehandler.cpp',
