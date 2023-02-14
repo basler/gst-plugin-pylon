@@ -36,8 +36,6 @@
 #include <glib.h>
 #include <gst/gst.h>
 
-G_BEGIN_DECLS
-
 typedef struct _GstPylon GstPylon;
 
 typedef enum {
@@ -77,7 +75,5 @@ GObject *gst_pylon_get_stream_grabber(GstPylon *self);
 gboolean gst_pylon_is_same_device(GstPylon *self, const gint device_index,
                                   const gchar *device_user_name,
                                   const gchar *device_serial_number);
-
-G_END_DECLS
 
 #endif

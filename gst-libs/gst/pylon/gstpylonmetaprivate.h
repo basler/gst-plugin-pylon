@@ -38,12 +38,8 @@
 #include <gst/pylon/gstpylonincludes.h>
 #include <gst/pylon/gstpylonmeta.h>
 
-G_BEGIN_DECLS
-
 EXT_PYLONSRC_API void gst_buffer_add_pylon_meta(
     GstBuffer *buffer,
     const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
-
-G_END_DECLS
 
 #endif

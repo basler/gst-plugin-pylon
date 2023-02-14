@@ -37,8 +37,6 @@
 #include <gst/pylon/gstpyloncache.h>
 #include <gst/pylon/gstpylonincludes.h>
 
-G_BEGIN_DECLS
-
 G_DECLARE_DERIVABLE_TYPE(GstPylonObject, gst_pylon_object, GST, PYLON_OBJECT,
                          GstObject)
 
@@ -56,7 +54,5 @@ EXT_PYLONSRC_API GObject* gst_pylon_object_new(
 void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
                                          const gchar* selector_name,
                                          gint64& selector_value);
-
-G_END_DECLS
 
 #endif

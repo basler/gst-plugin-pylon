@@ -33,12 +33,9 @@
 #ifndef __GST_PYLON_PARAM_SPECS_H__
 #define __GST_PYLON_PARAM_SPECS_H__
 
-#include <gst/gst.h>
-
 #include "gst/pylon/gstpylonincludes.h"
 
-
-G_BEGIN_DECLS
+#include <gst/gst.h>
 
 /* Set flag for features with selectors */
 #define GST_PYLON_PARAM_IS_SELECTOR (1 << (G_PARAM_USER_SHIFT + 1))
@@ -93,12 +90,9 @@ GParamSpec* gst_pylon_param_spec_selector_enum(
 std::string gst_pylon_param_spec_sanitize_name(const gchar* name);
 GstPylonParamSpecSelectorData* gst_pylon_param_spec_selector_get_data(
     GParamSpec* spec);
-gchar *gst_pylon_create_selected_name(GenApi::INodeMap &nodemap,
-                                                   const gchar *feature_name,
-                                                   const gchar *selector_name,
-                                                   guint64 selector_value);
-
-
-G_END_DECLS
+gchar* gst_pylon_create_selected_name(GenApi::INodeMap& nodemap,
+                                      const gchar* feature_name,
+                                      const gchar* selector_name,
+                                      guint64 selector_value);
 
 #endif /* __GST_PYLON_PARAM_SPECS_H__ */
