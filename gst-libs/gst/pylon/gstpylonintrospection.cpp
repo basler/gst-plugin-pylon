@@ -872,9 +872,9 @@ GParamSpec *GstPylonParamFactory::make_param(GenApi::INodeMap &nodemap,
       }
       break;
     default:
-      std::string msg = "Unsupported node of type " +
-                        std::to_string(node->GetPrincipalInterfaceType());
-      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+      Pylon::String_t msg =
+          "Unsupported node of type " + GenApi::GetInterfaceName(node);
+      throw Pylon::GenericException(msg, __FILE__, __LINE__);
   }
 
   return spec;

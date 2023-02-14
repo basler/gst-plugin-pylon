@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 Basler AG
+/* Copyright (C) 2023 Basler AG
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,42 +30,24 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_PYLON_META_H__
-#define __GST_PYLON_META_H__
+#include "bindaccessfunctions.h"
 
-#include <gst/gst.h>
-#include <gst/pylon/gstpylon-prelude.h>
+#include <gst/pylon/gstpylonmeta.h>
 
-G_BEGIN_DECLS
+namespace py = pybind11;
+using namespace pybind11::literals;
+using namespace std;
 
-#define GST_PYLON_META_API_TYPE (gst_pylon_meta_api_get_type())
-#define GST_PYLON_META_INFO (gst_pylon_meta_get_info())
-typedef struct _GstPylonOffset GstPylonOffset;
-typedef struct _GstPylonMeta GstPylonMeta;
+namespace pygstpylon {
 
-struct _GstPylonOffset
-{
-  guint64 offset_x;
-  guint64 offset_y;
-};
+void bindaccessfunctions(py::module &m) {
+  m.def(
+      "gst_buffer_get_pylon_meta",
+      [](size_t gst_buffer) {
+        auto *buffer = reinterpret_cast<GstBuffer *>(gst_buffer);
+        return gst_buffer_get_pylon_meta(buffer);
+      },
+      "buffer"_a, py::return_value_policy::reference);
+}
 
-struct _GstPylonMeta
-{
-  GstMeta meta;
-
-  GstStructure *chunks;
-  guint64 block_id;
-  guint64 image_number;
-  guint64 skipped_images;
-  GstPylonOffset offset;
-  GstClockTime timestamp;
-  gsize stride;
-};
-
-EXT_PYLONSRC_API GType gst_pylon_meta_api_get_type (void);
-EXT_PYLONSRC_API const GstMetaInfo *gst_pylon_meta_get_info (void);
-EXT_PYLONSRC_API GstPylonMeta * gst_buffer_get_pylon_meta (GstBuffer * buffer);
-
-
-G_END_DECLS
-#endif
+}  // namespace pygstpylon

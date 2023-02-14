@@ -267,7 +267,29 @@ gst-launch-1.0 pylonsrc cam::ChunkModeActive=True cam::ChunkEnable-Timestamp=Tru
 
 The plugin meta data is defined in [gstpylonmeta.h](gst-libs/gst/pylon/gstpylonmeta.h).
 
-A programming sample using these defintions to decode the data is in [show_meta](tests/examples/pylon/show_meta.c) 
+A programming sample using these defintions to decode the data is in [show_meta](tests/examples/pylon/show_meta.c)
+
+**Access to GstMetaPylon from python ** 
+
+To access the metadata a Python support library is available. The `pygstpylon` provides the required access helper to decode the metadata from plugins and probes.
+
+Note that Python bindings are disabled by default, refer to the build section for instructions on how to enable them.
+
+One usage example to access camera chunk and metadata from a python plugin is in [snapshot_gpio.py](tests/examples/python/snapshot_gpio.py)
+
+This sample plugin will check the LineStatusAll chunk to detect an edge on one of the inputs to output a single image while per default all images get dropped.
+
+The below usage example will show live video and store a snapshot if the gpio edge is detected on Line4 of the camera.
+
+```bash 
+# the plugin path for python code has to point to a directory with a 'python' subdirectory
+export GST_PLUGIN_PATH=<gst-plugin-pylon>/tests/examples
+gst-launch-1.0 pylonsrc cam::ChunkModeActive=True cam::ChunkEnable-LineStatusAll=True \
+        ! tee name=t \
+        t. ! queue ! pylongpiosnapshot_py trigger-source=4 rising-edge=true ! videoconvert ! pngenc ! multifilesink location=image%05d.png async=false\
+        t. ! queue ! videoconvert  ! autovideosink 
+```
+
 
 # Building
 
@@ -304,6 +326,9 @@ sudo -H python3 -m pip install meson ninja --upgrade
 
 # GStreamer
 sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake
+# if you want to use the sample python plugin
+sudo apt install gstreamer1.0-python3-plugin-loader
+
 ```
 
 The build process relies on `PYLON_ROOT` pointing to the Basler pylon install directory.
@@ -321,6 +346,12 @@ configure the project as:
 git clone https://github.com/basler/gst-plugin-pylon.git
 cd gst-plugin-pylon
 meson setup builddir --prefix /usr/
+```
+
+If you want to enable Python bindings, run the following command instead when setting up the meson project, since the bindings are disabled by default:
+
+```bash
+meson setup builddir --prefix /usr/ -Dpython-bindings=enabled
 ```
 
 Build, test and install the project:

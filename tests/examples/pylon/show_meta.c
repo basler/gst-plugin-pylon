@@ -161,14 +161,6 @@ try_enable_all_chunks (Context * ctx)
 
 }
 
-static GstPylonMeta *
-gst_buffer_get_pylon_meta (GstBuffer * buffer)
-{
-  GstPylonMeta *meta =
-      (GstPylonMeta *) gst_buffer_get_meta (buffer, GST_PYLON_META_API_TYPE);
-  return meta;
-}
-
 static GstPadProbeReturn
 cb_have_data (GstPad * pad, GstPadProbeInfo * info, gpointer user_data)
 {
@@ -183,7 +175,7 @@ cb_have_data (GstPad * pad, GstPadProbeInfo * info, gpointer user_data)
   g_return_val_if_fail (ctx, GST_PAD_PROBE_DROP);
 
   buffer = GST_PAD_PROBE_INFO_BUFFER (info);
-  meta = (GstPylonMeta *) gst_buffer_get_pylon_meta (buffer);
+  meta = (GstPylonMeta *) gst_buffer_get_meta (buffer, GST_PYLON_META_API_TYPE);
 
   meta_str =
       g_strdup_printf

@@ -57,14 +57,58 @@ static void gst_pylon_camera_install_specs(
     const std::vector<GParamSpec*>& specs_list, GObjectClass* oclass,
     gint& nprop);
 
-static std::unordered_set<std::string> propfilter_set = {
+static const std::unordered_set<std::string> propfilter_set = {
     "Width",
     "Height",
     "PixelFormat",
     "AcquisitionFrameRateEnable",
     "AcquisitionFrameRate",
     "AcquisitionFrameRateAbs",
-    "ChunkData"};
+    "ChunkData",
+    "AcquisitionStart",
+    "AcquisitionStop",
+    "UserSetLoad",
+    "UserSetSave",
+    "TriggerSoftware",
+    "DeviceReset",
+    "FileAccessControl",
+    "DeviceRegistersStreamingStart",
+    "DeviceRegistersStreamingEnd",
+    "FileAccessControl" /* has to be implemented in access library */
+    "EventControl",     /* disable full event section until mapped to gst
+                           events/msgs */
+    "SequencerControl"  /* sequencer control relies on cmd feature */
+};
+
+static const std::unordered_set<std::string> categoryfilter_set = {
+    "ChunkData",
+    "FileAccessControl" /* has to be implemented in access library */
+    "EventControl",     /* disable full event section until mapped to gst
+                           events/msgs */
+    "SequencerControl", /* sequencer control relies on cmd feature */
+    "MultipleROI"       /* workaround skip to avoid issues with ace2/dart2
+                           FIXME: this has to be fixed in feature walker */
+};
+
+/* filter for features that are not supported */
+static bool is_unsupported_feature(const std::string& feature_name) {
+  return propfilter_set.find(feature_name) != propfilter_set.end();
+}
+
+/* filter for categories that are not supported */
+static bool is_unsupported_category(const std::string& category_name) {
+  return categoryfilter_set.find(category_name) != categoryfilter_set.end();
+}
+
+/* filter for selector nodes */
+static std::unordered_set<std::string> selectorfilter_set = {
+    "DeviceLinkSelector",
+};
+
+/* filter for selectors and categories that are supported */
+static bool is_unsupported_selector(const std::string& feature_name) {
+  return selectorfilter_set.find(feature_name) != selectorfilter_set.end();
+}
 
 static std::vector<std::string> gst_pylon_get_enum_entries(
     GenApi::IEnumeration* enum_node) {
@@ -126,14 +170,10 @@ std::vector<std::string> GstPylonFeatureWalker::process_selector_features(
     throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
   }
 
-  /* If the feature has no selectors then it is a "direct" feature, it does not
-   * depend on any other selector */
   GenApi::FeatureList_t selectors;
+  bool is_direct_feature = false;
+
   sel_node->GetSelectingFeatures(selectors);
-  if (selectors.empty()) {
-    enum_values.push_back("direct-feature");
-    return enum_values;
-  }
 
   /* At the time being features with multiple selectors are not supported */
   guint max_selectors = 1;
@@ -142,6 +182,24 @@ std::vector<std::string> GstPylonFeatureWalker::process_selector_features(
                 " has more than " + std::to_string(max_selectors) +
                 " selectors, ignoring!";
     throw Pylon::GenericException(error_msg.c_str(), __FILE__, __LINE__);
+  }
+
+  /* If the feature has no selectors then it is a "direct" feature, it does not
+   * depend on any other selector
+   */
+  if (selectors.empty()) {
+    is_direct_feature = true;
+  } else {
+    /* If the selector is in negative list it is a "direct" feature and
+     * selector is ignored  */
+    auto selector = selectors.at(0);
+    is_direct_feature |=
+        is_unsupported_selector(std::string(selector->GetNode()->GetName()));
+  }
+
+  if (is_direct_feature) {
+    enum_values.push_back("direct-feature");
+    return enum_values;
   }
 
   auto selector = selectors.at(0);
@@ -172,7 +230,7 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, GenApi::INodeMap& nodemap,
     const std::string& device_fullname, GstPylonCache& feature_cache) {
   GenApi::INode* selector_node = NULL;
-  guint64 selector_value = 0;
+  gint64 selector_value = 0;
   std::vector<GParamSpec*> specs_list;
   Pylon::CEnumParameter param;
 
@@ -202,13 +260,14 @@ static std::vector<GParamSpec*> gst_pylon_camera_handle_node(
           default:; /* do nothing */
         }
       }
+
       specs_list.push_back(GstPylonParamFactory::make_param(
           nodemap, node, selector_node, selector_value, device_fullname,
           feature_cache));
     } catch (const Pylon::GenericException& e) {
-      GST_FIXME("Unable to fully install property \"%s\" on device \"%s\": %s",
-                node->GetDisplayName().c_str(), device_fullname.c_str(),
-                e.GetDescription());
+      GST_FIXME("Unable to fully install property '%s-%s' on device \"%s\": %s",
+                node->GetName().c_str(), enum_value.c_str(),
+                device_fullname.c_str(), e.GetDescription());
     }
   }
 
@@ -257,10 +316,10 @@ void GstPylonFeatureWalker::install_properties(
      * selectors and are available */
     auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
     if (node->IsFeature() && (node->GetVisibility() != GenApi::Invisible) &&
-        sel_node && GenApi::IsImplemented(node) && !sel_node->IsSelector() &&
-        propfilter_set.find(std::string(node->GetName())) ==
-            propfilter_set.end() &&
-        node->GetPrincipalInterfaceType() != GenApi::intfICategory) {
+        GenApi::IsImplemented(node) &&
+        !is_unsupported_feature(std::string(node->GetName())) &&
+        node->GetPrincipalInterfaceType() != GenApi::intfICategory &&
+        sel_node && !sel_node->IsSelector()) {
       GenICam::gcstring value;
       GenICam::gcstring attrib;
 
@@ -272,14 +331,15 @@ void GstPylonFeatureWalker::install_properties(
 
       } catch (const Pylon::GenericException& e) {
         GST_FIXME("Unable to install property \"%s\" on device \"%s\": %s",
-                  node->GetDisplayName().c_str(), device_fullname.c_str(),
+                  node->GetName().c_str(), device_fullname.c_str(),
                   e.GetDescription());
       }
     }
 
     /* Walk down all categories */
     auto category_node = dynamic_cast<GenApi::ICategory*>(node);
-    if (category_node) {
+    if (category_node &&
+        !is_unsupported_category(std::string(node->GetName()))) {
       GenApi::FeatureList_t features;
       category_node->GetFeatures(features);
       for (auto const& f : features) {
