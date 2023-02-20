@@ -1,7 +1,7 @@
 
 pylon_sources = [
-  'gstpylonsrc.c',
-  'gstpylonplugin.c',
+  'gstpylonsrc.cpp',
+  'gstpylonplugin.cpp',
   'gstchildinspector.cpp',
   'gstpylon.cpp',
   'gstpylonimagehandler.cpp',
@@ -14,6 +14,7 @@ gstpylon_plugin = library('gstpylon',
   cpp_args : gst_plugin_pylon_args,
   link_args : [noseh_link_args],
   include_directories : [configinc],
+  gnu_symbol_visibility: 'inlineshidden',
   dependencies : [gstpylon_dep],
   install : true,
   install_dir : plugins_install_dir

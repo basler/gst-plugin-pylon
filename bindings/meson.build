@@ -29,6 +29,7 @@ pymeta = py3.extension_module('pygstpylon',
                       install : true,
                       cpp_args: ['-DHAVE_CONFIG_H=1'],
                       include_directories : [configinc, incdir],
+                      gnu_symbol_visibility: 'inlineshidden',
                       dependencies : pygstpylon_deps,
                       )
 

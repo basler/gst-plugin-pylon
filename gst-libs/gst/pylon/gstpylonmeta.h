@@ -43,14 +43,12 @@ G_BEGIN_DECLS
 typedef struct _GstPylonOffset GstPylonOffset;
 typedef struct _GstPylonMeta GstPylonMeta;
 
-struct _GstPylonOffset
-{
+struct _GstPylonOffset {
   guint64 offset_x;
   guint64 offset_y;
 };
 
-struct _GstPylonMeta
-{
+struct _GstPylonMeta {
   GstMeta meta;
 
   GstStructure *chunks;
@@ -62,10 +60,9 @@ struct _GstPylonMeta
   gsize stride;
 };
 
-EXT_PYLONSRC_API GType gst_pylon_meta_api_get_type (void);
-EXT_PYLONSRC_API const GstMetaInfo *gst_pylon_meta_get_info (void);
-EXT_PYLONSRC_API GstPylonMeta * gst_buffer_get_pylon_meta (GstBuffer * buffer);
-
+EXT_PYLONSRC_API GType gst_pylon_meta_api_get_type(void);
+EXT_PYLONSRC_API const GstMetaInfo *gst_pylon_meta_get_info(void);
+EXT_PYLONSRC_API GstPylonMeta *gst_buffer_get_pylon_meta(GstBuffer *buffer);
 
 G_END_DECLS
 #endif

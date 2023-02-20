@@ -31,22 +31,21 @@
  */
 
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+#  include "config.h"
 #endif
 
 #include "gstpylonsrc.h"
+
 #include <pylon/PylonVersionNumber.h>
 
-static gboolean
-plugin_init (GstPlugin * plugin)
-{
-  return gst_element_register (plugin, "pylonsrc", GST_RANK_NONE,
-      GST_TYPE_PYLON_SRC);
+static gboolean plugin_init(GstPlugin* plugin) {
+  return gst_element_register(plugin, "pylonsrc", GST_RANK_NONE,
+                              GST_TYPE_PYLON_SRC);
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR,
-    pylon,
-    "Basler/Pylon plugin for pylon SDK " PYLON_VERSIONSTRING_MAJOR "."
-    PYLON_VERSIONSTRING_MINOR "." PYLON_VERSIONSTRING_SUBMINOR "("
-    PYLON_VERSIONSTRING_BUILD ")", plugin_init, VERSION, GST_PACKAGE_LICENSE,
-    GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)
+GST_PLUGIN_DEFINE(GST_VERSION_MAJOR, GST_VERSION_MINOR, pylon,
+                  "Basler/Pylon plugin for pylon SDK " PYLON_VERSIONSTRING_MAJOR
+                  "." PYLON_VERSIONSTRING_MINOR "." PYLON_VERSIONSTRING_SUBMINOR
+                  "(" PYLON_VERSIONSTRING_BUILD ")",
+                  plugin_init, VERSION, GST_PACKAGE_LICENSE, GST_PACKAGE_NAME,
+                  GST_PACKAGE_ORIGIN)

@@ -37,22 +37,19 @@
 
 /* backport definition to support ubuntu 18.04 */
 #ifndef GST_API_IMPORT
-# if defined(_MSC_VER) && !defined(GST_STATIC_COMPILATION)
-#  define GST_API_IMPORT __declspec(dllimport) extern
-# else
-#  define GST_API_IMPORT extern
-# endif
+#  if defined(_MSC_VER) && !defined(GST_STATIC_COMPILATION)
+#    define GST_API_IMPORT __declspec(dllimport) extern
+#  else
+#    define GST_API_IMPORT extern
+#  endif
 #endif
 
-
-
-
 #ifndef EXT_PYLONSRC_API
-# ifdef BUILDING_EXT_PYLONSRC
-#  define EXT_PYLONSRC_API GST_API_EXPORT         /* from config.h */
-# else
-#  define EXT_PYLONSRC_API GST_API_IMPORT
-# endif
+#  ifdef BUILDING_EXT_PYLONSRC
+#    define EXT_PYLONSRC_API GST_API_EXPORT /* from config.h */
+#  else
+#    define EXT_PYLONSRC_API GST_API_IMPORT
+#  endif
 #endif
 
 #endif /* __GST_PYLON_PRELUDE_H__ */
