@@ -34,8 +34,9 @@
 #  include "config.h"
 #endif
 
-#include "gstpylonsrc.h"
+#include "version.h"
 
+#include "gstpylonsrc.h"
 #include <pylon/PylonVersionNumber.h>
 
 static gboolean plugin_init(GstPlugin* plugin) {
