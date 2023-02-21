@@ -171,7 +171,7 @@ else
 endif
 
 # Passing this through the command line would be too messy
-cdata.set('GST_API_EXPORT', export_define)
+cdata.set('GST_PYLON_API_EXPORT', export_define)
 
 warning_flags = [
   '-Wmissing-declarations',

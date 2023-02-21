@@ -46,7 +46,7 @@
 
 #ifndef EXT_PYLONSRC_API
 #  ifdef BUILDING_EXT_PYLONSRC
-#    define EXT_PYLONSRC_API GST_API_EXPORT /* from config.h */
+#    define EXT_PYLONSRC_API GST_PYLON_API_EXPORT /* from config.h */
 #  else
 #    define EXT_PYLONSRC_API GST_API_IMPORT
 #  endif
