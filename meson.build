@@ -13,7 +13,7 @@ gst_dep = dependency('gstreamer-1.0', version : gst_req)
 gst_version = gst_dep.version()
 message('Building against GStreamer ' + gst_version)
 
-git_version = vcs_tag(command : ['sh', 'get_git_tags.sh'],
+git_version = vcs_tag(command : ['python3', 'get_git_version.py', meson.project_source_root()],
   input: 'version.h.in', output: 'version.h', replace_string: '@GIT_VERSION@',
   fallback: meson.project_version() + '-local')
 
