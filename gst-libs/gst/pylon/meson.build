@@ -29,7 +29,7 @@ endif
 
 gstpylon_sources = [
   'gstpyloncache.cpp',
-  'gstpylondebug.c',
+  'gstpylondebug.cpp',
   'gstpylonfeaturewalker.cpp',
   'gstpylonintrospection.cpp',
   'gstpylonmeta.cpp',

@@ -31,20 +31,18 @@
  */
 
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+#  include "config.h"
 #endif
 
 #include "gstpylondebug.h"
 
-GST_DEBUG_CATEGORY (gst_pylon_debug);
+GST_DEBUG_CATEGORY(gst_pylon_debug);
 
-void
-gst_pylon_debug_init (void)
-{
-  if (g_once_init_enter (&gst_pylon_debug)) {
-    GST_DEBUG_CATEGORY (cat_done);
-    GST_DEBUG_CATEGORY_INIT (cat_done, "pylonsrc", 0,
-        "debug category for pylonsrc element");
-    g_once_init_leave (&gst_pylon_debug, cat_done);
+void gst_pylon_debug_init(void) {
+  if (g_once_init_enter(&gst_pylon_debug)) {
+    GST_DEBUG_CATEGORY(cat_done);
+    GST_DEBUG_CATEGORY_INIT(cat_done, "pylonsrc", 0,
+                            "debug category for pylonsrc element");
+    g_once_init_leave(&gst_pylon_debug, cat_done);
   }
 }
