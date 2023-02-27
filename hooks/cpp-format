@@ -19,33 +19,5 @@ else
   CLANG_INDENT=clang-format
 fi
 
-CLANG_INDENT_STYLE="{
-    BasedOnStyle:  Google,
-    IncludeBlocks: Regroup,
-    IndentPPDirectives: AfterHash,
-    IncludeCategories: [
-      {
-         Regex: '^<ext/.*\\\.h>',
-         Priority: 3
-      },
-      {
-         Regex: '^<.*\\\.h>',
-         Priority: 2
-      },
-      {
-         Regex: '^<.*',
-         Priority: 3
-      },
-      {
-         Regex: '.*',
-         Priority: 1
-      }
-   ]
-}"
-
-CLANG_INDENT_PARAMETERS="--style=\"${CLANG_INDENT_STYLE}\" \
-    --sort-includes \
-    -i"
-
 echo "--Formatting ${file}--"
-eval ${CLANG_INDENT} ${CLANG_INDENT_PARAMETERS} ${file}
+eval ${CLANG_INDENT} -i --style=file ${file}
