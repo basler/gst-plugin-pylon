@@ -42,6 +42,7 @@
 #include <pylon/PixelType.h>
 
 #include <algorithm>
+#include <chrono>
 #include <numeric>
 #include <set>
 #include <unordered_map>
@@ -443,6 +444,29 @@ std::vector<GstPylonActions *> gst_pylon_create_reset_value_actions(
 
   return actions_list;
 }
+using namespace std ::literals;
+class TimeLogger {
+ public:
+  TimeLogger(const std::string &message)
+      : t0(std::chrono::system_clock::now()), message(message) {
+    GST_DEBUG("Start Checking: %s ", message.c_str());
+  };
+
+  ~TimeLogger() {
+    auto t1 = std::chrono::system_clock::now();
+    GST_DEBUG("TIMELOGGER %s %ld msec -> ", message.c_str(), (t1 - t0) / 1ms);
+    for (auto &info : info_list) {
+      GST_DEBUG("%s ", info.c_str());
+    }
+  }
+
+  void add_info(const std::string &info) { info_list.push_back(info); }
+
+ private:
+  const std::chrono::time_point<std::chrono::system_clock> t0;
+  std::string message;
+  std::vector<std::string> info_list;
+};
 
 template <class P, class T>
 void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
@@ -450,8 +474,9 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
   std::unordered_map<std::string, GenApi::INode *> invalidators;
   maximum_under_all_settings = 0;
   minimum_under_all_settings = 0;
-
   g_return_if_fail(node);
+
+  auto tl = TimeLogger(node->GetName().c_str());
 
   /* Find the maximum value of a feature under the influence of other elements
    * of the nodemap */
@@ -499,6 +524,10 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
 
   available_parent_inv = gst_pylon_get_valid_categories(available_parent_inv);
 
+  for (auto &node : available_parent_inv) {
+    tl.add_info(node->GetName().c_str());
+  }
+
   /* Save current set of values */
   std::vector<GstPylonActions *> reset_list =
       gst_pylon_create_reset_value_actions(available_parent_inv);
@@ -507,11 +536,19 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
   std::vector<std::vector<GstPylonActions *>> actions_list =
       gst_pylon_create_set_value_actions(available_parent_inv);
 
+  /* try to get support for optimized bulk feature settings */
+  auto reg_streaming_start = Pylon::CCommandParameter(
+      node->GetNodeMap()->GetNode("DeviceRegistersStreamingStart"));
+  auto reg_streaming_end = Pylon::CCommandParameter(
+      node->GetNodeMap()->GetNode("DeviceRegistersStreamingEnd"));
+
   /* Create list of all possible setting permutations and execute them all */
   auto action_list_permutations = gst_pylon_cartesian_product(actions_list);
   std::vector<T> min_values;
   std::vector<T> max_values;
   for (const auto &actions : action_list_permutations) {
+    // reg_streaming_start.TryExecute();
+
     for (const auto &action : actions) {
       /* Some states might not be valid, so just skip them */
       try {
@@ -520,6 +557,9 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
         continue;
       }
     }
+
+    // reg_streaming_end.TryExecute();
+
     /* Capture min and max values after all setting are applied*/
     min_values.push_back(gst_pylon_query_feature_limits<P, T>(node, "min"));
     max_values.push_back(gst_pylon_query_feature_limits<P, T>(node, "max"));
