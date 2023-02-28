@@ -299,6 +299,13 @@ void GstPylonFeatureWalker::install_properties(
     const std::string& device_fullname, GstPylonCache& feature_cache) {
   g_return_if_fail(oclass);
 
+  /* handle filter for debugging */
+  const char* single_feature = NULL;
+  if (const char* env_p = std::getenv("PYLONSRC_SINGLE_FEATURE")) {
+    GST_DEBUG("LIMIT to use only feature %s\n", env_p);
+    single_feature = env_p;
+  }
+
   auto param_factory =
       GstPylonParamFactory(nodemap, device_fullname, feature_cache);
 
@@ -326,11 +333,15 @@ void GstPylonFeatureWalker::install_properties(
       GenICam::gcstring attrib;
 
       try {
-        std::vector<GParamSpec*> specs_list =
-            gst_pylon_camera_handle_node(node, param_factory);
+        if (!single_feature ||
+            (single_feature && std::string(node->GetName().c_str()) ==
+                                   std::string(single_feature))) {
+          GST_DEBUG("Install node %s", node->GetName().c_str());
+          std::vector<GParamSpec*> specs_list =
+              gst_pylon_camera_handle_node(node, param_factory);
 
-        gst_pylon_camera_install_specs(specs_list, oclass, nprop);
-
+          gst_pylon_camera_install_specs(specs_list, oclass, nprop);
+        }
       } catch (const Pylon::GenericException& e) {
         GST_FIXME("Unable to install property \"%s\" on device \"%s\": %s",
                   node->GetName().c_str(), device_fullname.c_str(),
