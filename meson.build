@@ -13,6 +13,31 @@ gst_dep = dependency('gstreamer-1.0', version : gst_req)
 gst_version = gst_dep.version()
 message('Building against GStreamer ' + gst_version)
 
+
+py_script = '''
+import subprocess
+import sys, os
+
+meson_project_path = sys.argv[1]
+
+git_dir = meson_project_path + "/.git"
+
+if not os.path.exists(git_dir):
+    sys.exit(1)
+
+try:
+    cmd_result = subprocess.run(["git", "describe", "--tags"], capture_output=True)
+    vcs_tag = cmd_result.stdout.decode("utf-8")[1:-1]
+    print(vcs_tag)
+except FileNotFoundError:
+    sys.exit(1)
+'''
+
+git_version = vcs_tag(command : ['python3', '-c', py_script, meson.project_source_root()],
+  input: 'version.h.in', output: 'version.h', replace_string: '@GIT_VERSION@',
+  fallback: meson.project_version() + '-local')
+
+
 version_arr = gst_version.split('.')
 gst_version_major = version_arr[0].to_int()
 gst_version_minor = version_arr[1].to_int()
