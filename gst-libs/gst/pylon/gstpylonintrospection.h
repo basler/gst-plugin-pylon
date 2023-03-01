@@ -42,7 +42,7 @@ class GstPylonParamFactory {
   static GParamSpec *make_param(GenApi::INodeMap &nodemap, GenApi::INode *node,
                                 GenApi::INode *selector, guint64 selector_value,
                                 const std::string &device_fullname,
-                                GstPylonCache &feature_cache);
+                                GstPylonCache *feature_cache);
 };
 
 #endif

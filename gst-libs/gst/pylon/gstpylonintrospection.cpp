@@ -70,10 +70,10 @@ class GstPylonTypeAction : public GstPylonActions {
 /* prototypes */
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
                                              GenApi::INode *node,
-                                             GstPylonCache &feature_cache);
+                                             GstPylonCache *feature_cache);
 static GParamSpec *gst_pylon_make_spec_selector_int64(
     GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
-    guint64 selector_value, GstPylonCache &feature_cache);
+    guint64 selector_value, GstPylonCache *feature_cache);
 static GParamSpec *gst_pylon_make_spec_bool(GenApi::INodeMap &nodemap,
                                             GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_selector_bool(GenApi::INodeMap &nodemap,
@@ -82,10 +82,10 @@ static GParamSpec *gst_pylon_make_spec_selector_bool(GenApi::INodeMap &nodemap,
                                                      guint64 selector_value);
 static GParamSpec *gst_pylon_make_spec_double(GenApi::INodeMap &nodemap,
                                               GenApi::INode *node,
-                                              GstPylonCache &feature_cache);
+                                              GstPylonCache *feature_cache);
 static GParamSpec *gst_pylon_make_spec_selector_double(
     GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
-    guint64 selector_value, GstPylonCache &feature_cache);
+    guint64 selector_value, GstPylonCache *feature_cache);
 static GParamSpec *gst_pylon_make_spec_str(GenApi::INodeMap &nodemap,
                                            GenApi::INode *node);
 static GParamSpec *gst_pylon_make_spec_selector_str(GenApi::INodeMap &nodemap,
@@ -135,13 +135,13 @@ static std::string gst_pylon_build_cache_value_string(
 
 static void gst_pylon_query_feature_properties_double(
     GenApi::INodeMap &nodemap, GenApi::INode *node,
-    GstPylonCache &feature_cache, GParamFlags &flags,
+    GstPylonCache *feature_cache, GParamFlags &flags,
     gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings,
     GenApi::INode *selector = NULL, gint64 selector_value = 0);
 
 static void gst_pylon_query_feature_properties_integer(
     GenApi::INodeMap &nodemap, GenApi::INode *node,
-    GstPylonCache &feature_cache, GParamFlags &flags,
+    GstPylonCache *feature_cache, GParamFlags &flags,
     gint64 &minimum_under_all_settings, gint64 &maximum_under_all_settings,
     GenApi::INode *selector = NULL, gint64 selector_value = 0);
 
@@ -544,10 +544,11 @@ static void gst_pylon_find_limits(GenApi::INode *node,
 
 void gst_pylon_query_feature_properties_double(
     GenApi::INodeMap &nodemap, GenApi::INode *node,
-    GstPylonCache &feature_cache, GParamFlags &flags,
+    GstPylonCache *feature_cache, GParamFlags &flags,
     gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings,
     GenApi::INode *selector, gint64 selector_value) {
   g_return_if_fail(node);
+  g_return_if_fail(feature_cache);
 
   gchar *feature_cache_name = NULL;
   if (selector) {
@@ -563,15 +564,16 @@ void gst_pylon_query_feature_properties_double(
   }
 
   /* If access to a feature cache entry fails, create new props dynamically */
-  if (!feature_cache.GetDoubleProps(feature_cache_name,
-                                    minimum_under_all_settings,
-                                    maximum_under_all_settings, flags)) {
+  if (!feature_cache->GetDoubleProps(feature_cache_name,
+                                     minimum_under_all_settings,
+                                     maximum_under_all_settings, flags)) {
     flags = gst_pylon_query_access(nodemap, node);
     gst_pylon_find_limits<Pylon::CFloatParameter, gdouble>(
         node, minimum_under_all_settings, maximum_under_all_settings);
 
-    feature_cache.SetDoubleProps(feature_cache_name, minimum_under_all_settings,
-                                 maximum_under_all_settings, flags);
+    feature_cache->SetDoubleProps(feature_cache_name,
+                                  minimum_under_all_settings,
+                                  maximum_under_all_settings, flags);
   }
 
   g_free(feature_cache_name);
@@ -579,10 +581,11 @@ void gst_pylon_query_feature_properties_double(
 
 void gst_pylon_query_feature_properties_integer(
     GenApi::INodeMap &nodemap, GenApi::INode *node,
-    GstPylonCache &feature_cache, GParamFlags &flags,
+    GstPylonCache *feature_cache, GParamFlags &flags,
     gint64 &minimum_under_all_settings, gint64 &maximum_under_all_settings,
     GenApi::INode *selector, gint64 selector_value) {
   g_return_if_fail(node);
+  g_return_if_fail(feature_cache);
 
   gchar *feature_cache_name = NULL;
   if (selector) {
@@ -599,16 +602,16 @@ void gst_pylon_query_feature_properties_integer(
   }
 
   /* If access to a feature cache entry fails, create new props dynamically */
-  if (!feature_cache.GetIntProps(node->GetName().c_str(),
-                                 minimum_under_all_settings,
-                                 maximum_under_all_settings, flags)) {
+  if (!feature_cache->GetIntProps(node->GetName().c_str(),
+                                  minimum_under_all_settings,
+                                  maximum_under_all_settings, flags)) {
     flags = gst_pylon_query_access(nodemap, node);
     gst_pylon_find_limits<Pylon::CIntegerParameter, gint64>(
         node, minimum_under_all_settings, maximum_under_all_settings);
 
-    feature_cache.SetIntProps(node->GetName().c_str(),
-                              minimum_under_all_settings,
-                              maximum_under_all_settings, flags);
+    feature_cache->SetIntProps(node->GetName().c_str(),
+                               minimum_under_all_settings,
+                               maximum_under_all_settings, flags);
   }
 
   g_free(feature_cache_name);
@@ -616,7 +619,7 @@ void gst_pylon_query_feature_properties_integer(
 
 static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
                                              GenApi::INode *node,
-                                             GstPylonCache &feature_cache) {
+                                             GstPylonCache *feature_cache) {
   g_return_val_if_fail(node, NULL);
 
   Pylon::CIntegerParameter param(node);
@@ -634,7 +637,7 @@ static GParamSpec *gst_pylon_make_spec_int64(GenApi::INodeMap &nodemap,
 
 static GParamSpec *gst_pylon_make_spec_selector_int64(
     GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
-    guint64 selector_value, GstPylonCache &feature_cache) {
+    guint64 selector_value, GstPylonCache *feature_cache) {
   g_return_val_if_fail(node, NULL);
   g_return_val_if_fail(selector, NULL);
 
@@ -681,7 +684,7 @@ static GParamSpec *gst_pylon_make_spec_selector_bool(GenApi::INodeMap &nodemap,
 
 static GParamSpec *gst_pylon_make_spec_double(GenApi::INodeMap &nodemap,
                                               GenApi::INode *node,
-                                              GstPylonCache &feature_cache) {
+                                              GstPylonCache *feature_cache) {
   g_return_val_if_fail(node, NULL);
 
   Pylon::CFloatParameter param(node);
@@ -699,7 +702,7 @@ static GParamSpec *gst_pylon_make_spec_double(GenApi::INodeMap &nodemap,
 
 static GParamSpec *gst_pylon_make_spec_selector_double(
     GenApi::INodeMap &nodemap, GenApi::INode *node, GenApi::INode *selector,
-    guint64 selector_value, GstPylonCache &feature_cache) {
+    guint64 selector_value, GstPylonCache *feature_cache) {
   g_return_val_if_fail(node, NULL);
   g_return_val_if_fail(selector, NULL);
 
@@ -824,7 +827,7 @@ GParamSpec *GstPylonParamFactory::make_param(GenApi::INodeMap &nodemap,
                                              GenApi::INode *selector,
                                              guint64 selector_value,
                                              const std::string &device_fullname,
-                                             GstPylonCache &feature_cache) {
+                                             GstPylonCache *feature_cache) {
   g_return_val_if_fail(node, NULL);
 
   GParamSpec *spec = NULL;
