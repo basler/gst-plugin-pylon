@@ -854,9 +854,11 @@ static void gst_pylon_append_camera_properties(
   std::string cache_filename =
       std::string(camera->DeviceModelName.GetValue() + "_" +
                   camera->DeviceFirmwareVersion.GetValue() + "_" + VERSION);
-  GstPylonCache feature_cache(cache_filename);
 
-  gst_pylon_append_properties(camera, camera_name, device_type, feature_cache,
+  std::unique_ptr<GstPylonCache> feature_cache =
+      std::make_unique<GstPylonCache>(cache_filename);
+
+  gst_pylon_append_properties(camera, camera_name, device_type, *feature_cache,
                               nodemap, camera_properties, alignment);
 }
 
@@ -872,10 +874,13 @@ static void gst_pylon_append_stream_grabber_properties(
   std::string cache_filename =
       std::string(camera->GetDeviceInfo().GetModelName() + "_" +
                   Pylon::VersionInfo::getVersionString() + "_" + VERSION);
-  GstPylonCache feature_cache(cache_filename);
 
-  gst_pylon_append_properties(camera, sgrabber_name, device_type, feature_cache,
-                              nodemap, sgrabber_properties, alignment);
+  std::unique_ptr<GstPylonCache> feature_cache =
+      std::make_unique<GstPylonCache>(cache_filename);
+
+  gst_pylon_append_properties(camera, sgrabber_name, device_type,
+                              *feature_cache, nodemap, sgrabber_properties,
+                              alignment);
 }
 
 static gchar *gst_pylon_get_string_properties(
