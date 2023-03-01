@@ -45,7 +45,7 @@ struct _GstPylonObjectClass {
 };
 
 EXT_PYLONSRC_API GType gst_pylon_object_register(const std::string& device_name,
-                                                 GstPylonCache* feature_cache,
+                                                 GstPylonCache& feature_cache,
                                                  GenApi::INodeMap& nodemap);
 EXT_PYLONSRC_API GObject* gst_pylon_object_new(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,

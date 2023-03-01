@@ -50,10 +50,8 @@ struct _GstPylonObjectPrivate {
 typedef struct _GstPylonObjectDeviceMembers GstPylonObjectDeviceMembers;
 struct _GstPylonObjectDeviceMembers {
   const std::string& device_name;
-  GstPylonCache* feature_cache;
+  GstPylonCache& feature_cache;
   GenApi::INodeMap& nodemap;
-
-  ~_GstPylonObjectDeviceMembers() { delete feature_cache; }
 };
 
 /************************************************************
@@ -78,7 +76,7 @@ static inline gpointer gst_pylon_object_get_instance_private(
 }
 
 GType gst_pylon_object_register(const std::string& device_name,
-                                GstPylonCache* feature_cache,
+                                GstPylonCache& feature_cache,
                                 GenApi::INodeMap& exemplar) {
   GstPylonObjectDeviceMembers* device_members =
       new GstPylonObjectDeviceMembers({device_name, feature_cache, exemplar});
@@ -119,7 +117,7 @@ GType gst_pylon_object_register(const std::string& device_name,
 static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
                                                 GenApi::INodeMap& nodemap,
                                                 const std::string& device_name,
-                                                GstPylonCache* feature_cache);
+                                                GstPylonCache& feature_cache);
 
 /* Set a pylon feature from a gstreamer gst property */
 template <typename F, typename P>
@@ -174,9 +172,8 @@ typedef void (*GSetEnum)(GValue*, gint);
 static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
                                                 GenApi::INodeMap& nodemap,
                                                 const std::string& device_name,
-                                                GstPylonCache* feature_cache) {
+                                                GstPylonCache& feature_cache) {
   g_return_if_fail(klass);
-  g_return_if_fail(feature_cache);
 
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
@@ -424,7 +421,7 @@ GObject* gst_pylon_object_new(
     std::string cache_filename =
         std::string(camera->GetDeviceInfo().GetModelName() + "_" +
                     Pylon::VersionInfo::getVersionString() + "_" + VERSION);
-    GstPylonCache* feature_cache = new GstPylonCache(cache_filename);
+    GstPylonCache feature_cache(cache_filename);
     type = gst_pylon_object_register(device_name, feature_cache, *nodemap);
   }
 
