@@ -417,11 +417,14 @@ GObject* gst_pylon_object_new(
 
   GType type = g_type_from_name(type_name.c_str());
 
+  std::unique_ptr<GstPylonCache> feature_cache;
+
   if (!type) {
-    std::string msg = "Camera \'" +
-                      std::string(camera->GetDeviceInfo().GetFriendlyName()) +
-                      "\' is not available.";
-    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    std::string cache_filename =
+        std::string(camera->GetDeviceInfo().GetModelName() + "_" +
+                    Pylon::VersionInfo::getVersionString() + "_" + VERSION);
+    feature_cache = std::make_unique<GstPylonCache>(cache_filename);
+    type = gst_pylon_object_register(device_name, *feature_cache, *nodemap);
   }
 
   GObject* obj = G_OBJECT(g_object_new(type, "name", type_name.c_str(), NULL));
