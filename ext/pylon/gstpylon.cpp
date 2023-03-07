@@ -196,7 +196,7 @@ static void gst_pylon_apply_set(GstPylon *self, std::string &set) {
 
 GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
                         const gchar *device_serial_number, gint device_index,
-                        GError **err) {
+                        gboolean enable_correction, GError **err) {
   GstPylon *self = new GstPylon;
 
   self->gstpylonsrc = gstpylonsrc;
@@ -276,13 +276,13 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
     GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
     self->gcamera = gst_pylon_object_new(
         self->camera, gst_pylon_get_camera_fullname(*self->camera),
-        &cam_nodemap);
+        &cam_nodemap, enable_correction);
 
     GenApi::INodeMap &sgrabber_nodemap =
         self->camera->GetStreamGrabberNodeMap();
     self->gstream_grabber = gst_pylon_object_new(
         self->camera, gst_pylon_get_sgrabber_name(*self->camera),
-        &sgrabber_nodemap);
+        &sgrabber_nodemap, enable_correction);
 
     /* Register event handlers after device instances are requested so they do
      * not get registered if creating the device instances fails */

@@ -48,7 +48,7 @@ void gst_pylon_initialize();
 
 GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
                         const gchar *device_serial_number, gint device_index,
-                        GError **err);
+                        gboolean enable_correction, GError **err);
 gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
                                    GError **err);
 void gst_pylon_free(GstPylon *self);
