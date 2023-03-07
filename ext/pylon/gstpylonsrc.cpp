@@ -66,6 +66,7 @@ struct _GstPylonSrc {
   gint device_index;
   gchar *user_set;
   gchar *pfs_location;
+  gboolean enable_correction;
   GstPylonCaptureErrorEnum capture_error;
   GObject *cam;
   GObject *stream;
@@ -101,6 +102,7 @@ enum {
   PROP_DEVICE_INDEX,
   PROP_USER_SET,
   PROP_PFS_LOCATION,
+  PROP_ENABLE_CORRECTION,
   PROP_CAPTURE_ERROR,
   PROP_CAM,
   PROP_STREAM
@@ -113,6 +115,7 @@ enum {
 #define PROP_DEVICE_INDEX_MAX G_MAXINT32
 #define PROP_USER_SET_DEFAULT NULL
 #define PROP_PFS_LOCATION_DEFAULT NULL
+#define PROP_ENABLE_CORRECTION_DEFAULT FALSE
 #define PROP_CAM_DEFAULT NULL
 #define PROP_STREAM_DEFAULT NULL
 #define PROP_CAPTURE_ERROR_DEFAULT ENUM_ABORT
@@ -240,6 +243,20 @@ static void gst_pylon_src_class_init(GstPylonSrcClass *klass) {
           PROP_PFS_LOCATION_DEFAULT,
           static_cast<GParamFlags>(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
                                    GST_PARAM_MUTABLE_READY)));
+
+  g_object_class_install_property(
+      gobject_class, PROP_ENABLE_CORRECTION,
+      g_param_spec_boolean(
+          "enable-correction", "Enable correction",
+          "If enabled, the values from other parameters will be automatically "
+          "corrected. "
+          " If any of the properties holds an incorrect value given an "
+          "specific configuration "
+          "it will be corrected",
+          PROP_ENABLE_CORRECTION_DEFAULT,
+          static_cast<GParamFlags>(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+                                   GST_PARAM_MUTABLE_READY)));
+
   g_object_class_install_property(
       gobject_class, PROP_CAPTURE_ERROR,
       g_param_spec_enum(
@@ -317,6 +334,7 @@ static void gst_pylon_src_init(GstPylonSrc *self) {
   self->device_index = PROP_DEVICE_INDEX_DEFAULT;
   self->user_set = PROP_USER_SET_DEFAULT;
   self->pfs_location = PROP_PFS_LOCATION_DEFAULT;
+  self->enable_correction = PROP_ENABLE_CORRECTION_DEFAULT;
   self->capture_error = PROP_CAPTURE_ERROR_DEFAULT;
   self->cam = PROP_CAM_DEFAULT;
   self->stream = PROP_STREAM_DEFAULT;
@@ -354,6 +372,9 @@ static void gst_pylon_src_set_property(GObject *object, guint property_id,
       g_free(self->pfs_location);
       self->pfs_location = g_value_dup_string(value);
       break;
+    case PROP_ENABLE_CORRECTION:
+      self->enable_correction = g_value_get_boolean(value);
+      break;
     case PROP_CAPTURE_ERROR:
       self->capture_error =
           static_cast<GstPylonCaptureErrorEnum>(g_value_get_enum(value));
@@ -389,6 +410,9 @@ static void gst_pylon_src_get_property(GObject *object, guint property_id,
       break;
     case PROP_PFS_LOCATION:
       g_value_set_string(value, self->pfs_location);
+      break;
+    case PROP_ENABLE_CORRECTION:
+      g_value_set_boolean(value, self->enable_correction);
       break;
     case PROP_CAPTURE_ERROR:
       g_value_set_enum(value, self->capture_error);
@@ -657,14 +681,15 @@ static gboolean gst_pylon_src_start(GstBaseSrc *src) {
       self,
       "Attempting to create camera device with the following configuration:"
       "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s \n\tPFS "
-      "filepath: %s. "
+      "filepath: %s \n\tEnable correction: %s."
       "If defined, the PFS file will override the user set configuration.",
       self->device_user_name, self->device_serial_number, self->device_index,
-      self->user_set, self->pfs_location);
+      self->user_set, self->pfs_location,
+      ((self->enable_correction) ? "True" : "False"));
 
-  self->pylon =
-      gst_pylon_new(GST_ELEMENT_CAST(self), self->device_user_name,
-                    self->device_serial_number, self->device_index, &error);
+  self->pylon = gst_pylon_new(GST_ELEMENT_CAST(self), self->device_user_name,
+                              self->device_serial_number, self->device_index,
+                              self->enable_correction, &error);
   GST_OBJECT_UNLOCK(self);
 
   if (error) {
