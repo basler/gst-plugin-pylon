@@ -46,6 +46,12 @@
 
 #include <map>
 
+/* retry open camera limits in case of collision with other
+ * process
+ */
+constexpr int FAILED_OPEN_RETRY_COUNT = 30;
+constexpr int FAILED_OPEN_RETRY_WAIT_TIME_MS = 1000;
+
 /* Pixel format definitions */
 typedef struct {
   std::string pfnc_name;
@@ -264,7 +270,23 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
 
     device_info = device_list.at(device_index);
 
-    self->camera->Attach(factory.CreateDevice(device_info));
+    /* retry loop to start camera
+     * handles the cornercase of multiprocess pipelines started
+     * concurrently
+     */
+    for (auto retry_idx = 0; retry_idx <= FAILED_OPEN_RETRY_COUNT;
+         retry_idx++) {
+      try {
+        self->camera->Attach(factory.CreateDevice(device_info));
+        break;
+      } catch (GenICam::GenericException &e) {
+        GST_INFO_OBJECT(gstpylonsrc, "Failed to Open %s (%s)\n",
+                        device_info.GetSerialNumber().c_str(),
+                        e.GetDescription());
+        /* wait for before new open attempt */
+        g_usleep(FAILED_OPEN_RETRY_WAIT_TIME_MS * 1000);
+      }
+    }
     self->camera->Open();
 
     /* Set the camera to a valid state */
