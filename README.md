@@ -519,3 +519,6 @@ This target will be integrated after a Basler pylon 7.x release for macOS
 
 * Bayer formats need to be 4 byte aligned to be properly processed by GStreamer. If no size is specified (or a range is provided) a word aligned width will be automatically selected. If the width is hardcoded and it is not word aligned, the pipeline will fail displaying an error.
  
+* Under very specific conditions we've found that a set_state() followed immediately by a get_state() will report a failure. This has been found to be a bug in the GStreamer core, where a state conditional is not protected against spurious wakeups. An upstream fix has been proposed [in this Merge Request](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/4086). This issue has been reproduced in certain installations of NVIDIA Jetson boards.
+  * As a workaround while the fix is absorbed, you may configure `async=false` in all the sink elements in your pipeline, so that the state condition variable is not needed. Only use this is your pipeline does not require synchronization.
+
