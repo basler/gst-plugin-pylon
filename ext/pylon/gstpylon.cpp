@@ -724,6 +724,13 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
     try {
       gst_pylon_query_caps(self, st, gst_structure_format.format_map);
       gst_caps_append_structure(caps, st);
+
+      /* We need the copy since the append has taken ownership of the "old" st
+       */
+      gst_caps_append_structure_full(
+          caps, gst_structure_copy(st),
+          gst_caps_features_new("memory:NVMM", NULL));
+
     } catch (const Pylon::GenericException &e) {
       gst_structure_free(st);
       gst_caps_unref(caps);
