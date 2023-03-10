@@ -42,6 +42,7 @@
 #include "gst/pylon/gstpylonobject.h"
 #include "gstchildinspector.h"
 #include "gstpylon.h"
+#include "gstpylonbufferfactory.h"
 #include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
 
@@ -821,6 +822,14 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
                 e.GetDescription());
     return FALSE;
   }
+
+  GST_WARNING_OBJECT(self, "%" GST_PTR_FORMAT, conf);
+
+  GstPylonBufferFactory *buffer_factory = new GstPylonBufferFactory(conf);
+
+  self->camera->SetBufferFactory(
+      static_cast<Pylon::IBufferFactory *>(buffer_factory),
+      Pylon::Cleanup_Delete);
 
   return TRUE;
 }

@@ -27,7 +27,7 @@ else
     pylon_link_args = []
 endif
 
-gstpylon_sources = [
+gstpylon_sources = [ 
   'gstpyloncache.cpp',
   'gstpylondebug.cpp',
   'gstpylonfeaturewalker.cpp',
