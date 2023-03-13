@@ -318,7 +318,9 @@ void GstPylonFeatureWalker::install_properties(
     /* Only handle real features that are not in the filter set, are not
      * selectors and are available */
     auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
-    if (node->IsFeature() && (node->GetVisibility() != GenApi::Invisible) &&
+    auto category_node = dynamic_cast<GenApi::ICategory*>(node);
+    if (!category_node && node->IsFeature() &&
+        (node->GetVisibility() != GenApi::Invisible) &&
         GenApi::IsImplemented(node) &&
         !is_unsupported_feature(std::string(node->GetName())) &&
         node->GetPrincipalInterfaceType() != GenApi::intfICategory &&
@@ -344,7 +346,6 @@ void GstPylonFeatureWalker::install_properties(
     }
 
     /* Walk down all categories */
-    auto category_node = dynamic_cast<GenApi::ICategory*>(node);
     if (category_node &&
         !is_unsupported_category(std::string(node->GetName()))) {
       GenApi::FeatureList_t features;
