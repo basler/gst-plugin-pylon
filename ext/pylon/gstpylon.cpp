@@ -119,6 +119,8 @@ struct _GstPylon {
   GstPylonImageHandler image_handler;
   GstPylonDisconnectHandler disconnect_handler;
 
+  GstPylonBufferFactory buffer_factory;
+
   std::string requested_device_user_name;
   std::string requested_device_serial_number;
   gint requested_device_index;
@@ -823,12 +825,16 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
     return FALSE;
   }
 
-  GST_WARNING_OBJECT(self, "%" GST_PTR_FORMAT, conf);
+  GValue maxnumbuffers_val = G_VALUE_INIT;
+  g_value_init(&maxnumbuffers_val, G_TYPE_UINT64);
+  g_object_get_property(self->gstream_grabber, "MaxNumBuffer",
+                        &maxnumbuffers_val);
+  auto maxnumbuffers = g_value_get_uint64(&maxnumbuffers_val);
 
-  GstPylonBufferFactory *buffer_factory = new GstPylonBufferFactory(conf);
+  self->buffer_factory.set_config(conf, maxnumbuffers);
 
   self->camera->SetBufferFactory(
-      static_cast<Pylon::IBufferFactory *>(buffer_factory),
+      static_cast<Pylon::IBufferFactory *>(&self->buffer_factory),
       Pylon::Cleanup_Delete);
 
   return TRUE;

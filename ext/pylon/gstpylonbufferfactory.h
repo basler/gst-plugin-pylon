@@ -46,16 +46,16 @@ struct gstDeleter {
 
 class GstPylonBufferFactory : public Pylon::IBufferFactory {
  public:
-  GstPylonBufferFactory(const GstCaps *caps);
-  virtual ~GstPylonBufferFactory();
-  virtual void AllocateBuffer(size_t bufferSize, void **pCreatedBuffer,
-                              intptr_t &bufferContext);
-  virtual void FreeBuffer(void *pCreatedBuffer, intptr_t bufferContext);
+  GstPylonBufferFactory();
+  void set_config(const GstCaps *caps, guint64 max_num_buffers);
+  virtual void AllocateBuffer(size_t buffer_size, void **p_created_buffer,
+                              intptr_t &buffer_context);
+  virtual void FreeBuffer(void *p_created_buffer, intptr_t buffer_context);
   virtual void DestroyBufferFactory();
 
  protected:
   std::unique_ptr<GstCaps, gstDeleter> caps;
   std::unique_ptr<GstPylonBufferPool, gstDeleter> pool;
 
-  guint max_buffers{32};  // TODO get this from the property
+  guint max_buffers;
 };

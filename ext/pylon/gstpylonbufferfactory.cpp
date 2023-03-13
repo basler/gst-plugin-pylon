@@ -37,9 +37,16 @@ struct bufferAndMap {
   GstMapInfo info;
 };
 
-GstPylonBufferFactory::GstPylonBufferFactory(const GstCaps *caps) {
+GstPylonBufferFactory::GstPylonBufferFactory() {}
+
+void GstPylonBufferFactory::set_config(const GstCaps *caps,
+                                       guint64 max_num_buffers) {
   gstDeleter d;
 
+  GST_FIXME_OBJECT(this->pool.get(),
+                   "Ignoring max_num_buffers since the same value isn't "
+                   "applied to gstpylon");
+  this->max_buffers = 16;
   this->caps = std::unique_ptr<GstCaps, gstDeleter>(gst_caps_copy(caps), d);
   this->pool = std::unique_ptr<GstPylonBufferPool, gstDeleter>(
       reinterpret_cast<GstPylonBufferPool *>(
@@ -47,16 +54,14 @@ GstPylonBufferFactory::GstPylonBufferFactory(const GstCaps *caps) {
       d);
 }
 
-GstPylonBufferFactory::~GstPylonBufferFactory() {}
-
-void GstPylonBufferFactory::AllocateBuffer(size_t bufferSize,
-                                           void **pCreatedBuffer,
-                                           intptr_t &bufferContext) {
+void GstPylonBufferFactory::AllocateBuffer(size_t buffer_size,
+                                           void **p_created_buffer,
+                                           intptr_t &buffer_context) {
   if (FALSE == gst_buffer_pool_is_active(GST_BUFFER_POOL(this->pool.get()))) {
     GstStructure *st =
         gst_buffer_pool_get_config(GST_BUFFER_POOL(this->pool.get()));
-    gst_buffer_pool_config_set_params(st, this->caps.get(), bufferSize, 1,
-                                      max_buffers);
+    gst_buffer_pool_config_set_params(st, this->caps.get(), buffer_size, 1,
+                                      this->max_buffers);
 
     gst_buffer_pool_set_config(GST_BUFFER_POOL(this->pool.get()), st);
     gst_buffer_pool_set_active(GST_BUFFER_POOL(this->pool.get()), true);
@@ -73,18 +78,17 @@ void GstPylonBufferFactory::AllocateBuffer(size_t bufferSize,
 
   // Map the buffer to read its contents
   GstMapInfo info = GST_MAP_INFO_INIT;
-  gst_buffer_map(buffer, &info,
-                 GST_MAP_WRITE);  // Should be unmap at some point
+  gst_buffer_map(buffer, &info, GST_MAP_WRITE);
 
-  *pCreatedBuffer = info.data;
+  *p_created_buffer = info.data;
 
-  bufferContext = reinterpret_cast<intptr_t>(new bufferAndMap{buffer, info});
+  buffer_context = reinterpret_cast<intptr_t>(new bufferAndMap{buffer, info});
 }
 
-void GstPylonBufferFactory::FreeBuffer(void *pCreatedBuffer,
-                                       intptr_t bufferContext) {
+void GstPylonBufferFactory::FreeBuffer(void *p_created_buffer,
+                                       intptr_t buffer_context) {
   struct bufferAndMap *buffer_and_map =
-      reinterpret_cast<struct bufferAndMap *>(bufferContext);
+      reinterpret_cast<struct bufferAndMap *>(buffer_context);
 
   gst_buffer_unmap(buffer_and_map->buffer, &buffer_and_map->info);
   gst_buffer_unref(buffer_and_map->buffer);
