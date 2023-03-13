@@ -547,8 +547,7 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
   std::vector<T> min_values;
   std::vector<T> max_values;
   for (const auto &actions : action_list_permutations) {
-    // reg_streaming_start.TryExecute();
-
+    reg_streaming_start.TryExecute();
     for (const auto &action : actions) {
       /* Some states might not be valid, so just skip them */
       try {
@@ -558,7 +557,7 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
       }
     }
 
-    // reg_streaming_end.TryExecute();
+    reg_streaming_end.TryExecute();
 
     /* Capture min and max values after all setting are applied*/
     min_values.push_back(gst_pylon_query_feature_limits<P, T>(node, "min"));
