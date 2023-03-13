@@ -393,9 +393,9 @@ std::vector<std::vector<GstPylonActions *>> gst_pylon_create_set_value_actions(
         break;
       }
       default:
-        std::string msg = "Action in unsupported for node of type " +
-                          std::to_string(node->GetPrincipalInterfaceType());
-        GST_LOG("%s", msg.c_str());
+        std::string msg =
+            "No test for node " + std::string(node->GetName().c_str());
+        GST_DEBUG("%s", msg.c_str());
         continue;
     }
     actions_list.push_back(values);
@@ -440,9 +440,9 @@ std::vector<GstPylonActions *> gst_pylon_create_reset_value_actions(
         break;
       }
       default:
-        std::string msg = "Action in unsupported for node of type " +
-                          std::to_string(node->GetPrincipalInterfaceType());
-        GST_LOG("%s", msg.c_str());
+        std::string msg =
+            "No test for node " + std::string(node->GetName().c_str());
+        GST_DEBUG("%s", msg.c_str());
         continue;
     }
   }

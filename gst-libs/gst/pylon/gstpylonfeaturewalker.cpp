@@ -261,7 +261,7 @@ std::vector<GParamSpec*> gst_pylon_camera_handle_node(
       specs_list.push_back(
           param_factory.make_param(node, selector_node, selector_value));
     } catch (const Pylon::GenericException& e) {
-      GST_FIXME("Unable to fully install property '%s-%s' : %s",
+      GST_DEBUG("Unable to fully install property '%s-%s' : %s",
                 node->GetName().c_str(), enum_value.c_str(),
                 e.GetDescription());
     }
@@ -339,7 +339,7 @@ void GstPylonFeatureWalker::install_properties(
           gst_pylon_camera_install_specs(specs_list, oclass, nprop);
         }
       } catch (const Pylon::GenericException& e) {
-        GST_FIXME("Unable to install property \"%s\" on device \"%s\": %s",
+        GST_DEBUG("Unable to install property \"%s\" on device \"%s\": %s",
                   node->GetName().c_str(), device_fullname.c_str(),
                   e.GetDescription());
       }
