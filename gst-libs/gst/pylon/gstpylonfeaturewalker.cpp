@@ -67,29 +67,25 @@ static const std::unordered_set<std::string> propfilter_set = {
     "AcquisitionFrameRateEnable",
     "AcquisitionFrameRate",
     "AcquisitionFrameRateAbs",
-    "ChunkData",
     "AcquisitionStart",
     "AcquisitionStop",
     "UserSetLoad",
     "UserSetSave",
     "TriggerSoftware",
     "DeviceReset",
-    "FileAccessControl",
+    "DeviceFeaturePersistenceStart",
+    "DeviceFeaturePersistenceEnd",
     "DeviceRegistersStreamingStart",
     "DeviceRegistersStreamingEnd",
-    "FileAccessControl" /* has to be implemented in access library */
-    "EventControl",     /* disable full event section until mapped to gst
-                           events/msgs */
-    "SequencerControl"  /* sequencer control relies on cmd feature */
 };
 
 static const std::unordered_set<std::string> categoryfilter_set = {
     "ChunkData",
-    "FileAccessControl" /* has to be implemented in access library */
-    "EventControl",     /* disable full event section until mapped to gst
-                           events/msgs */
-    "SequencerControl", /* sequencer control relies on cmd feature */
-    "MultipleROI"       /* workaround skip to avoid issues with ace2/dart2
+    "FileAccessControl", /* has to be implemented in access library */
+    "EventControl",      /* disable full event section until mapped to gst
+                            events/msgs */
+    "SequencerControl",  /* sequencer control relies on cmd feature */
+    "MultipleROI",       /* workaround skip to avoid issues with ace2/dart2
                            FIXME: this has to be fixed in feature walker */
 };
 
