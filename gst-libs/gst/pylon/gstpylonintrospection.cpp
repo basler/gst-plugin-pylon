@@ -557,7 +557,8 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
       /* Some states might not be valid, so just skip them */
       try {
         action->set_value();
-      } catch (const Pylon::GenericException &) {
+      } catch (const GenICam::GenericException &e) {
+        GST_DEBUG("failed to set action");
         continue;
       }
     }
