@@ -180,6 +180,12 @@ GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *node,
   } else if (node->GetProperty("pValue", value, attribute)) {
     limit_node =
         gst_pylon_find_limit_node(node->GetNodeMap()->GetNode(value), limit);
+  } else if (node->GetProperty("pValueDefault", value, attribute)) {
+    /* FIXME: pValueDefault might not cover the limits of all selector entries
+     * properly
+     */
+    limit_node =
+        gst_pylon_find_limit_node(node->GetNodeMap()->GetNode(value), limit);
   }
   return limit_node;
 }
