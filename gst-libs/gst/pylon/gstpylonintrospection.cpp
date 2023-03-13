@@ -515,15 +515,24 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
   std::vector<GenApi::INode *> available_parent_inv =
       gst_pylon_get_available_features(parent_invalidators);
 
-  /* workaround for ace2/dart2 exposuretime and short exposuretime*/
+  /* workarounds for ace2/dart2 exposuretime and short exposuretime
+   * and other nodes with large dependencies
+   * FIXME: refactor this into a filter class
+   */
   if (node->GetName() == "ExposureTime" &&
       available_parent_inv.end() !=
           std::find_if(available_parent_inv.begin(), available_parent_inv.end(),
                        [](const GenApi::INode *n) {
                          return n->GetName() == "BslExposureTimeMode";
                        })) {
+    GST_DEBUG("Apply ExposureTime feature workaround");
     minimum_under_all_settings = 1.0;
     maximum_under_all_settings = 1e+07;
+    return;
+  } else if (node->GetName() == "AcquisitionBurstFrameCount") {
+    minimum_under_all_settings = 1;
+    maximum_under_all_settings = 1023;
+    GST_DEBUG("Apply AcquisitionBurstFrameCount feature workaround");
     return;
   }
 
