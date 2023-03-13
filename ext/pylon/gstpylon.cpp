@@ -36,6 +36,7 @@
 
 #include "gst/pylon/gstpyloncache.h"
 #include "gst/pylon/gstpylondebug.h"
+#include "gst/pylon/gstpylonformatmapping.h"
 #include "gst/pylon/gstpylonincludes.h"
 #include "gst/pylon/gstpylonmetaprivate.h"
 #include "gst/pylon/gstpylonobject.h"
@@ -51,12 +52,6 @@
  */
 constexpr int FAILED_OPEN_RETRY_COUNT = 30;
 constexpr int FAILED_OPEN_RETRY_WAIT_TIME_MS = 1000;
-
-/* Pixel format definitions */
-typedef struct {
-  std::string pfnc_name;
-  std::string gst_name;
-} PixelFormatMappingType;
 
 /* Mapping of GstStructure with its corresponding formats */
 typedef struct {
@@ -127,19 +122,6 @@ struct _GstPylon {
   std::string requested_device_serial_number;
   gint requested_device_index;
 };
-
-static const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
-    {"Mono8", "GRAY8"},        {"RGB8Packed", "RGB"},
-    {"BGR8Packed", "BGR"},     {"RGB8", "RGB"},
-    {"BGR8", "BGR"},           {"YCbCr422_8", "YUY2"},
-    {"YUV422_8_UYVY", "UYVY"}, {"YUV422_8", "YUY2"},
-    {"YUV422Packed", "UYVY"},  {"YUV422_YUYV_Packed", "YUY2"}};
-
-static const std::vector<PixelFormatMappingType> pixel_format_mapping_bayer = {
-    {"BayerBG8", "bggr"},
-    {"BayerGR8", "grbg"},
-    {"BayerRG8", "rggb"},
-    {"BayerGB8", "gbrg"}};
 
 static const std::vector<GstStPixelFormats> gst_structure_formats = {
     {"video/x-raw", pixel_format_mapping_raw},
