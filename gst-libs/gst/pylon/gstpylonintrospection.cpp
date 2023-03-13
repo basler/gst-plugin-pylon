@@ -35,6 +35,7 @@
 #endif
 
 #include "gstpylondebug.h"
+#include "gstpylonformatmapping.h"
 #include "gstpylonintrospection.h"
 #include "gstpylonobject.h"
 #include "gstpylonparamspecs.h"
@@ -380,13 +381,11 @@ std::vector<std::vector<GstPylonActions *>> gst_pylon_create_set_value_actions(
         GenApi::StringList_t settable_values;
         param.GetSettableValues(settable_values);
         for (const auto &value : settable_values) {
-          /* Skip unsupported packed mono and bayer formats */
+          /* Skip only check plugin supported formats */
           if (node->GetName() == "PixelFormat" &&
-              (Pylon::IsMonoPacked(static_cast<Pylon::EPixelType>(
-                   param.GetEntryByName(value)->GetValue())) ||
-               Pylon::IsBayerPacked(static_cast<Pylon::EPixelType>(
-                   param.GetEntryByName(value)->GetValue()))))
+              !isSupportedPylonFormat(value.c_str())) {
             continue;
+          }
           values.push_back(
               new GstPylonTypeAction<Pylon::CEnumParameter, Pylon::String_t>(
                   param, value));
