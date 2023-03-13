@@ -289,7 +289,15 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
     }
     self->camera->Open();
 
-    /* Set the camera to a valid state */
+    /* Set the camera to a valid state
+     * close left open transactions on the device
+     */
+    self->camera->DeviceFeaturePersistenceEnd.TryExecute();
+    self->camera->DeviceRegistersStreamingEnd.TryExecute();
+
+    /* Set the camera to a valid state
+     * load the poweron user set
+     */
     if (self->camera->UserSetSelector.IsWritable()) {
       std::string default_set = "Auto";
       gst_pylon_apply_set(self, default_set);
@@ -916,6 +924,21 @@ static gchar *gst_pylon_get_string_properties(
       Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
                                                   Pylon::Cleanup_Delete);
       camera.Open();
+
+      /* Set the camera to a valid state
+       * close left open transactions on the device
+       */
+      camera.DeviceFeaturePersistenceEnd.TryExecute();
+      camera.DeviceRegistersStreamingEnd.TryExecute();
+
+      /* Set the camera to a valid state
+       * load the factory default set
+       */
+      if (camera.UserSetSelector.IsWritable()) {
+        camera.UserSetSelector.SetValue("Default");
+        camera.UserSetLoad.Execute();
+      }
+
       get_device_string_properties(&camera, &camera_properties,
                                    DEFAULT_ALIGNMENT);
       camera.Close();
