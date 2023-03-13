@@ -68,11 +68,16 @@ static std::string gst_pylon_cache_create_filepath(
 GstPylonCache::GstPylonCache(const std::string &name)
     : filepath(gst_pylon_cache_create_filepath(name)),
       feature_cache_dict(g_key_file_new()),
-      is_empty(TRUE) {}
+      is_modified(FALSE) {
+  /* load initial cache file */
+  if (!LoadCacheFile()) {
+    GST_LOG("No feature cache file found");
+  }
+}
 
 GstPylonCache::~GstPylonCache() { g_key_file_free(this->feature_cache_dict); }
 
-gboolean GstPylonCache::IsCacheValid() {
+gboolean GstPylonCache::LoadCacheFile() {
   gboolean ret = TRUE;
 
   /* Check if file exists */
@@ -88,13 +93,10 @@ gboolean GstPylonCache::IsCacheValid() {
   if (!ret) {
     return FALSE;
   }
-
-  this->is_empty = FALSE;
-
   return TRUE;
 }
 
-gboolean GstPylonCache::IsEmpty() { return this->is_empty; }
+gboolean GstPylonCache::HasNewSettings() { return is_modified; }
 
 void GstPylonCache::CreateCacheFile() {
   GError *file_err = NULL;
@@ -128,12 +130,14 @@ void GstPylonCache::SetIntegerAttribute(const char *feature,
                                         const char *attribute,
                                         const gint64 val) {
   g_key_file_set_int64(this->feature_cache_dict, feature, attribute, val);
+  is_modified = true;
 }
 
 void GstPylonCache::SetDoubleAttribute(const char *feature,
                                        const char *attribute,
                                        const gdouble val) {
   g_key_file_set_double(this->feature_cache_dict, feature, attribute, val);
+  is_modified = true;
 }
 
 bool GstPylonCache::GetIntegerAttribute(const char *feature,

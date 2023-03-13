@@ -41,8 +41,7 @@ class GST_PLUGIN_EXPORT GstPylonCache {
  public:
   GstPylonCache(const std::string &name);
   ~GstPylonCache();
-  gboolean IsCacheValid();
-  gboolean IsEmpty();
+  gboolean HasNewSettings();
 
   void SetIntProps(const gchar *feature_name, const gint64 min,
                    const gint64 max, const GParamFlags flags);
@@ -54,6 +53,8 @@ class GST_PLUGIN_EXPORT GstPylonCache {
   bool GetDoubleProps(const gchar *feature_name, gdouble &min, gdouble &max,
                       GParamFlags &flags);
 
+  /* Load from file system */
+  gboolean LoadCacheFile();
   /* Persist cache to filesystem */
   void CreateCacheFile();
 
@@ -70,7 +71,7 @@ class GST_PLUGIN_EXPORT GstPylonCache {
 
   std::string filepath;
   GKeyFile *feature_cache_dict;
-  gboolean is_empty;
+  gboolean is_modified;
 };
 
 #endif

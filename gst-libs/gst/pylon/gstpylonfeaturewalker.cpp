@@ -309,8 +309,6 @@ void GstPylonFeatureWalker::install_properties(
   auto param_factory =
       GstPylonParamFactory(nodemap, device_fullname, feature_cache);
 
-  gboolean is_cache_valid = feature_cache.IsCacheValid();
-
   gint nprop = 1;
   GenApi::INode* root_node = nodemap.GetNode("Root");
   auto worklist = std::queue<GenApi::INode*>();
@@ -361,7 +359,7 @@ void GstPylonFeatureWalker::install_properties(
     }
   }
 
-  if (!is_cache_valid) {
+  if (feature_cache.HasNewSettings()) {
     try {
       feature_cache.CreateCacheFile();
     } catch (const Pylon::GenericException& e) {
