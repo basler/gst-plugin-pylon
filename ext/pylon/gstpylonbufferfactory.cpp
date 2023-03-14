@@ -32,10 +32,10 @@
 
 #include "gstpylonbufferfactory.h"
 
-struct bufferAndMap {
+typedef struct _BufferAndMap {
   GstBuffer *buffer;
   GstMapInfo info;
-};
+} BufferAndMap;
 
 GstPylonBufferFactory::GstPylonBufferFactory() {}
 
@@ -82,13 +82,13 @@ void GstPylonBufferFactory::AllocateBuffer(size_t buffer_size,
 
   *p_created_buffer = info.data;
 
-  buffer_context = reinterpret_cast<intptr_t>(new bufferAndMap{buffer, info});
+  buffer_context = reinterpret_cast<intptr_t>(new BufferAndMap{buffer, info});
 }
 
 void GstPylonBufferFactory::FreeBuffer(void *p_created_buffer,
                                        intptr_t buffer_context) {
-  struct bufferAndMap *buffer_and_map =
-      reinterpret_cast<struct bufferAndMap *>(buffer_context);
+  BufferAndMap *buffer_and_map =
+      reinterpret_cast<BufferAndMap *>(buffer_context);
 
   gst_buffer_unmap(buffer_and_map->buffer, &buffer_and_map->info);
   gst_buffer_unref(buffer_and_map->buffer);
