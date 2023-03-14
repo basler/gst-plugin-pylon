@@ -91,7 +91,7 @@ static gboolean gst_pylon_buffer_pool_set_config(GstBufferPool *pool,
 
   gst_buffer_pool_config_get_allocator(config, &allocator, NULL);
   if (NULL == allocator) {
-    allocator = reinterpret_cast<GstAllocator *>(gst_allocator_find(NULL));
+    allocator = gst_allocator_find(NULL);
     gst_buffer_pool_config_set_allocator(config, GST_ALLOCATOR(allocator),
                                          NULL);
   } else {
