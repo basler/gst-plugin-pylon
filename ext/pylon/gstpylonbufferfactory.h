@@ -49,9 +49,10 @@ class GstPylonBufferFactory : public Pylon::IBufferFactory {
   GstPylonBufferFactory();
   void set_config(const GstCaps *caps, guint64 max_num_buffers);
   virtual void AllocateBuffer(size_t buffer_size, void **p_created_buffer,
-                              intptr_t &buffer_context);
-  virtual void FreeBuffer(void *p_created_buffer, intptr_t buffer_context);
-  virtual void DestroyBufferFactory();
+                              intptr_t &buffer_context) override;
+  virtual void FreeBuffer(void *p_created_buffer,
+                          intptr_t buffer_context) override;
+  virtual void DestroyBufferFactory() override;
 
  protected:
   std::unique_ptr<GstCaps, gstDeleter> caps;
