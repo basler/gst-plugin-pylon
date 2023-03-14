@@ -32,10 +32,8 @@
 
 #include "gstpylonbufferpool.h"
 
+#include <gst/pylon/gstpylondebug.h>
 #include <gst/video/video.h>
-
-GST_DEBUG_CATEGORY_STATIC(gst_pylon_buffer_pool_debug_category);
-#define GST_CAT_DEFAULT gst_pylon_buffer_pool_debug_category
 
 typedef struct _GstPylonBufferPool {
   GstBufferPool base;
@@ -45,11 +43,8 @@ typedef struct _GstPylonBufferPool {
 
 } GstPylonBufferPool;
 
-G_DEFINE_TYPE_WITH_CODE(
-    GstPylonBufferPool, gst_pylon_buffer_pool, GST_TYPE_BUFFER_POOL,
-    GST_DEBUG_CATEGORY_INIT(gst_pylon_buffer_pool_debug_category,
-                            "pylonbufferpool", 0,
-                            "debug category for pylon buffer pool class"));
+G_DEFINE_TYPE_WITH_CODE(GstPylonBufferPool, gst_pylon_buffer_pool,
+                        GST_TYPE_BUFFER_POOL, gst_pylon_debug_init());
 
 /* prototypes */
 static GstFlowReturn gst_pylon_buffer_pool_alloc_buffer(

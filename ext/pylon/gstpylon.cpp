@@ -826,7 +826,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   }
 
   guint64 maxnumbuffers;
-  g_object_get(self->gstream_grabber, "MaxNumBuffer", &maxnumbuffers);
+  g_object_get(self->gstream_grabber, "MaxNumBuffer", &maxnumbuffers, NULL);
 
   self->buffer_factory.set_config(conf, maxnumbuffers);
 
