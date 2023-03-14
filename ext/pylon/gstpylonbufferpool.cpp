@@ -47,9 +47,6 @@ G_DEFINE_TYPE_WITH_CODE(GstPylonBufferPool, gst_pylon_buffer_pool,
                         GST_TYPE_BUFFER_POOL, gst_pylon_debug_init());
 
 /* prototypes */
-static GstFlowReturn gst_pylon_buffer_pool_alloc_buffer(
-    GstBufferPool *pool, GstBuffer **buffer,
-    GstBufferPoolAcquireParams *params);
 static gboolean gst_pylon_buffer_pool_set_config(GstBufferPool *pool,
                                                  GstStructure *config);
 static void gst_pylon_buffer_pool_finalize(GObject *object);
@@ -60,8 +57,6 @@ static void gst_pylon_buffer_pool_class_init(GstPylonBufferPoolClass *klass) {
 
   o_class->finalize = gst_pylon_buffer_pool_finalize;
 
-  bp_class->alloc_buffer =
-      GST_DEBUG_FUNCPTR(gst_pylon_buffer_pool_alloc_buffer);
   bp_class->set_config = GST_DEBUG_FUNCPTR(gst_pylon_buffer_pool_set_config);
 }
 
@@ -113,35 +108,6 @@ static gboolean gst_pylon_buffer_pool_set_config(GstBufferPool *pool,
 
 error:
   return FALSE;
-}
-
-static GstFlowReturn gst_pylon_buffer_pool_alloc_buffer(
-    GstBufferPool *pool, GstBuffer **buffer,
-    GstBufferPoolAcquireParams *params) {
-  GstPylonBufferPool *self = GST_PYLON_BUFFER_POOL(pool);
-  GstFlowReturn ret = GST_FLOW_ERROR;
-  GstBuffer *outbuf = NULL;
-  GstMemory *outmem = NULL;
-
-  GST_DEBUG_OBJECT(self, "Allocating Pylon buffer");
-
-  outmem =
-      gst_allocator_alloc(GST_ALLOCATOR(self->allocator), self->size, NULL);
-  if (!outmem) {
-    GST_ERROR_OBJECT(pool, "Unable to allocate memory");
-    ret = GST_FLOW_ERROR;
-    goto out;
-  }
-
-  /* Create output buffer */
-  outbuf = gst_buffer_new();
-  gst_buffer_append_memory(outbuf, outmem);
-
-  *buffer = outbuf;
-  ret = GST_FLOW_OK;
-
-out:
-  return ret;
 }
 
 static void gst_pylon_buffer_pool_finalize(GObject *object) {
