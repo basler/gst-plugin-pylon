@@ -43,10 +43,7 @@ void GstPylonBufferFactory::set_config(const GstCaps *caps,
                                        guint64 max_num_buffers) {
   gstDeleter d;
 
-  GST_FIXME_OBJECT(this->pool.get(),
-                   "Ignoring max_num_buffers since the same value isn't "
-                   "applied to gstpylon");
-  this->max_buffers = 16;
+  this->max_buffers = max_num_buffers;
   this->caps = std::unique_ptr<GstCaps, gstDeleter>(gst_caps_copy(caps), d);
   this->pool = std::unique_ptr<GstPylonBufferPool, gstDeleter>(
       reinterpret_cast<GstPylonBufferPool *>(

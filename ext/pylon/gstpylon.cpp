@@ -828,6 +828,8 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   guint64 maxnumbuffers;
   g_object_get(self->gstream_grabber, "MaxNumBuffer", &maxnumbuffers, NULL);
 
+  self->camera->MaxNumBuffer.TrySetValue(maxnumbuffers);
+
   self->buffer_factory.set_config(conf, maxnumbuffers);
 
   self->camera->SetBufferFactory(
