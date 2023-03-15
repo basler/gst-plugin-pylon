@@ -67,33 +67,33 @@ static void gst_pylon_buffer_pool_init(GstPylonBufferPool *self) {
 static gboolean gst_pylon_buffer_pool_set_config(GstBufferPool *pool,
                                                  GstStructure *config) {
   GstPylonBufferPool *self = GST_PYLON_BUFFER_POOL(pool);
-  GstAllocator *allocator = NULL;
-  GstCaps *caps = NULL;
+  GstAllocator *allocator = nullptr;
+  GstCaps *caps = nullptr;
   guint min_buffers = 0;
   guint max_buffers = 0;
   guint size = 0;
 
-  if (!gst_buffer_pool_config_get_params(config, &caps, &size, &min_buffers,
-                                         &max_buffers)) {
+  if (gst_buffer_pool_config_get_params(config, &caps, &size, &min_buffers,
+                                        &max_buffers) == 0) {
     GST_ERROR_OBJECT(self, "Error getting parameters from buffer pool config");
-    goto error;
+    return FALSE;
   }
 
-  if (NULL == caps) {
+  if (nullptr == caps) {
     GST_ERROR_OBJECT(self, "Requested buffer pool configuration without caps");
-    goto error;
+    return FALSE;
   }
 
-  gst_buffer_pool_config_get_allocator(config, &allocator, NULL);
-  if (NULL == allocator) {
-    allocator = gst_allocator_find(NULL);
+  gst_buffer_pool_config_get_allocator(config, &allocator, nullptr);
+  if (nullptr == allocator) {
+    allocator = gst_allocator_find(nullptr);
     gst_buffer_pool_config_set_allocator(config, GST_ALLOCATOR(allocator),
-                                         NULL);
+                                         nullptr);
   } else {
     g_object_ref(allocator);
   }
 
-  if (self->allocator) {
+  if (self->allocator != nullptr) {
     g_clear_object(&self->allocator);
   }
   self->allocator = allocator;
@@ -105,9 +105,6 @@ static gboolean gst_pylon_buffer_pool_set_config(GstBufferPool *pool,
 
   return GST_BUFFER_POOL_CLASS(gst_pylon_buffer_pool_parent_class)
       ->set_config(pool, config);
-
-error:
-  return FALSE;
 }
 
 static void gst_pylon_buffer_pool_finalize(GObject *object) {

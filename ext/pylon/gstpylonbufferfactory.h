@@ -46,7 +46,7 @@ struct gstDeleter {
 
 class GstPylonBufferFactory : public Pylon::IBufferFactory {
  public:
-  GstPylonBufferFactory();
+  GstPylonBufferFactory() = default;
   void set_config(const GstCaps *caps, guint64 max_num_buffers);
   virtual void AllocateBuffer(size_t buffer_size, void **p_created_buffer,
                               intptr_t &buffer_context) override;

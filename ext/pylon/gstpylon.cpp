@@ -825,8 +825,8 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
     return FALSE;
   }
 
-  guint64 maxnumbuffers;
-  g_object_get(self->gstream_grabber, "MaxNumBuffer", &maxnumbuffers, NULL);
+  guint64 maxnumbuffers = 0;
+  g_object_get(self->gstream_grabber, "MaxNumBuffer", &maxnumbuffers, nullptr);
 
   self->camera->MaxNumBuffer.TrySetValue(maxnumbuffers);
 

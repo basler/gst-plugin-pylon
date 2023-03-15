@@ -37,8 +37,6 @@ typedef struct _BufferAndMap {
   GstMapInfo info;
 } BufferAndMap;
 
-GstPylonBufferFactory::GstPylonBufferFactory() {}
-
 void GstPylonBufferFactory::set_config(const GstCaps *caps,
                                        guint64 max_num_buffers) {
   gstDeleter d;
@@ -47,7 +45,7 @@ void GstPylonBufferFactory::set_config(const GstCaps *caps,
   this->caps = std::unique_ptr<GstCaps, gstDeleter>(gst_caps_copy(caps), d);
   this->pool = std::unique_ptr<GstPylonBufferPool, gstDeleter>(
       reinterpret_cast<GstPylonBufferPool *>(
-          g_object_new(GST_TYPE_PYLON_BUFFER_POOL, NULL)),
+          g_object_new(GST_TYPE_PYLON_BUFFER_POOL, nullptr)),
       d);
 }
 
@@ -61,12 +59,12 @@ void GstPylonBufferFactory::AllocateBuffer(size_t buffer_size,
                                       this->max_buffers);
 
     gst_buffer_pool_set_config(GST_BUFFER_POOL(this->pool.get()), st);
-    gst_buffer_pool_set_active(GST_BUFFER_POOL(this->pool.get()), true);
+    gst_buffer_pool_set_active(GST_BUFFER_POOL(this->pool.get()), 1);
   }
 
   GstBuffer *buffer = nullptr;
   GstFlowReturn ret = gst_buffer_pool_acquire_buffer(
-      GST_BUFFER_POOL(this->pool.get()), &buffer, NULL);
+      GST_BUFFER_POOL(this->pool.get()), &buffer, nullptr);
 
   if (GST_FLOW_OK != ret) {
     GST_WARNING_OBJECT(this->pool.get(), "Unable to acquire buffer from pool");
@@ -82,10 +80,9 @@ void GstPylonBufferFactory::AllocateBuffer(size_t buffer_size,
   buffer_context = reinterpret_cast<intptr_t>(new BufferAndMap{buffer, info});
 }
 
-void GstPylonBufferFactory::FreeBuffer(void *p_created_buffer,
+void GstPylonBufferFactory::FreeBuffer(void * /*p_created_buffer*/,
                                        intptr_t buffer_context) {
-  BufferAndMap *buffer_and_map =
-      reinterpret_cast<BufferAndMap *>(buffer_context);
+  auto *buffer_and_map = reinterpret_cast<BufferAndMap *>(buffer_context);
 
   gst_buffer_unmap(buffer_and_map->buffer, &buffer_and_map->info);
   gst_buffer_unref(buffer_and_map->buffer);
