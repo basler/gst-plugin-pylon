@@ -836,7 +836,14 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   g_object_get(self->gstream_grabber, "MaxNumBuffer", &maxnumbuffers, nullptr);
   self->camera->MaxNumBuffer.TrySetValue(maxnumbuffers);
 
-  self->buffer_factory = std::make_unique<GstPylonSysMemBufferFactory>();
+  GstCapsFeatures *features = gst_caps_get_features(conf, 0);
+  if (gst_caps_features_contains(features,
+                                  GST_CAPS_FEATURE_MEMORY_SYSTEM_MEMORY)) {
+    self->buffer_factory = std::make_unique<GstPylonSysMemBufferFactory>();
+  } else {
+    GST_ERROR("Only SystemMemory caps supported for allocation");
+    return FALSE;
+  }  
 
   self->camera->SetBufferFactory(self->buffer_factory.get(),
                                  Pylon::Cleanup_None);
