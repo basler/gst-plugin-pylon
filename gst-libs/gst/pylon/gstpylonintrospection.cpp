@@ -529,6 +529,70 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
     minimum_under_all_settings = 1.0;
     maximum_under_all_settings = 1e+07;
     return;
+  } else if (node->GetName() == "OffsetX") {
+    GST_DEBUG("Apply OffsetX feature workaround");
+    Pylon::CIntegerParameter sensor_width(
+        node->GetNodeMap()->GetNode("SensorWidth"));
+    Pylon::CIntegerParameter width(node->GetNodeMap()->GetNode("Width"));
+    /* try to shortcut if sensor width is available */
+    if (sensor_width.IsValid() && width.IsValid()) {
+      minimum_under_all_settings = 0;
+      maximum_under_all_settings = sensor_width.GetValue() - width.GetInc();
+      return;
+    }
+  } else if (node->GetName() == "OffsetY") {
+    GST_DEBUG("Apply OffsetY feature workaround");
+    Pylon::CIntegerParameter sensor_height(
+        node->GetNodeMap()->GetNode("SensorHeight"));
+    Pylon::CIntegerParameter height(node->GetNodeMap()->GetNode("Height"));
+    /* try to shortcut if sensor height is available */
+    if (sensor_height.IsValid() && height.IsValid()) {
+      minimum_under_all_settings = 0;
+      maximum_under_all_settings = sensor_height.GetValue() - height.GetInc();
+      return;
+    }
+  } else if (node->GetName() == "AutoFunctionROIOffsetX") {
+    GST_DEBUG("Apply AutoFunctionROIOffsetX feature workaround");
+    Pylon::CIntegerParameter sensor_width(
+        node->GetNodeMap()->GetNode("SensorWidth"));
+    Pylon::CIntegerParameter width(node->GetNodeMap()->GetNode("Width"));
+    /* try to shortcut if sensor width is available */
+    if (sensor_width.IsValid() && width.IsValid()) {
+      minimum_under_all_settings = 0;
+      maximum_under_all_settings = sensor_width.GetValue() - width.GetInc();
+      return;
+    }
+  } else if (node->GetName() == "AutoFunctionROIOffsetY") {
+    GST_DEBUG("Apply AutoFunctionROIOffsetY feature workaround");
+    Pylon::CIntegerParameter sensor_height(
+        node->GetNodeMap()->GetNode("SensorHeight"));
+    Pylon::CIntegerParameter height(node->GetNodeMap()->GetNode("Height"));
+    /* try to shortcut if sensor height is available */
+    if (sensor_height.IsValid() && height.IsValid()) {
+      minimum_under_all_settings = 0;
+      maximum_under_all_settings = sensor_height.GetValue() - height.GetInc();
+      return;
+    }
+  } else if (node->GetName() == "AutoFunctionROIWidth") {
+    GST_DEBUG("Apply AutoFunctionROIWidth feature workaround");
+    Pylon::CIntegerParameter sensor_width(
+        node->GetNodeMap()->GetNode("SensorWidth"));
+    /* try to shortcut if sensor width is available */
+    if (sensor_width.IsValid()) {
+      minimum_under_all_settings = 0;
+      maximum_under_all_settings = sensor_width.GetValue();
+      return;
+    }
+  } else if (node->GetName() == "AutoFunctionROIHeight") {
+    GST_DEBUG("Apply AutoFunctionROIHeight feature workaround");
+    Pylon::CIntegerParameter sensor_height(
+        node->GetNodeMap()->GetNode("SensorHeight"));
+    /* try to shortcut if sensor height is available */
+    if (sensor_height.IsValid()) {
+      minimum_under_all_settings = 0;
+      maximum_under_all_settings = sensor_height.GetValue();
+      return;
+    }
   } else if (node->GetName() == "AcquisitionBurstFrameCount") {
     minimum_under_all_settings = 1;
     maximum_under_all_settings = 1023;
