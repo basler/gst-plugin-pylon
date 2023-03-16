@@ -35,7 +35,7 @@ gstpylon_sources = [
   'gstpylonmeta.cpp',
   'gstpylonobject.cpp',
   'gstpylonparamspecs.cpp',
-  'gstpylonparamfactory.cpp'
+  'gstpylonparamfactory.cpp',
 ]
 
 gstpylon_headers = [
@@ -47,7 +47,7 @@ gstpylon_headers = [
   'gstpylonmeta.h',
   'gstpylonmetaprivate.h',
   'gstpylonobject.h',
-  'gstpylonparamspecs.h'
+  'gstpylonparamspecs.h',
 ]
 
 install_headers(gstpylon_headers, subdir : 'gstreamer-1.0/gst/pylon/')
