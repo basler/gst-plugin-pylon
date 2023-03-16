@@ -324,6 +324,8 @@ void GstPylonFeatureWalker::install_properties(
         GenApi::IsImplemented(node) &&
         !is_unsupported_feature(std::string(node->GetName())) &&
         node->GetPrincipalInterfaceType() != GenApi::intfICategory &&
+        node->GetPrincipalInterfaceType() != GenApi::intfICommand &&
+        node->GetPrincipalInterfaceType() != GenApi::intfIRegister &&
         sel_node && !sel_node->IsSelector()) {
       GenICam::gcstring value;
       GenICam::gcstring attrib;
