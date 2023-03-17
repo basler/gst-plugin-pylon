@@ -1,6 +1,37 @@
+# Copyright (C) 2023 Basler AG
+#
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#     1. Redistributions of source code must retain the above
+#        copyright notice, this list of conditions and the following
+#        disclaimer.
+#     2. Redistributions in binary form must reproduce the above
+#        copyright notice, this list of conditions and the following
+#        disclaimer in the documentation and/or other materials
+#        provided with the distribution.
+#     3. Neither the name of the copyright holder nor the names of
+#        its contributors may be used to endorse or promote products
+#        derived from this software without specific prior written
+#        permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+#
 from queue import Queue
+from typing import List
 import pypylon.genicam as geni
-
 import itertools
 
 
@@ -22,11 +53,11 @@ class FeatureNode(object):
     def __init__(
         self,
         node,
-        selectors: [
-            [FeatureSelector],
-        ] = [],
+        selectors: List[List[FeatureSelector,]] = None,
     ):
         self.node = node
+        if selectors is None:
+            selectors = []
         self.selectors = selectors
 
     def __repr__(self):
@@ -83,14 +114,17 @@ def get_feature_nodes(nodemap, with_selectors: bool, only_implemented: bool):
                 worklist.put(c)
             continue
 
+        if type(current_node) in (geni.ICommand, geni.IRegister):
+            continue
+
         # loop over all selector options of current node
         if with_selectors and len(current_node.Node.GetSelectingFeatures()):
             node_selectors = get_node_selectors(current_node)
-            for selectors in itertools.product(*node_selectors):
-                node_list.append(FeatureNode(current_node, selectors))
-
-            # for features with only a single selector output the direct form too
-            if len(current_node.Node.GetSelectingFeatures()) == 1:
+            if len(list(itertools.product(*node_selectors))) > 1:
+                for selectors in itertools.product(*node_selectors):
+                    node_list.append(FeatureNode(current_node, selectors))
+            else:
+                # for features with only a single selector output the direct form too
                 node_list.append(FeatureNode(current_node))
         else:
             node_list.append(FeatureNode(current_node))
