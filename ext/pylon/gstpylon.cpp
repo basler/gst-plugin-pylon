@@ -793,9 +793,11 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
     Pylon::CIntegerParameter width(nodemap, "Width");
     width.SetValue(gst_width, Pylon::IntegerValueCorrection_None);
+    GST_INFO("Set Feature Width: %d", gst_width);
 
     Pylon::CIntegerParameter height(nodemap, "Height");
     height.SetValue(gst_height, Pylon::IntegerValueCorrection_None);
+    GST_INFO("Set Feature Height: %d", gst_height);
 
     Pylon::CBooleanParameter framerate_enable(nodemap,
                                               "AcquisitionFrameRateEnable");
@@ -804,13 +806,14 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
     framerate_enable.TrySetValue(true);
 
     gdouble div = 1.0 * gst_numerator / gst_denominator;
-
     if (self->camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
       Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
       framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
+      GST_INFO("Set Feature AcquisitionFrameRate: %f", div);
     } else {
       Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
       framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
+      GST_INFO("Set Feature AcquisitionFrameRateAbs: %f", div);
     }
 
   } catch (const Pylon::GenericException &e) {

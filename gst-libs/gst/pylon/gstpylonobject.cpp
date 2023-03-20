@@ -206,6 +206,7 @@ static void gst_pylon_object_set_pylon_feature(GstPylonObjectPrivate* priv,
                                                const gchar* name) {
   P param(*priv->nodemap, name);
   param.SetValue(get_value(value));
+  GST_INFO("Set Feature %s: %s", name, param.ToString().c_str());
 }
 
 template <>
@@ -223,6 +224,8 @@ void gst_pylon_object_set_pylon_feature<GGetInt64, Pylon::CIntegerParameter>(
         Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);
   } else
     param.SetValue(get_value(value));
+
+  GST_INFO("Set Feature %s: %s", name, param.ToString().c_str());
 }
 
 template <>
@@ -240,6 +243,7 @@ void gst_pylon_object_set_pylon_feature<GGetDouble, Pylon::CFloatParameter>(
         Pylon::EFloatValueCorrection::FloatValueCorrection_ClipToRange);
   } else
     param.SetValue(get_value(value));
+  GST_INFO("Set Feature %s: %s", name, param.ToString().c_str());
 }
 
 template <>
@@ -248,6 +252,7 @@ void gst_pylon_object_set_pylon_feature<GGetEnum, Pylon::CEnumParameter>(
     const gchar* name) {
   Pylon::CEnumParameter param(*priv->nodemap, name);
   param.SetIntValue(get_value(value));
+  GST_INFO("Set Feature %s: %s", name, param.ToString().c_str());
 }
 
 /* Get gst property from pylon feature */
@@ -257,6 +262,7 @@ static void gst_pylon_object_get_pylon_feature(GenApi::INodeMap& nodemap,
                                                const gchar* name) {
   P param(nodemap, name);
   set_value(value, param.GetValue());
+  GST_DEBUG("Get Feature %s: %s", name, param.ToString().c_str());
 }
 
 template <>
@@ -265,6 +271,7 @@ void gst_pylon_object_get_pylon_feature<GSetEnum, Pylon::CEnumParameter>(
     const gchar* name) {
   Pylon::CEnumParameter param(nodemap, name);
   set_value(value, param.GetIntValue());
+  GST_DEBUG("Get Feature %s: %s", name, param.ToString().c_str());
 }
 
 template <>
@@ -273,6 +280,7 @@ void gst_pylon_object_get_pylon_feature<GSetString, Pylon::CStringParameter>(
     const gchar* name) {
   Pylon::CStringParameter param(nodemap, name);
   set_value(value, param.GetValue().c_str());
+  GST_DEBUG("Get Feature %s: %s", name, param.ToString().c_str());
 }
 
 void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
@@ -283,9 +291,15 @@ void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
   switch (selector_type) {
     case GenApi::intfIEnumeration:
       Pylon::CEnumParameter(nodemap, selector_name).SetIntValue(selector_value);
+      GST_INFO(
+          "Set Selector-Feature %s: %s", selector_name,
+          Pylon::CEnumParameter(nodemap, selector_name).ToString().c_str());
       break;
     case GenApi::intfIInteger:
       Pylon::CIntegerParameter(nodemap, selector_name).SetValue(selector_value);
+      GST_INFO(
+          "Set Selector-Feature %s: %s", selector_name,
+          Pylon::CIntegerParameter(nodemap, selector_name).ToString().c_str());
       break;
     default:
       std::string error_msg = "Selector \"" + std::string(selector_name) +
@@ -300,7 +314,9 @@ template <typename T, typename P>
 static T gst_pylon_object_get_pylon_property(GenApi::INodeMap& nodemap,
                                              const gchar* name) {
   P param(nodemap, name);
-  return param.GetValue();
+  T val = param.GetValue();
+  GST_DEBUG("Get Feature %s: %s", name, param.ToString().c_str());
+  return val;
 }
 
 template <typename F, typename P>
