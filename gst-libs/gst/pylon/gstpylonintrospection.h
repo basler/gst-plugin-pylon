@@ -37,12 +37,19 @@
 #include <gst/pylon/gstpyloncache.h>
 #include <gst/pylon/gstpylonincludes.h>
 
-class GstPylonParamFactory {
- public:
-  static GParamSpec *make_param(GenApi::INodeMap &nodemap, GenApi::INode *node,
-                                GenApi::INode *selector, guint64 selector_value,
-                                const std::string &device_fullname,
-                                GstPylonCache &feature_cache);
-};
+GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
+                                   GenApi::INode *node);
+
+void gst_pylon_query_feature_properties_double(
+    GenApi::INodeMap &nodemap, GenApi::INode *node,
+    GstPylonCache &feature_cache, GParamFlags &flags,
+    gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings,
+    GenApi::INode *selector = NULL, gint64 selector_value = 0);
+
+void gst_pylon_query_feature_properties_integer(
+    GenApi::INodeMap &nodemap, GenApi::INode *node,
+    GstPylonCache &feature_cache, GParamFlags &flags,
+    gint64 &minimum_under_all_settings, gint64 &maximum_under_all_settings,
+    GenApi::INode *selector = NULL, gint64 selector_value = 0);
 
 #endif

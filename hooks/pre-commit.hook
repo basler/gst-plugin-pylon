@@ -3,9 +3,7 @@
 # Check that the code follows a consistent code style
 #
 
-# Check for existence of indent, and error out if not present.
-# On some *bsd systems the binary seems to be called gnunindent,
-# so check for that first.
+# Check for existence of clang-format, and error out if not present.
 
 echo "--Checking style--"
 for file in `git diff-index --cached --name-only HEAD --diff-filter=ACMR| grep -e "\.h$" -e "\.cpp$"` ; do
@@ -13,25 +11,25 @@ for file in `git diff-index --cached --name-only HEAD --diff-filter=ACMR| grep -
     # revision in the index (and not the checked out version).
     nf=`git checkout-index --temp ${file} | cut -f 1`
     newfile_name=`basename $file`
-    touch "/tmp/$newfile_name" || exit 1
-    newfile="/tmp/$newfile_name"
+
+    check_dir=$(mktemp -d)
+    newfile="${check_dir}/${newfile_name}"
 
     cp "${nf}" "${newfile}"
+    cp ".clang-format" ${check_dir}
 
-    INDENT="hooks/cpp-format"
-
-    eval ${INDENT} $newfile 2>> /dev/null
+    eval hooks/cpp-format ${newfile} 2>> /dev/null
 
     diff -u -p "${nf}" "${newfile}"
     r=$?
-    rm "${newfile}"
+    rm -r "${check_dir}"
     rm "${nf}"
     if [ $r != 0 ] ; then
 echo "================================================================================================="
 echo " Code style error in: $file                                                                      "
 echo "                                                                                                 "
 echo " Please fix before committing. Don't forget to run git add before trying to commit again.        "
-echo " If the whole file is to be committed, run as :                                                  "
+echo " If the whole file is to be committed, run as (scripts may be found in hooks/):                  "
 echo "                                                                                                 "
 echo "   hooks/cpp-format $file; git add $file; git commit"
 echo "                                                                                                 "
@@ -40,3 +38,4 @@ echo "==========================================================================
     fi
 done
 echo "--Checking style pass--"
+

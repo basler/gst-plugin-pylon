@@ -36,6 +36,7 @@
 
 #include "gst/pylon/gstpyloncache.h"
 #include "gst/pylon/gstpylondebug.h"
+#include "gst/pylon/gstpylonformatmapping.h"
 #include "gst/pylon/gstpylonincludes.h"
 #include "gst/pylon/gstpylonmetaprivate.h"
 #include "gst/pylon/gstpylonobject.h"
@@ -46,11 +47,11 @@
 
 #include <map>
 
-/* Pixel format definitions */
-typedef struct {
-  std::string pfnc_name;
-  std::string gst_name;
-} PixelFormatMappingType;
+/* retry open camera limits in case of collision with other
+ * process
+ */
+constexpr int FAILED_OPEN_RETRY_COUNT = 30;
+constexpr int FAILED_OPEN_RETRY_WAIT_TIME_MS = 1000;
 
 /* Mapping of GstStructure with its corresponding formats */
 typedef struct {
@@ -121,19 +122,6 @@ struct _GstPylon {
   std::string requested_device_serial_number;
   gint requested_device_index;
 };
-
-static const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
-    {"Mono8", "GRAY8"},        {"RGB8Packed", "RGB"},
-    {"BGR8Packed", "BGR"},     {"RGB8", "RGB"},
-    {"BGR8", "BGR"},           {"YCbCr422_8", "YUY2"},
-    {"YUV422_8_UYVY", "UYVY"}, {"YUV422_8", "YUY2"},
-    {"YUV422Packed", "UYVY"},  {"YUV422_YUYV_Packed", "YUY2"}};
-
-static const std::vector<PixelFormatMappingType> pixel_format_mapping_bayer = {
-    {"BayerBG8", "bggr"},
-    {"BayerGR8", "grbg"},
-    {"BayerRG8", "rggb"},
-    {"BayerGB8", "gbrg"}};
 
 static const std::vector<GstStPixelFormats> gst_structure_formats = {
     {"video/x-raw", pixel_format_mapping_raw},
@@ -264,10 +252,34 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
 
     device_info = device_list.at(device_index);
 
-    self->camera->Attach(factory.CreateDevice(device_info));
+    /* retry loop to start camera
+     * handles the cornercase of multiprocess pipelines started
+     * concurrently
+     */
+    for (auto retry_idx = 0; retry_idx <= FAILED_OPEN_RETRY_COUNT;
+         retry_idx++) {
+      try {
+        self->camera->Attach(factory.CreateDevice(device_info));
+        break;
+      } catch (GenICam::GenericException &e) {
+        GST_INFO_OBJECT(gstpylonsrc, "Failed to Open %s (%s)\n",
+                        device_info.GetSerialNumber().c_str(),
+                        e.GetDescription());
+        /* wait for before new open attempt */
+        g_usleep(FAILED_OPEN_RETRY_WAIT_TIME_MS * 1000);
+      }
+    }
     self->camera->Open();
 
-    /* Set the camera to a valid state */
+    /* Set the camera to a valid state
+     * close left open transactions on the device
+     */
+    self->camera->DeviceFeaturePersistenceEnd.TryExecute();
+    self->camera->DeviceRegistersStreamingEnd.TryExecute();
+
+    /* Set the camera to a valid state
+     * load the poweron user set
+     */
     if (self->camera->UserSetSelector.IsWritable()) {
       std::string default_set = "Auto";
       gst_pylon_apply_set(self, default_set);
@@ -781,9 +793,11 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
     Pylon::CIntegerParameter width(nodemap, "Width");
     width.SetValue(gst_width, Pylon::IntegerValueCorrection_None);
+    GST_INFO("Set Feature Width: %d", gst_width);
 
     Pylon::CIntegerParameter height(nodemap, "Height");
     height.SetValue(gst_height, Pylon::IntegerValueCorrection_None);
+    GST_INFO("Set Feature Height: %d", gst_height);
 
     Pylon::CBooleanParameter framerate_enable(nodemap,
                                               "AcquisitionFrameRateEnable");
@@ -792,13 +806,14 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
     framerate_enable.TrySetValue(true);
 
     gdouble div = 1.0 * gst_numerator / gst_denominator;
-
     if (self->camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
       Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
       framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
+      GST_INFO("Set Feature AcquisitionFrameRate: %f", div);
     } else {
       Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
       framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
+      GST_INFO("Set Feature AcquisitionFrameRateAbs: %f", div);
     }
 
   } catch (const Pylon::GenericException &e) {
@@ -894,6 +909,21 @@ static gchar *gst_pylon_get_string_properties(
       Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
                                                   Pylon::Cleanup_Delete);
       camera.Open();
+
+      /* Set the camera to a valid state
+       * close left open transactions on the device
+       */
+      camera.DeviceFeaturePersistenceEnd.TryExecute();
+      camera.DeviceRegistersStreamingEnd.TryExecute();
+
+      /* Set the camera to a valid state
+       * load the factory default set
+       */
+      if (camera.UserSetSelector.IsWritable()) {
+        camera.UserSetSelector.SetValue("Default");
+        camera.UserSetLoad.Execute();
+      }
+
       get_device_string_properties(&camera, &camera_properties,
                                    DEFAULT_ALIGNMENT);
       camera.Close();

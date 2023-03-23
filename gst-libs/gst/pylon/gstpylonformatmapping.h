@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 Basler AG
+/* Copyright (C) 2023 Basler AG
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,21 +30,50 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
+#ifndef _GST_PYLON_FORMAT_MAPPING_
+#define _GST_PYLON_FORMAT_MAPPING_
 
-#include "gstpylondebug.h"
+#include <string>
+#include <vector>
 
-GST_DEBUG_CATEGORY (gst_pylon_debug);
+bool isSupportedPylonFormat(const std::string &format);
 
-void
-gst_pylon_debug_init (void)
-{
-  if (g_once_init_enter (&gst_pylon_debug)) {
-    GST_DEBUG_CATEGORY (cat_done);
-    GST_DEBUG_CATEGORY_INIT (cat_done, "pylonsrc", 0,
-        "debug category for pylonsrc element");
-    g_once_init_leave (&gst_pylon_debug, cat_done);
+/* Pixel format definitions */
+typedef struct {
+  std::string pfnc_name;
+  std::string gst_name;
+} PixelFormatMappingType;
+
+const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
+    {"Mono8", "GRAY8"},        {"RGB8Packed", "RGB"},
+    {"BGR8Packed", "BGR"},     {"RGB8", "RGB"},
+    {"BGR8", "BGR"},           {"YCbCr422_8", "YUY2"},
+    {"YUV422_8_UYVY", "UYVY"}, {"YUV422_8", "YUY2"},
+    {"YUV422Packed", "UYVY"},  {"YUV422_YUYV_Packed", "YUY2"}};
+
+const std::vector<PixelFormatMappingType> pixel_format_mapping_bayer = {
+    {"BayerBG8", "bggr"},
+    {"BayerGR8", "grbg"},
+    {"BayerRG8", "rggb"},
+    {"BayerGB8", "gbrg"}};
+
+bool isSupportedPylonFormat(const std::string &format) {
+  bool res = false;
+  for (const auto &fd : pixel_format_mapping_raw) {
+    if (fd.pfnc_name == format) {
+      res = true;
+      break;
+    }
   }
+  if (!res) {
+    for (const auto &fd : pixel_format_mapping_bayer) {
+      if (fd.pfnc_name == format) {
+        res = true;
+        break;
+      }
+    }
+  }
+  return res;
 }
+
+#endif
