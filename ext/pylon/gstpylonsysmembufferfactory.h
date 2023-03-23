@@ -32,8 +32,6 @@
 
 #pragma once
 
-#include "gstpylonbufferpool.h"
-
 #include <gst/gst.h>
 #include <pylon/PylonIncludes.h>
 
@@ -41,13 +39,12 @@
 
 struct gstDeleter {
   void operator()(GstCaps *caps) const { gst_caps_unref(caps); }
-  void operator()(GstPylonBufferPool *pool) const { g_object_unref(pool); }
 };
 
-class GstPylonBufferFactory : public Pylon::IBufferFactory {
+class GstPylonSysMemBufferFactory : public Pylon::IBufferFactory {
  public:
-  GstPylonBufferFactory() = default;
-  void set_config(const GstCaps *caps, guint64 max_num_buffers);
+  GstPylonSysMemBufferFactory() = default;
+  void SetConfig(const GstCaps *caps, guint64 max_num_buffers);
   virtual void AllocateBuffer(size_t buffer_size, void **p_created_buffer,
                               intptr_t &buffer_context) override;
   virtual void FreeBuffer(void *p_created_buffer,
@@ -56,7 +53,4 @@ class GstPylonBufferFactory : public Pylon::IBufferFactory {
 
  protected:
   std::unique_ptr<GstCaps, gstDeleter> caps;
-  std::unique_ptr<GstPylonBufferPool, gstDeleter> pool;
-
-  guint max_buffers;
 };

@@ -2,11 +2,10 @@
 pylon_sources = [
   'gstchildinspector.cpp',
   'gstpylon.cpp',
-  'gstpylonbufferfactory.cpp',
-  'gstpylonbufferpool.cpp',
   'gstpylondisconnecthandler.cpp',
   'gstpylonimagehandler.cpp',
   'gstpylonplugin.cpp',
+  'gstpylonsysmembufferfactory.cpp',
   'gstpylonsrc.cpp',
 ]
 

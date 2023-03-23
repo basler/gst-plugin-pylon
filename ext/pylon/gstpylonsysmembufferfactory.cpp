@@ -30,17 +30,17 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_BUFFER_POOL_H_
-#define _GST_PYLON_BUFFER_POOL_H_
+#include "gstpylonsysmembufferfactory.h"
 
-#include <gst/gst.h>
+void GstPylonSysMemBufferFactory::AllocateBuffer(size_t buffer_size,
+                                                 void **p_created_buffer,
+                                                 intptr_t &buffer_context) {
+  *p_created_buffer = g_malloc(buffer_size);
+}
 
-G_BEGIN_DECLS
+void GstPylonSysMemBufferFactory::FreeBuffer(void *p_created_buffer,
+                                             intptr_t /* buffer_context */) {
+  g_free(p_created_buffer);
+}
 
-#define GST_TYPE_PYLON_BUFFER_POOL gst_pylon_buffer_pool_get_type()
-G_DECLARE_FINAL_TYPE(GstPylonBufferPool, gst_pylon_buffer_pool, GST,
-                     PYLON_BUFFER_POOL, GstBufferPool)
-
-G_END_DECLS
-
-#endif
+void GstPylonSysMemBufferFactory::DestroyBufferFactory() { delete this; }

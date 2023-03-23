@@ -42,9 +42,9 @@
 #include "gst/pylon/gstpylonobject.h"
 #include "gstchildinspector.h"
 #include "gstpylon.h"
-#include "gstpylonbufferfactory.h"
 #include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
+#include "gstpylonsysmembufferfactory.h"
 
 #include <map>
 
@@ -119,7 +119,7 @@ struct _GstPylon {
   GstPylonImageHandler image_handler;
   GstPylonDisconnectHandler disconnect_handler;
 
-  GstPylonBufferFactory buffer_factory;
+  std::unique_ptr<Pylon::IBufferFactory> buffer_factory;
 
   std::string requested_device_user_name;
   std::string requested_device_serial_number;
@@ -827,14 +827,12 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
   guint64 maxnumbuffers = 0;
   g_object_get(self->gstream_grabber, "MaxNumBuffer", &maxnumbuffers, nullptr);
-
   self->camera->MaxNumBuffer.TrySetValue(maxnumbuffers);
 
-  self->buffer_factory.set_config(conf, maxnumbuffers);
+  self->buffer_factory = std::make_unique<GstPylonSysMemBufferFactory>();
 
-  self->camera->SetBufferFactory(
-      static_cast<Pylon::IBufferFactory *>(&self->buffer_factory),
-      Pylon::Cleanup_Delete);
+  self->camera->SetBufferFactory(self->buffer_factory.get(),
+                                 Pylon::Cleanup_Delete);
 
   return TRUE;
 }
