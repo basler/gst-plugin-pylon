@@ -31,21 +31,25 @@
  */
 
 #ifdef _MSC_VER  // MSVC
-#pragma warning(push)
-#pragma warning(disable : 4265)
+#  pragma warning(push)
+#  pragma warning(disable : 4265)
 #elif __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#pragma GCC diagnostic ignored "-Wunused-variable"
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#  pragma GCC diagnostic ignored "-Woverloaded-virtual"
+#  pragma GCC diagnostic ignored "-Wunused-variable"
+#  ifdef __clang__
+#    pragma GCC diagnostic ignored "-Wunknown-warning-option"
+#  endif
 #endif
 
+#include <pylon/BaslerUniversalInstantCamera.h>
 #include <pylon/PylonIncludes.h>
 
 #ifdef _MSC_VER  // MSVC
-#pragma warning(pop)
+#  pragma warning(pop)
 #elif __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
+#  pragma GCC diagnostic pop
 #endif
 
 using namespace std;
@@ -115,7 +119,7 @@ static vector<GenApi::INode*> get_available_features(
     const vector<GenApi::INode*>& feature_list) {
   vector<GenApi::INode*> available_features;
   for (const auto& feature : feature_list) {
-    if (GenApi::IsAvailable(feature)) {
+    if (GenApi::IsImplemented(feature)) {
       available_features.push_back(feature);
     }
   }
@@ -354,7 +358,7 @@ static vector<GenApi::INode*> walk_nodes(Pylon::CInstantCamera& camera) {
     auto node = worklist.front();
     worklist.pop();
 
-    if (GenApi::IsAvailable(node)) {
+    if (GenApi::IsImplemented(node)) {
       if (has_ranges(node)) {
         node_list.push_back(node);
       }

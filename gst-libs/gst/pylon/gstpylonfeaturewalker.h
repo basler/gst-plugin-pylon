@@ -34,33 +34,17 @@
 #define _GST_PYLON_FEATURE_WALKER_H_
 
 #include <gst/gst.h>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(push)
-#pragma warning(disable : 4265)
-#elif __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
-#include <pylon/PylonIncludes.h>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(pop)
-#elif __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
-#endif
+#include <gst/pylon/gstpyloncache.h>
+#include <gst/pylon/gstpylonincludes.h>
 
 class GstPylonFeatureWalker {
  public:
   static void install_properties(GObjectClass* oclass,
                                  GenApi::INodeMap& nodemap,
-                                 const gchar* device_fullname);
+                                 const std::string& device_fullname,
+                                 GstPylonCache& feature_cache);
+  static std::vector<std::string> process_selector_features(
+      GenApi::INode* node, GenApi::INode** selector_node);
 };
-
-std::vector<std::string> gst_pylon_process_selector_features(
-    GenApi::INode* node, GenApi::INode** selector_node);
 
 #endif

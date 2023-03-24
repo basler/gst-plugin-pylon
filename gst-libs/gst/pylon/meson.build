@@ -28,17 +28,26 @@ else
 endif
 
 gstpylon_sources = [
-  'gstpylondebug.c',
-  'gstpylonintrospection.cpp',
+  'gstpyloncache.cpp',
+  'gstpylondebug.cpp',
   'gstpylonfeaturewalker.cpp',
+  'gstpylonintrospection.cpp',
   'gstpylonmeta.cpp',
   'gstpylonobject.cpp',
   'gstpylonparamspecs.cpp',
+  'gstpylonparamfactory.cpp',
 ]
 
 gstpylon_headers = [
+  'gstpylon-prelude.h',
+  'gstpyloncache.h',
+  'gstpylondebug.h',
+  'gstpylonfeaturewalker.h',
+  'gstpylonintrospection.h',
   'gstpylonmeta.h',
-  'gstpylon-prelude.h'
+  'gstpylonmetaprivate.h',
+  'gstpylonobject.h',
+  'gstpylonparamspecs.h',
 ]
 
 install_headers(gstpylon_headers, subdir : 'gstreamer-1.0/gst/pylon/')
@@ -48,6 +57,7 @@ gstpylon = library('gstpylon-' + api_version,
   c_args : gst_plugin_pylon_args + '-DBUILDING_EXT_PYLONSRC',
   cpp_args : gst_plugin_pylon_args + '-DBUILDING_EXT_PYLONSRC',
   link_args : [noseh_link_args, pylon_link_args],
+  gnu_symbol_visibility: 'inlineshidden',
   include_directories : [configinc],
   dependencies : [gstbase_dep, gstvideo_dep, pylon_dep],
   install : true,

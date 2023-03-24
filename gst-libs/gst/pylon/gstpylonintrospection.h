@@ -34,31 +34,22 @@
 #define _GST_PYLON_INTROSPECTION_H_
 
 #include <gst/gst.h>
+#include <gst/pylon/gstpyloncache.h>
+#include <gst/pylon/gstpylonincludes.h>
 
-#ifdef _MSC_VER  // MSVC
-#pragma warning(push)
-#pragma warning(disable : 4265)
-#elif __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
+GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
+                                   GenApi::INode *node);
 
-#include <pylon/BaslerUniversalInstantCamera.h>
-#include <pylon/PylonIncludes.h>
+void gst_pylon_query_feature_properties_double(
+    GenApi::INodeMap &nodemap, GenApi::INode *node,
+    GstPylonCache &feature_cache, GParamFlags &flags,
+    gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings,
+    GenApi::INode *selector = NULL, gint64 selector_value = 0);
 
-#ifdef _MSC_VER  // MSVC
-#pragma warning(pop)
-#elif __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
-#endif
-
-class GstPylonParamFactory {
- public:
-  static GParamSpec *make_param(GenApi::INodeMap &nodemap, GenApi::INode *node,
-                                GenApi::INode *selector, guint64 selector_value,
-                                const gchar *device_fullname);
-};
+void gst_pylon_query_feature_properties_integer(
+    GenApi::INodeMap &nodemap, GenApi::INode *node,
+    GstPylonCache &feature_cache, GParamFlags &flags,
+    gint64 &minimum_under_all_settings, gint64 &maximum_under_all_settings,
+    GenApi::INode *selector = NULL, gint64 selector_value = 0);
 
 #endif

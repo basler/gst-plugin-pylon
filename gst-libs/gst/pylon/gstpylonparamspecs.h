@@ -33,32 +33,13 @@
 #ifndef __GST_PYLON_PARAM_SPECS_H__
 #define __GST_PYLON_PARAM_SPECS_H__
 
+#include "gst/pylon/gstpylonincludes.h"
+
 #include <gst/gst.h>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(push)
-#pragma warning(disable : 4265)
-#elif __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
-#include <pylon/PylonIncludes.h>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(pop)
-#elif __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
-#endif
-
-G_BEGIN_DECLS
 
 /* Set flag for features with selectors */
 #define GST_PYLON_PARAM_IS_SELECTOR (1 << (G_PARAM_USER_SHIFT + 1))
 #define GST_PYLON_PARAM_FLAG_IS_SET(pspec, flag) ((pspec)->flags & (flag))
-
 
 /* --- typedefs & structures --- */
 
@@ -75,7 +56,7 @@ typedef struct _GstPylonParamSpecSelectorData GstPylonParamSpecSelectorData;
 struct _GstPylonParamSpecSelectorData {
   gchar* feature;
   gchar* selector;
-  guint64 selector_value;
+  gint64 selector_value;
 };
 
 /* --- GParamSpec prototypes --- */
@@ -89,7 +70,7 @@ GParamSpec* gst_pylon_param_spec_selector_boolean(
     GenApi::INodeMap& nodemap, const gchar* selector_name,
     const gchar* feature_name, guint64 selector_value, const gchar* nick,
     const gchar* blurb, gboolean def, GParamFlags flags) G_GNUC_MALLOC;
-GParamSpec* gst_pylon_param_spec_selector_float(
+GParamSpec* gst_pylon_param_spec_selector_double(
     GenApi::INodeMap& nodemap, const gchar* feature_name,
     const gchar* selector_name, guint64 selector_value, const gchar* nick,
     const gchar* blurb, gdouble min, gdouble max, gdouble def,
@@ -101,14 +82,17 @@ GParamSpec* gst_pylon_param_spec_selector_string(
 GParamSpec* gst_pylon_param_spec_selector_enum(
     GenApi::INodeMap& nodemap, const gchar* feature_name,
     const gchar* selector_name, guint64 selector_value, const gchar* nick,
-    const gchar* blurb, GType type, gint64 def, GParamFlags flags,
-    const gchar* device_fullname) G_GNUC_MALLOC;
+    const gchar* blurb, GType type, gint64 def,
+    GParamFlags flags) G_GNUC_MALLOC;
 
 /* --- Utility prototypes --- */
 
-gchar* gst_pylon_param_spec_sanitize_name(const gchar* name);
-GstPylonParamSpecSelectorData* gst_pylon_param_spec_selector_get_data(GParamSpec* spec);
-
-G_END_DECLS
+std::string gst_pylon_param_spec_sanitize_name(const gchar* name);
+GstPylonParamSpecSelectorData* gst_pylon_param_spec_selector_get_data(
+    GParamSpec* spec);
+gchar* gst_pylon_create_selected_name(GenApi::INodeMap& nodemap,
+                                      const gchar* feature_name,
+                                      const gchar* selector_name,
+                                      guint64 selector_value);
 
 #endif /* __GST_PYLON_PARAM_SPECS_H__ */

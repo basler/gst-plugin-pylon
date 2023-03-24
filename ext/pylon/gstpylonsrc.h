@@ -37,9 +37,8 @@
 
 G_BEGIN_DECLS
 
-#define GST_TYPE_PYLON_SRC gst_pylon_src_get_type ()
-G_DECLARE_FINAL_TYPE (GstPylonSrc, gst_pylon_src,
-    GST, PYLON_SRC, GstPushSrc)
+#define GST_TYPE_PYLON_SRC gst_pylon_src_get_type()
+G_DECLARE_FINAL_TYPE(GstPylonSrc, gst_pylon_src, GST, PYLON_SRC, GstPushSrc)
 
 G_END_DECLS
 

@@ -33,27 +33,10 @@
 #ifndef _GST_PYLON_IMAGE_HANDLER_H_
 #define _GST_PYLON_IMAGE_HANDLER_H_
 
+#include <gst/pylon/gstpylonincludes.h>
+
 #include <condition_variable>
 #include <mutex>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(push)
-#pragma warning(disable : 4265)
-#elif __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
-#include <pylon/BaslerUniversalInstantCamera.h>
-#include <pylon/PylonIncludes.h>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(pop)
-#elif __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
-#endif
 
 class GstPylonImageHandler : public Pylon::CBaslerUniversalImageEventHandler {
  public:

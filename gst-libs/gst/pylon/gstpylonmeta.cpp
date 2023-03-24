@@ -31,7 +31,7 @@
  */
 
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+#  include "config.h"
 #endif
 
 #include "gstpylondebug.h"
@@ -39,24 +39,8 @@
 #include "gstpylonmeta.h"
 #include "gstpylonmetaprivate.h"
 
+#include <gst/pylon/gstpylonincludes.h>
 #include <gst/video/video.h>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(push)
-#pragma warning(disable : 4265)
-#elif __GNUC__  // GCC, CLANG, MinGW
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#endif
-
-#include <pylon/BaslerUniversalInstantCamera.h>
-#include <pylon/PylonIncludes.h>
-
-#ifdef _MSC_VER  // MSVC
-#pragma warning(pop)
-#elif __GNUC__  // GCC, CLANG, MinWG
-#pragma GCC diagnostic pop
-#endif
 
 /* prototypes */
 static gboolean gst_pylon_meta_init(GstMeta *meta, gpointer params,
@@ -176,7 +160,8 @@ static void gst_pylon_meta_fill_result_chunks(
 
     std::vector<std::string> enum_values;
     try {
-      enum_values = gst_pylon_process_selector_features(node, &selector_node);
+      enum_values = GstPylonFeatureWalker::process_selector_features(
+          node, &selector_node);
     } catch (const Pylon::GenericException &e) {
       GST_WARNING("Chunk %s not added: %s", node->GetName().c_str(),
                   e.GetDescription());
@@ -237,4 +222,9 @@ static void gst_pylon_meta_free(GstMeta *meta, GstBuffer *buffer) {
   GstPylonMeta *pylon_meta = (GstPylonMeta *)meta;
 
   gst_structure_free(pylon_meta->chunks);
+}
+
+GstPylonMeta *gst_buffer_get_pylon_meta(GstBuffer *buffer) {
+  return reinterpret_cast<GstPylonMeta *>(
+      gst_buffer_get_meta(buffer, GST_PYLON_META_API_TYPE));
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 Basler AG
+/* Copyright (C) 2023 Basler AG
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,24 +29,23 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef BINDACCESSFUNCTIONS_H
+#define BINDACCESSFUNCTIONS_H
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
+#if __GNUC__  // GCC, CLANG, MinGW
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wredundant-decls"
 #endif
 
-#include "gstpylonsrc.h"
-#include <pylon/PylonVersionNumber.h>
+#include <pybind11/pybind11.h>
 
-static gboolean
-plugin_init (GstPlugin * plugin)
-{
-  return gst_element_register (plugin, "pylonsrc", GST_RANK_NONE,
-      GST_TYPE_PYLON_SRC);
+#if __GNUC__  // GCC, CLANG, MinWG
+#  pragma GCC diagnostic pop
+#endif
+
+namespace py = pybind11;
+namespace pygstpylon {
+void bindaccessfunctions(py::module &m);
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR,
-    pylon,
-    "Basler/Pylon plugin for pylon SDK " PYLON_VERSIONSTRING_MAJOR "."
-    PYLON_VERSIONSTRING_MINOR "." PYLON_VERSIONSTRING_SUBMINOR "("
-    PYLON_VERSIONSTRING_BUILD ")", plugin_init, VERSION, GST_PACKAGE_LICENSE,
-    GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)
+#endif

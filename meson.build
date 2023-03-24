@@ -1,5 +1,5 @@
 project('gst-plugin-pylon', 'c', 'cpp',
-  version : '0.5.1',
+  version : '0.6.0',
   meson_version : '>= 0.61',
   default_options : [ 'warning_level=1',
                       'buildtype=debugoptimized' ])
@@ -12,6 +12,34 @@ gst_dep = dependency('gstreamer-1.0', version : gst_req)
 
 gst_version = gst_dep.version()
 message('Building against GStreamer ' + gst_version)
+
+python3 = import('python').find_installation()
+
+# generate project version from git info
+py_script = '''
+import subprocess
+import sys, os
+
+meson_project_path = sys.argv[1]
+
+git_dir = os.path.join(meson_project_path, ".git")
+
+try:
+    cmd_result = subprocess.run(
+        ["git", "--git-dir=" + git_dir, "describe", "--tags", "--abbrev=7", "--dirty=+"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=True,
+    )
+    vcs_tag = cmd_result.stdout.decode("utf-8")[1:-1]
+except (FileNotFoundError, subprocess.CalledProcessError):
+    sys.exit(1)
+
+print(vcs_tag)
+'''
+git_version = vcs_tag(command : ['python3', '-c', py_script, meson.project_source_root()],
+             input: 'version.h.in', output: 'version.h', replace_string: '@GIT_VERSION@',
+             fallback: meson.project_version() + '-local')
 
 version_arr = gst_version.split('.')
 gst_version_major = version_arr[0].to_int()
@@ -136,14 +164,14 @@ cdata.set_quoted('LOCALEDIR', join_paths(get_option('prefix'), get_option('local
 if cc.get_id() == 'msvc'
   export_define = '__declspec(dllexport) extern'
 elif cc.has_argument('-fvisibility=hidden')
-  add_project_arguments('-fvisibility=hidden', language: 'c')
+  add_project_arguments('-fvisibility=hidden', language: 'cpp')
   export_define = 'extern __attribute__ ((visibility ("default")))'
 else
   export_define = 'extern'
 endif
 
 # Passing this through the command line would be too messy
-cdata.set('GST_API_EXPORT', export_define)
+cdata.set('GST_PYLON_API_EXPORT', export_define)
 
 warning_flags = [
   '-Wmissing-declarations',
@@ -232,7 +260,6 @@ endif
 
 presetdir = join_paths(get_option('datadir'), 'gstreamer-' + api_version, 'presets')
 
-python3 = import('python').find_installation()
 pkgconfig = import('pkgconfig')
 plugins_pkgconfig_install_dir = join_paths(plugins_install_dir, 'pkgconfig')
 if get_option('default_library') == 'shared'
@@ -244,6 +271,14 @@ subdir('gst-libs')
 subdir('ext')
 subdir('tests')
 subdir('docs')
+
+meta_python_bindings = get_option('python-bindings')
+if meta_python_bindings.enabled()
+  message('Meta python bindings enabled')
+  subdir('bindings')
+else
+  message('Meta python bindings disabled')
+endif
 
 configure_file(output : 'config.h', configuration : cdata)
 

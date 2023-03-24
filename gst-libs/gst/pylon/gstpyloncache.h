@@ -30,21 +30,48 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
+#ifndef _GST_PYLON_CACHE_H_
+#define _GST_PYLON_CACHE_H_
+
+#include <gst/gst.h>
+
+#include <string>
+
+class GST_PLUGIN_EXPORT GstPylonCache {
+ public:
+  GstPylonCache(const std::string &name);
+  ~GstPylonCache();
+  gboolean HasNewSettings();
+
+  void SetIntProps(const gchar *feature_name, const gint64 min,
+                   const gint64 max, const GParamFlags flags);
+  void SetDoubleProps(const gchar *feature_name, const gdouble min,
+                      const gdouble max, const GParamFlags flags);
+
+  bool GetIntProps(const gchar *feature_name, gint64 &min, gint64 &max,
+                   GParamFlags &flags);
+  bool GetDoubleProps(const gchar *feature_name, gdouble &min, gdouble &max,
+                      GParamFlags &flags);
+
+  /* Load from file system */
+  gboolean LoadCacheFile();
+  /* Persist cache to filesystem */
+  void CreateCacheFile();
+
+ private:
+  void SetIntegerAttribute(const char *feature, const char *attribute,
+                           const gint64 val);
+  void SetDoubleAttribute(const char *feature, const char *attribute,
+                          gdouble val);
+
+  bool GetIntegerAttribute(const char *feature, const char *attribute,
+                           gint64 &val);
+  bool GetDoubleAttribute(const char *feature, const char *attribute,
+                          gdouble &val);
+
+  std::string filepath;
+  GKeyFile *feature_cache_dict;
+  gboolean is_modified;
+};
+
 #endif
-
-#include "gstpylondebug.h"
-
-GST_DEBUG_CATEGORY (gst_pylon_debug);
-
-void
-gst_pylon_debug_init (void)
-{
-  if (g_once_init_enter (&gst_pylon_debug)) {
-    GST_DEBUG_CATEGORY (cat_done);
-    GST_DEBUG_CATEGORY_INIT (cat_done, "pylonsrc", 0,
-        "debug category for pylonsrc element");
-    g_once_init_leave (&gst_pylon_debug, cat_done);
-  }
-}

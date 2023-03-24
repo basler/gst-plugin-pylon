@@ -12,10 +12,20 @@ Build
 # Meson
 /build
 /_build
-/subprojects
 
 # vscode
 .vscode/
 
 # qtcreator
 .qtc_clangd/
+
+# vs code
+.devcontainer
+
+# temp files 
+.ipynb_checkpoints
+__pycache__
+
+# subprojects
+subprojects/packagecache
+subprojects/pybind11-2.10.3

@@ -1,6 +1,39 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2023-03-24
+
+### Added
+- Caching infrastructure to reduce runtime of property introspection process
+  * ranges and access behaviour of features are saved during introspection
+  * cache data is saved in [glib_user_cache_dir](https://docs.gtk.org/glib/func.get_user_cache_dir.html)/gstpylon/
+- Python bindings to access pylon image metadata from python-gstreamer scripts
+  * can be enabled during configuration using meson option `-Dpython-bindings=enabled`
+- gstreamer property added to automatically round properties to the nearest valid camera values
+  * `enable-correction=<true/false>`  activates automatic correction of values.
+- git version is reflected in the plugin version string
+
+
+### Changed
+- Changed codebase from mixed c/c++ to c++
+  * symbol default visibility 'hidden' on all platforms
+- Exclude the following feature groups from introspection until properly supported
+  * SequencerControl
+  * FileAccessControl
+  * MultiROI
+  * Events
+  * Commmands
+
+### Fixed
+- Disable the `DeviceLinkSelector` on all devices
+  * fixes an issue with specific dart1 models
+- Concurrent start of pylonsrc from multiple processes
+  * opening a device is now retried for 30s in case of multiprocess collision
+  * fixes #25
+- ace2/dart2/boost feature dependency introspection fixed
+  * fixes #32
+
+
 ## [0.5.1] - 2022-12-28
 
 ### Fixed

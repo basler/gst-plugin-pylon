@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 Basler AG
+/* Copyright (C) 2023 Basler AG
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,39 +30,50 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_PYLON_META_H__
-#define __GST_PYLON_META_H__
+#ifndef _GST_PYLON_FORMAT_MAPPING_
+#define _GST_PYLON_FORMAT_MAPPING_
 
-#include <gst/gst.h>
-#include <gst/pylon/gstpylon-prelude.h>
+#include <string>
+#include <vector>
 
-G_BEGIN_DECLS
+bool isSupportedPylonFormat(const std::string &format);
 
-#define GST_PYLON_META_API_TYPE (gst_pylon_meta_api_get_type())
-#define GST_PYLON_META_INFO (gst_pylon_meta_get_info())
-typedef struct _GstPylonOffset GstPylonOffset;
-typedef struct _GstPylonMeta GstPylonMeta;
+/* Pixel format definitions */
+typedef struct {
+  std::string pfnc_name;
+  std::string gst_name;
+} PixelFormatMappingType;
 
-struct _GstPylonOffset {
-  guint64 offset_x;
-  guint64 offset_y;
-};
+const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
+    {"Mono8", "GRAY8"},        {"RGB8Packed", "RGB"},
+    {"BGR8Packed", "BGR"},     {"RGB8", "RGB"},
+    {"BGR8", "BGR"},           {"YCbCr422_8", "YUY2"},
+    {"YUV422_8_UYVY", "UYVY"}, {"YUV422_8", "YUY2"},
+    {"YUV422Packed", "UYVY"},  {"YUV422_YUYV_Packed", "YUY2"}};
 
-struct _GstPylonMeta {
-  GstMeta meta;
+const std::vector<PixelFormatMappingType> pixel_format_mapping_bayer = {
+    {"BayerBG8", "bggr"},
+    {"BayerGR8", "grbg"},
+    {"BayerRG8", "rggb"},
+    {"BayerGB8", "gbrg"}};
 
-  GstStructure *chunks;
-  guint64 block_id;
-  guint64 image_number;
-  guint64 skipped_images;
-  GstPylonOffset offset;
-  GstClockTime timestamp;
-  gsize stride;
-};
+bool isSupportedPylonFormat(const std::string &format) {
+  bool res = false;
+  for (const auto &fd : pixel_format_mapping_raw) {
+    if (fd.pfnc_name == format) {
+      res = true;
+      break;
+    }
+  }
+  if (!res) {
+    for (const auto &fd : pixel_format_mapping_bayer) {
+      if (fd.pfnc_name == format) {
+        res = true;
+        break;
+      }
+    }
+  }
+  return res;
+}
 
-EXT_PYLONSRC_API GType gst_pylon_meta_api_get_type(void);
-EXT_PYLONSRC_API const GstMetaInfo *gst_pylon_meta_get_info(void);
-EXT_PYLONSRC_API GstPylonMeta *gst_buffer_get_pylon_meta(GstBuffer *buffer);
-
-G_END_DECLS
 #endif

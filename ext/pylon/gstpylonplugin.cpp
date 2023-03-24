@@ -30,39 +30,23 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_PYLON_META_H__
-#define __GST_PYLON_META_H__
-
-#include <gst/gst.h>
-#include <gst/pylon/gstpylon-prelude.h>
-
-G_BEGIN_DECLS
-
-#define GST_PYLON_META_API_TYPE (gst_pylon_meta_api_get_type())
-#define GST_PYLON_META_INFO (gst_pylon_meta_get_info())
-typedef struct _GstPylonOffset GstPylonOffset;
-typedef struct _GstPylonMeta GstPylonMeta;
-
-struct _GstPylonOffset {
-  guint64 offset_x;
-  guint64 offset_y;
-};
-
-struct _GstPylonMeta {
-  GstMeta meta;
-
-  GstStructure *chunks;
-  guint64 block_id;
-  guint64 image_number;
-  guint64 skipped_images;
-  GstPylonOffset offset;
-  GstClockTime timestamp;
-  gsize stride;
-};
-
-EXT_PYLONSRC_API GType gst_pylon_meta_api_get_type(void);
-EXT_PYLONSRC_API const GstMetaInfo *gst_pylon_meta_get_info(void);
-EXT_PYLONSRC_API GstPylonMeta *gst_buffer_get_pylon_meta(GstBuffer *buffer);
-
-G_END_DECLS
+#ifdef HAVE_CONFIG_H
+#  include "config.h"
 #endif
+
+#include "version.h"
+
+#include "gstpylonsrc.h"
+#include <pylon/PylonVersionNumber.h>
+
+static gboolean plugin_init(GstPlugin* plugin) {
+  return gst_element_register(plugin, "pylonsrc", GST_RANK_NONE,
+                              GST_TYPE_PYLON_SRC);
+}
+
+GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR,
+    pylon,
+    "Basler/Pylon plugin for pylon SDK " PYLON_VERSIONSTRING_MAJOR "."
+    PYLON_VERSIONSTRING_MINOR "." PYLON_VERSIONSTRING_SUBMINOR "("
+    PYLON_VERSIONSTRING_BUILD ")", plugin_init, GIT_VERSION,
+    GST_PACKAGE_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

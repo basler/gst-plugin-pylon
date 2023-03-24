@@ -15,7 +15,7 @@ You are welcome to post any questions or issues on [GitHub](https://github.com/b
 
 The next chapters describe how to [use](#getting-started) and [build](#Building) the *pylonsrc* plugin.
 
-# Getting started 
+# Getting started
 
 To display the video stream of a single Basler camera is as simple as:
 
@@ -23,7 +23,7 @@ To display the video stream of a single Basler camera is as simple as:
 gst-launch-1.0 pylonsrc ! videoconvert ! autovideosink
 ```
 
-The dynamic registration of camera features in the plugin can take ~5s on some camera models. An optimization is scheduled for the next release.
+> The camera features are registered dynamically to gstreamer. This registration is executed once the first time a camera model is used in gstreamer and can take up to ~10s. The registration information is cached in the filesystem to speed up subsequent uses of the camera.
 
 The following sections describe how to select and configure the camera.
 
@@ -73,7 +73,7 @@ gst-launch-1.0 pylonsrc device-user-name="top-left" ! videoconvert ! autovideosi
 The configuration of the camera is defined by
 * gstreamer pipeline capabilities
 * the active UserSet or supplied PFS file
-* feature properties of the plugin 
+* feature properties of the plugin
 
 ### Capabilities
 
@@ -119,7 +119,7 @@ The mapping of the camera pixel format names to the gstreamer format names is:
 | BayerRG8          |  rggb      |
 | BayerGB8          |  gbrg      |
 
-### Fixation 
+### Fixation
 
 If two pipeline elements don't specify which capabilities to choose, a fixation step gets applied.
 
@@ -147,9 +147,25 @@ As an example, the following pipeline will skip corrupted or partial buffers:
 gst-launch-1.0 pylonsrc capture-error=skip ! videoconvert ! autovideosink
 ```
 
+### Automatic rounding/correction of property values
+
+The gstreamer model for properties only represents a static range of a property. The pylon feature model has dynamic ranges and increments. These values can change depending on the current values of other properties.
+
+In the registration phase the absolute minimum and maximum values of a feature are registered as gstreamer property.
+
+Per default pylon and the camera still require to set the exact/correct values.
+
+By using the gstreamer boolean property `enable-correction` the plugin will automatically round/correct to the nearest valid value.
+
+The options for this property are:
+
+* `enable-correction=false` the exact value has to be set. If the value is not valid ( out of range or wrong increment) the property setting is ignored and an error log message generated. This is the default behaviour
+* `enable-correction=true` the plugin will round or adjust to the nearest valid value.
+
+
 ### UserSet handling
 
-`pylonsrc` always loads a UserSet of the camera before applying any further properties. 
+`pylonsrc` always loads a UserSet of the camera before applying any further properties.
 
 This feature is controlled by the enumeration property `user-set`.
 
@@ -267,7 +283,30 @@ gst-launch-1.0 pylonsrc cam::ChunkModeActive=True cam::ChunkEnable-Timestamp=Tru
 
 The plugin meta data is defined in [gstpylonmeta.h](gst-libs/gst/pylon/gstpylonmeta.h).
 
-A programming sample using these defintions to decode the data is in [show_meta](tests/examples/pylon/show_meta.c) 
+A programming sample using these defintions to decode the data is in [show_meta](tests/examples/pylon/show_meta.c)
+
+
+**Access to GstMetaPylon from python**
+
+To access the metadata a Python support library is available. The `pygstpylon` provides the required access helper to decode the metadata from plugins and probes.
+
+> Note that Python bindings are disabled by default, refer to the build section for instructions on how to enable them.
+
+One usage example to access camera chunk and metadata from a python plugin is in [snapshot_gpio.py](tests/examples/python/snapshot_gpio.py)
+
+This sample plugin will check the LineStatusAll chunk to detect an edge on one of the inputs to output a single image while per default all images get dropped.
+
+The below usage example will show live video and store a snapshot if the gpio edge is detected on Line4 of the camera.
+
+```bash
+# the plugin path for python code has to point to a directory with a 'python' subdirectory
+export GST_PLUGIN_PATH=<gst-plugin-pylon>/tests/examples
+gst-launch-1.0 pylonsrc cam::ChunkModeActive=True cam::ChunkEnable-LineStatusAll=True \
+        ! tee name=t \
+        t. ! queue ! pylongpiosnapshot_py trigger-source=4 rising-edge=true ! videoconvert ! pngenc ! multifilesink location=image%05d.png async=false\
+        t. ! queue ! videoconvert  ! autovideosink
+```
+
 
 # Building
 
@@ -304,6 +343,9 @@ sudo -H python3 -m pip install meson ninja --upgrade
 
 # GStreamer
 sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake
+# if you want to use the sample python plugin
+sudo apt install gstreamer1.0-python3-plugin-loader
+
 ```
 
 The build process relies on `PYLON_ROOT` pointing to the Basler pylon install directory.
@@ -321,6 +363,12 @@ configure the project as:
 git clone https://github.com/basler/gst-plugin-pylon.git
 cd gst-plugin-pylon
 meson setup builddir --prefix /usr/
+```
+
+If you want to enable Python bindings, run the following command instead when setting up the meson project, since the bindings are disabled by default:
+
+```bash
+meson setup builddir --prefix /usr/ -Dpython-bindings=enabled
 ```
 
 Build, test and install the project:
@@ -400,8 +448,10 @@ meson setup builddir --prefix /usr/ --werror --buildtype=debug -Dgobject-cast-ch
 TBD
 
 #### YOCTO recipe
-TBD
-A yocto recipe will be provided in  [meta-basler-tools](https://github.com/basler/meta-basler-tools) layer on github.
+A reference yocto recipe for honister is available in the [meta-basler-tools](https://github.com/basler/meta-basler-tools/tree/honister/recipes-multimedia/gstreamer)
+on github. This recipe still needs a backport patch due to the version of meson tool in honister.
+
+Builds on yocto kirkstone and later work without the patch.
 
 ## Windows
 Install the dependencies:
@@ -453,11 +503,11 @@ This will generate a Visual Studio solution in the build directory
 To test without install:
 
 ```
-set GST_PLUGIN_PATH=build/ext/pylon  
+set GST_PLUGIN_PATH=build/ext/pylon
 
-%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin\gst-launch-1.0.exe 
+%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin\gst-launch-1.0.exe
 
-pylonsrc ! videoconvert ! autovideosink  
+pylonsrc ! videoconvert ! autovideosink
 ```
 
 To install into main gstreamer directory
@@ -466,8 +516,8 @@ To install into main gstreamer directory
 ninja -C build install
 ```
 
->Workaround for running from normal cmdshell in a non US locale: 
->As visual studio currently ships a broken vswhere.exe tool, that meson relies on.  
+>Workaround for running from normal cmdshell in a non US locale:
+>As visual studio currently ships a broken vswhere.exe tool, that meson relies on.
 Install a current vswhere.exe from [Releases · microsoft/vswhere · GitHub](https://github.com/microsoft/vswhere/releases) that fixes ( [Initialize console after parsing arguments by heaths · Pull Request #263 · microsoft/vswhere · GitHub](https://github.com/microsoft/vswhere/pull/263) )
 
 
@@ -487,4 +537,7 @@ This target will be integrated after a Basler pylon 7.x release for macOS
 * Due to an old issue in the pipeline parser, typos and unsupported feature names will be silently ignored on old GStreamer versions. Typos on top-level properties will be ignored on versions prior to 1.18. Typos on child::properties will be ignored on versions prior to 1.21.
 
 * Bayer formats need to be 4 byte aligned to be properly processed by GStreamer. If no size is specified (or a range is provided) a word aligned width will be automatically selected. If the width is hardcoded and it is not word aligned, the pipeline will fail displaying an error.
- 
+
+* Under very specific conditions we've found that a set_state() followed immediately by a get_state() will report a failure. This has been found to be a bug in the GStreamer core, where a state conditional is not protected against spurious wakeups. An upstream fix has been proposed [in this Merge Request](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/4086). This issue has been reproduced in certain installations of NVIDIA Jetson boards.
+  * As a workaround while the fix is absorbed, you may configure `async=false` in all the sink elements in your pipeline, so that the state condition variable is not needed. Only use this is your pipeline does not require synchronization.
+
