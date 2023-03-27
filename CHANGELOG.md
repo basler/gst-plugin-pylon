@@ -1,6 +1,17 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.6.1] - 2023-03-27
+
+### Changed
+- Filter event data nodes
+  * exclude from registration until supported in gstreamer
+
+### Fixed
+- Process feature limits for ace gige
+  * extend heuristics
+  * fixes #37
+
 ## [0.6.0] - 2023-03-24
 
 ### Added
