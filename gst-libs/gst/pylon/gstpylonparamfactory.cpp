@@ -282,5 +282,10 @@ GParamSpec *GstPylonParamFactory::GstPylonParamFactory::make_param(
       throw Pylon::GenericException(msg, __FILE__, __LINE__);
   }
 
+  if (!spec) {
+    Pylon::String_t msg = "Property creation failed for " + node->GetName();
+    throw Pylon::GenericException(msg, __FILE__, __LINE__);
+  }
+
   return spec;
 }
