@@ -84,6 +84,7 @@ static const std::unordered_set<std::string> categoryfilter_set = {
     "FileAccessControl", /* has to be implemented in access library */
     "EventControl",      /* disable full event section until mapped to gst
                             events/msgs */
+    "SequenceControl",   /* sequencer control relies on cmd feature */
     "SequencerControl",  /* sequencer control relies on cmd feature */
     "MultipleROI",       /* workaround skip to avoid issues with ace2/dart2
                            FIXME: this has to be fixed in feature walker */
