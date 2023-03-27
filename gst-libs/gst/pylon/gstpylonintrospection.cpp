@@ -35,6 +35,7 @@
 #endif
 
 #include "gstpylondebug.h"
+#include "gstpylonfeaturewalker.h"
 #include "gstpylonformatmapping.h"
 #include "gstpylonintrospection.h"
 #include "gstpylonobject.h"
@@ -278,7 +279,8 @@ static std::vector<GenApi::INode *> gst_pylon_get_valid_categories(
     const std::vector<GenApi::INode *> &feature_list) {
   std::vector<GenApi::INode *> valid_features;
   for (const auto &feature : feature_list) {
-    if (gst_pylon_find_node_category(feature) != "MultipleROI") {
+    const std::string feature_category = gst_pylon_find_node_category(feature);
+    if (!is_unsupported_category(feature_category)) {
       valid_features.push_back(feature);
     }
   }
