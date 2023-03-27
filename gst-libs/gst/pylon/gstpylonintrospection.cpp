@@ -553,7 +553,8 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
       maximum_under_all_settings = sensor_height.GetValue() - height.GetInc();
       return;
     }
-  } else if (node->GetName() == "AutoFunctionROIOffsetX") {
+  } else if (node->GetName() == "AutoFunctionROIOffsetX" ||
+             node->GetName() == "AutoFunctionAOIOffsetX") {
     GST_DEBUG("Apply AutoFunctionROIOffsetX feature workaround");
     Pylon::CIntegerParameter sensor_width(
         node->GetNodeMap()->GetNode("SensorWidth"));
@@ -564,7 +565,8 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
       maximum_under_all_settings = sensor_width.GetValue() - width.GetInc();
       return;
     }
-  } else if (node->GetName() == "AutoFunctionROIOffsetY") {
+  } else if (node->GetName() == "AutoFunctionROIOffsetY" ||
+             node->GetName() == "AutoFunctionAOIOffsetY") {
     GST_DEBUG("Apply AutoFunctionROIOffsetY feature workaround");
     Pylon::CIntegerParameter sensor_height(
         node->GetNodeMap()->GetNode("SensorHeight"));
@@ -575,7 +577,8 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
       maximum_under_all_settings = sensor_height.GetValue() - height.GetInc();
       return;
     }
-  } else if (node->GetName() == "AutoFunctionROIWidth") {
+  } else if (node->GetName() == "AutoFunctionROIWidth" ||
+             node->GetName() == "AutoFunctionAOIWidth") {
     GST_DEBUG("Apply AutoFunctionROIWidth feature workaround");
     Pylon::CIntegerParameter sensor_width(
         node->GetNodeMap()->GetNode("SensorWidth"));
@@ -585,7 +588,8 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
       maximum_under_all_settings = sensor_width.GetValue();
       return;
     }
-  } else if (node->GetName() == "AutoFunctionROIHeight") {
+  } else if (node->GetName() == "AutoFunctionROIHeight" ||
+             node->GetName() == "AutoFunctionAOIHeight") {
     GST_DEBUG("Apply AutoFunctionROIHeight feature workaround");
     Pylon::CIntegerParameter sensor_height(
         node->GetNodeMap()->GetNode("SensorHeight"));
