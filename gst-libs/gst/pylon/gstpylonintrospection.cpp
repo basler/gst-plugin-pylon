@@ -394,6 +394,10 @@ std::vector<std::vector<GstPylonActions *>> gst_pylon_create_set_value_actions(
         }
         break;
       }
+      case GenApi::intfICommand: {
+        /* command node feature modification is ignored */
+        continue;
+      }
       default:
         std::string msg =
             "No test for node " + std::string(node->GetName().c_str());
@@ -440,6 +444,10 @@ std::vector<GstPylonActions *> gst_pylon_create_reset_value_actions(
             new GstPylonTypeAction<Pylon::CEnumParameter, Pylon::String_t>(
                 param, param.GetValue()));
         break;
+      }
+      case GenApi::intfICommand: {
+        /* command node feature modification is ignored */
+        continue;
       }
       default:
         std::string msg =
