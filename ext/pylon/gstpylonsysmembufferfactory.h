@@ -35,22 +35,12 @@
 #include <gst/gst.h>
 #include <pylon/PylonIncludes.h>
 
-#include <memory>
-
-struct gstDeleter {
-  void operator()(GstCaps *caps) const { gst_caps_unref(caps); }
-};
-
 class GstPylonSysMemBufferFactory : public Pylon::IBufferFactory {
  public:
   GstPylonSysMemBufferFactory() = default;
-  void SetConfig(const GstCaps *caps, guint64 max_num_buffers);
   virtual void AllocateBuffer(size_t buffer_size, void **p_created_buffer,
                               intptr_t &buffer_context) override;
   virtual void FreeBuffer(void *p_created_buffer,
                           intptr_t buffer_context) override;
   virtual void DestroyBufferFactory() override;
-
- protected:
-  std::unique_ptr<GstCaps, gstDeleter> caps;
 };

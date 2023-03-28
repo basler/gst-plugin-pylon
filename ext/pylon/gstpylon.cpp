@@ -832,7 +832,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   self->buffer_factory = std::make_unique<GstPylonSysMemBufferFactory>();
 
   self->camera->SetBufferFactory(self->buffer_factory.get(),
-                                 Pylon::Cleanup_Delete);
+                                 Pylon::Cleanup_None);
 
   return TRUE;
 }
