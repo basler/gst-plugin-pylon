@@ -43,6 +43,7 @@
 #include "gstchildinspector.h"
 #include "gstpylon.h"
 #include "gstpylondisconnecthandler.h"
+#include "gstpylondsnvmmbufferfactory.h"
 #include "gstpylonimagehandler.h"
 #include "gstpylonsysmembufferfactory.h"
 
@@ -119,7 +120,7 @@ struct _GstPylon {
   GstPylonImageHandler image_handler;
   GstPylonDisconnectHandler disconnect_handler;
 
-  std::unique_ptr<Pylon::IBufferFactory> buffer_factory;
+  std::unique_ptr<GstPylonBufferFactory> buffer_factory;
 
   std::string requested_device_user_name;
   std::string requested_device_serial_number;
@@ -456,6 +457,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
   g_return_val_if_fail(buf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
+  std::cout << "Pylon capture: " << std::endl;
   bool retry_grab = true;
   bool buffer_error = false;
   gint retry_frame_counter = 0;
@@ -518,12 +520,17 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
   };
 
   gsize buffer_size = (*grab_result_ptr)->GetBufferSize();
-  *buf = gst_buffer_new_wrapped_full(
-      static_cast<GstMemoryFlags>(0), (*grab_result_ptr)->GetBuffer(),
-      buffer_size, 0, buffer_size, grab_result_ptr,
-      static_cast<GDestroyNotify>(free_ptr_grab_result));
+
+  uintptr_t buffer_context = (*grab_result_ptr)->GetBufferContext();
+  NvBufSurface *surf = reinterpret_cast<NvBufSurface *>(buffer_context);
+
+  *buf =
+      gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY, surf, sizeof(*surf),
+                                  0, sizeof(*surf), NULL, NULL);
 
   gst_pylon_add_result_meta(self, *buf, *grab_result_ptr);
+
+  free_ptr_grab_result(grab_result_ptr);
 
   return TRUE;
 }
@@ -838,12 +845,13 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 
   GstCapsFeatures *features = gst_caps_get_features(conf, 0);
   if (gst_caps_features_contains(features,
-                                  GST_CAPS_FEATURE_MEMORY_SYSTEM_MEMORY)) {
+                                 GST_CAPS_FEATURE_MEMORY_SYSTEM_MEMORY)) {
     self->buffer_factory = std::make_unique<GstPylonSysMemBufferFactory>();
   } else {
-    GST_ERROR("Only SystemMemory caps supported for allocation");
-    return FALSE;
-  }  
+    self->buffer_factory = std::make_unique<GstPylonDsNvmmBufferFactory>();
+
+    self->buffer_factory->SetConfig(conf);
+  }
 
   self->camera->SetBufferFactory(self->buffer_factory.get(),
                                  Pylon::Cleanup_None);
