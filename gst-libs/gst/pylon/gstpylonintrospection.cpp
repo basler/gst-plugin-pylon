@@ -529,15 +529,15 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
    * dependency count
    * FIXME: refactor this into a filter class
    */
-  if (node->GetName() == "ExposureTime" &&
-      available_parent_inv.end() !=
-          std::find_if(available_parent_inv.begin(), available_parent_inv.end(),
-                       [](const GenApi::INode *n) {
-                         return n->GetName() == "BslExposureTimeMode";
-                       })) {
+  if (node->GetName() == "ExposureTime") {
     GST_DEBUG("Apply ExposureTime feature workaround");
     minimum_under_all_settings = 1.0;
     maximum_under_all_settings = 1e+07;
+    return;
+  } else if (node->GetName() == "BlackLevel") {
+    GST_DEBUG("Apply BlackLevel 12bit feature workaround");
+    minimum_under_all_settings = 0;
+    maximum_under_all_settings = 4095;
     return;
   } else if (node->GetName() == "OffsetX") {
     GST_DEBUG("Apply OffsetX feature workaround");
