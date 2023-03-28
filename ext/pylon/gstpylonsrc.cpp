@@ -145,33 +145,30 @@ static GType gst_pylon_capture_error_enum_get_type(void) {
 }
 
 /* pad templates */
-
-static GstStaticPadTemplate gst_pylon_src_src_template = GST_STATIC_PAD_TEMPLATE(
-    "src", GST_PAD_SRC, GST_PAD_ALWAYS,
-    GST_STATIC_CAPS(GST_VIDEO_CAPS_MAKE(
-        " {GRAY8, RGB, BGR, YUY2, UYVY} ") ";"
-                                           "video/"
-                                           "x-bayer,format={rggb,bggr,gbgr,"
-                                           "grgb},"
-                                           "width=" GST_VIDEO_SIZE_RANGE
-                                           ",height=" GST_VIDEO_SIZE_RANGE
-                                           ",framerate"
-                                           "=" GST_VIDEO_FPS_RANGE
-                                           ";" GST_VIDEO_CAPS_MAKE_WITH_FEATURES(
-                                               "memory:NVMM",
-                                               " {GRAY8, RGB, BGR, YUY2, "
-                                               "UYVY} ") ";"
-                                                         "video/"
-                                                         "x-bayer(memory:NVMM),"
-                                                         "format={rggb,bggr,"
-                                                         "gbgr,"
-                                                         "grgb},"
-                                                         "width"
-                                                         "=" GST_VIDEO_SIZE_RANGE
-                                                         ",height"
-                                                         "=" GST_VIDEO_SIZE_RANGE
-                                                         ",framerate"
-                                                         "=" GST_VIDEO_FPS_RANGE));
+// clang-format off
+static GstStaticPadTemplate gst_pylon_src_src_template =
+    GST_STATIC_PAD_TEMPLATE(
+        "src", GST_PAD_SRC, GST_PAD_ALWAYS,
+        GST_STATIC_CAPS(GST_VIDEO_CAPS_MAKE(
+            " {GRAY8, RGB, BGR, YUY2, UYVY} ") ";"
+                                               "video/"
+                                               "x-bayer,format={rggb,bggr,gbgr,"
+                                               "grgb},"
+                                               "width=" GST_VIDEO_SIZE_RANGE
+                                               ",height=" GST_VIDEO_SIZE_RANGE
+                                               ",framerate"
+                                               "=" GST_VIDEO_FPS_RANGE
+                                               ";"
+        GST_VIDEO_CAPS_MAKE_WITH_FEATURES("memory:NVMM",
+            " {GRAY8, RGB, BGR, YUY2, UYVY} ") ";"
+                                               "video/"
+                                               "x-bayer,format={rggb,bggr,gbgr,"
+                                               "grgb},"
+                                               "width=" GST_VIDEO_SIZE_RANGE
+                                               ",height=" GST_VIDEO_SIZE_RANGE
+                                               ",framerate"
+                                               "=" GST_VIDEO_FPS_RANGE));
+// clang-format on
 
 /* class initialization */
 G_DEFINE_TYPE_WITH_CODE(GstPylonSrc, gst_pylon_src, GST_TYPE_PUSH_SRC,
