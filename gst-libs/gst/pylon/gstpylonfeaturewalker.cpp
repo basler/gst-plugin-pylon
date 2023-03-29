@@ -56,9 +56,6 @@ void gst_pylon_camera_install_specs(const std::vector<GParamSpec*>& specs_list,
                                     GObjectClass* oclass, gint& nprop);
 std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, GstPylonParamFactory& param_factory);
-bool is_unsupported_feature(const std::string& feature_name);
-bool is_unsupported_category(const std::string& category_name);
-bool is_unsupported_selector(const std::string& feature_name);
 
 static const std::unordered_set<std::string> propfilter_set = {
     "Width",
@@ -84,25 +81,39 @@ static const std::unordered_set<std::string> categoryfilter_set = {
     "FileAccessControl", /* has to be implemented in access library */
     "EventControl",      /* disable full event section until mapped to gst
                             events/msgs */
+    "SequenceControl",   /* sequencer control relies on cmd feature */
     "SequencerControl",  /* sequencer control relies on cmd feature */
     "MultipleROI",       /* workaround skip to avoid issues with ace2/dart2
                            FIXME: this has to be fixed in feature walker */
 };
 
+/* filter for selector nodes */
+std::unordered_set<std::string> selectorfilter_set = {
+    "DeviceLinkSelector",
+};
+
 /* filter for features that are not supported */
 bool is_unsupported_feature(const std::string& feature_name) {
+  /* check on exception list */
   return propfilter_set.find(feature_name) != propfilter_set.end();
 }
 
 /* filter for categories that are not supported */
 bool is_unsupported_category(const std::string& category_name) {
-  return categoryfilter_set.find(category_name) != categoryfilter_set.end();
-}
+  bool res = categoryfilter_set.find(category_name) != categoryfilter_set.end();
 
-/* filter for selector nodes */
-std::unordered_set<std::string> selectorfilter_set = {
-    "DeviceLinkSelector",
-};
+  if (!res) {
+    /* check on end pattern to cover events */
+    std::string event_suffix = "EventData";
+    if (category_name.length() >= event_suffix.length()) {
+      res |= 0 == category_name.compare(
+                      category_name.length() - event_suffix.length(),
+                      event_suffix.length(), event_suffix);
+    }
+  }
+
+  return res;
+}
 
 /* filter for selectors and categories that are supported */
 bool is_unsupported_selector(const std::string& feature_name) {
@@ -182,8 +193,8 @@ std::vector<std::string> GstPylonFeatureWalker::process_selector_features(
     throw Pylon::GenericException(error_msg.c_str(), __FILE__, __LINE__);
   }
 
-  /* If the feature has no selectors then it is a "direct" feature, it does not
-   * depend on any other selector
+  /* If the feature has no selectors then it is a "direct" feature, it does
+   * not depend on any other selector
    */
   if (selectors.empty()) {
     is_direct_feature = true;

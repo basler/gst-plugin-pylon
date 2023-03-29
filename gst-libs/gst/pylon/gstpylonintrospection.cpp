@@ -35,6 +35,7 @@
 #endif
 
 #include "gstpylondebug.h"
+#include "gstpylonfeaturewalker.h"
 #include "gstpylonformatmapping.h"
 #include "gstpylonintrospection.h"
 #include "gstpylonobject.h"
@@ -278,7 +279,8 @@ static std::vector<GenApi::INode *> gst_pylon_get_valid_categories(
     const std::vector<GenApi::INode *> &feature_list) {
   std::vector<GenApi::INode *> valid_features;
   for (const auto &feature : feature_list) {
-    if (gst_pylon_find_node_category(feature) != "MultipleROI") {
+    const std::string feature_category = gst_pylon_find_node_category(feature);
+    if (!is_unsupported_category(feature_category)) {
       valid_features.push_back(feature);
     }
   }
@@ -392,6 +394,10 @@ std::vector<std::vector<GstPylonActions *>> gst_pylon_create_set_value_actions(
         }
         break;
       }
+      case GenApi::intfICommand: {
+        /* command node feature modification is ignored */
+        continue;
+      }
       default:
         std::string msg =
             "No test for node " + std::string(node->GetName().c_str());
@@ -438,6 +444,10 @@ std::vector<GstPylonActions *> gst_pylon_create_reset_value_actions(
             new GstPylonTypeAction<Pylon::CEnumParameter, Pylon::String_t>(
                 param, param.GetValue()));
         break;
+      }
+      case GenApi::intfICommand: {
+        /* command node feature modification is ignored */
+        continue;
       }
       default:
         std::string msg =
@@ -519,15 +529,15 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
    * dependency count
    * FIXME: refactor this into a filter class
    */
-  if (node->GetName() == "ExposureTime" &&
-      available_parent_inv.end() !=
-          std::find_if(available_parent_inv.begin(), available_parent_inv.end(),
-                       [](const GenApi::INode *n) {
-                         return n->GetName() == "BslExposureTimeMode";
-                       })) {
+  if (node->GetName() == "ExposureTime") {
     GST_DEBUG("Apply ExposureTime feature workaround");
     minimum_under_all_settings = 1.0;
     maximum_under_all_settings = 1e+07;
+    return;
+  } else if (node->GetName() == "BlackLevel") {
+    GST_DEBUG("Apply BlackLevel 12bit feature workaround");
+    minimum_under_all_settings = 0;
+    maximum_under_all_settings = 4095;
     return;
   } else if (node->GetName() == "OffsetX") {
     GST_DEBUG("Apply OffsetX feature workaround");
@@ -551,7 +561,8 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
       maximum_under_all_settings = sensor_height.GetValue() - height.GetInc();
       return;
     }
-  } else if (node->GetName() == "AutoFunctionROIOffsetX") {
+  } else if (node->GetName() == "AutoFunctionROIOffsetX" ||
+             node->GetName() == "AutoFunctionAOIOffsetX") {
     GST_DEBUG("Apply AutoFunctionROIOffsetX feature workaround");
     Pylon::CIntegerParameter sensor_width(
         node->GetNodeMap()->GetNode("SensorWidth"));
@@ -562,7 +573,8 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
       maximum_under_all_settings = sensor_width.GetValue() - width.GetInc();
       return;
     }
-  } else if (node->GetName() == "AutoFunctionROIOffsetY") {
+  } else if (node->GetName() == "AutoFunctionROIOffsetY" ||
+             node->GetName() == "AutoFunctionAOIOffsetY") {
     GST_DEBUG("Apply AutoFunctionROIOffsetY feature workaround");
     Pylon::CIntegerParameter sensor_height(
         node->GetNodeMap()->GetNode("SensorHeight"));
@@ -573,7 +585,8 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
       maximum_under_all_settings = sensor_height.GetValue() - height.GetInc();
       return;
     }
-  } else if (node->GetName() == "AutoFunctionROIWidth") {
+  } else if (node->GetName() == "AutoFunctionROIWidth" ||
+             node->GetName() == "AutoFunctionAOIWidth") {
     GST_DEBUG("Apply AutoFunctionROIWidth feature workaround");
     Pylon::CIntegerParameter sensor_width(
         node->GetNodeMap()->GetNode("SensorWidth"));
@@ -583,7 +596,8 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
       maximum_under_all_settings = sensor_width.GetValue();
       return;
     }
-  } else if (node->GetName() == "AutoFunctionROIHeight") {
+  } else if (node->GetName() == "AutoFunctionROIHeight" ||
+             node->GetName() == "AutoFunctionAOIHeight") {
     GST_DEBUG("Apply AutoFunctionROIHeight feature workaround");
     Pylon::CIntegerParameter sensor_height(
         node->GetNodeMap()->GetNode("SensorHeight"));

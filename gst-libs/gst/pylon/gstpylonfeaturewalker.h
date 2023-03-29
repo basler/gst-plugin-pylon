@@ -47,4 +47,13 @@ class GstPylonFeatureWalker {
       GenApi::INode* node, GenApi::INode** selector_node);
 };
 
+/* filter for features that are not supported */
+bool is_unsupported_feature(const std::string& feature_name);
+
+/* filter for categories that are not supported */
+bool is_unsupported_category(const std::string& category_name);
+
+/* filter for selectors that are not supported */
+bool is_unsupported_selector(const std::string& feature_name);
+
 #endif
