@@ -32,6 +32,8 @@
 
 #include "gstpylondsnvmmbufferfactory.h"
 
+#include "cuda_runtime.h"
+
 #include <gst/video/video.h>
 
 #include <map>
@@ -54,25 +56,35 @@ void GstPylonDsNvmmBufferFactory::SetConfig(const GstCaps *caps) {
   create_params.params.height = video_info.height;
   create_params.params.colorFormat =
       gst_to_nvbuf_format[video_info.finfo->format];
-  create_params.params.isContiguous = true;
+  create_params.params.isContiguous = false;
   create_params.params.layout = NVBUF_LAYOUT_PITCH;
-  create_params.params.memType = NVBUF_MEM_CUDA_UNIFIED;
+  create_params.params.memType = NVBUF_MEM_DEFAULT;
 
   create_params.memtag = NvBufSurfaceTag_CAMERA;
 }
 
-#include <iostream>
-
 void GstPylonDsNvmmBufferFactory::AllocateBuffer(size_t buffer_size,
                                                  void **p_created_buffer,
                                                  intptr_t &buffer_context) {
+  void *buffer_mem = nullptr;
+
+  cudaError_t err = cudaMallocHost(&buffer_mem, buffer_size);
+  if (err != cudaSuccess) {
+    std::cerr << "CUDA error allocating memory" << std::endl;
+    return;
+  }
+
   create_params.params.size = buffer_size;
 
   int batch_size = 1;
-  NvBufSurface *surf;
-  NvBufSurfaceAllocate(&surf, batch_size, &create_params);
+  NvBufSurface *surf = nullptr;
 
-  *p_created_buffer = surf->surfaceList[0].dataPtr;
+  NvBufSurfaceAllocate(&surf, batch_size, &create_params);
+  surf->numFilled = 1;
+
+  NvBufSurfaceMap(surf, -1, -1, NVBUF_MAP_READ_WRITE);
+
+  *p_created_buffer = buffer_mem;
   buffer_context = reinterpret_cast<intptr_t>(surf);
 }
 
@@ -81,6 +93,7 @@ void GstPylonDsNvmmBufferFactory::FreeBuffer(void *p_created_buffer,
   NvBufSurface *surf = reinterpret_cast<NvBufSurface *>(buffer_context);
 
   NvBufSurfaceDestroy(surf);
+  cudaFreeHost(p_created_buffer);
 }
 
 void GstPylonDsNvmmBufferFactory::DestroyBufferFactory() { delete this; }

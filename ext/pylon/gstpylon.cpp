@@ -34,6 +34,7 @@
 #  include "config.h"
 #endif
 
+#include "cuda_runtime.h"
 #include "gst/pylon/gstpyloncache.h"
 #include "gst/pylon/gstpylondebug.h"
 #include "gst/pylon/gstpylonformatmapping.h"
@@ -457,7 +458,6 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
   g_return_val_if_fail(buf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
-  std::cout << "Pylon capture: " << std::endl;
   bool retry_grab = true;
   bool buffer_error = false;
   gint retry_frame_counter = 0;
@@ -519,10 +519,22 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
     }
   };
 
-  gsize buffer_size = (*grab_result_ptr)->GetBufferSize();
+  NvBufSurface *surf =
+      reinterpret_cast<NvBufSurface *>((*grab_result_ptr)->GetBufferContext());
 
-  uintptr_t buffer_context = (*grab_result_ptr)->GetBufferContext();
-  NvBufSurface *surf = reinterpret_cast<NvBufSurface *>(buffer_context);
+  size_t src_stride;
+  (*grab_result_ptr)->GetStride(src_stride);
+
+  cudaError_t cuda_err =
+      cudaMemcpy2D(surf->surfaceList[0].mappedAddr.addr[0],
+                   surf->surfaceList[0].pitch, (*grab_result_ptr)->GetBuffer(),
+                   src_stride, (*grab_result_ptr)->GetWidth(),
+                   (*grab_result_ptr)->GetHeight(), cudaMemcpyDefault);
+  if (cuda_err != cudaSuccess) {
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
+                "Error copying memory to device");
+    return FALSE;
+  }
 
   *buf =
       gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY, surf, sizeof(*surf),

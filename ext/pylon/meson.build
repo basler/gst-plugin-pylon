@@ -5,6 +5,8 @@ nvds_dep = cc.find_library('nvbufsurface',
 )
 nvds_include = include_directories('/opt/nvidia/deepstream/deepstream/sources/includes/')
 
+cuda_dep = dependency('cuda', version : '>=10')
+
 pylon_sources = [
   'gstchildinspector.cpp',
   'gstpylon.cpp',
@@ -23,7 +25,7 @@ gstpylon_plugin = library('gstpylon',
   link_args : [noseh_link_args],
   include_directories : [configinc, nvds_include],
   gnu_symbol_visibility: 'inlineshidden',
-  dependencies : [gstpylon_dep, nvds_dep],
+  dependencies : [gstpylon_dep, nvds_dep, cuda_dep],
   install : true,
   install_dir : plugins_install_dir
 )
