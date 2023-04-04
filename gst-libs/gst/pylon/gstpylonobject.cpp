@@ -214,18 +214,21 @@ void gst_pylon_object_set_pylon_feature<GGetInt64, Pylon::CIntegerParameter>(
     GstPylonObjectPrivate* priv, GGetInt64 get_value, const GValue* value,
     const gchar* name) {
   Pylon::CIntegerParameter param(*priv->nodemap, name);
+  double gst_val = get_value(value);
+  bool value_corrected = false;
 
-  if (priv->enable_correction) {
-    GST_WARNING(
-        "Value correction enabled. Values outside of valid ranges will be "
-        "automatically corrected.");
+  if (priv->enable_correction &&
+      (gst_val > param.GetMax() || gst_val < param.GetMin())) {
+    value_corrected = true;
     param.SetValue(
         get_value(value),
         Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);
-  } else
-    param.SetValue(get_value(value));
+  } else {
+    param.SetValue(gst_val);
+  }
 
-  GST_INFO("Set Feature %s: %s", name, param.ToString().c_str());
+  GST_INFO("Set Feature %s: %s [%s]", name, param.ToString().c_str(),
+           value_corrected ? "corrected" : "");
 }
 
 template <>
@@ -233,17 +236,25 @@ void gst_pylon_object_set_pylon_feature<GGetDouble, Pylon::CFloatParameter>(
     GstPylonObjectPrivate* priv, GGetDouble get_value, const GValue* value,
     const gchar* name) {
   Pylon::CFloatParameter param(*priv->nodemap, name);
-
+  int64_t gst_val = get_value(value);
+  bool value_corrected = false;
   if (priv->enable_correction) {
-    GST_WARNING(
-        "Value correction enabled. Values outside of valid ranges will be "
-        "automatically corrected.");
-    param.SetValue(
-        get_value(value),
-        Pylon::EFloatValueCorrection::FloatValueCorrection_ClipToRange);
-  } else
+    /* the rules to check an integer are complex.
+     * leave decision to correct the value to genicam
+     */
+    try {
+      param.SetValue(gst_val);
+    } catch (GenICam::OutOfRangeException&) {
+      value_corrected = true;
+      param.SetValue(
+          gst_val,
+          Pylon::EFloatValueCorrection::FloatValueCorrection_ClipToRange);
+    }
+  } else {
     param.SetValue(get_value(value));
-  GST_INFO("Set Feature %s: %s", name, param.ToString().c_str());
+  }
+  GST_INFO("Set Feature %s: %s [%s]", name, param.ToString().c_str(),
+           value_corrected ? "corrected" : "");
 }
 
 template <>

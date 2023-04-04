@@ -153,14 +153,15 @@ The gstreamer model for properties only represents a static range of a property.
 
 In the registration phase the absolute minimum and maximum values of a feature are registered as gstreamer property.
 
-Per default pylon and the camera still require to set the exact/correct values.
+Per default pylon and the camera will round/correct to the nearest valid value.
 
-By using the gstreamer boolean property `enable-correction` the plugin will automatically round/correct to the nearest valid value.
+This behaviour can be changed by using the gstreamer boolean property `enable-correction`.
 
 The options for this property are:
 
-* `enable-correction=false` the exact value has to be set. If the value is not valid ( out of range or wrong increment) the property setting is ignored and an error log message generated. This is the default behaviour
-* `enable-correction=true` the plugin will round or adjust to the nearest valid value.
+* `enable-correction=true` the plugin will round or adjust to the nearest valid value. This is the default behaviour.
+* `enable-correction=false` the exact value has to be set. If the value is not valid ( out of range or wrong increment) the property setting is ignored and an error log message generated.
+
 
 
 ### UserSet handling
