@@ -287,6 +287,24 @@ static std::vector<GenApi::INode *> gst_pylon_get_valid_categories(
   return valid_features;
 }
 
+static std::vector<GenApi::INode *> gst_pylon_filter_gev_ctrl(
+    const std::vector<GenApi::INode *> &feature_list) {
+  std::vector<GenApi::INode *> valid_features;
+  /* feature to filter */
+  const std::vector<std::string> gst_feature_list(
+      {"GevSCPSPacketSize", "GevSCPD", "GevSCFTD", "GevSCBWR",
+       "GevSCBWRA"
+       "GevGVSPExtendedIDMode"});
+  /* filter out gev control features from feature_list */
+  for (const auto &feature : feature_list) {
+    if (std::find(gst_feature_list.begin(), gst_feature_list.end(),
+                  feature->GetName().c_str()) == gst_feature_list.end()) {
+      valid_features.push_back(feature);
+    }
+  }
+  return valid_features;
+}
+
 template <class Type>
 std::vector<std::vector<Type>> gst_pylon_cartesian_product(
     std::vector<std::vector<Type>> &values) {
@@ -622,9 +640,35 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
     maximum_under_all_settings = 2;
     GST_DEBUG("Apply BslColorAdjustmentSaturation feature workaround");
     return;
-  }
+  } else if (node->GetName() == "GevSCBWR") {
+    minimum_under_all_settings = 0;
+    maximum_under_all_settings = 100;
+    GST_DEBUG("Apply GevSCBWR feature workaround");
+    return;
+  } else if (node->GetName() == "GevSCBWRA") {
+    minimum_under_all_settings = 1;
+    maximum_under_all_settings = 512;
+    GST_DEBUG("Apply GevSCBWRA feature workaround");
+    return;
+  } else if (node->GetName() == "GevSCPD") {
+    minimum_under_all_settings = 0;
+    maximum_under_all_settings = 50000000;
+    GST_DEBUG("Apply GevSCPD feature workaround");
+    return;
+  } else if (node->GetName() == "GevSCFTD") {
+    minimum_under_all_settings = 0;
+    maximum_under_all_settings = 50000000;
+    GST_DEBUG("Apply GevSCFTD feature workaround");
+    return;
+  };
 
+  /* remove any feature from the list that belongs to an unsupported
+   * category */
   available_parent_inv = gst_pylon_get_valid_categories(available_parent_inv);
+
+  /* workaround for camera features that have an irrelevant dependency on
+   * the gige setup parameters */
+  available_parent_inv = gst_pylon_filter_gev_ctrl(available_parent_inv);
 
   for (auto &node : available_parent_inv) {
     tl.add_info(node->GetName().c_str());

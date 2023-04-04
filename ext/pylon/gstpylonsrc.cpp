@@ -115,7 +115,7 @@ enum {
 #define PROP_DEVICE_INDEX_MAX G_MAXINT32
 #define PROP_USER_SET_DEFAULT NULL
 #define PROP_PFS_LOCATION_DEFAULT NULL
-#define PROP_ENABLE_CORRECTION_DEFAULT FALSE
+#define PROP_ENABLE_CORRECTION_DEFAULT TRUE
 #define PROP_CAM_DEFAULT NULL
 #define PROP_STREAM_DEFAULT NULL
 #define PROP_CAPTURE_ERROR_DEFAULT ENUM_ABORT
@@ -681,7 +681,7 @@ static gboolean gst_pylon_src_start(GstBaseSrc *src) {
       self,
       "Attempting to create camera device with the following configuration:"
       "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s \n\tPFS "
-      "filepath: %s \n\tEnable correction: %s."
+      "filepath: %s \n\tEnable correction: %s.\n"
       "If defined, the PFS file will override the user set configuration.",
       self->device_user_name, self->device_serial_number, self->device_index,
       self->user_set, self->pfs_location,

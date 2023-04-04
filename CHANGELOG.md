@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.6.2] - 2023-04-04
+
+### Changed
+- automatic rounding of values is default
+  * behavioural change
+  * if a value set via gstreamer is not valid for the camera
+    it will be automaticaylly roundedi
+  * this can be disabled by `enable-correction=false`
+
+- Filter gev control features to speed up introspection
+  * exclude gev control dependencies
+
 ## [0.6.1] - 2023-03-27
 
 ### Changed

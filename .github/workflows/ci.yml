@@ -46,7 +46,7 @@ jobs:
           echo "Download result"
           ls -l
           md5sum *
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: pylon-installer
           path: pylon-installer
@@ -68,7 +68,7 @@ jobs:
     name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}-x86_64
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: pylon-installer
           path: pylon-installer
@@ -117,11 +117,11 @@ jobs:
         os: [ubuntu18.04, ubuntu20.04, ubuntu22.04]
         py_version: [7.2.1.25747, 7.1.0.25066, 6.2.0.21487 ]
       fail-fast: false
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}-aarch64
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: pylon-installer
           path: pylon-installer
@@ -194,7 +194,7 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        os: [ubuntu-18.04, ubuntu-20.04, ubuntu-22.04]
+        os: [ubuntu-20.04, ubuntu-22.04]
         py_version: [7.2.1.25747, 7.1.0.25066, 6.3.0.23157 ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
@@ -202,7 +202,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: pylon-installer
           path: pylon-installer
@@ -273,7 +273,7 @@ jobs:
     ]
     runs-on: ubuntu-latest
     steps:
-    - uses: geekyeggo/delete-artifact@v1
+    - uses: geekyeggo/delete-artifact@v2
       continue-on-error: true
       with:
         name: pylon-installer
