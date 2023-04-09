@@ -58,14 +58,14 @@ std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, GstPylonParamFactory& param_factory);
 
 static const std::unordered_set<std::string> propfilter_set = {
-    "Width",
-    "Height",
+    //"Width",
+    //"Height",
     "PixelFormat",
     "AcquisitionFrameRateEnable",
     "AcquisitionFrameRate",
     "AcquisitionFrameRateAbs",
-    "AcquisitionStart",
-    "AcquisitionStop",
+    //"AcquisitionStart",
+    //"AcquisitionStop",
     "UserSetLoad",
     "UserSetSave",
     "TriggerSoftware",
