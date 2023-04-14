@@ -34,7 +34,11 @@
 #  include "config.h"
 #endif
 
-#include "cuda_runtime.h"
+#ifdef NVMM_ENABLED
+#  include "cuda_runtime.h"
+#  include "gstpylondsnvmmbufferfactory.h"
+#endif
+
 #include "gst/pylon/gstpyloncache.h"
 #include "gst/pylon/gstpylondebug.h"
 #include "gst/pylon/gstpylonformatmapping.h"
@@ -44,7 +48,6 @@
 #include "gstchildinspector.h"
 #include "gstpylon.h"
 #include "gstpylondisconnecthandler.h"
-#include "gstpylondsnvmmbufferfactory.h"
 #include "gstpylonimagehandler.h"
 #include "gstpylonsysmembufferfactory.h"
 
@@ -122,6 +125,7 @@ struct _GstPylon {
   GstPylonDisconnectHandler disconnect_handler;
 
   std::unique_ptr<GstPylonBufferFactory> buffer_factory;
+  GstCapsFeatures *features;
 
   std::string requested_device_user_name;
   std::string requested_device_serial_number;
@@ -519,30 +523,41 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
     }
   };
 
-  NvBufSurface *surf =
-      reinterpret_cast<NvBufSurface *>((*grab_result_ptr)->GetBufferContext());
+#ifdef NVMM_ENABLED
+  if (gst_caps_features_contains(self->features,
+                                 GST_CAPS_FEATURE_MEMORY_SYSTEM_MEMORY)) {
+#endif
+    gsize buffer_size = (*grab_result_ptr)->GetBufferSize();
+    *buf = gst_buffer_new_wrapped_full(
+        static_cast<GstMemoryFlags>(0), (*grab_result_ptr)->GetBuffer(),
+        buffer_size, 0, buffer_size, grab_result_ptr,
+        static_cast<GDestroyNotify>(free_ptr_grab_result));
+#ifdef NVMM_ENABLED
+  } else {
+    NvBufSurface *surf = reinterpret_cast<NvBufSurface *>(
+        (*grab_result_ptr)->GetBufferContext());
 
-  size_t src_stride;
-  (*grab_result_ptr)->GetStride(src_stride);
+    size_t src_stride;
+    (*grab_result_ptr)->GetStride(src_stride);
 
-  cudaError_t cuda_err =
-      cudaMemcpy2D(surf->surfaceList[0].mappedAddr.addr[0],
-                   surf->surfaceList[0].pitch, (*grab_result_ptr)->GetBuffer(),
-                   src_stride, (*grab_result_ptr)->GetWidth(),
-                   (*grab_result_ptr)->GetHeight(), cudaMemcpyDefault);
-  if (cuda_err != cudaSuccess) {
-    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
-                "Error copying memory to device");
-    return FALSE;
+    cudaError_t cuda_err = cudaMemcpy2D(
+        surf->surfaceList[0].mappedAddr.addr[0], surf->surfaceList[0].pitch,
+        (*grab_result_ptr)->GetBuffer(), src_stride,
+        (*grab_result_ptr)->GetWidth(), (*grab_result_ptr)->GetHeight(),
+        cudaMemcpyDefault);
+    if (cuda_err != cudaSuccess) {
+      g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
+                  "Error copying memory to device");
+      return FALSE;
+    }
+
+    *buf = gst_buffer_new_wrapped_full(
+        GST_MEMORY_FLAG_READONLY, surf, sizeof(*surf), 0, sizeof(*surf),
+        grab_result_ptr, static_cast<GDestroyNotify>(free_ptr_grab_result));
   }
-
-  *buf =
-      gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY, surf, sizeof(*surf),
-                                  0, sizeof(*surf), NULL, NULL);
+#endif
 
   gst_pylon_add_result_meta(self, *buf, *grab_result_ptr);
-
-  free_ptr_grab_result(grab_result_ptr);
 
   return TRUE;
 }
@@ -744,11 +759,13 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
       gst_pylon_query_caps(self, st, gst_structure_format.format_map);
       gst_caps_append_structure(caps, st);
 
+#ifdef NVMM_ENABLED
       /* We need the copy since the append has taken ownership of the "old" st
        */
       gst_caps_append_structure_full(
           caps, gst_structure_copy(st),
           gst_caps_features_new("memory:NVMM", NULL));
+#endif
 
     } catch (const Pylon::GenericException &e) {
       gst_structure_free(st);
@@ -860,10 +877,13 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
                                  GST_CAPS_FEATURE_MEMORY_SYSTEM_MEMORY)) {
     self->buffer_factory = std::make_unique<GstPylonSysMemBufferFactory>();
   } else {
+#ifdef NVMM_ENABLED
     self->buffer_factory = std::make_unique<GstPylonDsNvmmBufferFactory>();
 
     self->buffer_factory->SetConfig(conf);
+#endif
   }
+  self->features = features;
 
   self->camera->SetBufferFactory(self->buffer_factory.get(),
                                  Pylon::Cleanup_None);
