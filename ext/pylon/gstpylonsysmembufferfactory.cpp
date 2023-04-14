@@ -32,9 +32,9 @@
 
 #include "gstpylonsysmembufferfactory.h"
 
-void GstPylonSysMemBufferFactory::AllocateBuffer(size_t buffer_size,
-                                                 void **p_created_buffer,
-                                                 intptr_t &buffer_context) {
+void GstPylonSysMemBufferFactory::AllocateBuffer(
+    size_t buffer_size, void **p_created_buffer,
+    intptr_t & /*buffer_context*/) {
   *p_created_buffer = g_malloc(buffer_size);
 }
 

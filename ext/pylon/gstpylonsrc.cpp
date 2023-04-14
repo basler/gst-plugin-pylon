@@ -145,7 +145,7 @@ static GType gst_pylon_capture_error_enum_get_type(void) {
 }
 
 /* pad templates */
-
+// clang-format off
 static GstStaticPadTemplate gst_pylon_src_src_template =
     GST_STATIC_PAD_TEMPLATE(
         "src", GST_PAD_SRC, GST_PAD_ALWAYS,
@@ -157,7 +157,18 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
                                                "width=" GST_VIDEO_SIZE_RANGE
                                                ",height=" GST_VIDEO_SIZE_RANGE
                                                ",framerate"
+                                               "=" GST_VIDEO_FPS_RANGE
+                                               ";"
+        GST_VIDEO_CAPS_MAKE_WITH_FEATURES("memory:NVMM",
+            " {GRAY8, RGB, BGR, YUY2, UYVY} ") ";"
+                                               "video/"
+                                               "x-bayer,format={rggb,bggr,gbgr,"
+                                               "grgb},"
+                                               "width=" GST_VIDEO_SIZE_RANGE
+                                               ",height=" GST_VIDEO_SIZE_RANGE
+                                               ",framerate"
                                                "=" GST_VIDEO_FPS_RANGE));
+// clang-format on
 
 /* class initialization */
 G_DEFINE_TYPE_WITH_CODE(GstPylonSrc, gst_pylon_src, GST_TYPE_PUSH_SRC,
@@ -519,6 +530,7 @@ static GstCaps *gst_pylon_src_fixate(GstBaseSrc *src, GstCaps *caps) {
   GstPylonSrc *self = GST_PYLON_SRC(src);
   GstCaps *outcaps = NULL;
   GstStructure *st = NULL;
+  GstCapsFeatures *features = NULL;
   const GValue *width_field = NULL;
   static const gint width_1080p = 1920;
   static const gint height_1080p = 1080;
@@ -541,6 +553,7 @@ static GstCaps *gst_pylon_src_fixate(GstBaseSrc *src, GstCaps *caps) {
 
   outcaps = gst_caps_new_empty();
   st = gst_structure_copy(gst_caps_get_structure(caps, 0));
+  features = gst_caps_features_copy(gst_caps_get_features(caps, 0));
   width_field = gst_structure_get_value(st, "width");
   gst_caps_unref(caps);
 
@@ -556,7 +569,7 @@ static GstCaps *gst_pylon_src_fixate(GstBaseSrc *src, GstCaps *caps) {
   gst_structure_fixate_field_nearest_fraction(
       st, "framerate", preferred_framerate_num, preferred_framerate_den);
 
-  gst_caps_append_structure(outcaps, st);
+  gst_caps_append_structure_full(outcaps, st, features);
 
   /* fixate the remainder of the fields */
   outcaps = gst_caps_fixate(outcaps);

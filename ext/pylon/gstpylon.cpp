@@ -724,6 +724,13 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
     try {
       gst_pylon_query_caps(self, st, gst_structure_format.format_map);
       gst_caps_append_structure(caps, st);
+
+      /* We need the copy since the append has taken ownership of the "old" st
+       */
+      gst_caps_append_structure_full(
+          caps, gst_structure_copy(st),
+          gst_caps_features_new("memory:NVMM", NULL));
+
     } catch (const Pylon::GenericException &e) {
       gst_structure_free(st);
       gst_caps_unref(caps);
@@ -829,7 +836,14 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   g_object_get(self->gstream_grabber, "MaxNumBuffer", &maxnumbuffers, nullptr);
   self->camera->MaxNumBuffer.TrySetValue(maxnumbuffers);
 
-  self->buffer_factory = std::make_unique<GstPylonSysMemBufferFactory>();
+  GstCapsFeatures *features = gst_caps_get_features(conf, 0);
+  if (gst_caps_features_contains(features,
+                                  GST_CAPS_FEATURE_MEMORY_SYSTEM_MEMORY)) {
+    self->buffer_factory = std::make_unique<GstPylonSysMemBufferFactory>();
+  } else {
+    GST_ERROR("Only SystemMemory caps supported for allocation");
+    return FALSE;
+  }  
 
   self->camera->SetBufferFactory(self->buffer_factory.get(),
                                  Pylon::Cleanup_None);
