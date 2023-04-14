@@ -1,11 +1,12 @@
 
 pylon_sources = [
-  'gstpylonsrc.cpp',
-  'gstpylonplugin.cpp',
   'gstchildinspector.cpp',
   'gstpylon.cpp',
+  'gstpylondisconnecthandler.cpp',
   'gstpylonimagehandler.cpp',
-  'gstpylondisconnecthandler.cpp'
+  'gstpylonplugin.cpp',
+  'gstpylonsysmembufferfactory.cpp',
+  'gstpylonsrc.cpp',
 ]
 
 gstpylon_plugin = library('gstpylon',
