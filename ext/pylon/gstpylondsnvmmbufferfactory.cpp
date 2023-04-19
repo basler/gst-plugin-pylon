@@ -45,18 +45,33 @@ static std::map<GstVideoFormat, NvBufSurfaceColorFormat> gst_to_nvbuf_format = {
     {GST_VIDEO_FORMAT_YUY2, NVBUF_COLOR_FORMAT_YUYV},
 };
 
+GstPylonDsNvmmBufferFactory::GstPylonDsNvmmBufferFactory(
+    const GstPylonNvsurfaceLayoutEnum nvsurface_layout, const guint gpu_id) {
+  this->gpu_id = gpu_id;
+
+  switch (nvsurface_layout) {
+    case ENUM_BLOCK_LINEAR:
+      this->layout = NVBUF_LAYOUT_BLOCK_LINEAR;
+      break;
+    case ENUM_PITCH:
+    default:
+      this->layout = NVBUF_LAYOUT_PITCH;
+      break;
+  }
+}
+
 void GstPylonDsNvmmBufferFactory::SetConfig(const GstCaps *caps) {
   GstVideoInfo video_info = {};
 
   gst_video_info_from_caps(&video_info, caps);
 
-  create_params.params.gpuId = 0;
+  create_params.params.gpuId = this->gpu_id;
   create_params.params.width = video_info.width;
   create_params.params.height = video_info.height;
   create_params.params.colorFormat =
       gst_to_nvbuf_format[video_info.finfo->format];
   create_params.params.isContiguous = true;
-  create_params.params.layout = NVBUF_LAYOUT_PITCH;
+  create_params.params.layout = this->layout;
   create_params.params.memType = NVBUF_MEM_DEFAULT;
 
   create_params.memtag = NvBufSurfaceTag_CAMERA;
