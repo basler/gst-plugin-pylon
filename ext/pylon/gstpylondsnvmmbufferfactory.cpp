@@ -69,8 +69,7 @@ void GstPylonDsNvmmBufferFactory::AllocateBuffer(size_t buffer_size,
 
   cudaError_t err = cudaMallocHost(&buffer_mem, buffer_size);
   if (err != cudaSuccess) {
-    std::cerr << "CUDA error allocating memory" << std::endl;
-    return;
+    throw std::runtime_error("CUDA error allocating memory");
   }
 
   create_params.params.size = buffer_size;
