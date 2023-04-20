@@ -65,6 +65,11 @@ typedef struct {
   std::vector<PixelFormatMappingType> format_map;
 } GstStPixelFormats;
 
+typedef enum {
+  MEM_SYSMEM,
+  MEM_NVMM,
+} GstPylonMemoryTypeEnum;
+
 /* prototypes */
 static std::string gst_pylon_query_default_set(
     const Pylon::CBaslerUniversalInstantCamera &camera);
@@ -125,7 +130,7 @@ struct _GstPylon {
   GstPylonDisconnectHandler disconnect_handler;
 
   std::unique_ptr<GstPylonBufferFactory> buffer_factory;
-  GstCapsFeatures *features;
+  GstPylonMemoryTypeEnum mem_type;
 
   std::string requested_device_user_name;
   std::string requested_device_serial_number;
@@ -314,6 +319,7 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
     self->camera->RegisterConfiguration(&self->disconnect_handler,
                                         Pylon::RegistrationMode_Append,
                                         Pylon::Cleanup_None);
+    self->mem_type = MEM_SYSMEM;
 
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
@@ -524,7 +530,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
   };
 
 #ifdef NVMM_ENABLED
-  if (gst_caps_features_contains(self->features, "memory:NVMM")) {
+  if (MEM_NVMM == self->mem_type) {
     NvBufSurface *surf = reinterpret_cast<NvBufSurface *>(
         (*grab_result_ptr)->GetBufferContext());
 
@@ -871,19 +877,20 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   g_object_get(self->gstream_grabber, "MaxNumBuffer", &maxnumbuffers, nullptr);
   self->camera->MaxNumBuffer.TrySetValue(maxnumbuffers);
 
-  GstCapsFeatures *features = gst_caps_get_features(conf, 0);
 #ifdef NVMM_ENABLED
+  GstCapsFeatures *features = gst_caps_get_features(conf, 0);
   if (gst_caps_features_contains(features, "memory:NVMM")) {
     self->buffer_factory = std::make_unique<GstPylonDsNvmmBufferFactory>();
 
     self->buffer_factory->SetConfig(conf);
+    self->mem_type = MEM_NVMM;
   } else {
 #endif
     self->buffer_factory = std::make_unique<GstPylonSysMemBufferFactory>();
+    self->mem_type = MEM_SYSMEM;
 #ifdef NVMM_ENABLED
   }
 #endif
-  self->features = features;
 
   self->camera->SetBufferFactory(self->buffer_factory.get(),
                                  Pylon::Cleanup_None);
