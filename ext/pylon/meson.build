@@ -12,20 +12,21 @@ pylon_sources = [
   'gstpylonsysmembufferfactory.cpp',
 ]
 
-if get_option('nvmm-support').enabled()
-  nvds_dep = cc.find_library('nvbufsurface',
+nvds_dep = cc.find_library('nvbufsurface',
     dirs: '/opt/nvidia/deepstream/deepstream/lib/',
-    required: true
-  )
+    required: false
+)
+cuda_dep = dependency('cuda', version : '>=10', required: false)
+if nvds_dep.found() and cuda_dep.found()
   nvds_include = include_directories('/opt/nvidia/deepstream/deepstream/sources/includes/')
-
-  cuda_dep = dependency('cuda', version : '>=10')
 
   pylon_sources += ['gstpylondsnvmmbufferfactory.cpp']
 
   dependencies += [nvds_dep, cuda_dep]
   include_directories += [nvds_include]
   cpp_args += ['-DNVMM_ENABLED']
+else
+  message('Deepstream or CUDA not found, skipping NVMM support')
 endif
 
 

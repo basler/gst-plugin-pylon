@@ -10,8 +10,6 @@ option('glib-checks', type : 'feature', value : 'enabled', yield : true,
        description: 'Enable GLib checks such as API guards (auto = enabled for development, disabled for stable releases)')
 option('python-bindings', type : 'feature', value : 'disabled', yield : true,
        description: 'Enable meta Python bindings')
-option('nvmm-support', type : 'feature', value : 'disabled', yield : true,
-       description: 'Enable NVMM memory support')
 
 # Common options
 option('package-name', type : 'string', yield : true,
