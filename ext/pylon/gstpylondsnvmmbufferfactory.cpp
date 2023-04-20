@@ -32,8 +32,7 @@
 
 #include "gstpylondsnvmmbufferfactory.h"
 
-#include "cuda_runtime.h"
-
+#include <cuda_runtime.h>
 #include <gst/video/video.h>
 
 #include <map>
