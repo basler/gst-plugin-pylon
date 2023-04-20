@@ -1,7 +1,3 @@
-
-nvmm_support = get_option('nvmm-support')
-
-
 dependencies = [gstpylon_dep]
 include_directories = [configinc]
 cpp_args = [gst_plugin_pylon_args]
@@ -16,7 +12,7 @@ pylon_sources = [
   'gstpylonsysmembufferfactory.cpp',
 ]
 
-if nvmm_support.enabled()
+if get_option('nvmm-support').enabled()
   nvds_dep = cc.find_library('nvbufsurface',
     dirs: '/opt/nvidia/deepstream/deepstream/lib/',
     required: true
