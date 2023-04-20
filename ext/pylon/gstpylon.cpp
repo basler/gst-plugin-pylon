@@ -524,16 +524,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
   };
 
 #ifdef NVMM_ENABLED
-  if (gst_caps_features_contains(self->features,
-                                 GST_CAPS_FEATURE_MEMORY_SYSTEM_MEMORY)) {
-#endif
-    gsize buffer_size = (*grab_result_ptr)->GetBufferSize();
-    *buf = gst_buffer_new_wrapped_full(
-        static_cast<GstMemoryFlags>(0), (*grab_result_ptr)->GetBuffer(),
-        buffer_size, 0, buffer_size, grab_result_ptr,
-        static_cast<GDestroyNotify>(free_ptr_grab_result));
-#ifdef NVMM_ENABLED
-  } else {
+  if (gst_caps_features_contains(self->features, "memory:NVMM")) {
     NvBufSurface *surf = reinterpret_cast<NvBufSurface *>(
         (*grab_result_ptr)->GetBufferContext());
 
@@ -554,6 +545,14 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
     *buf = gst_buffer_new_wrapped_full(
         GST_MEMORY_FLAG_READONLY, surf, sizeof(*surf), 0, sizeof(*surf),
         grab_result_ptr, static_cast<GDestroyNotify>(free_ptr_grab_result));
+  } else {
+#endif
+    gsize buffer_size = (*grab_result_ptr)->GetBufferSize();
+    *buf = gst_buffer_new_wrapped_full(
+        static_cast<GstMemoryFlags>(0), (*grab_result_ptr)->GetBuffer(),
+        buffer_size, 0, buffer_size, grab_result_ptr,
+        static_cast<GDestroyNotify>(free_ptr_grab_result));
+#ifdef NVMM_ENABLED
   }
 #endif
 
@@ -873,16 +872,17 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   self->camera->MaxNumBuffer.TrySetValue(maxnumbuffers);
 
   GstCapsFeatures *features = gst_caps_get_features(conf, 0);
-  if (gst_caps_features_contains(features,
-                                 GST_CAPS_FEATURE_MEMORY_SYSTEM_MEMORY)) {
-    self->buffer_factory = std::make_unique<GstPylonSysMemBufferFactory>();
-  } else {
 #ifdef NVMM_ENABLED
+  if (gst_caps_features_contains(features, "memory:NVMM")) {
     self->buffer_factory = std::make_unique<GstPylonDsNvmmBufferFactory>();
 
     self->buffer_factory->SetConfig(conf);
+  } else {
 #endif
+    self->buffer_factory = std::make_unique<GstPylonSysMemBufferFactory>();
+#ifdef NVMM_ENABLED
   }
+#endif
   self->features = features;
 
   self->camera->SetBufferFactory(self->buffer_factory.get(),
