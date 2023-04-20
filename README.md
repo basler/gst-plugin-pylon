@@ -533,6 +533,24 @@ Installation on macOS is currently not supported due to conflicts between meson 
 
 This target will be integrated after a Basler pylon 7.x release for macOS
 
+# NVMM Support
+
+
+NVMM caps are now supported in the current version of the element. This feature
+is automatically enabled when both the CUDA library and the DeepStream library
+are installed on the system.
+
+By using this support, a memory speedup can be achieved as it eliminates the
+need for an additional element to connect the system memory and NVIDIA's GPU
+memory.
+
+Here's an example of how to use this feature:
+
+```bash
+gst-launch-1.0 pylonsrc ! "video/x-raw(memory:NVMM), width=1920, height=1080"  !  nvvidconv  ! "video/x-raw(memory:NVMM), width=1280, height=720" !  fakesink 
+```
+
+
 # Known issues
 
 * Due to an old issue in the pipeline parser, typos and unsupported feature names will be silently ignored on old GStreamer versions. Typos on top-level properties will be ignored on versions prior to 1.18. Typos on child::properties will be ignored on versions prior to 1.21.

@@ -158,16 +158,13 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
                                                ",height=" GST_VIDEO_SIZE_RANGE
                                                ",framerate"
                                                "=" GST_VIDEO_FPS_RANGE
+#ifdef NVMM_ENABLED
                                                ";"
         GST_VIDEO_CAPS_MAKE_WITH_FEATURES("memory:NVMM",
-            " {GRAY8, RGB, BGR, YUY2, UYVY} ") ";"
-                                               "video/"
-                                               "x-bayer,format={rggb,bggr,gbgr,"
-                                               "grgb},"
-                                               "width=" GST_VIDEO_SIZE_RANGE
-                                               ",height=" GST_VIDEO_SIZE_RANGE
-                                               ",framerate"
-                                               "=" GST_VIDEO_FPS_RANGE));
+            " {GRAY8, RGB, BGR, YUY2, UYVY} ")
+#endif
+          )
+    );
 // clang-format on
 
 /* class initialization */

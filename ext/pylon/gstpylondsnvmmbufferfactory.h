@@ -30,22 +30,25 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GST_PYLON_SYSMEM_BUFFER_FACTORY_H
-#define GST_PYLON_SYSMEM_BUFFER_FACTORY_H
+#ifndef GST_PYLON_DSNVMM_BUFFER_FACTORY_H
+#define GST_PYLON_DSNVMM_BUFFER_FACTORY_H
 
 #include <gst/gst.h>
 #include <gstpylonbufferfactory.h>
-#include <pylon/PylonIncludes.h>
+#include <nvbufsurface.h>
 
-class GstPylonSysMemBufferFactory : public GstPylonBufferFactory {
+class GstPylonDsNvmmBufferFactory : public GstPylonBufferFactory {
  public:
-  GstPylonSysMemBufferFactory() = default;
-  virtual void SetConfig(const GstCaps *caps) override{};
+  GstPylonDsNvmmBufferFactory() = default;
+  virtual void SetConfig(const GstCaps *caps) override;
   virtual void AllocateBuffer(size_t buffer_size, void **p_created_buffer,
                               intptr_t &buffer_context) override;
   virtual void FreeBuffer(void *p_created_buffer,
                           intptr_t buffer_context) override;
   virtual void DestroyBufferFactory() override;
+
+ private:
+  NvBufSurfaceAllocateParams create_params;
 };
 
 #endif
