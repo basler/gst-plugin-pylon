@@ -30,7 +30,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#ifndef GST_PYLON_DSNVMM_BUFFER_FACTORY_H
+#define GST_PYLON_DSNVMM_BUFFER_FACTORY_H
 
 #include <gst/gst.h>
 #include <gstpylonbufferfactory.h>
@@ -49,3 +50,5 @@ class GstPylonDsNvmmBufferFactory : public GstPylonBufferFactory {
  private:
   NvBufSurfaceAllocateParams create_params;
 };
+
+#endif

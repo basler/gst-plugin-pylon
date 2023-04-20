@@ -30,7 +30,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#ifndef GST_PYLON_SYSMEM_BUFFER_FACTORY_H
+#define GST_PYLON_SYSMEM_BUFFER_FACTORY_H
 
 #include <gst/gst.h>
 #include <gstpylonbufferfactory.h>
@@ -46,3 +47,5 @@ class GstPylonSysMemBufferFactory : public GstPylonBufferFactory {
                           intptr_t buffer_context) override;
   virtual void DestroyBufferFactory() override;
 };
+
+#endif

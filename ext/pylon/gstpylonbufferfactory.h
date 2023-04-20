@@ -30,7 +30,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#ifndef GST_PYLON_BUFFER_FACTORY_H
+#define GST_PYLON_BUFFER_FACTORY_H
 
 #include <gst/gst.h>
 #include <pylon/PylonIncludes.h>
@@ -39,3 +40,5 @@ class GstPylonBufferFactory : public Pylon::IBufferFactory {
  public:
   virtual void SetConfig(const GstCaps *caps) = 0;
 };
+
+#endif
