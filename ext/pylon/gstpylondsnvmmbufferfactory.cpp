@@ -55,7 +55,7 @@ void GstPylonDsNvmmBufferFactory::SetConfig(const GstCaps *caps) {
   create_params.params.height = video_info.height;
   create_params.params.colorFormat =
       gst_to_nvbuf_format[video_info.finfo->format];
-  create_params.params.isContiguous = false;
+  create_params.params.isContiguous = true;
   create_params.params.layout = NVBUF_LAYOUT_PITCH;
   create_params.params.memType = NVBUF_MEM_DEFAULT;
 
