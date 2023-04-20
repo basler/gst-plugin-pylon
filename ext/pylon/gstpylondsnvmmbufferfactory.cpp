@@ -71,6 +71,14 @@ void GstPylonDsNvmmBufferFactory::AllocateBuffer(size_t buffer_size,
 
   create_params.params.size = buffer_size;
 
+  /*
+   * The optimal approach would be to us the nvsurface being allocated below
+   *  this commend for pylon directly (as the *create_buffer output). However
+   *  nvsurface has some restrictive stride requirements which pylon is unable
+   *  to support for all cameras. The current approach means having the
+   *  g_malloc memory block for pylon which then will be copied over to the
+   *  nvsurface one after capture.
+   */
   int batch_size = 1;
   NvBufSurface *surf = nullptr;
 
