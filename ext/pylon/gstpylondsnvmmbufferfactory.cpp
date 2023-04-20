@@ -67,10 +67,7 @@ void GstPylonDsNvmmBufferFactory::AllocateBuffer(size_t buffer_size,
                                                  intptr_t &buffer_context) {
   void *buffer_mem = nullptr;
 
-  cudaError_t err = cudaMallocHost(&buffer_mem, buffer_size);
-  if (err != cudaSuccess) {
-    throw std::runtime_error("CUDA error allocating memory");
-  }
+  buffer_mem = g_malloc(buffer_size);
 
   create_params.params.size = buffer_size;
 
@@ -91,7 +88,7 @@ void GstPylonDsNvmmBufferFactory::FreeBuffer(void *p_created_buffer,
   NvBufSurface *surf = reinterpret_cast<NvBufSurface *>(buffer_context);
 
   NvBufSurfaceDestroy(surf);
-  cudaFreeHost(p_created_buffer);
+  g_free(p_created_buffer);
 }
 
 void GstPylonDsNvmmBufferFactory::DestroyBufferFactory() { delete this; }
