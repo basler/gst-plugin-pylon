@@ -135,6 +135,11 @@ struct _GstPylon {
   std::string requested_device_user_name;
   std::string requested_device_serial_number;
   gint requested_device_index;
+
+#ifdef NVMM_ENABLED
+  GstPylonNvsurfaceLayoutEnum nvsurface_layout;
+  guint gpu_id;
+#endif
 };
 
 static const std::vector<GstStPixelFormats> gst_structure_formats = {
@@ -327,6 +332,11 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
     delete self;
     self = NULL;
   }
+
+#ifdef NVMM_ENABLED
+  self->nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
+  self->gpu_id = PROP_GPU_ID_DEFAULT;
+#endif
 
   return self;
 }
@@ -880,7 +890,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 #ifdef NVMM_ENABLED
   GstCapsFeatures *features = gst_caps_get_features(conf, 0);
   if (gst_caps_features_contains(features, "memory:NVMM")) {
-    self->buffer_factory = std::make_unique<GstPylonDsNvmmBufferFactory>();
+    self->buffer_factory = std::make_unique<GstPylonDsNvmmBufferFactory>(self->nvsurface_layout, self->gpu_id);
 
     self->buffer_factory->SetConfig(conf);
     self->mem_type = MEM_NVMM;
@@ -1041,3 +1051,30 @@ gboolean gst_pylon_is_same_device(GstPylon *self, const gint device_index,
          self->requested_device_user_name == user_name &&
          self->requested_device_serial_number == serial_number;
 }
+
+#ifdef NVMM_ENABLED
+void gst_pylon_set_nvsurface_layout(
+    GstPylon *self, const GstPylonNvsurfaceLayoutEnum nvsurface_layout) {
+  g_return_if_fail(self);
+
+  self->nvsurface_layout = nvsurface_layout;
+}
+
+GstPylonNvsurfaceLayoutEnum gst_pylon_get_nvsurface_layout(GstPylon *self) {
+  g_return_val_if_fail(self, PROP_NVSURFACE_LAYOUT_DEFAULT);
+
+  return self->nvsurface_layout;
+}
+
+void gst_pylon_set_gpu_id(GstPylon *self, const gint gpu_id) {
+  g_return_if_fail(self);
+
+  self->gpu_id = gpu_id;
+}
+
+guint gst_pylon_get_gpu_id(GstPylon *self) {
+  g_return_val_if_fail(self, PROP_GPU_ID_DEFAULT);
+
+  return self->gpu_id;
+}
+#endif

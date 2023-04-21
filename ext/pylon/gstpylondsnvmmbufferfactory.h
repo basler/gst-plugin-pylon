@@ -34,12 +34,14 @@
 #define GST_PYLON_DSNVMM_BUFFER_FACTORY_H
 
 #include <gst/gst.h>
+#include <gstpylon.h>
 #include <gstpylonbufferfactory.h>
 #include <nvbufsurface.h>
 
 class GstPylonDsNvmmBufferFactory : public GstPylonBufferFactory {
  public:
-  GstPylonDsNvmmBufferFactory() = default;
+  GstPylonDsNvmmBufferFactory(
+      const GstPylonNvsurfaceLayoutEnum nvsurface_layout, const guint gpu_id);
   virtual void SetConfig(const GstCaps *caps) override;
   virtual void AllocateBuffer(size_t buffer_size, void **p_created_buffer,
                               intptr_t &buffer_context) override;
@@ -48,6 +50,8 @@ class GstPylonDsNvmmBufferFactory : public GstPylonBufferFactory {
   virtual void DestroyBufferFactory() override;
 
  private:
+  NvBufSurfaceLayout layout;
+  guint gpu_id;
   NvBufSurfaceAllocateParams create_params;
 };
 

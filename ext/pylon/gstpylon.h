@@ -44,6 +44,16 @@ typedef enum {
   ENUM_ABORT = 2,
 } GstPylonCaptureErrorEnum;
 
+#ifdef NVMM_ENABLED
+typedef enum {
+  ENUM_BLOCK_LINEAR = 0,
+  ENUM_PITCH = 1,
+} GstPylonNvsurfaceLayoutEnum;
+
+#  define PROP_GPU_ID_DEFAULT 0
+#  define PROP_NVSURFACE_LAYOUT_DEFAULT ENUM_PITCH
+#endif
+
 void gst_pylon_initialize();
 
 GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
@@ -75,5 +85,14 @@ GObject *gst_pylon_get_stream_grabber(GstPylon *self);
 gboolean gst_pylon_is_same_device(GstPylon *self, const gint device_index,
                                   const gchar *device_user_name,
                                   const gchar *device_serial_number);
+
+#ifdef NVMM_ENABLED
+void gst_pylon_set_nvsurface_layout(
+    GstPylon *self, const GstPylonNvsurfaceLayoutEnum nvsurface_layout);
+GstPylonNvsurfaceLayoutEnum gst_pylon_get_nvsurface_layout(GstPylon *self);
+
+void gst_pylon_set_gpu_id(GstPylon *self, const gint gpu_id);
+guint gst_pylon_get_gpu_id(GstPylon *self);
+#endif /* NVMM_ENABLED */
 
 #endif

@@ -70,6 +70,11 @@ struct _GstPylonSrc {
   GstPylonCaptureErrorEnum capture_error;
   GObject *cam;
   GObject *stream;
+
+#ifdef NVMM_ENABLED
+  GstPylonNvsurfaceLayoutEnum nvsurface_layout;
+  guint gpu_id;
+#endif
 };
 
 /* prototypes */
@@ -105,7 +110,11 @@ enum {
   PROP_ENABLE_CORRECTION,
   PROP_CAPTURE_ERROR,
   PROP_CAM,
-  PROP_STREAM
+  PROP_STREAM,
+#ifdef NVMM_ENABLED
+  PROP_NVSURFACE_LAYOUT,
+  PROP_GPU_ID,
+#endif
 };
 
 #define PROP_DEVICE_USER_NAME_DEFAULT NULL
@@ -119,6 +128,10 @@ enum {
 #define PROP_CAM_DEFAULT NULL
 #define PROP_STREAM_DEFAULT NULL
 #define PROP_CAPTURE_ERROR_DEFAULT ENUM_ABORT
+#ifdef NVMM_ENABLED
+#  define PROP_GPU_ID_MIN 0
+#  define PROP_GPU_ID_MAX G_MAXUINT32
+#endif
 
 /* Enum for cature_error */
 #define GST_TYPE_CAPTURE_ERROR_ENUM (gst_pylon_capture_error_enum_get_type())
@@ -143,6 +156,26 @@ static GType gst_pylon_capture_error_enum_get_type(void) {
 
   return (GType)gtype;
 }
+
+#ifdef NVMM_ENABLED
+#  define GST_TYPE_NVSURFACE_LAYOUT_ENUM \
+    (gst_pylon_nvsurface_layout_enum_get_type())
+
+static GType gst_pylon_nvsurface_layout_enum_get_type(void) {
+  static gsize gtype = 0;
+  static const GEnumValue values[] = {
+      {ENUM_BLOCK_LINEAR, "block-linear", "Specifies block linear layout."},
+      {ENUM_PITCH, "pitch", "Specifies pitch layout."},
+      {0, NULL, NULL}};
+
+  if (g_once_init_enter(&gtype)) {
+    GType tmp = g_enum_register_static("GstPylonNvsurfaceLayoutEnum", values);
+    g_once_init_leave(&gtype, tmp);
+  }
+
+  return (GType)gtype;
+}
+#endif
 
 /* pad templates */
 // clang-format off
@@ -273,6 +306,26 @@ static void gst_pylon_src_class_init(GstPylonSrcClass *klass) {
           GST_TYPE_CAPTURE_ERROR_ENUM, PROP_CAPTURE_ERROR_DEFAULT,
           static_cast<GParamFlags>(G_PARAM_READWRITE |
                                    GST_PARAM_CONTROLLABLE)));
+#ifdef NVMM_ENABLED
+  g_object_class_install_property(
+      gobject_class, PROP_NVSURFACE_LAYOUT,
+      g_param_spec_enum("nvsurface-layout", "Surface layout",
+                        "Surface layout. May be block-linear or pitch-linear. "
+                        "For a dGPU, only pitch-linear is valid.",
+                        GST_TYPE_NVSURFACE_LAYOUT_ENUM,
+                        PROP_NVSURFACE_LAYOUT_DEFAULT,
+                        static_cast<GParamFlags>(G_PARAM_READWRITE |
+                                                 GST_PARAM_CONTROLLABLE)));
+
+  g_object_class_install_property(
+      gobject_class, PROP_GPU_ID,
+      g_param_spec_uint(
+          "gpu-id", "GPU ID",
+          "Holds the GPU ID. Valid only for a multi-GPU system.",
+          PROP_GPU_ID_MIN, PROP_GPU_ID_MAX, PROP_GPU_ID_DEFAULT,
+          static_cast<GParamFlags>(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+                                   GST_PARAM_MUTABLE_READY)));
+#endif
 
   cam_params = gst_pylon_camera_get_string_properties();
   stream_params = gst_pylon_stream_grabber_get_string_properties();
@@ -347,6 +400,10 @@ static void gst_pylon_src_init(GstPylonSrc *self) {
   self->cam = PROP_CAM_DEFAULT;
   self->stream = PROP_STREAM_DEFAULT;
   gst_video_info_init(&self->video_info);
+#ifdef NVMM_ENABLED
+  self->nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
+  self->gpu_id = PROP_GPU_ID_DEFAULT;
+#endif
 
   gst_base_src_set_live(base, TRUE);
   gst_base_src_set_format(base, GST_FORMAT_TIME);
@@ -387,6 +444,15 @@ static void gst_pylon_src_set_property(GObject *object, guint property_id,
       self->capture_error =
           static_cast<GstPylonCaptureErrorEnum>(g_value_get_enum(value));
       break;
+#ifdef NVMM_ENABLED
+    case PROP_NVSURFACE_LAYOUT:
+      self->nvsurface_layout =
+          static_cast<GstPylonNvsurfaceLayoutEnum>(g_value_get_enum(value));
+      break;
+    case PROP_GPU_ID:
+      self->gpu_id = g_value_get_int(value);
+      break;
+#endif
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
       break;
@@ -425,6 +491,14 @@ static void gst_pylon_src_get_property(GObject *object, guint property_id,
     case PROP_CAPTURE_ERROR:
       g_value_set_enum(value, self->capture_error);
       break;
+#ifdef NVMM_ENABLED
+    case PROP_NVSURFACE_LAYOUT:
+      g_value_set_enum(value, self->nvsurface_layout);
+      break;
+    case PROP_GPU_ID:
+      g_value_set_uint(value, self->gpu_id);
+      break;
+#endif
     case PROP_CAM:
       g_value_set_object(value, self->cam);
       break;
@@ -700,6 +774,12 @@ static gboolean gst_pylon_src_start(GstBaseSrc *src) {
   self->pylon = gst_pylon_new(GST_ELEMENT_CAST(self), self->device_user_name,
                               self->device_serial_number, self->device_index,
                               self->enable_correction, &error);
+#ifdef NVMM_ENABLED
+  gst_pylon_set_nvsurface_layout(
+      self->pylon,
+      static_cast<GstPylonNvsurfaceLayoutEnum>(self->nvsurface_layout));
+  gst_pylon_set_gpu_id(self->pylon, self->gpu_id);
+#endif
   GST_OBJECT_UNLOCK(self);
 
   if (error) {
