@@ -400,6 +400,10 @@ static void gst_pylon_src_init(GstPylonSrc *self) {
   self->cam = PROP_CAM_DEFAULT;
   self->stream = PROP_STREAM_DEFAULT;
   gst_video_info_init(&self->video_info);
+#ifdef NVMM_ENABLED
+  self->nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
+  self->gpu_id = PROP_GPU_ID_DEFAULT;
+#endif
 
   gst_base_src_set_live(base, TRUE);
   gst_base_src_set_format(base, GST_FORMAT_TIME);
