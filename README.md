@@ -318,12 +318,12 @@ As a first step install Basler pylon according to your platform. Downloads are a
 The supported pylon versions on the different platforms are:
 
 
-|                 | 7.2  | 7.1  | 6.2  |
-|-----------------|:----:|:----:|:----:|
-| Windows x86_64  |   x  |   x  |      |
-| Linux x86_64    |   x  |   x  |      |
-| Linux aarch64   |   x  |   x  |   x  |
-| macOS x86_64    |   -  |      |
+|                 | 7.3  | 7.2  | 7.1  | 6.2  |
+|-----------------|:----:|:----:|:----:|:----:|
+| Windows x86_64  |  x   |   x  |   x  |      |
+| Linux x86_64    |  x   |   x  |   x  |      |
+| Linux aarch64   |  x   |   x  |   x  |   x  |
+| macOS x86_64    |  -   |   -  |   -  |
 
 
 > macOS build not available for now due to current meson/cmake interaction issues
