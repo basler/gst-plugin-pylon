@@ -21,12 +21,15 @@ jobs:
       - name: Installer list
         run: |
           tee pylon-installer.txt <<"EOF"
+          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.3.0.27189_linux-x86_64_setup.tar.gz
           ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.2.1.25747_x86_64_setup.tar.gz
           ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.1.0.25066_x86_64_setup.tar.gz
           ${PYLON_DOWNLOAD_URL_BASE}/pylon_6.3.0.23157_x86_64_setup.tar.gz
+          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.3.0.27189_linux-aarch64_setup.tar.gz
           ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.2.1.25747_aarch64_setup.tar.gz
           ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.1.0.25066_aarch64_setup.tar.gz
           ${PYLON_DOWNLOAD_URL_BASE_62}/pylon_6.2.0.21487_aarch64_setup.tar.gz
+          ${PYLON_DOWNLOAD_URL_BASE}/Basler_pylon_7.3.0.27189.exe
           ${PYLON_DOWNLOAD_URL_BASE}/Basler_pylon_7.2.1.25747.exe
           ${PYLON_DOWNLOAD_URL_BASE}/Basler_pylon_7.1.0.25066.exe
           ${PYLON_DOWNLOAD_URL_BASE}/pylon-6.2.0.21487.dmg
@@ -62,10 +65,10 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest]
-        py_version: [7.2.1.25747, 7.1.0.25066 ]
+        py_version: [7.3.0.27189, 7.2.1.25747, 7.1.0.25066 ]
       fail-fast: false
     runs-on: ${{ matrix.os }} 
-    name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}-x86_64
+    name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
@@ -115,7 +118,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu18.04, ubuntu20.04, ubuntu22.04]
-        py_version: [7.2.1.25747, 7.1.0.25066, 6.2.0.21487 ]
+        py_version: [7.3.0.27189_linux-aarch64, 7.2.1.25747_aarch64, 7.1.0.25066_aarch64, 6.2.0.21487_aarch64 ]
       fail-fast: false
     runs-on: ubuntu-latest
     name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}-aarch64
@@ -141,12 +144,12 @@ jobs:
             uname -a
         
             # install pylon
-            PYLON_TGZ=$(readlink -m /pylon-installer/pylon_${{ matrix.py_version }}_aarch64_setup.tar.gz)
+            PYLON_TGZ=$(readlink -m /pylon-installer/pylon_${{ matrix.py_version }}_setup.tar.gz)
             mkdir pylon_tmp
             pushd pylon_tmp
             tar -xf $PYLON_TGZ
             mkdir -p /opt/pylon
-            tar -C /opt/pylon -xzf pylon_${{ matrix.py_version }}_aarch64.tar.gz
+            tar -C /opt/pylon -xzf pylon?${{ matrix.py_version }}.tar.gz
             popd
 
             # install required environment
@@ -195,10 +198,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04, ubuntu-22.04]
-        py_version: [7.2.1.25747, 7.1.0.25066, 6.3.0.23157 ]
+        py_version: [7.3.0.27189_linux-x86_64, 7.2.1.25747_x86_64, 7.1.0.25066_x86_64, 6.3.0.23157_x86_64 ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}-x64
+    name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
@@ -209,12 +212,12 @@ jobs:
 
       - name: install pylon
         run: |
-          PYLON_TGZ=$(readlink -m pylon-installer/pylon_${{ matrix.py_version }}_x86_64_setup.tar.gz)
+          PYLON_TGZ=$(readlink -m pylon-installer/pylon_${{ matrix.py_version }}_setup.tar.gz)
           mkdir pylon_tmp
           pushd pylon_tmp
           tar -xf $PYLON_TGZ
           sudo mkdir -p /opt/pylon
-          sudo tar -C /opt/pylon -xzf pylon_${{ matrix.py_version }}_x86_64.tar.gz
+          sudo tar -C /opt/pylon -xzf pylon?${{ matrix.py_version }}.tar.gz
           popd
 
       - name: install required environment
