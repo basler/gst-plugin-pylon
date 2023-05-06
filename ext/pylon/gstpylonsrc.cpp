@@ -179,7 +179,15 @@ static GType gst_pylon_nvsurface_layout_enum_get_type(void) {
 
 /* pad templates */
 // clang-format off
-static GstStaticPadTemplate gst_pylon_src_src_template =
+#ifdef NVMM_ENABLED
+#  define NVMM_GST_VIDEO_CAPS                  ";"       \
+        GST_VIDEO_CAPS_MAKE_WITH_FEATURES("memory:NVMM", \
+                                          " {GRAY8, RGB, BGR, YUY2, UYVY} ")
+#else
+#  define NVMM_GST_VIDEO_CAPS
+#endif
+
+ static GstStaticPadTemplate gst_pylon_src_src_template =
     GST_STATIC_PAD_TEMPLATE(
         "src", GST_PAD_SRC, GST_PAD_ALWAYS,
         GST_STATIC_CAPS(GST_VIDEO_CAPS_MAKE(
@@ -191,12 +199,8 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
                                                ",height=" GST_VIDEO_SIZE_RANGE
                                                ",framerate"
                                                "=" GST_VIDEO_FPS_RANGE
-#ifdef NVMM_ENABLED
-                                               ";"
-        GST_VIDEO_CAPS_MAKE_WITH_FEATURES("memory:NVMM",
-            " {GRAY8, RGB, BGR, YUY2, UYVY} ")
-#endif
-          )
+					       NVMM_GST_VIDEO_CAPS
+         )
     );
 // clang-format on
 
