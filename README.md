@@ -129,6 +129,25 @@ possible values) after applying the userset and pfs file. It is
 recommended to set a caps-filter to explicitly set the wanted
 capabilities.
 
+# NVMM Support
+
+
+NVMM caps are now supported in the current version of the element. This feature
+is automatically enabled when both the CUDA library and the DeepStream library
+are installed on the system.
+
+By using this support, a memory speedup can be achieved as it eliminates the
+need for an additional element to connect the system memory and NVIDIA's GPU
+memory.
+
+Here's an example of how to use this feature:
+
+```bash
+gst-launch-1.0 pylonsrc ! "video/x-raw(memory:NVMM), width=1920, height=1080"  !  nvvidconv  ! "video/x-raw(memory:NVMM), width=1280, height=720" !  fakesink 
+```
+
+
+
 ### Handle capture errors
 
 `pylonsrc` lets you decide what to do when a capture error happens.
@@ -532,23 +551,6 @@ gst-inspect-1.0 pylonsrc
 Installation on macOS is currently not supported due to conflicts between meson and underlying cmake in the configuration phase.
 
 This target will be integrated after a Basler pylon 7.x release for macOS
-
-# NVMM Support
-
-
-NVMM caps are now supported in the current version of the element. This feature
-is automatically enabled when both the CUDA library and the DeepStream library
-are installed on the system.
-
-By using this support, a memory speedup can be achieved as it eliminates the
-need for an additional element to connect the system memory and NVIDIA's GPU
-memory.
-
-Here's an example of how to use this feature:
-
-```bash
-gst-launch-1.0 pylonsrc ! "video/x-raw(memory:NVMM), width=1920, height=1080"  !  nvvidconv  ! "video/x-raw(memory:NVMM), width=1280, height=720" !  fakesink 
-```
 
 
 # Known issues
