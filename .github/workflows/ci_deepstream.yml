@@ -1,0 +1,141 @@
+# basic compile and test workflow for gst-plugin-pylon
+
+name: CI_Deepstream
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+  pull_request:
+    branches: ["main"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      is_release_build: ${{ env.RELEASE_BUILD == '1' }}
+    steps:
+      - name: Installer list
+        run: |
+          tee pylon-installer.txt <<"EOF"
+          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.3.0.27189_linux-x86_64_setup.tar.gz
+          EOF
+
+      - name: Fetch installers
+        env:
+          PYLON_DOWNLOAD_URL_BASE: ${{ secrets.PYLON_DOWNLOAD_URL_BASE }}
+          PYLON_DOWNLOAD_URL_BASE_62: ${{ secrets.PYLON_DOWNLOAD_URL_BASE_62 }}
+        run: |
+          mkdir pylon-installer && cd pylon-installer
+          while read line; do
+            url=$(eval echo "$line")
+            echo "download $url"
+            curl -sSfL -O "$url"
+          done <../pylon-installer.txt
+          echo "Download result"
+          ls -l
+          md5sum *
+      - uses: actions/upload-artifact@v3
+        with:
+          name: pylon-installer
+          path: pylon-installer
+
+      - name: Check for release build
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "Build release for $GITHUB_REF"
+          echo "RELEASE_BUILD=1" >> $GITHUB_ENV
+
+  build_linux_x86_64:
+    needs: prepare
+    strategy:
+      matrix:
+        py_version: [7.3.0.27189_linux-x86_64 ]
+      fail-fast: false
+    runs-on: ubuntu-latest
+    container: nvcr.io/nvidia/deepstream:6.2-devel
+    name: Build pylon ${{ matrix.py_version }} on nvcr.io/nvidia/deepstream:6.2-devel
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: pylon-installer
+          path: pylon-installer
+
+      - name: install pylon
+        run: |
+          PYLON_TGZ=$(readlink -m pylon-installer/pylon_${{ matrix.py_version }}_setup.tar.gz)
+          mkdir pylon_tmp
+          cd pylon_tmp
+          tar -xf $PYLON_TGZ
+          mkdir -p /opt/pylon
+          tar -C /opt/pylon -xzf pylon?${{ matrix.py_version }}.tar.gz
+          cd ..
+
+      - name: install required environment
+        run: |
+          apt-get update
+          # remove conflicting package
+          dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && apt-get remove -y libunwind-14-dev
+          # install required build tools
+          apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools
+          apt-get remove -y meson ninja-build
+          python3 -m pip install pip --upgrade
+          python3 -m pip install meson ninja pypylon
+
+      - name: compile gcc
+        run: |
+          export PYLON_ROOT=/opt/pylon
+          export CC=gcc
+          export CXX=g++
+          meson setup builddir_gcc --prefix $PWD/install_gcc
+          ninja -C builddir_gcc
+          ninja -C builddir_gcc install
+
+      - name: compile clang
+        run: |
+          export PYLON_ROOT=/opt/pylon
+          export CC=clang
+          export CXX=clang++
+          meson setup builddir_clang --prefix $PWD/install_clang
+          ninja -C builddir_clang
+          ninja -C builddir_clang install
+
+      - name: run check gcc
+        run: |
+          export GST_PLUGIN_PATH=$PWD/install_gcc/lib/x86_64-linux-gnu/gstreamer-1.0
+          export LD_LIBRARY_PATH=$PWD/install_gcc/lib/x86_64-linux-gnu/
+          export PYLON_CAMEMU=1
+          gst-inspect-1.0 pylonsrc
+          # check that nvmm is available in formats
+          gst-inspect-1.0 pylonsrc | grep NVMM
+
+      - name: run check clang
+        run: |
+          export GST_PLUGIN_PATH=$PWD/install_clang/lib/x86_64-linux-gnu/gstreamer-1.0
+          export LD_LIBRARY_PATH=$PWD/install_clang/lib/x86_64-linux-gnu/
+          export PYLON_CAMEMU=1
+          gst-inspect-1.0 pylonsrc
+          # check that nvmm is available in formats
+          gst-inspect-1.0 pylonsrc | grep NVMM
+
+
+
+  cleanup:
+    if: always()
+    needs: [
+            prepare,
+            build_linux_x86_64,
+    ]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: geekyeggo/delete-artifact@v2
+      continue-on-error: true
+      with:
+        name: pylon-installer
+
+

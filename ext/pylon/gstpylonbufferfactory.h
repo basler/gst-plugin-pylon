@@ -34,7 +34,7 @@
 #define GST_PYLON_BUFFER_FACTORY_H
 
 #include <gst/gst.h>
-#include <pylon/PylonIncludes.h>
+#include <gst/pylon/gstpylonincludes.h>
 
 class GstPylonBufferFactory : public Pylon::IBufferFactory {
  public:
