@@ -11,8 +11,9 @@ if target_machine.system() == 'linux' and pylon_path == 'PYLON_ROOT_NOT_SET'
 endif
 
 # detect pylon 7.x
-pylon_dep = dependency('pylon', method : 'cmake', modules : ['pylon::PylonBase', 'pylon::GCBase', 'pylon::GenApi', 'pylon::PylonUtility'],
-        version : '>=7.1', cmake_module_path: pylon_path / 'share/pylon/cmake/' , required: false)
+pylon_dep = dependency('pylon', method : 'cmake', modules : ['pylon::pylon'],
+        version : '>=7.1', cmake_args : [ '-DCMAKE_PREFIX_PATH=' + pylon_path / 'share/pylon/cmake/', '-DPYLON_ROOT=' + pylon_path ] , required: false)
+
 if pylon_dep.found()
   # patch rpath on linux
   if target_machine.system() == 'linux'
