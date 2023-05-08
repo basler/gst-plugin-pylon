@@ -41,20 +41,6 @@
 
 #include <utility>
 
-typedef struct _GstPylonObjectPrivate GstPylonObjectPrivate;
-struct _GstPylonObjectPrivate {
-  std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera;
-  GenApi::INodeMap* nodemap;
-  gboolean enable_correction;
-};
-
-typedef struct _GstPylonObjectDeviceMembers GstPylonObjectDeviceMembers;
-struct _GstPylonObjectDeviceMembers {
-  const std::string& device_name;
-  GstPylonCache& feature_cache;
-  GenApi::INodeMap& nodemap;
-};
-
 /************************************************************
  * Start of GObject definition
  ***********************************************************/
@@ -70,10 +56,6 @@ static void gst_pylon_object_class_intern_init(
   if (GstPylonObject_private_offset != 0)
     g_type_class_adjust_private_offset(klass, &GstPylonObject_private_offset);
   gst_pylon_object_class_init((GstPylonObjectClass*)klass, device_members);
-}
-static inline gpointer gst_pylon_object_get_instance_private(
-    GstPylonObject* self) {
-  return (G_STRUCT_MEMBER_P(self, GstPylonObject_private_offset));
 }
 
 GType gst_pylon_object_register(const std::string& device_name,
@@ -113,6 +95,10 @@ GType gst_pylon_object_register(const std::string& device_name,
 /************************************************************
  * End of GObject definition
  ***********************************************************/
+
+gpointer gst_pylon_object_get_instance_private(GstPylonObject* self) {
+  return (G_STRUCT_MEMBER_P(self, GstPylonObject_private_offset));
+}
 
 /* prototypes */
 static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
@@ -389,6 +375,36 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
     selector_data = gst_pylon_param_spec_selector_get_data(pspec);
   }
 
+  /* check if property is from dimension list
+   * and set before streaming
+   */
+  if (!priv->camera->IsGrabbing()) {
+    bool is_cached = false;
+    if (std::string(pspec->name) == "OffsetX") {
+      priv->dimension_cache.offsetx = g_value_get_int64(value);
+      is_cached = true;
+    } else if (std::string(pspec->name) == "OffsetY") {
+      priv->dimension_cache.offsety = g_value_get_int64(value);
+      is_cached = true;
+    } else if (std::string(pspec->name) == "Width") {
+      priv->dimension_cache.width = g_value_get_int64(value);
+      is_cached = true;
+    } else if (std::string(pspec->name) == "Height") {
+      priv->dimension_cache.height = g_value_get_int64(value);
+      is_cached = true;
+    }
+    if (is_cached) {
+      GST_INFO("Caching property \"%s\". Value is checked during caps fixation",
+               pspec->name);
+
+      /* skip to set the camera property value
+       * any value in the gst property range of this feature is accepted in this
+       * phase
+       */
+      return;
+    }
+  }
+
   try {
     switch (value_type) {
       case G_TYPE_INT64:
@@ -434,6 +450,39 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
 
   if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
     selector_data = gst_pylon_param_spec_selector_get_data(pspec);
+  }
+
+  /* check if property is from dimension list
+   * and get from cache if not streaming
+   */
+  if (!priv->camera->IsGrabbing()) {
+    bool is_cached = false;
+    if (std::string(pspec->name) == "OffsetX" &&
+        priv->dimension_cache.offsetx >= 0) {
+      is_cached = true;
+      g_value_set_int64(value, priv->dimension_cache.offsetx);
+    } else if (std::string(pspec->name) == "OffsetY" &&
+               priv->dimension_cache.offsety >= 0) {
+      is_cached = true;
+      g_value_set_int64(value, priv->dimension_cache.offsety);
+    } else if (std::string(pspec->name) == "Width" &&
+               priv->dimension_cache.width >= 0) {
+      is_cached = true;
+      g_value_set_int64(value, priv->dimension_cache.width);
+    } else if (std::string(pspec->name) == "Height" &&
+               priv->dimension_cache.height >= 0) {
+      is_cached = true;
+      g_value_set_int64(value, priv->dimension_cache.height);
+    }
+
+    if (is_cached) {
+      GST_INFO(
+          "Read cached property \"%s\". Value might be adjusted during caps "
+          "fixation",
+          pspec->name);
+
+      return;
+    }
   }
 
   try {
@@ -498,6 +547,11 @@ GObject* gst_pylon_object_new(
   priv->camera = std::move(camera);
   priv->nodemap = nodemap;
   priv->enable_correction = enable_correction;
+
+  /* setup dimension cache
+   * -1 -> not activly set
+   */
+  priv->dimension_cache = {-1, -1, -1, -1};
 
   return obj;
 }

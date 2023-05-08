@@ -52,6 +52,7 @@
 #include "gstpylonsysmembufferfactory.h"
 
 #include <map>
+#include <vector>
 
 /* retry open camera limits in case of collision with other
  * process
@@ -862,6 +863,65 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
     height.SetValue(gst_height, Pylon::IntegerValueCorrection_None);
     GST_INFO("Set Feature Height: %d", gst_height);
 
+    /* set the cached offsetx/y values
+     * respect the rounding value adjustment rules
+     * -> offset will be adjusted to keep dimensions
+     */
+
+    GstPylonObjectPrivate *cam_properties =
+        (GstPylonObjectPrivate *)gst_pylon_object_get_instance_private(
+            reinterpret_cast<GstPylonObject *>(self->gcamera));
+
+    auto &offsetx_cache = cam_properties->dimension_cache.offsetx;
+    auto &offsety_cache = cam_properties->dimension_cache.offsety;
+    auto enable_correction = cam_properties->enable_correction;
+
+    bool value_corrected = false;
+    if (offsetx_cache >= 0) {
+      Pylon::CIntegerParameter offsetx(nodemap, "OffsetX");
+      if (enable_correction) {
+        try {
+          offsetx.SetValue(
+              offsetx_cache,
+              Pylon::EIntegerValueCorrection::IntegerValueCorrection_None);
+        } catch (GenICam::OutOfRangeException &) {
+          offsetx.SetValue(
+              offsetx_cache,
+              Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);
+          value_corrected = true;
+        }
+      } else {
+        offsetx.SetValue(offsetx_cache);
+      }
+      GST_INFO("Set Feature OffsetX: %d %s",
+               static_cast<gint>(offsetx.GetValue()),
+               value_corrected ? " [corrected]" : "");
+      offsetx_cache = -1;
+    }
+
+    value_corrected = false;
+    if (offsety_cache >= 0) {
+      Pylon::CIntegerParameter offsety(nodemap, "OffsetY");
+      if (enable_correction) {
+        try {
+          offsety.SetValue(
+              offsety_cache,
+              Pylon::EIntegerValueCorrection::IntegerValueCorrection_None);
+        } catch (GenICam::OutOfRangeException &) {
+          offsety.SetValue(
+              offsety_cache,
+              Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);
+          value_corrected = true;
+        }
+      } else {
+        offsety.SetValue(offsety_cache);
+      }
+      GST_INFO("Set Feature Offsety: %d %s",
+               static_cast<gint>(offsety.GetValue()),
+               value_corrected ? " [corrected]" : "");
+      offsety_cache = -1;
+    }
+
     Pylon::CBooleanParameter framerate_enable(nodemap,
                                               "AcquisitionFrameRateEnable");
 
@@ -878,7 +938,6 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
       framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
       GST_INFO("Set Feature AcquisitionFrameRateAbs: %f", div);
     }
-
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
