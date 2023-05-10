@@ -5,7 +5,9 @@
 # import PYLON_ROOT environment into meson
 pylon_path = run_command(python3, '-c', 'import os; print(os.environ.get("PYLON_ROOT","PYLON_ROOT_NOT_SET"))', check: false).stdout().strip()
 
-if target_machine.system() == 'linux' and pylon_path == 'PYLON_ROOT_NOT_SET'
+fs = import('fs')
+
+if target_machine.system() == 'linux' and (pylon_path == 'PYLON_ROOT_NOT_SET' or not fs.exists(pylon_path / 'include/pylon'))
   # PYLON_ROOT has to be set
   error('PYLON_ROOT has to be set to location of pylon install e.g. /opt/pylon')
 endif

@@ -1,6 +1,25 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2023-05-08
+
+### Changed
+- offset x/y are cached when pipeline is not playing.
+  * setting the offset an ROI configured via caps is possible now
+  * fixes #44
+
+### Added
+- Restructing of buffer pool management to support platform specific optimal buffer types
+- NVMM support
+  * This feature is automatically enabled when both the CUDA library and the DeepStream library are installed on the system.
+  * If enabled pylonsrc can directly generate output buffers into nvmm, that can be used by other nvidia elements.
+  * Current restrictions:
+    * only runs on NVIDIA Jetson at the moment
+
+- Pylon 7.3
+  * meson supports to build the plugin with pylon 7.3 now
+
+
 ## [0.6.2] - 2023-04-04
 
 ### Changed
