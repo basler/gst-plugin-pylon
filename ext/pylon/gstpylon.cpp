@@ -47,6 +47,7 @@
 #include "gst/pylon/gstpylonobject.h"
 #include "gstchildinspector.h"
 #include "gstpylon.h"
+#include "gstpylon_cache_generated.h"
 #include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
 #include "gstpylonsysmembufferfactory.h"

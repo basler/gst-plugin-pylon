@@ -1,0 +1,25 @@
+namespace gstpylon;
+
+enum Type: byte  { Float, Int, Bool, Enum, String, Invalid }
+
+table GOP  {
+  type : Type = Invalid ;
+  default_int:long ;
+  default_float:float;
+  default_bool:float;
+  min_int:long;
+  max_int:long;
+  min_float:float;
+  max_float:float;
+  flags:int;
+  name:string;
+  nick:string;
+  blurb:string;
+}
+
+table PropTable {
+ entries:[GOP]; 
+ }
+
+root_type PropTable;
+
