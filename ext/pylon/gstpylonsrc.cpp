@@ -541,8 +541,6 @@ static void gst_pylon_src_finalize(GObject *object) {
     self->stream = NULL;
   }
 
-  gst_pylon_terminate();
-
   G_OBJECT_CLASS(gst_pylon_src_parent_class)->finalize(object);
 }
 

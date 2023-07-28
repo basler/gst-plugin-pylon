@@ -149,8 +149,6 @@ static const std::vector<GstStPixelFormats> gst_structure_formats = {
 
 void gst_pylon_initialize() { Pylon::PylonInitialize(); }
 
-void gst_pylon_terminate() { Pylon::PylonTerminate(); }
-
 static std::string gst_pylon_get_camera_fullname(
     Pylon::CBaslerUniversalInstantCamera &camera) {
   return std::string(camera.GetDeviceInfo().GetFullName());
@@ -951,8 +949,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 #ifdef NVMM_ENABLED
   GstCapsFeatures *features = gst_caps_get_features(conf, 0);
   if (gst_caps_features_contains(features, "memory:NVMM")) {
-    self->buffer_factory = std::make_unique<GstPylonDsNvmmBufferFactory>(
-        self->nvsurface_layout, self->gpu_id);
+    self->buffer_factory = std::make_unique<GstPylonDsNvmmBufferFactory>(self->nvsurface_layout, self->gpu_id);
 
     self->buffer_factory->SetConfig(conf);
     self->mem_type = MEM_NVMM;
