@@ -43,6 +43,7 @@
 #include <gst/pylon/gstpylonmeta.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #define PYLONSRC_NAME "src"
 #define OVERLAY_NAME "text"
@@ -167,8 +168,8 @@ static GstPadProbeReturn cb_have_data(GstPad *pad, GstPadProbeInfo *info,
   meta = (GstPylonMeta *)gst_buffer_get_meta(buffer, GST_PYLON_META_API_TYPE);
 
   meta_str = g_strdup_printf(
-      "ID/img_num/skipped_num %lu/%lu/%lu\noffset %lu/%lu\npylon_timestamp "
-      "%16lu\n",
+      "ID/img_num/skipped_num %" PRId64 "/%" PRId64 "/%" PRId64 "\noffset %" PRId64 "/%" PRId64 "\npylon_timestamp "
+      "%16" PRId64 "\n",
       meta->block_id, meta->image_number, meta->skipped_images,
       meta->offset.offset_x, meta->offset.offset_y, meta->timestamp);
 
@@ -180,7 +181,7 @@ static GstPadProbeReturn cb_have_data(GstPad *pad, GstPadProbeInfo *info,
     switch (chunk_type) {
       case G_TYPE_INT64:
         gst_structure_get_int64(meta->chunks, chunk_name, &int_chunk);
-        tmp_str = g_strdup_printf("%s%s_%ld ", meta_str, chunk_name, int_chunk);
+        tmp_str = g_strdup_printf("%s%s_%" PRId64 " ", meta_str, chunk_name, int_chunk);
         g_free(meta_str);
         meta_str = tmp_str;
         break;

@@ -41,6 +41,7 @@
 #include "gstpylonobject.h"
 #include "gstpylonparamspecs.h"
 
+#include <inttypes.h>
 #include <pylon/PixelType.h>
 
 #include <algorithm>
@@ -487,7 +488,8 @@ class TimeLogger {
 
   ~TimeLogger() {
     auto t1 = std::chrono::system_clock::now();
-    GST_DEBUG("TIMELOGGER %s %ld msec -> ", message.c_str(), (t1 - t0) / 1ms);
+    GST_DEBUG("TIMELOGGER %s %" PRId64 " msec -> ", message.c_str(),
+              (t1 - t0) / 1ms);
     for (auto &info : info_list) {
       GST_DEBUG("%s ", info.c_str());
     }
