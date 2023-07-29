@@ -10,6 +10,9 @@ fs = import('fs')
 if target_machine.system() == 'linux' and (pylon_path == 'PYLON_ROOT_NOT_SET' or not fs.exists(pylon_path / 'include/pylon'))
   # PYLON_ROOT has to be set
   error('PYLON_ROOT has to be set to location of pylon install e.g. /opt/pylon')
+elif target_machine.system() == 'darwin' and (pylon_path == 'PYLON_ROOT_NOT_SET' or not fs.exists(pylon_path / 'pylon.framework/Resources/CMake/pylon-config-apple.cmake'))
+  # PYLON_ROOT has to be set
+  error('PYLON_ROOT has to be set to location of the pylon.Framework e.g. /Library/Frameworks on macOS')
 endif
 
 # detect pylon 7.x
@@ -20,6 +23,13 @@ if pylon_dep.found()
   # patch rpath on linux
   if target_machine.system() == 'linux'
     pylon_link_args = ['-Wl,--enable-new-dtags', '-Wl,-rpath,' + pylon_path / 'lib']
+  elif target_machine.system() == 'darwin'
+    # add missing framework path on macos
+    pylon_dep = declare_dependency(
+        compile_args: ['-F',pylon_path],
+        dependencies: pylon_dep
+        )
+    pylon_link_args = []
   else
     pylon_link_args = []
   endif
@@ -54,7 +64,6 @@ gstpylon_headers = [
 ]
 
 install_headers(gstpylon_headers, subdir : 'gstreamer-1.0/gst/pylon/')
-
 gstpylon = library('gstpylon-' + api_version,
   gstpylon_sources,
   c_args : gst_plugin_pylon_args + '-DBUILDING_EXT_PYLONSRC',
