@@ -2,7 +2,9 @@ project('gst-plugin-pylon', 'c', 'cpp',
   version : '0.7.0',
   meson_version : '>= 0.61',
   default_options : [ 'warning_level=1',
-                      'buildtype=debugoptimized' ])
+                      'buildtype=debugoptimized',
+                      'cpp_std=c++14'],
+)
 
 glib_req = '>= 2.56.0'
 
