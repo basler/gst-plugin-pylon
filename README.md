@@ -342,10 +342,8 @@ The supported pylon versions on the different platforms are:
 | Windows x86_64  |  x   |   x  |   x  |      |
 | Linux x86_64    |  x   |   x  |   x  |      |
 | Linux aarch64   |  x   |   x  |   x  |   x  |
-| macOS x86_64    |  -   |   -  |   -  |
+| macOS x86_64    |  x   |      |      |
 
-
-> macOS build not available for now due to current meson/cmake interaction issues
 
 Installing Basler pylon SDK will also install the Basler pylon viewer. You should use this tool to verify, that the cameras work properly in your system and to learn about the their features.
 
@@ -548,10 +546,70 @@ gst-inspect-1.0 pylonsrc
 ```
 
 ## macOS
-Installation on macOS is currently not supported due to conflicts between meson and underlying cmake in the configuration phase.
 
-This target will be integrated after a Basler pylon 7.x release for macOS
+This target is currently only supported with pylon 7.3.1 for macOS and gstreamer from homebrew
 
+Install the dependencies
+ * homebrew
+ * cmake
+
+   `brew install cmake`
+
+ * gstreamer
+
+   `brew install gstreamer`
+
+ * install meson and ninja
+
+   `pip3 install meson ninja`
+
+Download pylon 7.3.1 from baslerweb.com.
+ 
+As pylon 7.3.1 for macOS is currently SDK only ( no PylonViewer ) the install can't be made with the normal installer, as it would overwrite an existing pylon 6.2 install with the GUI tools.
+
+Recommendation is to install in e.g. $HOME/Library/Frameworks.
+
+If this folder doesn't exist call: `mkdir -p $HOME/Library/Frameworks`
+
+Now use the [unpack_pylon7.3.1.sh](scripts/unpack_pylon7.3.1.sh) script to accept the pylon license and extract the pylon SDK into the local framework folder
+
+The script can be called with e.g.
+
+`scripts/unpack_pylon7.3.1.sh -d $HOME/Downloads/pylon_7_3_1_0011.dmg -t $HOME/Library/Frameworks`
+
+
+Use the local framework folder location as PYLON_ROOT argument when configuring the project
+ 
+```bash
+ cd gst-plugin-pylon
+
+ # configure the project
+ PYLON_ROOT=$HOME/Library/Frameworks meson setup build --prefix=$HOME/.local
+ # run build, test and install
+ ninja -C build
+ ninja -C build test
+ ninja -C build install
+
+ ```
+
+ Installation of the plugin is in a non-standard location.
+ To find the plugin set the gstreamer plugin search path as:
+
+ ```
+ export GST_PLUGIN_PATH=$HOME/.local/lib/gstreamer-1.0
+ ```
+
+ RPATH handling is not implemented yet, which forces to set the pylon libraries as DYLD_FALLBACK_LIBRARY_PATH in the environment before every tool using this plugin:
+
+e.g.:
+
+
+ ``` 
+ export DYLD_FALLBACK_LIBRARY_PATH=$HOME/Library/Frameworks/pylon.framework/Versions/A/Libraries/ 
+ gst-launch-1.0 pylonsrc ! fakesink 
+ ```
+
+ 
 
 # Known issues
 
@@ -561,4 +619,6 @@ This target will be integrated after a Basler pylon 7.x release for macOS
 
 * Under very specific conditions we've found that a set_state() followed immediately by a get_state() will report a failure. This has been found to be a bug in the GStreamer core, where a state conditional is not protected against spurious wakeups. An [upstream fix](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/4086) was merged to the mainline, and GStreamer 1.23 will include this fix. This issue has been reproduced in certain installations of NVIDIA Jetson boards.
   * As a workaround if you are using older GStreamer versions, is to configure `async=false` in all the sink elements in your pipeline, so that the state condition variable is not needed. Only use this is your pipeline does not require synchronization.
+
+
 
