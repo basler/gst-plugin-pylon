@@ -136,6 +136,8 @@ NVMM caps are now supported in the current version of the element. This feature
 is automatically enabled when both the CUDA library and the DeepStream library
 are installed on the system.
 
+Support on NVIDIA Jetson devices requires a Jetpack Version >= 5.1 ( CUDA 11.4.14)
+
 By using this support, a memory speedup can be achieved as it eliminates the
 need for an additional element to connect the system memory and NVIDIA's GPU
 memory.
