@@ -16,7 +16,7 @@ nvds_dep = cc.find_library('nvbufsurface',
     dirs: '/opt/nvidia/deepstream/deepstream/lib/',
     required: false
 )
-cuda_dep = dependency('cuda', version : '>=10', required: false)
+cuda_dep = dependency('cuda', version : '>=11', required: false)
 if nvds_dep.found() and cuda_dep.found()
   nvds_include = include_directories('/opt/nvidia/deepstream/deepstream/sources/includes/')
 
