@@ -1,6 +1,27 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.7.x] - YYYY-MM-DD
+
+### Changed
+- check for cuda version >= 11 to enable nvmm code
+  * nvmm support implementation is only compatible to cuda >= 11
+  * fixes #60
+
+### Added
+- Restructing of buffer pool management to support platform specific optimal buffer types
+- NVMM support
+  * This feature is automatically enabled when both the CUDA library and the DeepStream library are installed on the system.
+  * If enabled pylonsrc can directly generate output buffers into nvmm, that can be used by other nvidia elements.
+  * Current restrictions:
+    * only runs on NVIDIA Jetson at the moment
+
+- Pylon 7.3
+  * meson supports to build the plugin with pylon 7.3 now
+
+
+
+
 ## [0.7.0] - 2023-05-08
 
 ### Changed
