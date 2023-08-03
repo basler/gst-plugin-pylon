@@ -33,6 +33,7 @@ jobs:
           ${PYLON_DOWNLOAD_URL_BASE}/Basler_pylon_7.2.1.25747.exe
           ${PYLON_DOWNLOAD_URL_BASE}/Basler_pylon_7.1.0.25066.exe
           ${PYLON_DOWNLOAD_URL_BASE}/pylon-6.2.0.21487.dmg
+          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7_3_1_0011.dmg
           EOF
 
       - name: Fetch installers
@@ -265,6 +266,62 @@ jobs:
           export PYLON_CAMEMU=1
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
+
+
+  build-macos:
+    needs: prepare
+    runs-on: macos-11
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: pylon-installer
+          path: pylon-installer
+
+
+      - name: Build and test
+        run: |
+          # install pylon 6.2 to check co-installation use case
+          cd pylon-installer
+          hdiutil attach pylon-6.2.0.21487.dmg
+          sudo installer -pkg /Volumes/pylon\ *\ Camera\ Software\ Suite/pylon-*.pkg  -target /
+          hdiutil detach /Volumes/pylon\ *\ Camera\ Software\ Suite
+
+          # install pylon 7.3.1 dmg
+          DMG_LOCATION=pylon_7_3_1_0011.dmg
+          FRAMEWORK_PATH=$HOME/Library/Frameworks
+          mkdir -p "${FRAMEWORK_PATH}"
+          ${GITHUB_WORKSPACE}/scripts/unpack_pylon7.3.1.sh -d "${DMG_LOCATION}" -t "${FRAMEWORK_PATH}" --accept
+
+          cd ${GITHUB_WORKSPACE}
+          # install dependencies
+          brew install cmake
+          brew install gstreamer
+          pip3 install meson ninja
+
+          # setup
+          PYLON_ROOT="${FRAMEWORK_PATH}" meson setup build --prefix=$HOME/.local/
+
+          # build and test
+          ninja -C build
+          ninja -C build test
+
+          # install
+          ninja -C build install
+
+          # run test
+          # enable one emulated camerm
+          export PYLON_CAMEMU=1
+          # setup dynamic linker fallback path
+          export DYLD_FALLBACK_LIBRARY_PATH=$HOME/Library/Frameworks/pylon.framework/Versions/A/Libraries/
+          # setup search path for gstreamer
+          export GST_PLUGIN_PATH=$HOME/.local/lib/gstreamer-1.0
+          gst-inspect-1.0 pylonsrc
+          gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
+
 
   cleanup:
     if: always()
