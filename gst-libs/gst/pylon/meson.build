@@ -63,6 +63,9 @@ gstpylon_headers = [
   'gstpylonparamspecs.h',
 ]
 
+
+
+
 install_headers(gstpylon_headers, subdir : 'gstreamer-1.0/gst/pylon/')
 gstpylon = library('gstpylon-' + api_version,
   gstpylon_sources,
@@ -74,6 +77,13 @@ gstpylon = library('gstpylon-' + api_version,
   dependencies : [gstbase_dep, gstvideo_dep, pylon_dep],
   install : true,
 )
+
+
+if target_machine.system() == 'darwin'
+  macos_post_install_script = meson.project_source_root() / 'scripts/macos_post_install.py'
+  meson.add_install_script(macos_post_install_script, get_option('libdir'))
+endif
+
 
 # generate pkgconfig file
 pkgconfig.generate(gstpylon, description : 'Basler Pylon gstreamer source')
