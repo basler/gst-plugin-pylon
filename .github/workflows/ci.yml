@@ -283,6 +283,7 @@ jobs:
 
 
       - name: Build and test
+        shell: /usr/local/bin/bash {0}
         run: |
           # install pylon 6.2 to check co-installation use case
           cd pylon-installer
