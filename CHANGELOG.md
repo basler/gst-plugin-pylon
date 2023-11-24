@@ -1,11 +1,23 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.7.x] - YYYY-MM-DD
+## [0.7.1] - 2024-01-xx
 ### Changed
 - check for cuda version >= 11 to enable nvmm code
   * nvmm support implementation is only compatible to cuda >= 11
   * fixes #60
+- update documentation to build on Windows
+  * fixes #68
+
+### Fixed
+- float features working again
+  * fixes #80
+- build now works with the changes in meson >= 1.3.0
+  * fixes #72
+
+### Added
+- Pylon 7.4
+  * supports to build the plugin with pylon 7.4 now
 
 ## [0.7.0] - 2023-05-08
 
