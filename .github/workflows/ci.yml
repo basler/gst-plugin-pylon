@@ -95,7 +95,7 @@ jobs:
         run: |
           # access to pkg-config 
           $env:GSTREAMER_1_0_ROOT_MSVC_X86_64 = "C:\gstreamer\1.0\msvc_x86_64\"
-          $env:CMAKE_PREFIX_PATH = "C:\Program Files\Basler\pylon 7\Development\CMake\pylon\"
+          $env:CMAKE_PREFIX_PATH = "D:\Program Files\Basler\pylon 7\Development\CMake\pylon\"
           $env:Path = "$env:GSTREAMER_1_0_ROOT_MSVC_X86_64\bin;" + $env:Path
           $env:PKG_CONFIG_PATH = "$env:GSTREAMER_1_0_ROOT_MSVC_X86_64\lib\pkgconfig"
           
