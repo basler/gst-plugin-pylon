@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.7.1] - 2023-12-xx
+## [0.7.1] - 2024-01-xx
 ### Changed
 - check for cuda version >= 11 to enable nvmm code
   * nvmm support implementation is only compatible to cuda >= 11
@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file.
   * fixes #68
 
 ### Fixed
+- float features working again
+  * fixes #80
 - build now works with the changes in meson >= 1.3.0
   * fixes #72
 
