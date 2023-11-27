@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.7.x] - YYYY-MM-DD
+### Changed
+- check for cuda version >= 11 to enable nvmm code
+  * nvmm support implementation is only compatible to cuda >= 11
+  * fixes #60
+
 ## [0.7.0] - 2023-05-08
 
 ### Changed
