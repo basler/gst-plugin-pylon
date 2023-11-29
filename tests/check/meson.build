@@ -25,6 +25,14 @@ if gst_dep.type_name() == 'pkgconfig'
 else
   gst_plugin_scanner_dir = subproject('gstreamer').get_variable('gst_scanner_dir')
 endif
+
+
+## workaround for ubuntu 22.04 x86_64
+if gst_plugin_scanner_dir != '' and not fs.exists(gst_plugin_scanner_dir)
+  gst_plugin_scanner_dir = '/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/'
+endif
+##
+
 gst_plugin_scanner_path = join_paths(gst_plugin_scanner_dir, 'gst-plugin-scanner')
 
 state_ignore_elements = '''
