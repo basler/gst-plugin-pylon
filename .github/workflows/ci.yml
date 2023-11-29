@@ -236,6 +236,8 @@ jobs:
           tar -xf $PYLON_TGZ
           sudo mkdir -p /opt/pylon
           sudo tar -C /opt/pylon -xzf pylon*x86_64.tar.gz
+          # install codemeter
+          sudo apt-get install -y /opt/pylon/share/pylon/codemeter_*.deb --fix-broken || echo "Codemeter install failed"
           popd
 
       - name: install required environment
