@@ -534,7 +534,7 @@ GObject* gst_pylon_object_new(
   if (!type) {
     std::string cache_filename =
         std::string(camera->GetDeviceInfo().GetModelName() + "_" +
-                    Pylon::VersionInfo::getVersionString() + "_" + VERSION);
+                    Pylon::GetPylonVersionString() + "_" + VERSION);
     feature_cache = std::make_unique<GstPylonCache>(cache_filename);
     type = gst_pylon_object_register(device_name, *feature_cache, *nodemap);
   }

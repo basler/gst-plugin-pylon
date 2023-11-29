@@ -21,12 +21,19 @@ if gst_dep.type_name() == 'pkgconfig'
   pbase = dependency('gstreamer-plugins-base-' + api_version, required: true)
   pluginsdirs = [gst_dep.get_variable(pkgconfig : 'pluginsdir'),
                  pbase.get_variable(pkgconfig : 'pluginsdir')]
-  gst_plugin_scanner_dir = gst_dep.get_variable(pkgconfig : 'pluginscannerdir')
+  gst_plugin_scanner_dir = gst_dep.get_variable(pkgconfig : 'pluginscannerdir', default_value : '')
 else
   gst_plugin_scanner_dir = subproject('gstreamer').get_variable('gst_scanner_dir')
 endif
-gst_plugin_scanner_path = join_paths(gst_plugin_scanner_dir, 'gst-plugin-scanner')
 
+
+## workaround for ubuntu 22.04 x86_64
+if gst_plugin_scanner_dir != '' and not fs.exists(gst_plugin_scanner_dir)
+  gst_plugin_scanner_dir = '/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/'
+endif
+##
+
+gst_plugin_scanner_path = join_paths(gst_plugin_scanner_dir, 'gst-plugin-scanner')
 
 state_ignore_elements = '''
 '''

@@ -1032,7 +1032,7 @@ static void gst_pylon_append_stream_grabber_properties(
   std::string device_type = "Stream Grabber";
   std::string cache_filename =
       std::string(camera->GetDeviceInfo().GetModelName() + "_" +
-                  Pylon::VersionInfo::getVersionString() + "_" + VERSION);
+                  Pylon::GetPylonVersionString() + "_" + VERSION);
 
   GstPylonCache feature_cache(cache_filename);
 

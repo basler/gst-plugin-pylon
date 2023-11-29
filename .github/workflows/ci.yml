@@ -21,18 +21,14 @@ jobs:
       - name: Installer list
         run: |
           tee pylon-installer.txt <<"EOF"
-          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.3.0.27189_linux-x86_64_setup.tar.gz
-          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.2.1.25747_x86_64_setup.tar.gz
-          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.1.0.25066_x86_64_setup.tar.gz
-          ${PYLON_DOWNLOAD_URL_BASE}/pylon_6.3.0.23157_x86_64_setup.tar.gz
+          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7_4_0_14900_linux_aarch64_setup.tar.gz
           ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.3.0.27189_linux-aarch64_setup.tar.gz
-          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.2.1.25747_aarch64_setup.tar.gz
-          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.1.0.25066_aarch64_setup.tar.gz
           ${PYLON_DOWNLOAD_URL_BASE_62}/pylon_6.2.0.21487_aarch64_setup.tar.gz
+          ${PYLON_DOWNLOAD_URL_BASE}/pylon-7.4.0.14900_linux-x86_64_setup.tar.gz
+          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.3.0.27189_linux-x86_64_setup.tar.gz
+          ${PYLON_DOWNLOAD_URL_BASE}/basler_pylon_7_4_0_14900.exe
           ${PYLON_DOWNLOAD_URL_BASE}/Basler_pylon_7.3.0.27189.exe
-          ${PYLON_DOWNLOAD_URL_BASE}/Basler_pylon_7.2.1.25747.exe
-          ${PYLON_DOWNLOAD_URL_BASE}/Basler_pylon_7.1.0.25066.exe
-          ${PYLON_DOWNLOAD_URL_BASE}/pylon-6.2.0.21487.dmg
+          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7_3_1_0011.dmg
           EOF
 
       - name: Fetch installers
@@ -64,10 +60,10 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        os: [windows-latest]
-        py_version: [7.3.0.27189, 7.2.1.25747, 7.1.0.25066 ]
+        os: [windows-2019]
+        py_version: [basler_pylon_7_4_0_14900, Basler_pylon_7.3.0.27189 ]
       fail-fast: false
-    runs-on: ${{ matrix.os }} 
+    runs-on: ${{ matrix.os }}
     name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -75,34 +71,56 @@ jobs:
         with:
           name: pylon-installer
           path: pylon-installer
-      - uses: seanmiddleditch/gha-setup-vsdevenv@master
       - name: install pylon
         run: |
-          Start-Process .\pylon-installer\Basler_pylon_${{ matrix.py_version }}.exe -Wait -ArgumentList '/quiet /install=SDKs;Cpp_Runtime;CamEmu_Support' 
+          Start-Process .\pylon-installer\${{ matrix.py_version }}.exe -Wait -ArgumentList '/quiet /install=SDKs;Cpp_Runtime;CamEmu_Support'
 
       - name: install meson
         run: |
           pip install meson ninja
 
-      - name: install gstreamer
-        run: |
-          Invoke-WebRequest https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi -outfile gstreamer.msi
-          Invoke-WebRequest https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-devel-msvc-x86_64-1.20.3.msi -outfile gstreamer-dev.msi
-          Start-Process msiexec.exe -Wait -ArgumentList '/I gstreamer.msi  /quiet'
-          Start-Process msiexec.exe -Wait -ArgumentList '/I gstreamer-dev.msi  /quiet'
+      - name: Download Gstreamer
+        uses: suisei-cn/actions-download-file@v1
+        with:
+          url:    https://gstreamer.freedesktop.org/data/pkg/windows/1.22.7/msvc//gstreamer-1.0-msvc-x86_64-1.22.7.msi
+          target: ${{ runner.temp }}\
+
+      - name: Download Gstreamer dev
+        uses: suisei-cn/actions-download-file@v1
+        with:
+          url:    https://gstreamer.freedesktop.org/data/pkg/windows/1.22.7/msvc/gstreamer-1.0-devel-msvc-x86_64-1.22.7.msi
+          target: ${{ runner.temp }}\
+
+      - name: Install Gstreamer
+        run:  |
+            cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-msvc-x86_64-1.22.7.msi TARGETDIR="C:\" /quiet ADDLOCAL=ALL /L*V gst.log
+            cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-devel-msvc-x86_64-1.22.7.msi TARGETDIR="C:\" /quiet ADDLOCAL=ALL /L*V dev.log
+            cat gst.log
+            cat dev.log
+
+      - name: Set up Visual Studio shell
+        uses: egor-tensin/vs-shell@v2
+        with:
+          arch: x64
 
       - name: compile
         run: |
-          # access to pkg-config 
-          $env:GSTREAMER_1_0_ROOT_MSVC_X86_64 = "C:\gstreamer\1.0\msvc_x86_64\"
+          # access to pkg-config
+          $env:GSTREAMER_1_0_ROOT_MSVC_X86_64 = "C:\gstreamer\1.0\msvc_x86_64"
           $env:CMAKE_PREFIX_PATH = "C:\Program Files\Basler\pylon 7\Development\CMake\pylon\"
           $env:Path = "$env:GSTREAMER_1_0_ROOT_MSVC_X86_64\bin;" + $env:Path
           $env:PKG_CONFIG_PATH = "$env:GSTREAMER_1_0_ROOT_MSVC_X86_64\lib\pkgconfig"
-          
+          $env:PKG_CONFIG = "$env:GSTREAMER_1_0_ROOT_MSVC_X86_64\bin\pkg-config"
+
           meson setup build --prefix="$env:GSTREAMER_1_0_ROOT_MSVC_X86_64"
           ninja -C build
           ninja -C build test
           ninja -C build install
+
+      - name: Print meson log
+        if: ${{ failure() }}
+        run: |
+          cat  build/meson-logs/meson-log.txt
 
       - name: test
         run: |
@@ -118,7 +136,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu18.04, ubuntu20.04, ubuntu22.04]
-        py_version: [7.3.0.27189_linux-aarch64, 7.2.1.25747_aarch64, 7.1.0.25066_aarch64, 6.2.0.21487_aarch64 ]
+        py_version: [7_4_0_14900_linux_aarch64, 7.3.0.27189_linux-aarch64, 6.2.0.21487_aarch64 ]
       fail-fast: false
     runs-on: ubuntu-latest
     name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}-aarch64
@@ -136,20 +154,20 @@ jobs:
           distro: ${{ matrix.os }}
           # Create an artifacts directory
           setup: |
-            mkdir -p "${PWD}/artifacts"          
+            mkdir -p "${PWD}/artifacts"
           dockerRunArgs: |
-            --volume "${PWD}/pylon-installer:/pylon-installer"         
-      
+            --volume "${PWD}/pylon-installer:/pylon-installer"
+
           run: |
             uname -a
-        
+
             # install pylon
-            PYLON_TGZ=$(readlink -m /pylon-installer/pylon_${{ matrix.py_version }}_setup.tar.gz)
+            PYLON_TGZ=$(readlink -m /pylon-installer/pylon?${{ matrix.py_version }}_setup.tar.gz)
             mkdir pylon_tmp
             pushd pylon_tmp
             tar -xf $PYLON_TGZ
             mkdir -p /opt/pylon
-            tar -C /opt/pylon -xzf pylon?${{ matrix.py_version }}.tar.gz
+            tar -C /opt/pylon -xzf pylon*aarch64.tar.gz
             popd
 
             # install required environment
@@ -198,7 +216,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04, ubuntu-22.04]
-        py_version: [7.3.0.27189_linux-x86_64, 7.2.1.25747_x86_64, 7.1.0.25066_x86_64, 6.3.0.23157_x86_64 ]
+        py_version: [7.4.0.14900_linux-x86_64, 7.3.0.27189_linux-x86_64]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}
@@ -212,12 +230,14 @@ jobs:
 
       - name: install pylon
         run: |
-          PYLON_TGZ=$(readlink -m pylon-installer/pylon_${{ matrix.py_version }}_setup.tar.gz)
+          PYLON_TGZ=$(readlink -m pylon-installer/pylon?${{ matrix.py_version }}_setup.tar.gz)
           mkdir pylon_tmp
           pushd pylon_tmp
           tar -xf $PYLON_TGZ
           sudo mkdir -p /opt/pylon
-          sudo tar -C /opt/pylon -xzf pylon?${{ matrix.py_version }}.tar.gz
+          sudo tar -C /opt/pylon -xzf pylon*x86_64.tar.gz
+          # install codemeter
+          sudo apt-get install -y /opt/pylon/share/pylon/codemeter_*.deb --fix-broken || echo "Codemeter install failed"
           popd
 
       - name: install required environment
