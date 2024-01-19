@@ -227,7 +227,7 @@ void gst_pylon_object_set_pylon_feature<GGetDouble, Pylon::CFloatParameter>(
     GstPylonObjectPrivate* priv, GGetDouble get_value, const GValue* value,
     const gchar* name) {
   Pylon::CFloatParameter param(*priv->nodemap, name);
-  int64_t gst_val = get_value(value);
+  double gst_val = get_value(value);
   bool value_corrected = false;
   if (priv->enable_correction &&
       (gst_val > param.GetMax() || gst_val < param.GetMin())) {
