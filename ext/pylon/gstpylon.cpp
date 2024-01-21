@@ -51,6 +51,7 @@
 #include "gstpylonimagehandler.h"
 #include "gstpylonsysmembufferfactory.h"
 
+#include <atomic>
 #include <map>
 #include <vector>
 
@@ -122,6 +123,7 @@ static gchar *gst_pylon_get_string_properties(
 static constexpr gint DEFAULT_ALIGNMENT = 35;
 
 struct _GstPylon {
+  ~_GstPylon() { gst_pylon_terminate(); };
   GstElement *gstpylonsrc;
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera =
       std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
@@ -147,9 +149,19 @@ static const std::vector<GstStPixelFormats> gst_structure_formats = {
     {"video/x-raw", pixel_format_mapping_raw},
     {"video/x-bayer", pixel_format_mapping_bayer}};
 
-void gst_pylon_initialize() { Pylon::PylonInitialize(); }
+std::atomic<int> pylon_refcount(0);
 
-void gst_pylon_terminate() { Pylon::PylonTerminate(); }
+void gst_pylon_initialize() {
+  Pylon::PylonInitialize();
+  pylon_refcount++;
+  printf("PYLON_REF Init %d\n", pylon_refcount.load());
+}
+
+void gst_pylon_terminate() {
+  Pylon::PylonTerminate();
+  pylon_refcount--;
+  printf("PYLON_REF Term %d\n", pylon_refcount.load());
+}
 
 static std::string gst_pylon_get_camera_fullname(
     Pylon::CBaslerUniversalInstantCamera &camera) {
