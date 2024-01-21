@@ -221,6 +221,7 @@ static void gst_pylon_src_class_init(GstPylonSrcClass *klass) {
   const gchar *cam_prolog = NULL;
   const gchar *stream_prolog = NULL;
 
+  /* prepare access to pylon */
   gst_pylon_initialize();
 
   /* Setting up pads and setting metadata should be moved to
@@ -387,10 +388,16 @@ static void gst_pylon_src_class_init(GstPylonSrcClass *klass) {
   base_src_class->query = GST_DEBUG_FUNCPTR(gst_pylon_src_query);
 
   push_src_class->create = GST_DEBUG_FUNCPTR(gst_pylon_src_create);
+
+  /* free pylon ressources */
+  gst_pylon_terminate();
 }
 
 static void gst_pylon_src_init(GstPylonSrc *self) {
   GstBaseSrc *base = GST_BASE_SRC(self);
+
+  /* prepare access to pylon */
+  gst_pylon_initialize();
 
   self->pylon = NULL;
   self->duration = GST_CLOCK_TIME_NONE;
@@ -541,6 +548,7 @@ static void gst_pylon_src_finalize(GObject *object) {
     self->stream = NULL;
   }
 
+  /* free pylon ressources */
   gst_pylon_terminate();
 
   G_OBJECT_CLASS(gst_pylon_src_parent_class)->finalize(object);
