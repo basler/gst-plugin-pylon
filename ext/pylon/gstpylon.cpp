@@ -566,7 +566,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
         grab_result_ptr, static_cast<GDestroyNotify>(free_ptr_grab_result));
   } else {
 #endif
-    gsize buffer_size = (*grab_result_ptr)->GetBufferSize();
+    gsize buffer_size = (*grab_result_ptr)->GetImageSize();
     *buf = gst_buffer_new_wrapped_full(
         static_cast<GstMemoryFlags>(0), (*grab_result_ptr)->GetBuffer(),
         buffer_size, 0, buffer_size, grab_result_ptr,
