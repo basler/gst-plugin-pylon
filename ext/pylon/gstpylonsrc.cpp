@@ -690,6 +690,7 @@ static gboolean gst_pylon_src_set_caps(GstBaseSrc *src, GstCaps *caps) {
     self->duration = GST_CLOCK_TIME_NONE;
   }
   GST_OBJECT_UNLOCK(self);
+  gst_element_post_message (GST_ELEMENT_CAST (self), gst_message_new_latency (GST_OBJECT_CAST (self)));
 
   ret = gst_pylon_stop(self->pylon, &error);
   if (FALSE == ret && error) {
@@ -871,14 +872,14 @@ static gboolean gst_pylon_src_query(GstBaseSrc *src, GstQuery *query) {
       if (GST_CLOCK_TIME_NONE == self->duration) {
         GST_WARNING_OBJECT(
             src, "Can't report latency since framerate is not fixated yet");
-        goto done;
+        max_latency = min_latency = 0;
+      } else {
+        /* FIXME: we are assuming we cannot hold more than one
+           buffer. Eventually we want to have Pylon::StartGrabbing's
+           MaxNumImages extend the max_latency.
+         */
+        max_latency = min_latency = self->duration;
       }
-
-      /* FIXME: we are assuming we cannot hold more than one
-         buffer. Eventually we want to have Pylon::StartGrabbing's
-         MaxNumImages extend the max_latency.
-       */
-      max_latency = min_latency = self->duration;
 
       GST_DEBUG_OBJECT(
           self, "report latency min %" GST_TIME_FORMAT " max %" GST_TIME_FORMAT,
@@ -894,7 +895,6 @@ static gboolean gst_pylon_src_query(GstBaseSrc *src, GstQuery *query) {
       break;
   }
 
-done:
   return res;
 }
 
