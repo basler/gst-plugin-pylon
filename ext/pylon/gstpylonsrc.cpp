@@ -866,13 +866,14 @@ static gboolean gst_pylon_src_query(GstBaseSrc *src, GstQuery *query) {
 
   switch (GST_QUERY_TYPE(query)) {
     case GST_QUERY_LATENCY: {
-      GstClockTime min_latency = GST_CLOCK_TIME_NONE;
-      GstClockTime max_latency = GST_CLOCK_TIME_NONE;
+      GstClockTime min_latency;
+      GstClockTime max_latency;
 
       if (GST_CLOCK_TIME_NONE == self->duration) {
         GST_WARNING_OBJECT(
             src, "Can't report latency since framerate is not fixated yet");
-        max_latency = min_latency = 0;
+        min_latency = 0;
+        max_latency = GST_CLOCK_TIME_NONE;
       } else {
         /* FIXME: we are assuming we cannot hold more than one
            buffer. Eventually we want to have Pylon::StartGrabbing's
