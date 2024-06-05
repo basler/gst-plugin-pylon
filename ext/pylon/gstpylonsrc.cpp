@@ -875,10 +875,6 @@ static gboolean gst_pylon_src_query(GstBaseSrc *src, GstQuery *query) {
         min_latency = 0;
         max_latency = GST_CLOCK_TIME_NONE;
       } else {
-        /* FIXME: we are assuming we cannot hold more than one
-           buffer. Eventually we want to have Pylon::StartGrabbing's
-           MaxNumImages extend the max_latency.
-         */
         max_latency = min_latency = self->duration;
       }
 
