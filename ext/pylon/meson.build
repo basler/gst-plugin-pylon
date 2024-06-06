@@ -39,7 +39,8 @@ gstpylon_plugin = library('gstpylon',
   gnu_symbol_visibility: 'inlineshidden',
   dependencies : dependencies,
   install : true,
-  install_dir : plugins_install_dir
+  install_dir : plugins_install_dir,
+  install_rpath : pylon_rpath
 )
 
 plugins += [gstpylon_plugin]

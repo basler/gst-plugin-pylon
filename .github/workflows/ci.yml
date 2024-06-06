@@ -12,43 +12,174 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+
+env:
+  PYLON_DOWNLOAD_URL_BASE: ${{ secrets.PYLON_DOWNLOAD_URL_BASE }}
+  PYLON_DOWNLOAD_URL_BASE_FALLBACK: ${{ secrets.PYLON_DOWNLOAD_URL_BASE_FALLBACK }}
+  
+  # FIXME: versions still required in the matrix jobs
+  LINUX_AARCH64_VERSIONS: |
+    7.5.0.15658
+    7.4.0.14900
+    6.2.0.21487
+
+  # final versions to test
+  _LINUX_X86_64_VERSIONS: |
+    7.5.0.15658
+    7.4.0.14900
+
+  # work around for download issue with pylon 7.5
+  LINUX_X86_64_VERSIONS: |
+    7.4.0.14900
+
+  WINDOWS_VERSIONS: |
+    7.5.0.15658
+    7.4.0.14900
+
+  MACOS_VERSIONS: |
+    7.3.1.0011
+
+    
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
       is_release_build: ${{ env.RELEASE_BUILD == '1' }}
     steps:
-      - name: Installer list
-        run: |
-          tee pylon-installer.txt <<"EOF"
-          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7_4_0_14900_linux_aarch64_setup.tar.gz
-          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.3.0.27189_linux-aarch64_setup.tar.gz
-          ${PYLON_DOWNLOAD_URL_BASE_62}/pylon_6.2.0.21487_aarch64_setup.tar.gz
-          ${PYLON_DOWNLOAD_URL_BASE}/pylon-7.4.0.14900_linux-x86_64_setup.tar.gz
-          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7.3.0.27189_linux-x86_64_setup.tar.gz
-          ${PYLON_DOWNLOAD_URL_BASE}/basler_pylon_7_4_0_14900.exe
-          ${PYLON_DOWNLOAD_URL_BASE}/Basler_pylon_7.3.0.27189.exe
-          ${PYLON_DOWNLOAD_URL_BASE}/pylon_7_3_1_0011.dmg
-          EOF
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-      - name: Fetch installers
-        env:
-          PYLON_DOWNLOAD_URL_BASE: ${{ secrets.PYLON_DOWNLOAD_URL_BASE }}
-          PYLON_DOWNLOAD_URL_BASE_62: ${{ secrets.PYLON_DOWNLOAD_URL_BASE_62 }}
+      - name: Download Pylon SDK files
+        id: download-pylon-sdks
         run: |
-          mkdir pylon-installer && cd pylon-installer
-          while read line; do
-            url=$(eval echo "$line")
-            echo "download $url"
-            curl -sSfL -O "$url"
-          done <../pylon-installer.txt
-          echo "Download result"
-          ls -l
-          md5sum *
-      - uses: actions/upload-artifact@v3
+          #set -e
+          #set -x
+
+          download_file() {
+            local file=$1
+            local fpath=$2
+            local base_url="${{ env.PYLON_DOWNLOAD_URL_BASE }}"
+            local fallback_url="${{ env.PYLON_DOWNLOAD_URL_BASE_FALLBACK }}"
+            local success=0
+
+            # create target dir
+            mkdir -p $fpath
+          
+            # Extract version, prefix, and suffix from the filename
+            local version=$(echo $file | grep -oP '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
+            local prefix=$(echo $file | grep -oP '^[^0-9]+')
+            local suffix=$(echo $file | grep -oP '((_|-)(linux(_|-))?(aarch64.setup.tar.gz|x86_64.setup\.tar\.gz)|.exe|.dmg)$')
+            
+            # Define possible variations
+            local prefixes=("${prefix}" "${prefix//-/_}" "${prefix//_/-}" )
+            local versions=("${version}" "${version//./_}" "${version//_/.}")
+            local suffixes=("${suffix}" "${suffix//-/_}" "${suffix//_/-}")
+          
+            # If the file starts with "Basler", consider both "Basler" and "basler"
+            if [[ $prefix == "Basler-pylon-"* ]]; then
+              prefixes+=("basler-pylon-${prefix#Basler-pylon-}")
+              prefixes+=("basler_pylon_${prefix#Basler-pylon-}")
+            fi
+
+            # handle pylon 7.4 x86
+            if [[ $suffix == "-linux"* ]]; then
+              suffixes+=("_linux${suffix#-linux}")
+            fi
+
+            # handle 6.2 on arm with out linux prefix
+            if [[ $suffix == "-linux-aarch64"* ]]; then
+              suffixes+=("_aarch64${suffix#-linux-aarch64}")
+            fi
+
+          # Generate all permutations of prefix, version, and suffix and try base URL first
+            for pre in "${prefixes[@]}"; do
+              for ver in "${versions[@]}"; do
+                for suf in "${suffixes[@]}"; do
+                  local pattern="${pre}${ver}${suf}"
+                  if wget -c -q "$base_url/$pattern" -O "$fpath/$file"; then
+                  # if curl --output /dev/null --silent --head --fail "$base_url/$pattern"; then
+                    success=1
+                    break 3
+                  fi
+                done
+              done
+            done
+
+            # If not found in base URL, try fallback URL
+            if [[ $success -ne 1 ]]; then
+              for pre in "${prefixes[@]}"; do
+                for ver in "${versions[@]}"; do
+                  for suf in "${suffixes[@]}"; do
+                    local pattern="${pre}${ver}${suf}"
+                    if wget -c -q "$fallback_url/$pattern" -O "$fpath/$file"; then
+                    # debug if curl --output /dev/null --silent --head --fail "$fallback_url/$pattern"; then
+                      success=1
+                      break 3
+                    fi
+                  done
+                done
+              done
+            fi 
+            
+            if [[ $success -ne 1 ]]; then
+              echo "Failed to download $file" >&2
+              exit 1
+            fi
+          }
+                    
+          generate_and_download_files() {
+            local versions=$1
+            local prefix=$2
+            local suffix=$3
+            local fpath=$4
+            local filenames=()
+
+            echo "Download $fpath"
+
+            for version in $versions; do
+              local file="${prefix}${version}${suffix}"
+              filenames+=("$fpath/$file")
+              echo "    $file"
+              download_file "$file" "$fpath"
+            done
+          }
+          
+          # convert multiline github action vars into bash 
+          linux_aarch64_versions="$(echo '${{ env.LINUX_AARCH64_VERSIONS }}' | tr '\n' ' ')"
+          linux_x86_64_versions="$(echo '${{ env.LINUX_X86_64_VERSIONS }}' | tr '\n' ' ' )"
+          windows_versions="$( echo '${{ env.WINDOWS_VERSIONS }}' | tr '\n' ' ' )"
+          macos_versions="$( echo  '${{ env.MACOS_VERSIONS }}' | tr '\n' ' ' )"
+
+          generate_and_download_files "$linux_aarch64_versions" "pylon-" "-linux-aarch64_setup.tar.gz" "linux_aarch64_sdk"
+          generate_and_download_files "$linux_x86_64_versions" "pylon-" "-linux-x86_64_setup.tar.gz" "linux_x86_64_sdk"
+          generate_and_download_files "$windows_versions" "Basler-pylon-" ".exe" "windows_sdk"
+          generate_and_download_files "$macos_versions" "pylon-" ".dmg" "macos_sdk"
+
+
+      - name: Upload Pylon SDK for Linux aarch64
+        uses: actions/upload-artifact@v3
         with:
-          name: pylon-installer
-          path: pylon-installer
+          name: Linux_aarch64_Pylon
+          path: linux_aarch64_sdk
+
+      - name: Upload Pylon SDK for Linux x86_64
+        uses: actions/upload-artifact@v3
+        with:
+          name: Linux_x86_64_Pylon
+          path: linux_x86_64_sdk
+
+      - name: Upload Pylon SDK for Windows
+        uses: actions/upload-artifact@v3
+        with:
+          name: Windows_Pylon
+          path: windows_sdk
+
+      - name: Upload Pylon SDK for macOS
+        uses: actions/upload-artifact@v3
+        with:
+          name: macOS_Pylon
+          path: macos_sdk
 
       - name: Check for release build
         if: startsWith(github.ref, 'refs/tags/')
@@ -60,8 +191,8 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        os: [windows-2019]
-        py_version: [basler_pylon_7_4_0_14900, Basler_pylon_7.3.0.27189 ]
+        os: [ windows-2019 ]
+        py_version: [ 7.5.0.15658, 7.4.0.14900] 
       fail-fast: false
     runs-on: ${{ matrix.os }}
     name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}
@@ -69,11 +200,11 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
-          name: pylon-installer
+          name: Windows_Pylon
           path: pylon-installer
       - name: install pylon
         run: |
-          Start-Process .\pylon-installer\${{ matrix.py_version }}.exe -Wait -ArgumentList '/quiet /install=SDKs;Cpp_Runtime;CamEmu_Support'
+          Start-Process .\pylon-installer\Basler-pylon-${{ matrix.py_version }}.exe -Wait -ArgumentList '/quiet /install=SDKs;Cpp_Runtime;CamEmu_Support'
 
       - name: install meson
         run: |
@@ -135,8 +266,8 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        os: [ubuntu18.04, ubuntu20.04, ubuntu22.04]
-        py_version: [7_4_0_14900_linux_aarch64, 7.3.0.27189_linux-aarch64, 6.2.0.21487_aarch64 ]
+        os: [ubuntu18.04, ubuntu20.04, ubuntu22.04 ]
+        py_version: [ 7.5.0.15658, 7.4.0.14900, 6.2.0.21487 ] 
       fail-fast: false
     runs-on: ubuntu-latest
     name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}-aarch64
@@ -144,8 +275,9 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
-          name: pylon-installer
+          name: Linux_aarch64_Pylon
           path: pylon-installer
+
       - uses: uraimo/run-on-arch-action@v2
         name: build and test aarch64
         id: runcmd
@@ -162,7 +294,7 @@ jobs:
             uname -a
 
             # install pylon
-            PYLON_TGZ=$(readlink -m /pylon-installer/pylon?${{ matrix.py_version }}_setup.tar.gz)
+            PYLON_TGZ=$(readlink -m /pylon-installer/pylon-${{ matrix.py_version }}-linux-aarch64_setup.tar.gz)
             mkdir pylon_tmp
             pushd pylon_tmp
             tar -xf $PYLON_TGZ
@@ -175,9 +307,12 @@ jobs:
             # remove conflicting package
             dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && apt-get remove -y libunwind-14-dev
             # install required build tools
-            apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools
-            pip3 install pip --upgrade
-            pip3 install meson ninja
+            apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools python3-venv
+            python3 -m venv build_python
+            # activate the python environment
+            . build_python/bin/activate
+            pip install pip --upgrade
+            pip install meson ninja
 
             # compile gcc
             export PYLON_ROOT=/opt/pylon
@@ -215,8 +350,10 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04]
-        py_version: [7.4.0.14900_linux-x86_64, 7.3.0.27189_linux-x86_64]
+        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+        # until 7.5 download works
+        # py_version: [ 7.5.0.15658, 7.4.0.14900] 
+        py_version: [ 7.4.0.14900] 
       fail-fast: false
     runs-on: ${{ matrix.os }}
     name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}
@@ -225,12 +362,12 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: pylon-installer
+          name: Linux_x86_64_Pylon
           path: pylon-installer
 
       - name: install pylon
         run: |
-          PYLON_TGZ=$(readlink -m pylon-installer/pylon?${{ matrix.py_version }}_setup.tar.gz)
+          PYLON_TGZ=$(readlink -m pylon-installer/pylon-${{ matrix.py_version }}-linux-x86_64_setup.tar.gz)
           mkdir pylon_tmp
           pushd pylon_tmp
           tar -xf $PYLON_TGZ
@@ -246,15 +383,18 @@ jobs:
           # remove conflicting package
           sudo dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && sudo apt-get remove -y libunwind-14-dev
           # install required build tools
-          sudo apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools
-          pip3 install pip --upgrade
-          pip3 install meson ninja
+          sudo apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools python3-venv
+          python3 -m venv build_python
+          . build_python/bin/activate
+          pip install pip --upgrade
+          pip install meson ninja
 
       - name: compile gcc
         run: |
           export PYLON_ROOT=/opt/pylon
           export CC=gcc
           export CXX=g++
+          . build_python/bin/activate
           meson setup builddir_gcc --prefix $PWD/install_gcc
           ninja -C builddir_gcc
           ninja -C builddir_gcc test
@@ -265,6 +405,7 @@ jobs:
           export PYLON_ROOT=/opt/pylon
           export CC=clang
           export CXX=clang++
+          . build_python/bin/activate
           meson setup builddir_clang --prefix $PWD/install_clang
           ninja -C builddir_clang
           ninja -C builddir_clang test
@@ -275,6 +416,7 @@ jobs:
           export GST_PLUGIN_PATH=$PWD/install_gcc/lib/x86_64-linux-gnu/gstreamer-1.0
           export LD_LIBRARY_PATH=$PWD/install_gcc/lib/x86_64-linux-gnu/
           export PYLON_CAMEMU=1
+
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
 
@@ -285,6 +427,7 @@ jobs:
           export PYLON_CAMEMU=1
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
+
 
   cleanup:
     if: always()
@@ -299,6 +442,11 @@ jobs:
     - uses: geekyeggo/delete-artifact@v2
       continue-on-error: true
       with:
-        name: pylon-installer
+        name: |
+          Linux_x86_64_Pylon
+          Linux_aarch64_Pylon
+          Windows_Pylon
+          macOS_Pylon
 
+          
 
