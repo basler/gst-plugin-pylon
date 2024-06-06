@@ -302,9 +302,12 @@ jobs:
             # remove conflicting package
             dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && apt-get remove -y libunwind-14-dev
             # install required build tools
-            apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools
-            pip3 install pip --upgrade
-            pip3 install meson ninja
+            apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools python3-venv
+            python3 -m venv build_python
+            # activate the python environment
+            . build_python/bin/activate
+            pip install pip --upgrade
+            pip install meson ninja
 
             # compile gcc
             export PYLON_ROOT=/opt/pylon
@@ -373,15 +376,18 @@ jobs:
           # remove conflicting package
           sudo dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && sudo apt-get remove -y libunwind-14-dev
           # install required build tools
-          sudo apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools
-          pip3 install pip --upgrade
-          pip3 install meson ninja
+          sudo apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools python3-venv
+          python3 -m venv build_python
+          . build_python/bin/activate
+          pip install pip --upgrade
+          pip install meson ninja
 
       - name: compile gcc
         run: |
           export PYLON_ROOT=/opt/pylon
           export CC=gcc
           export CXX=g++
+          . build_python/bin/activate
           meson setup builddir_gcc --prefix $PWD/install_gcc
           ninja -C builddir_gcc
           ninja -C builddir_gcc test
@@ -392,6 +398,7 @@ jobs:
           export PYLON_ROOT=/opt/pylon
           export CC=clang
           export CXX=clang++
+          . build_python/bin/activate
           meson setup builddir_clang --prefix $PWD/install_clang
           ninja -C builddir_clang
           ninja -C builddir_clang test
@@ -402,6 +409,7 @@ jobs:
           export GST_PLUGIN_PATH=$PWD/install_gcc/lib/x86_64-linux-gnu/gstreamer-1.0
           export LD_LIBRARY_PATH=$PWD/install_gcc/lib/x86_64-linux-gnu/
           export PYLON_CAMEMU=1
+
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
 
