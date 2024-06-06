@@ -23,8 +23,13 @@ env:
     7.4.0.14900
     6.2.0.21487
 
-  LINUX_X86_64_VERSIONS: |
+  # final versions to test
+  _LINUX_X86_64_VERSIONS: |
     7.5.0.15658
+    7.4.0.14900
+
+  # work around for download issue with pylon 7.5
+  LINUX_X86_64_VERSIONS: |
     7.4.0.14900
 
   WINDOWS_VERSIONS: |
@@ -346,7 +351,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
-        py_version: [ 7.5.0.15658, 7.4.0.14900] 
+        # until 7.5 download works
+        # py_version: [ 7.5.0.15658, 7.4.0.14900] 
+        py_version: [ 7.4.0.14900] 
       fail-fast: false
     runs-on: ${{ matrix.os }}
     name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}
