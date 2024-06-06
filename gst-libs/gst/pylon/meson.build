@@ -19,15 +19,15 @@ pylon_dep = dependency('pylon', method : 'cmake', modules : ['pylon::pylon'],
 if pylon_dep.found()
   # patch rpath on linux
   if target_machine.system() == 'linux'
-    pylon_link_args = ['-Wl,--enable-new-dtags', '-Wl,-rpath,' + pylon_path / 'lib']
+    pylon_rpath = pylon_path / 'lib'
   else
-    pylon_link_args = []
+    pylon_rpath = ''
   endif
 else
     message('fallback to detect pylon 6.x')
     pylon_dep = dependency('pylon', method : 'cmake', cmake_module_path: meson.project_source_root() + '/cmake', required: true)
     # runtime path is properly defined by cmake
-    pylon_link_args = []
+    pylon_rpath = ''
 endif
 
 gstpylon_sources = [ 
@@ -59,11 +59,12 @@ gstpylon = library('gstpylon-' + api_version,
   gstpylon_sources,
   c_args : gst_plugin_pylon_args + '-DBUILDING_EXT_PYLONSRC',
   cpp_args : gst_plugin_pylon_args + '-DBUILDING_EXT_PYLONSRC',
-  link_args : [noseh_link_args, pylon_link_args],
+  link_args : [noseh_link_args],
   gnu_symbol_visibility: 'inlineshidden',
   include_directories : [configinc],
   dependencies : [gstbase_dep, gstvideo_dep, pylon_dep],
   install : true,
+  install_rpath : pylon_rpath
 )
 
 # generate pkgconfig file
@@ -71,7 +72,6 @@ pkgconfig.generate(gstpylon, description : 'Basler Pylon gstreamer source')
 
 # set dependency for plugin code examples
 gstpylon_dep = declare_dependency(link_with : gstpylon,
-  link_args : pylon_link_args,
   dependencies : [gstbase_dep, gstvideo_dep, pylon_dep])
 
 # For examples to mimic what they would to on an installed setud
