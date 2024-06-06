@@ -329,17 +329,17 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
                                         Pylon::Cleanup_None);
     self->mem_type = MEM_SYSMEM;
 
+#ifdef NVMM_ENABLED
+    self->nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
+    self->gpu_id = PROP_GPU_ID_DEFAULT;
+#endif
+
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
     delete self;
     self = NULL;
   }
-
-#ifdef NVMM_ENABLED
-  self->nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
-  self->gpu_id = PROP_GPU_ID_DEFAULT;
-#endif
 
   return self;
 }
