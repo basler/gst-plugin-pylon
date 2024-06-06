@@ -1,21 +1,32 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.7.1] - 2024-01-xx
+## [0.7.1] - 2024-06-06
 ### Changed
 - check for cuda version >= 11 to enable nvmm code
   * nvmm support implementation is only compatible to cuda >= 11
   * fixes #60
 - update documentation to build on Windows
   * fixes #68
+- latency update
+  * src now sends a message to recompute pipeline latency when it becomes known
+  * fixed by #104
 
 ### Fixed
 - float features working again
   * fixes #80
 - build now works with the changes in meson >= 1.3.0
   * fixes #72
+- build now works with the changes in meson >= 1.4.0
+- fixed CI on ubuntu 24.04
+- fixed invalid buffer size with enabled chunks ( non NVMM mode ) 
+  * fixed by #101
+- fixed possible segfault path in NVMM error path
+  * fixed by #103
 
 ### Added
+- Pylon 7.5
+  * supports to build the plugin with pylon 7.5 now
 - Pylon 7.4
   * supports to build the plugin with pylon 7.4 now
 

@@ -337,7 +337,7 @@ As a first step install Basler pylon according to your platform. Downloads are a
 The supported pylon versions on the different platforms are:
 
 
-|                 | 7.4  | 7.3  | 6.2  |
+|                 | 7.5  | 7.4  | 6.2  |
 |-----------------|:----:|:----:|:----:|
 | Windows x86_64  |  x   |   x  |      |
 | Linux x86_64    |  x   |   x  |      |
