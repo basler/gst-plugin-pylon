@@ -1,0 +1,18 @@
+{
+    "linux-x86_64": {
+        "targets": ["ubuntu-20.04", "ubuntu-22.04", "ubuntu-24.04"],
+        "pylon_sdks": ["7.4.0.14900", "7.5.0.15658"]
+    },
+    "linux-aarch64": {
+        "targets": ["ubuntu18.04", "ubuntu20.04", "ubuntu22.04"],
+        "pylon_sdks": ["6.2.0.21487", "7.4.0.14900", "7.5.0.15658"]
+    },
+    "windows": {
+        "targets": ["windows-2019", "windows-2022"],
+        "pylon_sdks": ["7.4.0.14900", "7.5.0.15658"]
+    },
+    "macos": {
+        "targets": ["macos-12", "macos-13", "macos-14"],
+        "pylon_sdks": ["7.3.1.0011"]
+    }
+}
