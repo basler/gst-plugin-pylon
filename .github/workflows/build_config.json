@@ -4,7 +4,7 @@
         "pylon_sdks": ["7.4.0.14900", "7.5.0.15658"]
     },
     "linux-aarch64": {
-        "targets": ["ubuntu-18.04", "ubuntu-20.04", "ubuntu-22.04"],
+        "targets": ["ubuntu18.04", "ubuntu20.04", "ubuntu22.04"],
         "pylon_sdks": ["6.2.0.21487", "7.4.0.14900", "7.5.0.15658"]
     },
     "windows": {
