@@ -1,10 +1,5 @@
-# basic compile and test workflow for gst-plugin-pylon
-
-name: CI
-
-# Controls when the workflow will run
+name: CI for gstreamer
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
   pull_request:
     branches: ["main"]
@@ -13,198 +8,113 @@ on:
   workflow_dispatch:
 
 
-env:
-  PYLON_DOWNLOAD_URL_BASE: ${{ secrets.PYLON_DOWNLOAD_URL_BASE }}
-  PYLON_DOWNLOAD_URL_BASE_FALLBACK: ${{ secrets.PYLON_DOWNLOAD_URL_BASE_FALLBACK }}
-  
-  # FIXME: versions still required in the matrix jobs
-  LINUX_AARCH64_VERSIONS: |
-    7.5.0.15658
-    7.4.0.14900
-    6.2.0.21487
-
-  # final versions to test
-  _LINUX_X86_64_VERSIONS: |
-    7.5.0.15658
-    7.4.0.14900
-
-  # work around for download issue with pylon 7.5
-  LINUX_X86_64_VERSIONS: |
-    7.4.0.14900
-
-  WINDOWS_VERSIONS: |
-    7.5.0.15658
-    7.4.0.14900
-
-  MACOS_VERSIONS: |
-    7.3.1.0011
-
-    
 
 jobs:
-  prepare:
+  setup:
     runs-on: ubuntu-latest
-    outputs:
-      is_release_build: ${{ env.RELEASE_BUILD == '1' }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - uses: jfrog/setup-jfrog-cli@v3
+      env:
+       JF_URL: ${{ secrets.SDK_URL }}
+       JF_ACCESS_TOKEN: ${{ secrets.SDK_TOKEN }}
+ 
+    - name: Checkout repository
+      uses: actions/checkout@v2
+ 
+    # login
+    - run: |
+        jf c add --url=$JF_URL --access-token=$JF_ACCESS_TOKEN --interactive=false
 
-      - name: Download Pylon SDK files
-        id: download-pylon-sdks
-        run: |
-          #set -e
-          #set -x
-
-          download_file() {
-            local file=$1
-            local fpath=$2
-            local base_url="${{ env.PYLON_DOWNLOAD_URL_BASE }}"
-            local fallback_url="${{ env.PYLON_DOWNLOAD_URL_BASE_FALLBACK }}"
-            local success=0
-
-            # create target dir
-            mkdir -p $fpath
-          
-            # Extract version, prefix, and suffix from the filename
-            local version=$(echo $file | grep -oP '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
-            local prefix=$(echo $file | grep -oP '^[^0-9]+')
-            local suffix=$(echo $file | grep -oP '((_|-)(linux(_|-))?(aarch64.setup.tar.gz|x86_64.setup\.tar\.gz)|.exe|.dmg)$')
-            
-            # Define possible variations
-            local prefixes=("${prefix}" "${prefix//-/_}" "${prefix//_/-}" )
-            local versions=("${version}" "${version//./_}" "${version//_/.}")
-            local suffixes=("${suffix}" "${suffix//-/_}" "${suffix//_/-}")
-          
-            # If the file starts with "Basler", consider both "Basler" and "basler"
-            if [[ $prefix == "Basler-pylon-"* ]]; then
-              prefixes+=("basler-pylon-${prefix#Basler-pylon-}")
-              prefixes+=("basler_pylon_${prefix#Basler-pylon-}")
+    # download 
+    - name: Download files from Artifactory
+      id: get_matrix
+      run: |
+        set +x
+        set -e
+        build_config=$(cat .github/workflows/build_config.json)
+        for os in $(echo $build_config | jq -r 'keys[]'); do
+          # setup matrix keys
+          if [[ $os == "windows" || $os == "macos" ]]; then
+            targets=$(echo $build_config | jq -c ".\"$os\".targets")
+            echo "${os}_targets=$targets" >> $GITHUB_OUTPUT
+            pylon_sdks=$(echo $build_config | jq -c ".\"$os\".pylon_sdks")
+            echo "${os}_pylon_sdks=$pylon_sdks" >> $GITHUB_OUTPUT
+          elif [[ $os == "linux-x86_64" || $os == "linux-aarch64" ]]; then
+            targets=$(echo $build_config | jq -c ".\"$os\".targets")
+            echo "${os}_targets=$targets" >> $GITHUB_OUTPUT
+            pylon_sdks=$(echo $build_config | jq -c ".\"$os\".pylon_sdks")
+            echo "${os}_pylon_sdks=$pylon_sdks" >> $GITHUB_OUTPUT
+          fi        
+          for pylon_sdk in $(echo $build_config | jq -r --arg os "$os" '.[$os].pylon_sdks[]'); do
+            if [[ $os == "windows" || $os == "macos" ]]; then
+              jf rt dl --flat --props "pylon_os=${os,,};pylon_version=$pylon_sdk" "pylon-sdks-generic/*" ./${os,,}_sdk/
+            elif [[ $os == "linux-x86_64" ]]; then
+              jf rt dl --flat --props "pylon_architecture=x86_64;pylon_os=linux;pylon_version=$pylon_sdk" "pylon-sdks-generic/*" ./linux_x86_64_sdk/
+            elif [[ $os == "linux-aarch64" ]]; then
+              jf rt dl --flat --props "pylon_architecture=aarch64;pylon_os=linux;pylon_version=$pylon_sdk" "pylon-sdks-generic/*" ./linux_aarch64_sdk/
             fi
+          done
+        done
 
-            # handle pylon 7.4 x86
-            if [[ $suffix == "-linux"* ]]; then
-              suffixes+=("_linux${suffix#-linux}")
-            fi
+    - name: Upload Pylon SDK for Linux aarch64
+      uses: actions/upload-artifact@v4
+      with:
+        name: Linux_aarch64_Pylon
+        path: linux_aarch64_sdk
 
-            # handle 6.2 on arm with out linux prefix
-            if [[ $suffix == "-linux-aarch64"* ]]; then
-              suffixes+=("_aarch64${suffix#-linux-aarch64}")
-            fi
+    - name: Upload Pylon SDK for Linux x86_64
+      uses: actions/upload-artifact@v4
+      with:
+        name: Linux_x86_64_Pylon
+        path: linux_x86_64_sdk
 
-          # Generate all permutations of prefix, version, and suffix and try base URL first
-            for pre in "${prefixes[@]}"; do
-              for ver in "${versions[@]}"; do
-                for suf in "${suffixes[@]}"; do
-                  local pattern="${pre}${ver}${suf}"
-                  if wget -c -q "$base_url/$pattern" -O "$fpath/$file"; then
-                  # if curl --output /dev/null --silent --head --fail "$base_url/$pattern"; then
-                    success=1
-                    break 3
-                  fi
-                done
-              done
-            done
+    - name: Upload Pylon SDK for Windows
+      uses: actions/upload-artifact@v4
+      with:
+        name: Windows_Pylon
+        path: windows_sdk
 
-            # If not found in base URL, try fallback URL
-            if [[ $success -ne 1 ]]; then
-              for pre in "${prefixes[@]}"; do
-                for ver in "${versions[@]}"; do
-                  for suf in "${suffixes[@]}"; do
-                    local pattern="${pre}${ver}${suf}"
-                    if wget -c -q "$fallback_url/$pattern" -O "$fpath/$file"; then
-                    # debug if curl --output /dev/null --silent --head --fail "$fallback_url/$pattern"; then
-                      success=1
-                      break 3
-                    fi
-                  done
-                done
-              done
-            fi 
-            
-            if [[ $success -ne 1 ]]; then
-              echo "Failed to download $file" >&2
-              exit 1
-            fi
-          }
-                    
-          generate_and_download_files() {
-            local versions=$1
-            local prefix=$2
-            local suffix=$3
-            local fpath=$4
-            local filenames=()
+    - name: Upload Pylon SDK for macOS
+      uses: actions/upload-artifact@v4
+      with:
+        name: macOS_Pylon
+        path: macos_sdk
 
-            echo "Download $fpath"
+    - name: Check for release build
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        echo "Build release for $GITHUB_REF"
+        echo "RELEASE_BUILD=1" >> $GITHUB_ENV
 
-            for version in $versions; do
-              local file="${prefix}${version}${suffix}"
-              filenames+=("$fpath/$file")
-              echo "    $file"
-              download_file "$file" "$fpath"
-            done
-          }
-          
-          # convert multiline github action vars into bash 
-          linux_aarch64_versions="$(echo '${{ env.LINUX_AARCH64_VERSIONS }}' | tr '\n' ' ')"
-          linux_x86_64_versions="$(echo '${{ env.LINUX_X86_64_VERSIONS }}' | tr '\n' ' ' )"
-          windows_versions="$( echo '${{ env.WINDOWS_VERSIONS }}' | tr '\n' ' ' )"
-          macos_versions="$( echo  '${{ env.MACOS_VERSIONS }}' | tr '\n' ' ' )"
-
-          generate_and_download_files "$linux_aarch64_versions" "pylon-" "-linux-aarch64_setup.tar.gz" "linux_aarch64_sdk"
-          generate_and_download_files "$linux_x86_64_versions" "pylon-" "-linux-x86_64_setup.tar.gz" "linux_x86_64_sdk"
-          generate_and_download_files "$windows_versions" "Basler-pylon-" ".exe" "windows_sdk"
-          generate_and_download_files "$macos_versions" "pylon-" ".dmg" "macos_sdk"
-
-
-      - name: Upload Pylon SDK for Linux aarch64
-        uses: actions/upload-artifact@v3
-        with:
-          name: Linux_aarch64_Pylon
-          path: linux_aarch64_sdk
-
-      - name: Upload Pylon SDK for Linux x86_64
-        uses: actions/upload-artifact@v3
-        with:
-          name: Linux_x86_64_Pylon
-          path: linux_x86_64_sdk
-
-      - name: Upload Pylon SDK for Windows
-        uses: actions/upload-artifact@v3
-        with:
-          name: Windows_Pylon
-          path: windows_sdk
-
-      - name: Upload Pylon SDK for macOS
-        uses: actions/upload-artifact@v3
-        with:
-          name: macOS_Pylon
-          path: macos_sdk
-
-      - name: Check for release build
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          echo "Build release for $GITHUB_REF"
-          echo "RELEASE_BUILD=1" >> $GITHUB_ENV
+    outputs:
+      linux_x86_64_targets: ${{ steps.get_matrix.outputs.linux-x86_64_targets }}
+      linux_x86_64_pylon_sdks: ${{ steps.get_matrix.outputs.linux-x86_64_pylon_sdks }}
+      linux_aarch64_targets: ${{ steps.get_matrix.outputs.linux-aarch64_targets }}
+      linux_aarch64_pylon_sdks: ${{ steps.get_matrix.outputs.linux-aarch64_pylon_sdks }}
+      windows_targets: ${{ steps.get_matrix.outputs.windows_targets }}
+      windows_pylon_sdks: ${{ steps.get_matrix.outputs.windows_pylon_sdks }}
+      macos_targets: ${{ steps.get_matrix.outputs.macos_targets }}
+      macos_pylon_sdks: ${{ steps.get_matrix.outputs.macos_pylon_sdks }}
+    
 
   build_windows_x86_64:
-    needs: prepare
+    needs: setup
     strategy:
       matrix:
-        os: [ windows-2019 ]
-        py_version: [ 7.5.0.15658, 7.4.0.14900] 
+        os: ${{  fromJson(needs.setup.outputs.windows_targets ) }}
+        pylon_sdk: ${{  fromJson(needs.setup.outputs.windows_pylon_sdks ) }}
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}
+    name: Build gstreamer for ${{ matrix.pylon_sdk }} on ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: Windows_Pylon
           path: pylon-installer
       - name: install pylon
         run: |
-          Start-Process .\pylon-installer\Basler-pylon-${{ matrix.py_version }}.exe -Wait -ArgumentList '/quiet /install=SDKs;Cpp_Runtime;CamEmu_Support'
+          Start-Process .\pylon-installer\Basler-pylon-${{ matrix.pylon_sdk }}.exe -Wait -ArgumentList '/quiet /install=SDKs;Cpp_Runtime;CamEmu_Support'
 
       - name: install meson
         run: |
@@ -261,19 +171,18 @@ jobs:
           gst-inspect-1.0.exe pylonsrc
           gst-launch-1.0.exe pylonsrc num-buffers=10 ! fakesink
 
-
   build_linux_aarch64:
-    needs: prepare
+    needs: setup
     strategy:
       matrix:
-        os: [ubuntu18.04, ubuntu20.04, ubuntu22.04 ]
-        py_version: [ 7.5.0.15658, 7.4.0.14900, 6.2.0.21487 ] 
+        os: ${{ fromJson(needs.setup.outputs.linux_aarch64_targets) }}
+        pylon_sdk: ${{ fromJson(needs.setup.outputs.linux_aarch64_pylon_sdks) }}
       fail-fast: false
     runs-on: ubuntu-latest
-    name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}-aarch64
+    name: Build pylon ${{ matrix.pylon_sdk }} on ${{ matrix.os }}-aarch64
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: Linux_aarch64_Pylon
           path: pylon-installer
@@ -294,7 +203,7 @@ jobs:
             uname -a
 
             # install pylon
-            PYLON_TGZ=$(readlink -m /pylon-installer/pylon-${{ matrix.py_version }}-linux-aarch64_setup.tar.gz)
+            PYLON_TGZ=$(readlink -m /pylon-installer/pylon-${{ matrix.pylon_sdk }}-linux-aarch64_setup.tar.gz)
             mkdir pylon_tmp
             pushd pylon_tmp
             tar -xf $PYLON_TGZ
@@ -345,29 +254,27 @@ jobs:
             export PYLON_CAMEMU=1
             gst-inspect-1.0 pylonsrc
             gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
-
+      
   build_linux_x86_64:
-    needs: prepare
+    needs: setup
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
-        # until 7.5 download works
-        # py_version: [ 7.5.0.15658, 7.4.0.14900] 
-        py_version: [ 7.4.0.14900] 
+        os: ${{ fromJson(needs.setup.outputs.linux_x86_64_targets) }}
+        pylon_sdk: ${{ fromJson(needs.setup.outputs.linux_x86_64_pylon_sdks) }}
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    name: Build pylon ${{ matrix.py_version }} on ${{ matrix.os }}
+    name: Build pylon ${{ matrix.pylon_sdk }} on ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: Linux_x86_64_Pylon
           path: pylon-installer
 
       - name: install pylon
         run: |
-          PYLON_TGZ=$(readlink -m pylon-installer/pylon-${{ matrix.py_version }}-linux-x86_64_setup.tar.gz)
+          PYLON_TGZ=$(readlink -m pylon-installer/pylon-${{ matrix.pylon_sdk }}-linux-x86_64_setup.tar.gz)
           mkdir pylon_tmp
           pushd pylon_tmp
           tar -xf $PYLON_TGZ
@@ -428,11 +335,11 @@ jobs:
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
 
-
+      
   cleanup:
     if: always()
     needs: [
-            prepare,
+            setup,
             build_linux_x86_64,
             build_linux_aarch64,
             build_windows_x86_64
@@ -447,6 +354,3 @@ jobs:
           Linux_aarch64_Pylon
           Windows_Pylon
           macOS_Pylon
-
-          
-
