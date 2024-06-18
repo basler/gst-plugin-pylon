@@ -1,0 +1,16 @@
+Source: gst-plugin-pylon
+Section: libs
+Priority: optional
+Maintainer: Basler AG <support.europe@baslerweb.com>
+Build-Depends: debhelper-compat (= 13), libgstreamer1.0-dev, libgstreamer-plugins-base1.0-dev, pylon, ninja-build, meson (>= 0.61), cmake
+Standards-Version: 4.5.1
+Homepage: https://github.com/basler/gst-plugin-pylon
+Vcs-Browser: https://github.com/basler/gst-plugin-pylon
+Vcs-Git: https://github.com/basler/gst-plugin-pylon
+Rules-Requires-Root: no
+
+Package: gst-plugin-pylon
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: The official GStreamer source plug-in for Basler cameras.
+ The official GStreamer source plug-in for Basler cameras powered by Basler pylon Camera Software Suite. This plugin allows to use any Basler 2D camera (supported by Basler pylon Camera Software Suite) as source element in a GStreamer pipeline.
