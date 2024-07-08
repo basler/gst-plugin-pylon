@@ -123,19 +123,19 @@ jobs:
       - name: Download Gstreamer
         uses: suisei-cn/actions-download-file@v1
         with:
-          url:    https://gstreamer.freedesktop.org/data/pkg/windows/1.22.7/msvc//gstreamer-1.0-msvc-x86_64-1.22.7.msi
+          url:    https://gstreamer.freedesktop.org/data/pkg/windows/1.24.5/msvc//gstreamer-1.0-msvc-x86_64-1.24.5.msi
           target: ${{ runner.temp }}\
 
       - name: Download Gstreamer dev
         uses: suisei-cn/actions-download-file@v1
         with:
-          url:    https://gstreamer.freedesktop.org/data/pkg/windows/1.22.7/msvc/gstreamer-1.0-devel-msvc-x86_64-1.22.7.msi
+          url:    https://gstreamer.freedesktop.org/data/pkg/windows/1.24.5/msvc/gstreamer-1.0-devel-msvc-x86_64-1.24.5.msi
           target: ${{ runner.temp }}\
 
       - name: Install Gstreamer
         run:  |
-            cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-msvc-x86_64-1.22.7.msi TARGETDIR="C:\" /quiet ADDLOCAL=ALL /L*V gst.log
-            cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-devel-msvc-x86_64-1.22.7.msi TARGETDIR="C:\" /quiet ADDLOCAL=ALL /L*V dev.log
+            cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-msvc-x86_64-1.24.5.msi TARGETDIR="C:\" /quiet ADDLOCAL=ALL /L*V gst.log
+            cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-devel-msvc-x86_64-1.24.5.msi TARGETDIR="C:\" /quiet ADDLOCAL=ALL /L*V dev.log
             cat gst.log
             cat dev.log
 
