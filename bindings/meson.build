@@ -27,6 +27,7 @@ incdir = include_directories('include')
 pymeta = py3.extension_module('pygstpylon',
                       pygstpylon_sources,
                       install : true,
+                      install_rpath : pylon_rpath,
                       cpp_args: ['-DHAVE_CONFIG_H=1'],
                       include_directories : [configinc, incdir],
                       gnu_symbol_visibility: 'inlineshidden',
