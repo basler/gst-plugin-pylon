@@ -1,0 +1,5 @@
+gst-plugin-pylon (0.7.2) unstable; urgency=medium
+
+  * Refer to Package Release Notes for details: https://github.com/basler/gst-plugin-pylon/blob/main/CHANGELOG.md
+
+ -- Basler AG <support.europe@baslerweb.com>  Tue, 09 Jul 2024 12:00:00 +0000
