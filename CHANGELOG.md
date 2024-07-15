@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.7.2] - 2024-07-12
+### Changed
+- add debian packaging
+  * CI builds for std x86/aarch64 ubuntu and debian targets
+  * Building deb packates for NVIDIA Jetson is documented in the README
+
+### Fixed
+- workaround for failed tests for Ubuntu 22.04
+  * fixes #111
+- fix nvmm error if no camera connected
+  * fixes #88 
+
 ## [0.7.1] - 2024-06-06
 ### Changed
 - check for cuda version >= 11 to enable nvmm code

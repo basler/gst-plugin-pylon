@@ -351,6 +351,8 @@ Installing Basler pylon SDK will also install the Basler pylon viewer. You shoul
 
 The differences in the build steps for [Linux](#Linux), [Windows](#Windows) and [macos](#macOS) are described in the next sections.
 
+Building debian packages locally is described in the sections  [Debian/Ubuntu](#debian-packaging) and [Nvidia Jetson](#debian-nvidia-packaging)
+
 ## Linux
 Make sure the dependencies are properly installed. In Debian-based
 systems you can run the following commands:
@@ -410,6 +412,59 @@ Finally, test for proper installation:
 gst-inspect-1.0 pylonsrc
 ```
 
+## Linux package building
+
+### Debian Packaging
+
+Install the pylon and codemeter debian packages. They will install into `/opt/pylon`
+
+Install the platform dependencies:
+
+```
+sudo apt-get install cmake meson ninja-build debhelper dh-python \
+                     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-python3-plugin-loader \
+                     python3 python3-dev python3-pip python3-setuptools pybind11-dev
+```
+
+Prepare the build setup ( from main project folder ):
+
+```
+ln -sfn packaging/debian
+tools/patch_deb_changelog.sh
+```
+
+Build the debian packages
+
+```
+PYLON_ROOT=/opt/pylon dpkg-buildpackage -us -uc -rfakeroot
+```
+
+### Debian NVIDIA Packaging
+
+Install the pylon and codemeter debian packages. They will install into `/opt/pylon`
+
+Install the platform dependencies:
+
+```
+sudo apt-get install cmake meson ninja-build debhelper dh-python \
+                     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-python3-plugin-loader \
+                     python3 python3-dev python3-pip python3-setuptools pybind11-dev \
+                     deepstream-6.3 # depending on platform deepstream-6.4 or deepstream-7.0
+```
+
+Prepare the build setup ( from main project folder ):
+
+```
+ln -sfn packaging/debian
+tools/patch_deb_changelog.sh
+```
+
+Build the debian packages using the nvidia profile
+
+```
+DEB_BUILD_PROFILES=nvidia PYLON_ROOT=/opt/pylon dpkg-buildpackage -us -uc -rfakeroot
+```
+
 ### Integrating with GStreamer monorepo
 
 The monorepo is a top-level repository that integrates and builds all
@@ -464,14 +519,14 @@ meson setup builddir --prefix /usr/ --werror --buildtype=debug -Dgobject-cast-ch
 ```
 
 ### Cross compilation for linux targets
-#### NVIDIA Jetson Jetpack
-TBD
 
 #### YOCTO recipe
 A reference yocto recipe for honister is available in the [meta-basler-tools](https://github.com/basler/meta-basler-tools/tree/honister/recipes-multimedia/gstreamer)
-on github. This recipe still needs a backport patch due to the version of meson tool in honister.
+on github. 
 
 Builds on yocto kirkstone and later work without the patch.
+
+( This recipe still needs a backport patch due to the version of meson tool in honister. )
 
 ## Windows
 Install the dependencies:
