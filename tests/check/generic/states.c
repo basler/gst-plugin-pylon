@@ -132,7 +132,7 @@ GST_START_TEST(test_state_changes_up_and_down_seq) {
   }
 }
 
-GST_END_TEST;
+GST_END_TEST
 
 GST_START_TEST(test_state_changes_up_seq) {
   GstElement *element;
@@ -164,7 +164,7 @@ GST_START_TEST(test_state_changes_up_seq) {
   }
 }
 
-GST_END_TEST;
+GST_END_TEST
 
 GST_START_TEST(test_state_changes_down_seq) {
   GstElement *element;
@@ -200,7 +200,7 @@ GST_START_TEST(test_state_changes_down_seq) {
   }
 }
 
-GST_END_TEST;
+GST_END_TEST
 
 static Suite *states_suite(void) {
   Suite *s = suite_create("states_good");
@@ -215,4 +215,4 @@ static Suite *states_suite(void) {
   return s;
 }
 
-GST_CHECK_MAIN(states);
+GST_CHECK_MAIN(states)
