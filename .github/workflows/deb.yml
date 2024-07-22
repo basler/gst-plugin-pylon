@@ -1,0 +1,132 @@
+name: Build Debian Packages
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: jfrog/setup-jfrog-cli@v3
+      env:
+       JF_URL: ${{ secrets.SDK_URL }}
+       JF_ACCESS_TOKEN: ${{ secrets.SDK_TOKEN }}
+
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # login
+    - run: |
+        jf c add --url=$JF_URL --access-token=$JF_ACCESS_TOKEN --interactive=false
+
+    # download·
+    - name: Download files from Artifactory
+      id: get_matrix
+      run: |
+        set +x
+        set -e
+        build_config=$(cat .github/workflows/build_config.json)
+        for os in $(echo $build_config | jq -r 'keys[]'); do
+          for pylon_sdk in $(echo $build_config | jq -r --arg os "$os" '.[$os].pylon_sdk_packaging'); do
+            if [[ $os == "linux-x86_64" ]]; then
+              jf rt dl --flat --props "pylon_architecture=x86_64;pylon_os=linux;pylon_version=$pylon_sdk;pylon_packaging=deb" "pylon-sdks-generic/*" ./linux_x86_64_sdk/
+            elif [[ $os == "linux-aarch64" ]]; then
+              jf rt dl --flat --props "pylon_architecture=aarch64;pylon_os=linux;pylon_version=$pylon_sdk;pylon_packaging=deb" "pylon-sdks-generic/*" ./linux_aarch64_sdk/
+            fi
+          done
+        done
+
+    - name: Upload Pylon SDK for Linux aarch64
+      uses: actions/upload-artifact@v4
+      with:
+        name: Linux_aarch64_packaging_Pylon
+        path: linux_aarch64_sdk
+
+    - name: Upload Pylon SDK for Linux x86_64
+      uses: actions/upload-artifact@v4
+      with:
+        name: Linux_x86_64_packaging_Pylon
+        path: linux_x86_64_sdk
+
+  build_deb:
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu:24.04
+          - ubuntu:22.04
+          - ubuntu:20.04
+          - debian:bookworm
+          - debian:bullseye
+        arch: ["arm64", "amd64"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download x86_64
+        if: matrix.arch == 'amd64'
+        uses: actions/download-artifact@v4
+        with:
+            name: Linux_x86_64_packaging_Pylon
+            path: pylon-installer
+
+      - name: Download aarch64
+        if: matrix.arch == 'arm64'
+        uses: actions/download-artifact@v4
+        with:
+            name: Linux_aarch64_packaging_Pylon
+            path: pylon-installer
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: linux/amd64, linux/arm64
+
+      - name: Set sanitized OS name
+        id: sanitize_os
+        run: |
+          SANITIZED_OS=$(echo ${{ matrix.os }} | sed 's/:/./g')
+          echo "SANITIZED_OS=$SANITIZED_OS" >> $GITHUB_ENV
+
+      - name: Build Debian Package
+        uses: jtdor/build-deb-action@v1
+        env:
+          DEB_BUILD_OPTIONS: noautodbgsym
+        with:
+          setup-hook: |
+             ln -sfn packaging/debian
+             apt-get update
+             cd /pylon-installer && tar -xvf *.tar.gz && apt-get install -y ./*.deb
+          docker-image: ${{ matrix.arch == 'arm64' && format('arm64v8/{0}', matrix.os) || format('{0}', matrix.os) }}
+          extra-docker-args: -v ${{ github.workspace }}/pylon-installer:/pylon-installer -e PYLON_ROOT=/opt/pylon
+          buildpackage-opts: --build=binary --no-sign
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: debian-packages-${{ env.SANITIZED_OS }}-${{ matrix.arch }}
+          path: debian/artifacts/
+
+
+
+  cleanup:
+    if: always()
+    needs: [
+            setup,
+            build_deb
+    ]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: geekyeggo/delete-artifact@v5
+      continue-on-error: true
+      with:
+        name: |
+          Linux_x86_64_packaging_Pylon
+          Linux_aarch64_packaging_Pylon
+  
