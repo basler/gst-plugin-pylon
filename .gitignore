@@ -28,4 +28,4 @@ __pycache__
 
 # subprojects
 subprojects/packagecache
-subprojects/pybind11-2.10.3
+subprojects/pybind11-*
