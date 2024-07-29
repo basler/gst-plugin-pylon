@@ -27,9 +27,13 @@ else
 endif
 
 
-## workaround for ubuntu 22.04 x86_64
+## workaround for gstreamer isssue on e.g. Ubuntu 22.04 x86_64 and aarch6
 if gst_plugin_scanner_dir != '' and not fs.exists(gst_plugin_scanner_dir)
-  gst_plugin_scanner_dir = '/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/'
+  if host_machine.cpu_family() == 'x86_64'
+    gst_plugin_scanner_dir = '/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/'
+  elif host_machine.cpu_family() == 'aarch64'
+    gst_plugin_scanner_dir = '/usr/lib/aarch64-linux-gnu/gstreamer1.0/gstreamer-1.0/'
+  endif
 endif
 ##
 
