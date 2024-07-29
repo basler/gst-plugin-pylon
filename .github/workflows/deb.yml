@@ -102,7 +102,9 @@ jobs:
           setup-hook: |
              ln -sfn packaging/debian
              apt-get update
-             cd /pylon-installer && tar -xvf *.tar.gz && apt-get install -y ./*.deb
+             (cd /pylon-installer && tar -xvf *.tar.gz && apt-get install -y ./*.deb)
+             # patch version to contain platform info
+             tools/patch_deb_changelog.sh
           docker-image: ${{ matrix.arch == 'arm64' && format('arm64v8/{0}', matrix.os) || format('{0}', matrix.os) }}
           extra-docker-args: -v ${{ github.workspace }}/pylon-installer:/pylon-installer -e PYLON_ROOT=/opt/pylon
           buildpackage-opts: --build=binary --no-sign
