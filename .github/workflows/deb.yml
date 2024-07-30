@@ -10,6 +10,8 @@ on:
 jobs:
   setup:
     runs-on: ubuntu-latest
+    outputs:
+      is_release_build: ${{ env.RELEASE_BUILD == '1' }}
     steps:
     - uses: jfrog/setup-jfrog-cli@v4
       env:
@@ -51,6 +53,12 @@ jobs:
       with:
         name: Linux_x86_64_packaging_Pylon
         path: linux_x86_64_sdk
+
+    - name: Check for release build
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        echo "Build release for $GITHUB_REF"
+        echo "RELEASE_BUILD=1" >> $GITHUB_ENV
 
   build_deb:
     runs-on: ubuntu-latest
@@ -115,6 +123,13 @@ jobs:
           name: debian-packages-${{ env.SANITIZED_OS }}-${{ matrix.arch }}
           path: debian/artifacts/
 
+      - name: Upload Release Asset
+        if: needs.setup.outputs.is_release_build == 'true'
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: ./debian/artifacts/*.deb
 
 
   cleanup:
@@ -131,4 +146,4 @@ jobs:
         name: |
           Linux_x86_64_packaging_Pylon
           Linux_aarch64_packaging_Pylon
-  
+
