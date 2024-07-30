@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.7.3] - 2024-07-30
+### Added
+- publish artifacts on release page
+
 ## [0.7.2] - 2024-07-12
 ### Changed
 - add debian packaging
