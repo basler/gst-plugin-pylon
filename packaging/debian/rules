@@ -16,7 +16,7 @@ NINJA_BIN := $(VENV_DIR)/bin/ninja
 # Ensure the virtual environment is set up and Meson/Ninja are installed
 $(MESON_BIN) $(NINJA_BIN):
 	python3 -m venv $(VENV_DIR) --without-pip --system-site-packages
-	$(VENV_DIR)/bin/python -m pip install meson ninja
+	$(VENV_DIR)/bin/python -m pip install meson ninja -I
 
 %: $(MESON_BIN) $(NINJA_BIN)
 	dh $@ --with python3 --buildsystem=meson

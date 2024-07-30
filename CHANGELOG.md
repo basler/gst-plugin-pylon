@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.7.3] - 2024-07-30
+### Added
+- publish artifacts on release page
+
+### Fixed
+- build debian package in case meson/ninja already installed
+
 ## [0.7.2] - 2024-07-12
 ### Changed
 - add debian packaging
