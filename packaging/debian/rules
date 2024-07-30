@@ -1,0 +1,51 @@
+#!/usr/bin/make -f
+
+# uncomment for verbose logging
+export DH_VERBOSE = 1
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_CFLAGS_MAINT_APPEND = -Wall -pedantic
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+export DEB_MESON_OPTIONS = -Dpython-bindings=enabled
+
+# Path to the virtual environment
+VENV_DIR := $(CURDIR)/debian/venv
+MESON_BIN := $(VENV_DIR)/bin/meson
+NINJA_BIN := $(VENV_DIR)/bin/ninja
+
+# Ensure the virtual environment is set up and Meson/Ninja are installed
+$(MESON_BIN) $(NINJA_BIN):
+	python3 -m venv $(VENV_DIR) --without-pip --system-site-packages
+	$(VENV_DIR)/bin/python -m pip install meson ninja
+
+%: $(MESON_BIN) $(NINJA_BIN)
+	dh $@ --with python3 --buildsystem=meson
+
+override_dh_auto_configure: $(MESON_BIN) $(NINJA_BIN)
+	PATH=$(VENV_DIR)/bin:$$PATH $(MESON_BIN) setup $(CURDIR) $(CURDIR)/debian/build --prefix=/usr $(DEB_MESON_OPTIONS)
+
+override_dh_auto_build: $(MESON_BIN) $(NINJA_BIN)
+	cd $(CURDIR)/debian/build && PATH=$(VENV_DIR)/bin:$$PATH $(NINJA_BIN)
+
+override_dh_auto_test: $(MESON_BIN) $(NINJA_BIN)
+	if echo "$(DEB_BUILD_PROFILES)" | grep -q "nvidia"; then \
+		if [ ! -f /proc/device-tree/compatible ] || ! grep -q "nvidia" /proc/device-tree/compatible; then \
+			echo "Skipping tests: NVIDIA profile detected but not running on NVIDIA hardware"; \
+			exit 0; \
+		fi; \
+	fi; \
+	echo "Running tests"; \
+	cd $(CURDIR)/debian/build && PATH=$(VENV_DIR)/bin:$$PATH $(NINJA_BIN) test; 
+
+override_dh_auto_install: $(MESON_BIN) $(NINJA_BIN)
+	cd $(CURDIR)/debian/build && DESTDIR=$(CURDIR)/debian/tmp PATH=$(VENV_DIR)/bin:$$PATH $(NINJA_BIN) install
+
+# handle pylon libs versioning and rpath
+override_dh_shlibdeps:
+	dh_shlibdeps -a -l/opt/pylon/lib -- --ignore-missing-info
+
+# Clean up the virtual environment
+override_dh_clean:
+	dh_clean
+	rm -rf $(VENV_DIR)
+

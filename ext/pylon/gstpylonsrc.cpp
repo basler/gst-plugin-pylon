@@ -782,10 +782,13 @@ static gboolean gst_pylon_src_start(GstBaseSrc *src) {
                               self->device_serial_number, self->device_index,
                               self->enable_correction, &error);
 #ifdef NVMM_ENABLED
-  gst_pylon_set_nvsurface_layout(
-      self->pylon,
-      static_cast<GstPylonNvsurfaceLayoutEnum>(self->nvsurface_layout));
-  gst_pylon_set_gpu_id(self->pylon, self->gpu_id);
+  /* setup nvbufsurface if a new device has been created */
+  if(self->pylon){
+      gst_pylon_set_nvsurface_layout(
+          self->pylon,
+          static_cast<GstPylonNvsurfaceLayoutEnum>(self->nvsurface_layout));
+      gst_pylon_set_gpu_id(self->pylon, self->gpu_id);
+  }
 #endif
   GST_OBJECT_UNLOCK(self);
 
