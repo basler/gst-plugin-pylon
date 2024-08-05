@@ -54,16 +54,12 @@ typedef enum {
 #  define PROP_NVSURFACE_LAYOUT_DEFAULT ENUM_PITCH
 #endif
 
-void gst_pylon_initialize();
-
 GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
                         const gchar *device_serial_number, gint device_index,
                         gboolean enable_correction, GError **err);
 gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
                                    GError **err);
 void gst_pylon_free(GstPylon *self);
-
-void gst_pylon_terminate();
 
 gboolean gst_pylon_start(GstPylon *self, GError **err);
 gboolean gst_pylon_stop(GstPylon *self, GError **err);

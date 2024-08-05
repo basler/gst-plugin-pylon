@@ -34,8 +34,8 @@
 #define GST_PYLON_SYSMEM_BUFFER_FACTORY_H
 
 #include <gst/gst.h>
+#include <gst/pylon/gstpylonincludes.h>
 #include <gstpylonbufferfactory.h>
-#include <pylon/PylonIncludes.h>
 
 class GstPylonSysMemBufferFactory : public GstPylonBufferFactory {
  public:

@@ -147,10 +147,6 @@ static const std::vector<GstStPixelFormats> gst_structure_formats = {
     {"video/x-raw", pixel_format_mapping_raw},
     {"video/x-bayer", pixel_format_mapping_bayer}};
 
-void gst_pylon_initialize() { Pylon::PylonInitialize(); }
-
-void gst_pylon_terminate() { Pylon::PylonTerminate(); }
-
 static std::string gst_pylon_get_camera_fullname(
     Pylon::CBaslerUniversalInstantCamera &camera) {
   return std::string(camera.GetDeviceInfo().GetFullName());
