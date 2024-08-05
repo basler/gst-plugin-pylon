@@ -50,6 +50,10 @@ static void gst_pylon_object_class_init(
     GstPylonObjectClass* klass, GstPylonObjectDeviceMembers* device_members);
 static gpointer gst_pylon_object_parent_class = NULL;
 static gint GstPylonObject_private_offset;
+
+/* manage lifetime of pylon sdk */
+Pylon::PylonAutoInitTerm autoInitTerm;
+
 static void gst_pylon_object_class_intern_init(
     gpointer klass, GstPylonObjectDeviceMembers* device_members) {
   gst_pylon_object_parent_class = g_type_class_peek_parent(klass);

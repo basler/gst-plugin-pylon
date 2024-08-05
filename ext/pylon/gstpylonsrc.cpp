@@ -54,6 +54,7 @@
 #include "gstpylonsrc.h"
 
 #include <gst/video/video.h>
+#include <pylon/PylonIncludes.h>
 
 struct _GstPylonSrc {
   GstPushSrc base_pylonsrc;
@@ -199,7 +200,7 @@ static GType gst_pylon_nvsurface_layout_enum_get_type(void) {
                                                ",height=" GST_VIDEO_SIZE_RANGE
                                                ",framerate"
                                                "=" GST_VIDEO_FPS_RANGE
-					       NVMM_GST_VIDEO_CAPS
+                                               NVMM_GST_VIDEO_CAPS
          )
     );
 // clang-format on
@@ -220,8 +221,6 @@ static void gst_pylon_src_class_init(GstPylonSrcClass *klass) {
   gchar *stream_blurb = NULL;
   const gchar *cam_prolog = NULL;
   const gchar *stream_prolog = NULL;
-
-  gst_pylon_initialize();
 
   /* Setting up pads and setting metadata should be moved to
      base_class_init if you intend to subclass this class. */
@@ -541,8 +540,6 @@ static void gst_pylon_src_finalize(GObject *object) {
     self->stream = NULL;
   }
 
-  gst_pylon_terminate();
-
   G_OBJECT_CLASS(gst_pylon_src_parent_class)->finalize(object);
 }
 
@@ -690,7 +687,8 @@ static gboolean gst_pylon_src_set_caps(GstBaseSrc *src, GstCaps *caps) {
     self->duration = GST_CLOCK_TIME_NONE;
   }
   GST_OBJECT_UNLOCK(self);
-  gst_element_post_message (GST_ELEMENT_CAST (self), gst_message_new_latency (GST_OBJECT_CAST (self)));
+  gst_element_post_message(GST_ELEMENT_CAST(self),
+                           gst_message_new_latency(GST_OBJECT_CAST(self)));
 
   ret = gst_pylon_stop(self->pylon, &error);
   if (FALSE == ret && error) {
@@ -783,11 +781,11 @@ static gboolean gst_pylon_src_start(GstBaseSrc *src) {
                               self->enable_correction, &error);
 #ifdef NVMM_ENABLED
   /* setup nvbufsurface if a new device has been created */
-  if(self->pylon){
-      gst_pylon_set_nvsurface_layout(
-          self->pylon,
-          static_cast<GstPylonNvsurfaceLayoutEnum>(self->nvsurface_layout));
-      gst_pylon_set_gpu_id(self->pylon, self->gpu_id);
+  if (self->pylon) {
+    gst_pylon_set_nvsurface_layout(
+        self->pylon,
+        static_cast<GstPylonNvsurfaceLayoutEnum>(self->nvsurface_layout));
+    gst_pylon_set_gpu_id(self->pylon, self->gpu_id);
   }
 #endif
   GST_OBJECT_UNLOCK(self);
