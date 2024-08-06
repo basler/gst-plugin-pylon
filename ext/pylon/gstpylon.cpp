@@ -130,7 +130,7 @@ struct _GstPylon {
   GstPylonImageHandler image_handler;
   GstPylonDisconnectHandler disconnect_handler;
 
-  std::unique_ptr<GstPylonBufferFactory> buffer_factory;
+  std::shared_ptr<GstPylonBufferFactory> buffer_factory;
   GstPylonMemoryTypeEnum mem_type;
 
   std::string requested_device_user_name;
@@ -142,6 +142,9 @@ struct _GstPylon {
   guint gpu_id;
 #endif
 };
+
+using GrabResultPair = std::pair<std::shared_ptr<GstPylonBufferFactory>,
+                                 Pylon::CBaslerUniversalGrabResultPtr *>;
 
 static const std::vector<GstStPixelFormats> gst_structure_formats = {
     {"video/x-raw", pixel_format_mapping_raw},
@@ -465,9 +468,12 @@ static void gst_pylon_add_result_meta(
 static void free_ptr_grab_result(gpointer data) {
   g_return_if_fail(data);
 
-  Pylon::CBaslerUniversalGrabResultPtr *ptr_grab_result =
-      static_cast<Pylon::CBaslerUniversalGrabResultPtr *>(data);
+  auto wrapped_data = static_cast<GrabResultPair *>(data);
+
+  Pylon::CBaslerUniversalGrabResultPtr *ptr_grab_result = wrapped_data->second;
   delete ptr_grab_result;
+
+  delete wrapped_data;
 }
 
 gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
@@ -564,15 +570,17 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
       return FALSE;
     }
 
+    auto buffer_ref = new GrabResultPair(self->buffer_factory, grab_result_ptr);
     *buf = gst_buffer_new_wrapped_full(
         GST_MEMORY_FLAG_READONLY, surf, sizeof(*surf), 0, sizeof(*surf),
-        grab_result_ptr, static_cast<GDestroyNotify>(free_ptr_grab_result));
+        buffer_ref, static_cast<GDestroyNotify>(free_ptr_grab_result));
   } else {
 #endif
     gsize buffer_size = (*grab_result_ptr)->GetImageSize();
+    auto buffer_ref = new GrabResultPair(self->buffer_factory, grab_result_ptr);
     *buf = gst_buffer_new_wrapped_full(
         static_cast<GstMemoryFlags>(0), (*grab_result_ptr)->GetBuffer(),
-        buffer_size, 0, buffer_size, grab_result_ptr,
+        buffer_size, 0, buffer_size, buffer_ref,
         static_cast<GDestroyNotify>(free_ptr_grab_result));
 #ifdef NVMM_ENABLED
   }
@@ -954,14 +962,14 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 #ifdef NVMM_ENABLED
   GstCapsFeatures *features = gst_caps_get_features(conf, 0);
   if (gst_caps_features_contains(features, "memory:NVMM")) {
-    self->buffer_factory = std::make_unique<GstPylonDsNvmmBufferFactory>(
+    self->buffer_factory = std::make_shared<GstPylonDsNvmmBufferFactory>(
         self->nvsurface_layout, self->gpu_id);
 
     self->buffer_factory->SetConfig(conf);
     self->mem_type = MEM_NVMM;
   } else {
 #endif
-    self->buffer_factory = std::make_unique<GstPylonSysMemBufferFactory>();
+    self->buffer_factory = std::make_shared<GstPylonSysMemBufferFactory>();
     self->mem_type = MEM_SYSMEM;
 #ifdef NVMM_ENABLED
   }
