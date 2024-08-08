@@ -53,8 +53,8 @@
 #include "gstpylon.h"
 #include "gstpylonsrc.h"
 
+#include <gst/pylon/gstpylonincludes.h>
 #include <gst/video/video.h>
-#include <pylon/PylonIncludes.h>
 
 struct _GstPylonSrc {
   GstPushSrc base_pylonsrc;
