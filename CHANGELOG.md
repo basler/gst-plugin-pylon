@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2024-08-xx
+### Fixed
+- NVMM image width is in byte not pixels!
+  * fixes #100
+
 ## [0.7.3] - 2024-07-30
 ### Added
 - publish artifacts on release page
