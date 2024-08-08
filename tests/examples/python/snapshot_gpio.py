@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#! /bin/env python3
 
 """ 
     Copyright (C) 2023 Basler AG
