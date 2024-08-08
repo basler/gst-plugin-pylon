@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - NVMM image width is in byte not pixels!
   * fixes #100
+- removing source while active buffers in pipeline
+  * fixes lifetime issue between buffers in pipeline and src
+  * fixes #54
 
 ## [0.7.3] - 2024-07-30
 ### Added
