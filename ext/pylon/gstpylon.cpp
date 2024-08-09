@@ -546,11 +546,18 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
     size_t src_stride;
     (*grab_result_ptr)->GetStride(src_stride);
 
+    /* calc src width in byte from pixel type info */
+    const auto src_width_pix = (*grab_result_ptr)->GetWidth();
+    const auto src_bit_per_pix =
+        Pylon::BitPerPixel((*grab_result_ptr)->GetPixelType());
+
+    g_assert(0 == (src_width_pix * src_bit_per_pix) % 8);
+    const size_t src_width = (src_width_pix * src_bit_per_pix) >> 3;
+
     cudaError_t cuda_err = cudaMemcpy2D(
         surf->surfaceList[0].mappedAddr.addr[0], surf->surfaceList[0].pitch,
-        (*grab_result_ptr)->GetBuffer(), src_stride,
-        (*grab_result_ptr)->GetWidth(), (*grab_result_ptr)->GetHeight(),
-        cudaMemcpyDefault);
+        (*grab_result_ptr)->GetBuffer(), src_stride, src_width,
+        (*grab_result_ptr)->GetHeight(), cudaMemcpyDefault);
     if (cuda_err != cudaSuccess) {
       g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                   "Error copying memory to device");
