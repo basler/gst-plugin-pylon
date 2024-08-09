@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 - removing source while active buffers in pipeline
   * fixes lifetime issue between buffers in pipeline and src
   * fixes #54
+- Proper init/terminate of pylon sdk from gst-plugin-scanner
+  * avoids output of an exception message after new install
 
 ## [0.7.3] - 2024-07-30
 ### Added
