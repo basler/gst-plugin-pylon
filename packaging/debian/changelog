@@ -1,4 +1,4 @@
-gst-plugin-pylon (0.7.3) unstable; urgency=medium
+gst-plugin-pylon (1.0.0) unstable; urgency=medium
 
   * Refer to Package Release Notes for details: https://github.com/basler/gst-plugin-pylon/blob/main/CHANGELOG.md
 
