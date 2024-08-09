@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="pygstpylon",
-    version="0.6.0",
+    version="1.0.0",
     author="Basler AG",
     description="python bindings to gstpylon",
     url="baslerweb.com",
