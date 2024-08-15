@@ -1,9 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - 2024-08-09
-### Added
+## [1.0.0] - 2024-08-14
+## Added
 - added script to generate release notes
+- added python example to show use of pylonmeta from pyth
+  * fixes #114
 
 ### Fixed
 - NVMM image width is in byte not pixels!
@@ -13,6 +15,11 @@ All notable changes to this project will be documented in this file.
   * fixes #54
 - Proper init/terminate of pylon sdk from gst-plugin-scanner
   * avoids output of an exception message after new install
+- Removed unused pylonc library dependency
+
+### Changed
+- Only export external header files to access PylonMeta
+
 
 ## [0.7.3] - 2024-07-30
 ### Added

@@ -211,40 +211,8 @@ G_DEFINE_TYPE_WITH_CODE(GstPylonSrc, gst_pylon_src, GST_TYPE_PUSH_SRC,
                         G_IMPLEMENT_INTERFACE(GST_TYPE_CHILD_PROXY,
                                               gst_pylon_src_child_proxy_init));
 
-static GstStateChangeReturn gst_pylon_change_state(GstElement *element,
-                                                   GstStateChange transition) {
-  GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
-
-  switch (transition) {
-    case GST_STATE_CHANGE_NULL_TO_READY:
-      /* initialize the pylon SDK */
-      Pylon::PylonInitialize();
-      break;
-
-    default:
-      break;
-  }
-
-  // Call the parent class's change_state method
-  ret = GST_ELEMENT_CLASS(gst_pylon_src_parent_class)
-            ->change_state(element, transition);
-
-  switch (transition) {
-    case GST_STATE_CHANGE_READY_TO_NULL:
-      /* shutdown the pylon SDK */
-      Pylon::PylonTerminate();
-      break;
-
-    default:
-      break;
-  }
-
-  return ret;
-}
-
 static void gst_pylon_src_class_init(GstPylonSrcClass *klass) {
   GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
-  GstElementClass *element_class = GST_ELEMENT_CLASS(klass);
   GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS(klass);
   GstPushSrcClass *push_src_class = GST_PUSH_SRC_CLASS(klass);
   gchar *cam_params = NULL;
@@ -418,7 +386,6 @@ static void gst_pylon_src_class_init(GstPylonSrcClass *klass) {
   base_src_class->stop = GST_DEBUG_FUNCPTR(gst_pylon_src_stop);
   base_src_class->unlock = GST_DEBUG_FUNCPTR(gst_pylon_src_unlock);
   base_src_class->query = GST_DEBUG_FUNCPTR(gst_pylon_src_query);
-  element_class->change_state = GST_DEBUG_FUNCPTR(gst_pylon_change_state);
   push_src_class->create = GST_DEBUG_FUNCPTR(gst_pylon_src_create);
 }
 
@@ -800,6 +767,9 @@ static gboolean gst_pylon_src_start(GstBaseSrc *src) {
   }
 
   GST_OBJECT_LOCK(self);
+
+  Pylon::PylonInitialize();
+
   GST_INFO_OBJECT(
       self,
       "Attempting to create camera device with the following configuration:"
@@ -857,6 +827,9 @@ log_gst_error:
                     ("%s", error->message));
   g_error_free(error);
 
+  /* no camera found. Stop pylon SDK */
+  Pylon::PylonTerminate();
+
 out:
   return ret;
 }
@@ -878,6 +851,8 @@ static gboolean gst_pylon_src_stop(GstBaseSrc *src) {
 
   gst_pylon_free(self->pylon);
   self->pylon = NULL;
+
+  Pylon::PylonTerminate();
 
   return ret;
 }

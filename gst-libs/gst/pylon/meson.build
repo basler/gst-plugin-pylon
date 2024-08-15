@@ -13,7 +13,7 @@ if target_machine.system() == 'linux' and (pylon_path == 'PYLON_ROOT_NOT_SET' or
 endif
 
 # detect pylon 7.x
-pylon_dep = dependency('pylon', method : 'cmake', modules : ['pylon::pylon'],
+pylon_dep = dependency('pylon', method : 'cmake', modules : ['pylon::PylonBase', 'pylon::PylonUtility'],
         version : '>=7.1', cmake_args : [ '-DCMAKE_PREFIX_PATH=' + pylon_path / 'share/pylon/cmake/', '-DPYLON_ROOT=' + pylon_path ] , required: false)
 
 if pylon_dep.found()
@@ -43,14 +43,7 @@ gstpylon_sources = [
 
 gstpylon_headers = [
   'gstpylon-prelude.h',
-  'gstpyloncache.h',
-  'gstpylondebug.h',
-  'gstpylonfeaturewalker.h',
-  'gstpylonintrospection.h',
   'gstpylonmeta.h',
-  'gstpylonmetaprivate.h',
-  'gstpylonobject.h',
-  'gstpylonparamspecs.h',
 ]
 
 install_headers(gstpylon_headers, subdir : 'gstreamer-1.0/gst/pylon/')
