@@ -13,7 +13,7 @@ You are welcome to post any questions or issues on [GitHub](https://github.com/b
 
 [![CI](https://github.com/basler/gst-plugin-pylon/actions/workflows/ci.yml/badge.svg)](https://github.com/basler/gst-plugin-pylon/actions/workflows/ci.yml)
 
-The next chapters describe how to [use](#getting-started) and [build](#Building) the *pylonsrc* plugin.
+The next chapters describe how to [install](#downloads-for-debian-and-ubuntu), [use](#getting-started) and [build](#Building) the *pylonsrc* plugin.
 
 # Getting started
 
@@ -327,6 +327,20 @@ gst-launch-1.0 pylonsrc cam::ChunkModeActive=True cam::ChunkEnable-LineStatusAll
         t. ! queue ! videoconvert  ! autovideosink
 ```
 
+# Downloads for Debian and Ubuntu
+
+The pylonsrc plugin can be downloaded for the following revisions of Ubuntu and Debian on the releases page.
+
+[Download the latest release](https://github.com/basler/gst-plugin-pylon/releases/latest)
+
+## Operating Systems with available downloads
+
+| Distribution | Versions |
+|--------------|---------------------|
+| Ubuntu       | 24.04, 22.04, 20.04 |
+| Debian       | 12 (Bookworm), 11 (Bullseye) |
+
+For any other OS you have to currently [build](#building) the plugin yourself.
 
 # Building
 
