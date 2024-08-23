@@ -50,6 +50,8 @@ class GstPylonDsNvmmBufferFactory : public GstPylonBufferFactory {
   virtual void DestroyBufferFactory() override;
 
  private:
+  size_t RoundUp(size_t N, size_t S) { return ((((N) + (S)-1) / (S)) * (S)); }
+
   NvBufSurfaceLayout layout;
   guint gpu_id;
   NvBufSurfaceAllocateParams create_params;
