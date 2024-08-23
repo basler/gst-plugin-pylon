@@ -236,7 +236,7 @@ Pylon features like `ExposureTime` or `Gain` are mapped to the gstreamer propert
 Set Exposuretime to 2000µs and Gain to 10.3dB:
 
 ```
-gst-launch-1.0 pylonsrc cam::ExposureTime=2000 cam::Gain=10.3 ! videoconvert ! autovideosink
+gst-launch-1.0 pylonsrc cam::ExposureAuto=0 cam::GainAuto=0 cam::ExposureTime=2000 cam::Gain=10.3 ! videoconvert ! autovideosink
 ```
 
 Pylon stream grabber parameters like MaxTransferSize or MaxNumBuffer are mapped to the gstreamer properties `stream::MaxTransferSize` and `stream::MaxNumBuffer`.
@@ -435,7 +435,7 @@ Install the pylon and codemeter debian packages. They will install into `/opt/py
 Install the platform dependencies:
 
 ```
-sudo apt-get install cmake meson ninja-build debhelper dh-python \
+sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot\
                      libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-python3-plugin-loader \
                      python3 python3-dev python3-pip python3-setuptools pybind11-dev
 ```
@@ -460,7 +460,7 @@ Install the pylon and codemeter debian packages. They will install into `/opt/py
 Install the platform dependencies:
 
 ```
-sudo apt-get install cmake meson ninja-build debhelper dh-python \
+sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot\
                      libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-python3-plugin-loader \
                      python3 python3-dev python3-pip python3-setuptools pybind11-dev \
                      deepstream-6.3 # depending on platform deepstream-6.4 or deepstream-7.0
@@ -594,9 +594,7 @@ To test without install:
 ```
 set GST_PLUGIN_PATH=build/ext/pylon
 
-%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin\gst-launch-1.0.exe
-
-pylonsrc ! videoconvert ! autovideosink
+%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin\gst-launch-1.0.exe pylonsrc ! videoconvert ! autovideosink
 ```
 
 To install into main gstreamer directory
