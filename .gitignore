@@ -12,6 +12,7 @@ Build
 # Meson
 /build
 /_build
+/builddir
 
 # vscode
 .vscode/
@@ -29,3 +30,5 @@ __pycache__
 # subprojects
 subprojects/packagecache
 subprojects/pybind11-*
+
+debian
