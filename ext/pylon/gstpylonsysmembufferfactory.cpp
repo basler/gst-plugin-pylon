@@ -32,15 +32,29 @@
 
 #include "gstpylonsysmembufferfactory.h"
 
+#if defined(__GNUC__)
+#include <stdlib.h>
+#include <unistd.h>
+#endif
+
 void GstPylonSysMemBufferFactory::AllocateBuffer(
     size_t buffer_size, void **p_created_buffer,
     intptr_t & /*buffer_context*/) {
-  *p_created_buffer = g_malloc(buffer_size);
+
+#if defined(__GNUC__)
+  const size_t PAGE_SIZE = getpagesize();
+  const size_t aligned_buffer_size = RoundUp(buffer_size, PAGE_SIZE);
+  int ret = posix_memalign(p_created_buffer, PAGE_SIZE, aligned_buffer_size);
+  if (ret)
+    *p_created_buffer = nullptr;
+#else
+  *p_created_buffer = malloc(buffer_size);
+#endif
 }
 
 void GstPylonSysMemBufferFactory::FreeBuffer(void *p_created_buffer,
                                              intptr_t /* buffer_context */) {
-  g_free(p_created_buffer);
+  free(p_created_buffer);
 }
 
 void GstPylonSysMemBufferFactory::DestroyBufferFactory() { delete this; }

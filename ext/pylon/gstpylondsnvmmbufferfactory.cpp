@@ -32,6 +32,11 @@
 
 #include "gstpylondsnvmmbufferfactory.h"
 
+#if defined(__GNUC__)
+#include <stdlib.h>
+#include <unistd.h>
+#endif
+
 #include <cuda_runtime.h>
 #include <gst/video/video.h>
 
@@ -82,9 +87,14 @@ void GstPylonDsNvmmBufferFactory::AllocateBuffer(size_t buffer_size,
                                                  intptr_t &buffer_context) {
   void *buffer_mem = nullptr;
 
-  buffer_mem = g_malloc(buffer_size);
+  const size_t PAGE_SIZE = getpagesize();
+  const size_t aligned_buffer_size = RoundUp(buffer_size, PAGE_SIZE);
 
-  create_params.params.size = buffer_size;
+  int ret = posix_memalign(&buffer_mem, PAGE_SIZE, aligned_buffer_size);
+  if (ret)
+    buffer_mem = nullptr;
+
+  create_params.params.size = aligned_buffer_size;
 
   /*
    * The optimal approach would be to us the nvsurface being allocated below
@@ -111,7 +121,7 @@ void GstPylonDsNvmmBufferFactory::FreeBuffer(void *p_created_buffer,
   NvBufSurface *surf = reinterpret_cast<NvBufSurface *>(buffer_context);
 
   NvBufSurfaceDestroy(surf);
-  g_free(p_created_buffer);
+  free(p_created_buffer);
 }
 
 void GstPylonDsNvmmBufferFactory::DestroyBufferFactory() { delete this; }

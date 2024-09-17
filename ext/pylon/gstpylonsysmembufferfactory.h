@@ -46,6 +46,9 @@ class GstPylonSysMemBufferFactory : public GstPylonBufferFactory {
   virtual void FreeBuffer(void *p_created_buffer,
                           intptr_t buffer_context) override;
   virtual void DestroyBufferFactory() override;
+
+ private:
+  size_t RoundUp(size_t N, size_t S) { return ((((N) + (S)-1) / (S)) * (S)); }
 };
 
 #endif
