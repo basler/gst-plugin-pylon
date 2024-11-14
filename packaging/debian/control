@@ -11,7 +11,7 @@ Build-Depends: debhelper-compat (= 11),
                libgstreamer1.0-dev,
                libgstreamer-plugins-base1.0-dev,
                pylon (= 7.5.0.15658-deb0) <!pylon7.4 !pylon7.2> | pylon (= 7.4.0.14900-deb0) <pylon7.4> | pylon (= 7.2.1.25747-deb0) <pylon7.2>,
-               deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia>
+               deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia> | deepstream-7.1 <nvidia>
 Standards-Version: 4.5.0
 Homepage: https://github.com/basler/gst-plugin-pylon
 
