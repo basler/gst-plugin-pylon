@@ -76,4 +76,19 @@ mv "$temp_file" "$changelog_file"
 
 echo "Changelog updated successfully to version ${new_version}"
 
+# prepare patching the control file
+
+# Check if pylon package is installed
+if ! dpkg -s pylon &> /dev/null; then
+    echo "Error: pylon package is not installed" >&2
+    exit 1
+fi
+
+# Get the exact Pylon package version
+PYLON_VERSION=$(dpkg -s pylon | grep Version | cut -d' ' -f2)
+
+# Modify the Depends lines to include exact Pylon version
+sed -i "s/Depends: pylon,/Depends: pylon (= $PYLON_VERSION),/" debian/control
+
+echo "Pylon dependency set to ${PYLON_VERSION}"
 
