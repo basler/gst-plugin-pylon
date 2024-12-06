@@ -92,7 +92,7 @@ jobs:
             path: pylon-installer
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v3.2.0
         with:
           platforms: linux/amd64, linux/arm64
 
