@@ -10,7 +10,7 @@ Build-Depends: debhelper-compat (= 11),
                python3-dev,
                libgstreamer1.0-dev,
                libgstreamer-plugins-base1.0-dev,
-               pylon (= 7.5.0.15658-deb0) <!pylon7.4 !pylon7.2> | pylon (= 7.4.0.14900-deb0) <pylon7.4> | pylon (= 7.2.1.25747-deb0) <pylon7.2>,
+               pylon,
                deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia>
 Standards-Version: 4.5.0
 Homepage: https://github.com/basler/gst-plugin-pylon
@@ -18,7 +18,7 @@ Homepage: https://github.com/basler/gst-plugin-pylon
 Package: gst-plugin-pylon
 Architecture: any
 Depends: libc6,
-         pylon (= 7.5.0.15658-deb0) <!pylon7.4 !pylon7.2> | pylon (= 7.4.0.14900-deb0) <pylon7.4> | pylon (= 7.2.1.25747-deb0) <pylon7.2>,
+         pylon,
          ${misc:Depends},
          gstreamer1.0-plugins-base,
          deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia>
@@ -28,7 +28,7 @@ Description: GStreamer plugin for Basler cameras
 
 Package: gst-plugin-pylon-dev
 Architecture: any
-Depends: pylon (= 7.5.0.15658-deb0) <!pylon7.4 !pylon7.2> | pylon (= 7.4.0.14900-deb0) <pylon7.4> | pylon (= 7.2.1.25747-deb0) <pylon7.2>,
+Depends: pylon,
          ${misc:Depends},
          gst-plugin-pylon
 Description: Development files for GStreamer plugin for Basler cameras
@@ -39,7 +39,7 @@ Package: python3-pygstpylon
 Architecture: any
 Depends: libc6,
          python3,
-         pylon (= 7.5.0.15658-deb0) <!pylon7.4 !pylon7.2> | pylon (= 7.4.0.14900-deb0) <pylon7.4> | pylon (= 7.2.1.25747-deb0) <pylon7.2>,
+         pylon,
          ${misc:Depends},
          gst-plugin-pylon,
          deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia>
