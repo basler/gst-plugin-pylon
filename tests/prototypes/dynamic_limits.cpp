@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 Basler AG
+/* Copyright (C) 2025 Basler AG
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -393,8 +393,8 @@ int main(int /*argc*/, char* /*argv*/[]) {
     camera.Open();
     for (const auto& node : walk_nodes(camera)) {
       find_limits(node, min_result, max_result, invalidators_result);
-      cout << node->GetName() << " "
-           << "(" << min_result << ", " << max_result << ", [ ";
+      cout << node->GetName() << " " << "(" << min_result << ", " << max_result
+           << ", [ ";
       for (const auto& i : invalidators_result) {
         cout << i->GetName() << " ";
       }

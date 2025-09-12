@@ -1,4 +1,4 @@
-/* Copyright (C) 2023 Basler AG
+/* Copyright (C) 2025 Basler AG
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,8 +33,8 @@
 #include "gstpylondsnvmmbufferfactory.h"
 
 #if defined(__GNUC__)
-#include <stdlib.h>
-#include <unistd.h>
+#  include <stdlib.h>
+#  include <unistd.h>
 #endif
 
 #include <cuda_runtime.h>
@@ -91,8 +91,7 @@ void GstPylonDsNvmmBufferFactory::AllocateBuffer(size_t buffer_size,
   const size_t aligned_buffer_size = RoundUp(buffer_size, PAGE_SIZE);
 
   int ret = posix_memalign(&buffer_mem, PAGE_SIZE, aligned_buffer_size);
-  if (ret)
-    buffer_mem = nullptr;
+  if (ret) buffer_mem = nullptr;
 
   create_params.params.size = aligned_buffer_size;
 

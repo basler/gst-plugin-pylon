@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-# Copyright (C) 2023 Basler AG
+# Copyright (C) 2025 Basler AG
 #
 #
 # Redistribution and use in source and binary forms, with or without

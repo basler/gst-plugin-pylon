@@ -1,4 +1,4 @@
-/* Copyright (C) 2023 Basler AG
+/* Copyright (C) 2025 Basler AG
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,7 +40,7 @@
 class GstPylonSysMemBufferFactory : public GstPylonBufferFactory {
  public:
   GstPylonSysMemBufferFactory() = default;
-  virtual void SetConfig(const GstCaps *caps) override{};
+  virtual void SetConfig(const GstCaps *caps) override {};
   virtual void AllocateBuffer(size_t buffer_size, void **p_created_buffer,
                               intptr_t &buffer_context) override;
   virtual void FreeBuffer(void *p_created_buffer,

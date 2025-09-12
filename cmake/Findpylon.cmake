@@ -1,6 +1,6 @@
 #.rst:
 # Findpylon.cmake
-# Copyright (c) 2021-2022 Basler AG
+# Copyright (c) 2021-2025 Basler AG
 # http://www.baslerweb.com
 #
 # Find and using pylon C++ SDK
