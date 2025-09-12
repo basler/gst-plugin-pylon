@@ -35,6 +35,7 @@
 #endif
 
 #include "gstpylondebug.h"
+#include "gstpylonfastparamfactory.h"
 #include "gstpylonfeaturewalker.h"
 #include "gstpylonparamfactory.h"
 
@@ -56,6 +57,8 @@ void gst_pylon_camera_install_specs(const std::vector<GParamSpec*>& specs_list,
                                     GObjectClass* oclass, gint& nprop);
 std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, GstPylonParamFactory& param_factory);
+std::vector<GParamSpec*> gst_pylon_camera_handle_node_fast(
+    GenApi::INode* node, GstPylonFastParamFactory& param_factory);
 
 static const std::unordered_set<std::string> propfilter_set = {
     "Width",
@@ -281,6 +284,52 @@ std::vector<GParamSpec*> gst_pylon_camera_handle_node(
   return specs_list;
 }
 
+std::vector<GParamSpec*> gst_pylon_camera_handle_node_fast(
+    GenApi::INode* node, GstPylonFastParamFactory& param_factory) {
+  GenApi::INode* selector_node = NULL;
+  gint64 selector_value = 0;
+  std::vector<GParamSpec*> specs_list;
+  Pylon::CEnumParameter param;
+
+  g_return_val_if_fail(node, specs_list);
+
+  std::vector<std::string> enum_values =
+      GstPylonFeatureWalker::process_selector_features(node, &selector_node);
+
+  /* If the number of selector values (stored in enum_values) is 1, leave
+   * selector_node NULL, hence treating the feature as a "direct" one. */
+  if (1 == enum_values.size()) {
+    selector_node = NULL;
+  }
+
+  for (auto& enum_value : enum_values) {
+    try {
+      if (NULL != selector_node) {
+        switch (selector_node->GetPrincipalInterfaceType()) {
+          case GenApi::intfIEnumeration:
+            param.Attach(selector_node);
+            selector_value =
+                param.GetEntryByName(enum_value.c_str())->GetValue();
+            break;
+          case GenApi::intfIInteger:
+            selector_value = std::stoi(enum_value);
+            break;
+          default:; /* do nothing */
+        }
+      }
+
+      specs_list.push_back(
+          param_factory.make_param(node, selector_node, selector_value));
+    } catch (const Pylon::GenericException& e) {
+      GST_DEBUG("Unable to fully install property '%s-%s' : %s",
+                node->GetName().c_str(), enum_value.c_str(),
+                e.GetDescription());
+    }
+  }
+
+  return specs_list;
+}
+
 void gst_pylon_camera_install_specs(const std::vector<GParamSpec*>& specs_list,
                                     GObjectClass* oclass, gint& nprop) {
   g_return_if_fail(oclass);
@@ -377,4 +426,79 @@ void GstPylonFeatureWalker::install_properties(
                   e.GetDescription());
     }
   }
+}
+
+void GstPylonFeatureWalker::install_properties_fast(
+    GObjectClass* oclass, GenApi::INodeMap& nodemap,
+    const std::string& device_fullname) {
+  g_return_if_fail(oclass);
+
+  GST_INFO("Using fast property installation mode for device %s",
+           device_fullname.c_str());
+
+  /* handle filter for debugging */
+  const char* single_feature = NULL;
+  if (const char* env_p = std::getenv("PYLONSRC_SINGLE_FEATURE")) {
+    GST_DEBUG("LIMIT to use only feature %s\n", env_p);
+    single_feature = env_p;
+  }
+
+  auto param_factory = GstPylonFastParamFactory(nodemap, device_fullname);
+
+  gint nprop = 1;
+  GenApi::INode* root_node = nodemap.GetNode("Root");
+  auto worklist = std::queue<GenApi::INode*>();
+
+  worklist.push(root_node);
+
+  while (!worklist.empty()) {
+    auto node = worklist.front();
+    worklist.pop();
+
+    /* Only handle real features that are not in the filter set, are not
+     * selectors and are available */
+    auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
+    auto category_node = dynamic_cast<GenApi::ICategory*>(node);
+    if (!category_node && node->IsFeature() &&
+        (node->GetVisibility() != GenApi::Invisible) &&
+        GenApi::IsImplemented(node) &&
+        !is_unsupported_feature(std::string(node->GetName())) &&
+        node->GetPrincipalInterfaceType() != GenApi::intfICategory &&
+        node->GetPrincipalInterfaceType() != GenApi::intfICommand &&
+        node->GetPrincipalInterfaceType() != GenApi::intfIRegister &&
+        sel_node && !sel_node->IsSelector()) {
+      GenICam::gcstring value;
+      GenICam::gcstring attrib;
+
+      try {
+        if (!single_feature ||
+            (single_feature && std::string(node->GetName().c_str()) ==
+                                   std::string(single_feature))) {
+          GST_DEBUG("Install node %s (fast mode)", node->GetName().c_str());
+          std::vector<GParamSpec*> specs_list =
+              gst_pylon_camera_handle_node_fast(node, param_factory);
+
+          gst_pylon_camera_install_specs(specs_list, oclass, nprop);
+        }
+      } catch (const Pylon::GenericException& e) {
+        GST_DEBUG("Unable to install property \"%s\" on device \"%s\": %s",
+                  node->GetName().c_str(), device_fullname.c_str(),
+                  e.GetDescription());
+      }
+    }
+
+    /* Walk down all categories */
+    if (category_node &&
+        !is_unsupported_category(std::string(node->GetName()))) {
+      GenApi::FeatureList_t features;
+      category_node->GetFeatures(features);
+      for (auto const& f : features) {
+        worklist.push(f->GetNode());
+      }
+    }
+  }
+
+  GST_INFO(
+      "Fast property installation completed for device %s with %d properties",
+      device_fullname.c_str(), nprop - 1);
 }

@@ -27,6 +27,61 @@ gst-launch-1.0 pylonsrc ! videoconvert ! autovideosink
 
 The following sections describe how to select and configure the camera.
 
+## Fast Property Mapping Mode
+
+For users who are aware of the limitations and want maximum startup performance, `pylonsrc` offers a fast property mapping mode that bypasses the extensive heuristics used for accurate property range detection.
+
+### Enabling Fast Mode
+
+Fast mode can be enabled by setting the environment variable:
+
+```bash
+export PYLONSRC_FAST_PROPERTY_MAPPING=1
+# or
+export PYLONSRC_FAST_PROPERTY_MAPPING=true
+```
+
+### Fast Mode Trade-offs
+
+**Benefits:**
+- Significantly faster property installation (seconds instead of ~10s)
+- No complex feature interdependency analysis
+- No caching overhead
+- Immediate startup for users familiar with GenICam limitations
+
+**Limitations:**
+- Integer properties use full `G_MININT64/G_MAXINT64` range instead of actual GenICam limits
+- Float properties use large range (`-1e15` to `1e15`) instead of actual GenICam limits  
+- No automatic detection of dynamic range changes based on other property values
+- Users must know the valid ranges for their specific camera model
+- Invalid values may be silently accepted by GStreamer but rejected by the camera
+
+**Important Note:** While property ranges are simplified, **actual property values are always read correctly** from the camera when accessed. Fast mode only affects the initial property setup, not runtime value retrieval.
+
+### When to Use Fast Mode
+
+Fast mode is recommended for:
+- Production environments with known, fixed camera configurations
+- Applications where startup time is critical
+- Users experienced with GenICam feature ranges and dependencies
+- Automated systems that programmatically set known-good values
+
+Fast mode is **not recommended** for:
+- Interactive applications or GUIs where users explore camera features
+- Development and prototyping phases
+- Applications that need automatic property validation
+- Users unfamiliar with specific camera capabilities
+
+### Example
+
+```bash
+# Enable fast mode and launch pipeline
+export PYLONSRC_FAST_PROPERTY_MAPPING=1
+gst-launch-1.0 pylonsrc cam::ExposureTime=10000 cam::Gain=5.0 ! videoconvert ! autovideosink
+```
+
+> **Note**: In fast mode, the plugin will still validate property access (read-only vs read-write) but will not validate ranges. Set properties to values you know are valid for your camera.
+
 ## Camera selection
 If only a single camera is connected to the system, `pylonsrc` will use this camera without any further actions required.
 

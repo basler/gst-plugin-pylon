@@ -39,6 +39,7 @@ gstpylon_sources = [
   'gstpylonobject.cpp',
   'gstpylonparamspecs.cpp',
   'gstpylonparamfactory.cpp',
+  'gstpylonfastparamfactory.cpp',
 ]
 
 gstpylon_headers = [

@@ -43,6 +43,9 @@ class GstPylonFeatureWalker {
                                  GenApi::INodeMap& nodemap,
                                  const std::string& device_fullname,
                                  GstPylonCache& feature_cache);
+  static void install_properties_fast(GObjectClass* oclass,
+                                      GenApi::INodeMap& nodemap,
+                                      const std::string& device_fullname);
   static std::vector<std::string> process_selector_features(
       GenApi::INode* node, GenApi::INode** selector_node);
 };

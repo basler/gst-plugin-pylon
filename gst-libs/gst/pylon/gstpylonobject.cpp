@@ -165,6 +165,20 @@ static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
 
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
+  /* Check if fast mode is enabled via environment variable */
+  if (const char* env_p = std::getenv("PYLONSRC_FAST_PROPERTY_MAPPING")) {
+    if (g_strcmp0(env_p, "1") == 0 || g_ascii_strcasecmp(env_p, "true") == 0 ||
+        g_ascii_strcasecmp(env_p, "yes") == 0 ||
+        g_ascii_strcasecmp(env_p, "on") == 0) {
+      GST_INFO(
+          "Fast property mapping enabled via PYLONSRC_FAST_PROPERTY_MAPPING");
+      GstPylonFeatureWalker::install_properties_fast(oclass, nodemap,
+                                                     device_name);
+      return;
+    }
+  }
+
+  /* Default to normal (slow but accurate) property mapping */
   GstPylonFeatureWalker::install_properties(oclass, nodemap, device_name,
                                             feature_cache);
 }
