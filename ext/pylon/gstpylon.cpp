@@ -51,7 +51,9 @@
 #include "gstpylonimagehandler.h"
 #include "gstpylonsysmembufferfactory.h"
 
+#include <algorithm>
 #include <map>
+#include <set>
 #include <vector>
 
 /* retry open camera limits in case of collision with other
@@ -120,6 +122,218 @@ static gchar *gst_pylon_get_string_properties(
     GetStringProperties get_device_string_properties);
 
 static constexpr gint DEFAULT_ALIGNMENT = 35;
+
+/**
+ * Helper function to get a friendly name for a transport layer
+ * based on its device class string.
+ */
+static std::string gst_pylon_get_tl_friendly_name(
+    const Pylon::String_t &tl_class) {
+  // Convert Pylon device class to friendly name
+  std::string class_str = tl_class.c_str();
+
+  if (class_str.find("Usb") != std::string::npos) {
+    return "usb";
+  } else if (class_str.find("GigE") != std::string::npos ||
+             class_str.find("Gige") != std::string::npos) {
+    return "gige";
+  } else if (class_str.find("Cxp") != std::string::npos ||
+             class_str.find("CXP") != std::string::npos) {
+    return "cxp";
+  } else if (class_str.find("CameraLink") != std::string::npos ||
+             class_str.find("Cameralink") != std::string::npos) {
+    return "cameralink";
+  } else {
+    // For unknown transport layers, use a simplified version of the class name
+    std::string friendly = class_str;
+    // Remove common prefixes/suffixes
+    size_t pos = friendly.find("Basler");
+    if (pos != std::string::npos) {
+      friendly.erase(pos, 6);
+    }
+    pos = friendly.find("DeviceClass");
+    if (pos != std::string::npos) {
+      friendly.erase(pos);
+    }
+    pos = friendly.find("GenTl");
+    if (pos != std::string::npos) {
+      friendly.erase(pos, 5);
+    }
+
+    // Convert to lowercase
+    std::transform(friendly.begin(), friendly.end(), friendly.begin(),
+                   ::tolower);
+    return friendly.empty() ? "unknown" : friendly;
+  }
+}
+
+/**
+ * Helper function to enumerate devices while skipping specific transport layers
+ * based on the PYLONSRC_SKIP_TRANSPORT_LAYERS environment variable.
+ *
+ * @param device_list Output list to store enumerated devices
+ * @param filter Optional filter to apply during enumeration
+ */
+static void gst_pylon_enumerate_devices_by_transport_layers(
+    Pylon::DeviceInfoList_t &device_list,
+    const Pylon::DeviceInfoList_t *filter = nullptr) {
+  Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
+
+  const char *env_skip_tl = std::getenv("PYLONSRC_SKIP_TRANSPORT_LAYERS");
+
+  if (!env_skip_tl) {
+    // No environment variable set, use default enumeration
+    GST_DEBUG(
+        "PYLONSRC_SKIP_TRANSPORT_LAYERS not set, enumerating all transport "
+        "layers");
+    if (filter) {
+      factory.EnumerateDevices(device_list, *filter);
+    } else {
+      factory.EnumerateDevices(device_list);
+    }
+    return;
+  }
+
+  // Parse the environment variable to get transport layers to skip
+  std::string skip_tl_list(env_skip_tl);
+  std::vector<std::string> skip_transport_layers;
+  std::stringstream ss(skip_tl_list);
+  std::string tl;
+
+  while (std::getline(ss, tl, ',')) {
+    // Trim whitespace and convert to lowercase
+    tl.erase(0, tl.find_first_not_of(" \t"));
+    tl.erase(tl.find_last_not_of(" \t") + 1);
+    if (!tl.empty()) {
+      std::transform(tl.begin(), tl.end(), tl.begin(), ::tolower);
+      skip_transport_layers.push_back(tl);
+    }
+  }
+
+  if (skip_transport_layers.empty()) {
+    // Empty list, use default enumeration
+    GST_DEBUG(
+        "PYLONSRC_SKIP_TRANSPORT_LAYERS is empty, enumerating all transport "
+        "layers");
+    if (filter) {
+      factory.EnumerateDevices(device_list, *filter);
+    } else {
+      factory.EnumerateDevices(device_list);
+    }
+    return;
+  }
+
+  // Log which transport layers are being skipped
+  std::string skip_list_str;
+  for (size_t i = 0; i < skip_transport_layers.size(); ++i) {
+    if (i > 0) skip_list_str += ", ";
+    skip_list_str += skip_transport_layers[i];
+  }
+  GST_DEBUG("Skipping transport layers: %s", skip_list_str.c_str());
+
+  device_list.clear();
+
+  // Dynamically discover available transport layers
+  Pylon::TlInfoList_t tl_list;
+  factory.EnumerateTls(tl_list);
+
+  // Build list of available transport layer names for debug output
+  std::vector<std::string> available_tl_names;
+  for (const auto &tl_info : tl_list) {
+    std::string friendly_name =
+        gst_pylon_get_tl_friendly_name(tl_info.GetDeviceClass());
+    available_tl_names.push_back(friendly_name);
+  }
+
+  // Remove duplicates and sort for consistent output
+  std::sort(available_tl_names.begin(), available_tl_names.end());
+  available_tl_names.erase(
+      std::unique(available_tl_names.begin(), available_tl_names.end()),
+      available_tl_names.end());
+
+  std::string available_str;
+  for (size_t i = 0; i < available_tl_names.size(); ++i) {
+    if (i > 0) available_str += ", ";
+    available_str += available_tl_names[i];
+  }
+  GST_DEBUG("Available transport layers to skip: %s", available_str.c_str());
+
+  // Keep track of processed transport layer classes to avoid duplicates
+  std::set<Pylon::String_t> processed_classes;
+
+  // Enumerate devices for all transport layers except those in the skip list
+  for (const auto &tl_info : tl_list) {
+    const Pylon::String_t &tl_class = tl_info.GetDeviceClass();
+
+    // Only process unique transport layer classes
+    if (processed_classes.find(tl_class) != processed_classes.end()) {
+      continue;
+    }
+
+    std::string friendly_name = gst_pylon_get_tl_friendly_name(tl_class);
+
+    // Check if this transport layer should be skipped (case-insensitive
+    // comparison)
+    bool should_skip = false;
+    for (const auto &skip_tl : skip_transport_layers) {
+      if (friendly_name == skip_tl) {
+        should_skip = true;
+        break;
+      }
+    }
+
+    if (should_skip) {
+      GST_DEBUG("Skipping transport layer: %s (%s)", friendly_name.c_str(),
+                tl_class.c_str());
+      processed_classes.insert(tl_class);
+      continue;
+    }
+
+    processed_classes.insert(tl_class);
+
+    try {
+      GST_DEBUG("Enumerating transport layer: %s (%s)", friendly_name.c_str(),
+                tl_class.c_str());
+      Pylon::ITransportLayer *pTl = factory.CreateTl(tl_class);
+      if (pTl) {
+        Pylon::DeviceInfoList_t tl_devices;
+        if (filter) {
+          pTl->EnumerateDevices(tl_devices, *filter);
+        } else {
+          pTl->EnumerateDevices(tl_devices);
+        }
+
+        GST_DEBUG("Found %zu devices on transport layer %s", tl_devices.size(),
+                  friendly_name.c_str());
+
+        // Append devices from this transport layer to the main list
+        for (const auto &device : tl_devices) {
+          device_list.push_back(device);
+        }
+      }
+    } catch (const Pylon::GenericException &e) {
+      GST_WARNING("Failed to enumerate devices for transport layer '%s': %s",
+                  friendly_name.c_str(), e.GetDescription());
+    }
+  }
+
+  // Validate skip list and warn about unknown transport layers
+  for (const auto &skip_tl : skip_transport_layers) {
+    bool found = false;
+    for (const auto &available_name : available_tl_names) {
+      if (available_name == skip_tl) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      GST_WARNING(
+          "Unknown transport layer '%s' in PYLONSRC_SKIP_TRANSPORT_LAYERS. "
+          "Available: %s",
+          skip_tl.c_str(), available_str.c_str());
+    }
+  }
+}
 
 struct _GstPylon {
   GstElement *gstpylonsrc;
@@ -232,7 +446,7 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
       filter[0].SetSerialNumber(device_serial_number);
     }
 
-    factory.EnumerateDevices(device_list, filter);
+    gst_pylon_enumerate_devices_by_transport_layers(device_list, &filter);
 
     gint n_devices = device_list.size();
     if (0 == n_devices) {
@@ -1058,7 +1272,7 @@ static gchar *gst_pylon_get_string_properties(
   Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
   Pylon::DeviceInfoList_t device_list;
 
-  factory.EnumerateDevices(device_list);
+  gst_pylon_enumerate_devices_by_transport_layers(device_list);
 
   for (const auto &device : device_list) {
     try {

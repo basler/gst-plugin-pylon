@@ -258,6 +258,14 @@ GType GstPylonFastParamFactory::gst_pylon_make_fast_enum_type(
       enumvalues.push_back(ev);
     }
 
+    /* Ensure we have at least one enum value */
+    if (enumvalues.empty()) {
+      GST_WARNING("No enum values found for %s, creating default entry",
+                  node->GetName().c_str());
+      GEnumValue ev = {0, g_strdup("default"), g_strdup("Default value")};
+      enumvalues.push_back(ev);
+    }
+
     GEnumValue sentinel = {0};
     enumvalues.push_back(sentinel);
 
@@ -272,15 +280,21 @@ GParamSpec *GstPylonFastParamFactory::gst_pylon_make_fast_spec_enum(
     GenApi::INode *node) {
   g_return_val_if_fail(node, NULL);
 
-  Pylon::CEnumParameter param(node);
   GType type = gst_pylon_make_fast_enum_type(node);
   gint default_value = 0;
 
-  try {
-    default_value = param.GetIntValue();
-  } catch (const Pylon::GenericException &e) {
-    default_value = 0;
+  /* In fast mode, use the first available enum value as default
+   * instead of trying to read the current value from camera */
+  GEnumClass *enum_class = G_ENUM_CLASS(g_type_class_ref(type));
+  if (enum_class && enum_class->n_values > 0) {
+    default_value = enum_class->values[0].value;
+    GST_DEBUG("Using first enum value %d (%s) as default for %s", default_value,
+              enum_class->values[0].value_name, node->GetName().c_str());
+  } else {
+    GST_WARNING("No enum values available for %s, using default 0",
+                node->GetName().c_str());
   }
+  g_type_class_unref(enum_class);
 
   return g_param_spec_enum(node->GetName(), node->GetDisplayName(),
                            node->GetToolTip(), type, default_value,
@@ -293,10 +307,21 @@ GParamSpec *GstPylonFastParamFactory::gst_pylon_make_fast_spec_selector_enum(
   g_return_val_if_fail(selector, NULL);
 
   GType type = gst_pylon_make_fast_enum_type(node);
-  /* In fast mode, don't try to read the actual default value for selector
-   * properties as this would require setting the selector first, which is
-   * expensive. Use a safe default value instead. */
   gint default_value = 0;
+
+  /* In fast mode, use the first available enum value as default
+   * instead of trying to read the current value from camera */
+  GEnumClass *enum_class = G_ENUM_CLASS(g_type_class_ref(type));
+  if (enum_class && enum_class->n_values > 0) {
+    default_value = enum_class->values[0].value;
+    GST_DEBUG("Using first enum value %d (%s) as default for selector %s-%s",
+              default_value, enum_class->values[0].value_name,
+              node->GetName().c_str(), selector->GetName().c_str());
+  } else {
+    GST_WARNING("No enum values available for selector %s-%s, using default 0",
+                node->GetName().c_str(), selector->GetName().c_str());
+  }
+  g_type_class_unref(enum_class);
 
   return gst_pylon_param_spec_selector_enum(
       nodemap, node->GetName(), selector->GetName(), selector_value,

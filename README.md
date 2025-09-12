@@ -82,6 +82,68 @@ gst-launch-1.0 pylonsrc cam::ExposureTime=10000 cam::Gain=5.0 ! videoconvert ! a
 
 > **Note**: In fast mode, the plugin will still validate property access (read-only vs read-write) but will not validate ranges. Set properties to values you know are valid for your camera.
 
+## Transport Layer Filtering
+
+For improved startup performance, especially in systems with multiple transport types, you can skip enumeration of specific transport layers using the `PYLONSRC_SKIP_TRANSPORT_LAYERS` environment variable.
+
+### Skipping Transport Layers
+
+```bash
+# Skip GigE and USB enumeration (e.g., when only using MIPI/CXP cameras)
+export PYLONSRC_SKIP_TRANSPORT_LAYERS=gige,usb
+
+# Skip only GigE enumeration (avoid network discovery overhead)
+export PYLONSRC_SKIP_TRANSPORT_LAYERS=gige
+
+# Skip only USB enumeration  
+export PYLONSRC_SKIP_TRANSPORT_LAYERS=usb
+
+# Enumerate all transport layers (default behavior)
+unset PYLONSRC_SKIP_TRANSPORT_LAYERS
+```
+
+### Supported Transport Layers to Skip
+
+The plugin dynamically discovers available transport layers from the Pylon SDK. Common transport layers include:
+
+- **usb**: USB 3.0 cameras
+- **gige**: Gigabit Ethernet cameras  
+- **cxp**: CoaXPress cameras
+- **cameralink**: Camera Link cameras
+
+> **Note**: The actual available transport layers depend on your Pylon SDK installation and connected hardware. Use debug output to see which transport layers are available on your system.
+
+### Benefits
+
+- **Faster startup**: Avoid enumerating unused transport layers (e.g., skip GigE enumeration when only using MIPI cameras)
+- **Reduced system load**: Minimize network traffic from GigE discovery when not needed
+- **Targeted discovery**: Skip slow transport layer enumeration while keeping fast ones
+
+### Example
+
+```bash
+# Skip GigE and USB enumeration when using MIPI cameras (connected via CXP)
+export PYLONSRC_SKIP_TRANSPORT_LAYERS=gige,usb
+gst-launch-1.0 pylonsrc ! videoconvert ! autovideosink
+```
+
+### Debug Information
+
+Enable debug logging to see which transport layers are being processed:
+
+```bash
+export PYLONSRC_SKIP_TRANSPORT_LAYERS=gige,usb
+gst-launch-1.0 --gst-debug=pylonsrc:5 pylonsrc ! fakesink
+```
+
+The debug output will show:
+- Dynamically discovered transport layer names available on your system
+- Which transport layers are being skipped
+- Which transport layers are being enumerated (with their Pylon class names)
+- Number of devices found on each transport layer
+
+> **Note**: If the environment variable is not set or is empty, all transport layers will be enumerated (default behavior). Invalid transport layer names will be logged as warnings and ignored.
+
 ## Camera selection
 If only a single camera is connected to the system, `pylonsrc` will use this camera without any further actions required.
 
