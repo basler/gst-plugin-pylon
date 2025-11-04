@@ -306,6 +306,9 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
       gst_pylon_apply_set(self, default_set);
     }
 
+    self->camera->DeviceLinkThroughputLimitMode.SetValue(Basler_UniversalCameraParams::DeviceLinkThroughputLimitMode_On);
+    self->camera->DeviceLinkThroughputLimit.SetValue(62000000);
+
     GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
     self->gcamera = gst_pylon_object_new(
         self->camera, gst_pylon_get_camera_fullname(*self->camera),
