@@ -74,6 +74,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
                                      GError **err);
 gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
                                   GError **err);
+gboolean gst_pylon_set_throughput_limit(GstPylon *self, GError **err);
 gchar *gst_pylon_camera_get_string_properties();
 gchar *gst_pylon_stream_grabber_get_string_properties();
 

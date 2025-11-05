@@ -306,9 +306,6 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
       gst_pylon_apply_set(self, default_set);
     }
 
-    self->camera->DeviceLinkThroughputLimitMode.SetValue(Basler_UniversalCameraParams::DeviceLinkThroughputLimitMode_On);
-    self->camera->DeviceLinkThroughputLimit.SetValue(62000000);
-
     GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
     self->gcamera = gst_pylon_object_new(
         self->camera, gst_pylon_get_camera_fullname(*self->camera),
@@ -402,6 +399,22 @@ gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                 "PFS file error: %s", e.GetDescription());
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+gboolean gst_pylon_set_throughput_limit(GstPylon *self, GError **err) {
+  g_return_val_if_fail(self, FALSE);
+  g_return_val_if_fail(err && *err == NULL, FALSE);
+
+  try {
+    self->camera->DeviceLinkThroughputLimitMode.SetValue(Basler_UniversalCameraParams::DeviceLinkThroughputLimitMode_On);
+    self->camera->DeviceLinkThroughputLimit.SetValue(62000000);
+  } catch (const Pylon::GenericException &e) {
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                e.GetDescription());
     return FALSE;
   }
 

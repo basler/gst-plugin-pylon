@@ -818,6 +818,16 @@ static gboolean gst_pylon_src_start(GstBaseSrc *src) {
     goto log_gst_error;
   }
 
+  /* Set throughput limit after UserSet and PFS file are loaded to ensure
+   * it's not overridden */
+  GST_OBJECT_LOCK(self);
+  ret = gst_pylon_set_throughput_limit(self->pylon, &error);
+  GST_OBJECT_UNLOCK(self);
+
+  if (ret == FALSE && error) {
+    goto log_gst_error;
+  }
+
   self->duration = GST_CLOCK_TIME_NONE;
 
   goto out;
