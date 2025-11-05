@@ -410,15 +410,43 @@ gboolean gst_pylon_set_throughput_limit(GstPylon *self, GError **err) {
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
   try {
-    self->camera->DeviceLinkThroughputLimitMode.SetValue(Basler_UniversalCameraParams::DeviceLinkThroughputLimitMode_On);
-    self->camera->DeviceLinkThroughputLimit.SetValue(62000000);
+    GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
+
+    /* Try to set the mode parameter if it exists (may not exist on some models) */
+    try {
+      self->camera->DeviceLinkThroughputLimitMode.TrySetValue(
+          Basler_UniversalCameraParams::DeviceLinkThroughputLimitMode_On);
+    } catch (const Pylon::GenericException &) {
+      /* DeviceLinkThroughputLimitMode may not exist on some models */
+    }
+
+    /* Try DeviceLinkThroughputLimit first */
+    try {
+      if (self->camera->DeviceLinkThroughputLimit.TrySetValue(62000000)) {
+        return TRUE;
+      }
+    } catch (const Pylon::GenericException &) {
+      /* DeviceLinkThroughputLimit may not exist, try alternative */
+    }
+
+    /* Fallback to DeviceMaxThroughput if DeviceLinkThroughputLimit doesn't exist */
+    try {
+      Pylon::CIntegerParameter device_max_throughput(nodemap, "DeviceMaxThroughput");
+      if (device_max_throughput.TrySetValue(62000000)) {
+        return TRUE;
+      }
+    } catch (const Pylon::GenericException &) {
+      /* DeviceMaxThroughput may not exist either */
+    }
+
+    /* If both fail, log info - some cameras may not support throughput limiting */
+    GST_INFO("Throughput limit parameters not available on this camera model");
+    return TRUE;
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
     return FALSE;
   }
-
-  return TRUE;
 }
 
 void gst_pylon_free(GstPylon *self) {
