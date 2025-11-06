@@ -429,13 +429,14 @@ gboolean gst_pylon_set_throughput_limit(GstPylon *self, GError **err) {
     }
 
     /* Check if GenICam compliant features are available */
-    gboolean has_limit_mode = (limit_mode_node != NULL) &&
-                              GenApi::IsImplemented(limit_mode_node);
-    gboolean has_limit = (limit_node != NULL) &&
-                         GenApi::IsImplemented(limit_node);
+    gboolean has_limit_mode =
+        (limit_mode_node != NULL) && GenApi::IsImplemented(limit_mode_node);
+    gboolean has_limit =
+        (limit_node != NULL) && GenApi::IsImplemented(limit_node);
 
     if (!has_limit_mode && !has_limit) {
-      GST_INFO("Throughput limit parameters not available on this camera model");
+      GST_INFO(
+          "Throughput limit parameters not available on this camera model");
       return TRUE;
     }
 
@@ -443,25 +444,25 @@ gboolean gst_pylon_set_throughput_limit(GstPylon *self, GError **err) {
      * DeviceLinkThroughputLimit */
     if (has_limit_mode && has_limit) {
       /* Check environment variable first - early return if not set */
-      const gchar *env_limit = g_getenv("RVAI_SIDECAR_DEVICE_LINK_THROUGHPUT_LIMIT");
+      const gchar *env_limit = g_getenv("DEVICE_LINK_THROUGHPUT_LIMIT");
       if (env_limit == NULL) {
         GST_DEBUG(
-            "RVAI_SIDECAR_DEVICE_LINK_THROUGHPUT_LIMIT not set, "
+            "DEVICE_LINK_THROUGHPUT_LIMIT not set, "
             "skipping DeviceLinkThroughputLimit configuration");
         return TRUE;
       }
 
       gint64 limit_value = g_ascii_strtoll(env_limit, NULL, 10);
       if (limit_value <= 0) {
-        GST_WARNING(
-            "Invalid value in RVAI_SIDECAR_DEVICE_LINK_THROUGHPUT_LIMIT: %s",
-            env_limit);
+        GST_WARNING("Invalid value in DEVICE_LINK_THROUGHPUT_LIMIT: %s",
+                    env_limit);
         return TRUE;
       }
 
       try {
         /* Set DeviceLinkThroughputLimitMode to On */
-        Pylon::CEnumParameter limit_mode(nodemap, "DeviceLinkThroughputLimitMode");
+        Pylon::CEnumParameter limit_mode(nodemap,
+                                         "DeviceLinkThroughputLimitMode");
         if (limit_mode.IsWritable()) {
           limit_mode.SetValue("On");
           GST_DEBUG("Set DeviceLinkThroughputLimitMode to On");
@@ -476,7 +477,7 @@ gboolean gst_pylon_set_throughput_limit(GstPylon *self, GError **err) {
         if (limit.IsWritable()) {
           limit.SetValue(limit_value);
           GST_INFO("Set DeviceLinkThroughputLimit to %" G_GINT64_FORMAT
-                   " (from RVAI_SIDECAR_DEVICE_LINK_THROUGHPUT_LIMIT)",
+                   " (from DEVICE_LINK_THROUGHPUT_LIMIT)",
                    limit_value);
         } else {
           GST_WARNING(
@@ -496,7 +497,8 @@ gboolean gst_pylon_set_throughput_limit(GstPylon *self, GError **err) {
       } else if (!has_limit_mode && has_limit) {
         GST_WARNING(
             "Camera has DeviceLinkThroughputLimit but not "
-            "DeviceLinkThroughputLimitMode. This camera may not be fully GenICam "
+            "DeviceLinkThroughputLimitMode. This camera may not be fully "
+            "GenICam "
             "compliant.");
       }
     }
