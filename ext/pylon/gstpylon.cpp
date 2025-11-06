@@ -405,9 +405,16 @@ gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
   return TRUE;
 }
 
-gboolean gst_pylon_set_throughput_limit(GstPylon *self, GError **err) {
+gboolean gst_pylon_set_throughput_limit(GstPylon *self, guint64 limit_value,
+                                        GError **err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
+
+  /* Early return if limit_value is 0 (not set) */
+  if (limit_value == 0) {
+    GST_DEBUG("Device link throughput limit not set, skipping configuration");
+    return TRUE;
+  }
 
   try {
     GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
@@ -443,22 +450,6 @@ gboolean gst_pylon_set_throughput_limit(GstPylon *self, GError **err) {
     /* GenICam compliant path: use DeviceLinkThroughputLimitMode and
      * DeviceLinkThroughputLimit */
     if (has_limit_mode && has_limit) {
-      /* Check environment variable first - early return if not set */
-      const gchar *env_limit = g_getenv("DEVICE_LINK_THROUGHPUT_LIMIT");
-      if (env_limit == NULL) {
-        GST_DEBUG(
-            "DEVICE_LINK_THROUGHPUT_LIMIT not set, "
-            "skipping DeviceLinkThroughputLimit configuration");
-        return TRUE;
-      }
-
-      gint64 limit_value = g_ascii_strtoll(env_limit, NULL, 10);
-      if (limit_value <= 0) {
-        GST_WARNING("Invalid value in DEVICE_LINK_THROUGHPUT_LIMIT: %s",
-                    env_limit);
-        return TRUE;
-      }
-
       try {
         /* Set DeviceLinkThroughputLimitMode to On */
         Pylon::CEnumParameter limit_mode(nodemap,
@@ -476,8 +467,7 @@ gboolean gst_pylon_set_throughput_limit(GstPylon *self, GError **err) {
         Pylon::CIntegerParameter limit(nodemap, "DeviceLinkThroughputLimit");
         if (limit.IsWritable()) {
           limit.SetValue(limit_value);
-          GST_INFO("Set DeviceLinkThroughputLimit to %" G_GINT64_FORMAT
-                   " (from DEVICE_LINK_THROUGHPUT_LIMIT)",
+          GST_INFO("Set DeviceLinkThroughputLimit to %" G_GUINT64_FORMAT,
                    limit_value);
         } else {
           GST_WARNING(
