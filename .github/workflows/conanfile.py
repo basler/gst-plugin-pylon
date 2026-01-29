@@ -47,10 +47,9 @@ class GstPluginPylonConanConsumer(ConanFile):
         # License files
         self.requires("pylon-licenses/20251125@release/potentially-public")
 
-        # Core pylon packages needed for gst-plugin-pylon
+        # Core pylon packages needed for gst-plugin-pylon (SDK and runtime only, no dataprocessing)
         core_packages = [
-            "pylon-core",
-            "pylon-dataprocessing"
+            "pylon-core"
         ]
 
         for req in core_packages:
@@ -83,6 +82,5 @@ class GstPluginPylonConanConsumer(ConanFile):
                 shutil.copy2(str(self.options.third_party_license_file), license_path)
             self.copy("**/License.txt", root_package="pylon-licenses", dst="pylon/Frameworks/pylon.framework/Versions/A/Resources", ignore_case=True, keep_path=False)
 
-        # Copy the core pylon packages
+        # Copy the core pylon packages (SDK and runtime only)
         self.copy("*", root_package="pylon-core", dst="pylon", ignore_case=True)
-        self.copy("*", root_package="pylon-dataprocessing", dst="pylon", ignore_case=True)

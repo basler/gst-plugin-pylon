@@ -46,8 +46,8 @@ jobs:
         set +x
         set -e
         build_config=$(cat .github/workflows/build_config.json)
-        # Get the latest pylon version from Artifactory
-        pylon_default_version=$(jf rt s "pylon-artifacts-generic-prod/setup/*" | jq '.[] | .path' | awk -F'/' '{print $3}' | sort -V | uniq | tac | head -n 1)
+        # Use latest pylon version 26.01 (like pypylon)
+        pylon_default_version="26.01"
         for os in $(echo $build_config | jq -r 'keys[]'); do
           for pylon_sdk in $(echo $build_config | jq -r --arg os "$os" '.[$os].pylon_sdk_packaging'); do
             # When TAG_NAME is set (release build), use the pylon version from the tag, stripping any rc suffix
