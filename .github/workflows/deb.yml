@@ -139,7 +139,8 @@ jobs:
           
           arch = "x64" if "${{ matrix.os }}" == "linux-x86_64" else "arm64"
           profile = f"linux_{arch}"
-          os_key = "${{ matrix.os }}"
+          # Convert os name from hyphens to underscores to match file naming convention
+          os_key = "${{ matrix.os }}".replace("-", "_")
           
           subprocess.run([
             "conan", "install", "--update", "--install-folder", "conan",
