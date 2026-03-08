@@ -51,6 +51,7 @@
 #include "gstpylonimagehandler.h"
 #include "gstpylonsysmembufferfactory.h"
 
+#include <exception>
 #include <map>
 #include <vector>
 
@@ -514,9 +515,18 @@ GstPylon* gst_pylon_new(GstElement* gstpylonsrc, const gchar* device_user_name,
   try {
     self->Open(device_user_name, device_serial_number, device_index,
                enable_correction);
-  } catch (const Pylon::GenericException& e) {
+  } catch (const GenICam::GenericException& e) {
+    GST_ERROR_OBJECT(gstpylonsrc, "gst_pylon_new failed opening camera: %s",
+                     e.GetDescription());
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
+    delete self;
+    self = NULL;
+  } catch (const std::exception& e) {
+    GST_ERROR_OBJECT(gstpylonsrc, "gst_pylon_new caught std::exception: %s",
+                     e.what());
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                e.what());
     delete self;
     self = NULL;
   }

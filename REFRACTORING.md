@@ -28,6 +28,13 @@ ly moving the internal API toward clearer, schema-driven ownership.
 - `PYLON_CAMEMU=1 GST_PLUGIN_PATH=build/ext/pylon gst-inspect-1.0 pylonsrc`
   (output differs from `origin/main` only in `Filename`/`Version`)
 - `PYLON_CAMEMU=1 GST_PLUGIN_PATH=build/ext/pylon gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink` (runs to EOS)
+- `timeout 10s env PYLON_CAMEMU=1 GST_PLUGIN_PATH=build/ext/pylon GST_DEBUG=pylonsrc:7 gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink` (terminates after logging `error: Failed to start camera.` and `NULL pointer dereferenced` because no emulator devices were discovered)
+- `CC=clang CXX=clang++ PYLON_ROOT=/opt/pylon/ meson setup build-clang --wipe`
+- `CC=clang CXX=clang++ PYLON_ROOT=/opt/pylon/ CCACHE_TEMPDIR=/tmp/ccache-tmp meson compile -C build-clang`
 
 The baseline commands reported earlier in this thread are still the ones
 to use for regression checks.
+
+## Recent fixes
+
+- `gst_pylon_new` now catches `GenICam::GenericException` (and std::exception) so camera startup failures emit a `GError` without aborting the process, mirroring the upstream behavior while keeping logging visible from the source element.
