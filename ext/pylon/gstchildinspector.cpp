@@ -41,31 +41,31 @@
 typedef struct _GstChildInspectorFlag GstChildInspectorFlag;
 typedef struct _GstChildInspectorType GstChildInspectorType;
 
-typedef gchar *(*GstChildInspectorTypeToString)(GParamSpec *pspec,
-                                                GValue *value, gint alignment);
+typedef gchar* (*GstChildInspectorTypeToString)(GParamSpec* pspec,
+                                                GValue* value, gint alignment);
 
-static GString *gst_child_inspector_build_string_for_enum(GParamSpecEnum *penum,
-                                                          GValue *value,
+static GString* gst_child_inspector_build_string_for_enum(GParamSpecEnum* penum,
+                                                          GValue* value,
                                                           gint alignment);
-static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
-                                                       GValue *value,
+static gchar* gst_child_inspector_type_int64_to_string(GParamSpec* pspec,
+                                                       GValue* value,
                                                        gint alignment);
-static gchar *gst_child_inspector_type_bool_to_string(GParamSpec *pspec,
-                                                      GValue *value,
+static gchar* gst_child_inspector_type_bool_to_string(GParamSpec* pspec,
+                                                      GValue* value,
                                                       gint alignment);
-static gchar *gst_child_inspector_type_double_to_string(GParamSpec *pspec,
-                                                        GValue *value,
+static gchar* gst_child_inspector_type_double_to_string(GParamSpec* pspec,
+                                                        GValue* value,
                                                         gint alignment);
-static gchar *gst_child_inspector_type_string_to_string(GParamSpec *pspec,
-                                                        GValue *value,
+static gchar* gst_child_inspector_type_string_to_string(GParamSpec* pspec,
+                                                        GValue* value,
                                                         gint alignment);
-static gchar *gst_child_inspector_type_enum_to_string(GParamSpec *pspec,
-                                                      GValue *value,
+static gchar* gst_child_inspector_type_enum_to_string(GParamSpec* pspec,
+                                                      GValue* value,
                                                       gint alignment);
 
 struct _GstChildInspectorFlag {
   gint value;
-  const gchar *to_string;
+  const gchar* to_string;
 };
 
 struct _GstChildInspectorType {
@@ -89,17 +89,17 @@ static GstChildInspectorType types[] = {
     {G_TYPE_ENUM, gst_child_inspector_type_enum_to_string},
     {0, NULL}};
 
-static GString *gst_child_inspector_build_string_for_enum(GParamSpecEnum *penum,
-                                                          GValue *value,
+static GString* gst_child_inspector_build_string_for_enum(GParamSpecEnum* penum,
+                                                          GValue* value,
                                                           gint alignment) {
   g_return_val_if_fail(penum, NULL);
   g_return_val_if_fail(value, NULL);
 
   GType type = G_TYPE_FROM_CLASS(penum->enum_class);
   gint def = g_value_get_enum(value);
-  gchar *sdef = g_enum_to_string(type, def);
-  GString *desc = g_string_new(NULL);
-  GEnumValue *iter = NULL;
+  gchar* sdef = g_enum_to_string(type, def);
+  GString* desc = g_string_new(NULL);
+  GEnumValue* iter = NULL;
 
   g_string_append_printf(desc, R"(Enum "%s" Default: %d, "%s")",
                          g_type_name(type), def, sdef);
@@ -117,22 +117,24 @@ static GString *gst_child_inspector_build_string_for_enum(GParamSpecEnum *penum,
   return desc;
 }
 
-static gchar *gst_child_inspector_type_string_to_string(GParamSpec *pspec,
-                                                        GValue *value,
+static gchar* gst_child_inspector_type_string_to_string(GParamSpec* pspec,
+                                                        GValue* value,
                                                         gint alignment) {
   g_return_val_if_fail(pspec, NULL);
   g_return_val_if_fail(value, NULL);
+  (void)alignment;
 
   return g_strdup_printf("String. Default: \"%s\"", g_value_get_string(value));
 }
 
-static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
-                                                       GValue *value,
+static gchar* gst_child_inspector_type_int64_to_string(GParamSpec* pspec,
+                                                       GValue* value,
                                                        gint alignment) {
   g_return_val_if_fail(pspec, NULL);
   g_return_val_if_fail(value, NULL);
+  (void)alignment;
 
-  GParamSpecInt64 *pint = G_PARAM_SPEC_INT64(pspec);
+  GParamSpecInt64* pint = G_PARAM_SPEC_INT64(pspec);
 
   return g_strdup_printf("Integer64. Range: %" G_GINT64_FORMAT
                          " - %" G_GINT64_FORMAT " Default: %" G_GINT64_FORMAT,
@@ -140,44 +142,47 @@ static gchar *gst_child_inspector_type_int64_to_string(GParamSpec *pspec,
                          g_value_get_int64(value));
 }
 
-static gchar *gst_child_inspector_type_double_to_string(GParamSpec *pspec,
-                                                        GValue *value,
+static gchar* gst_child_inspector_type_double_to_string(GParamSpec* pspec,
+                                                        GValue* value,
                                                         gint alignment) {
   g_return_val_if_fail(pspec, NULL);
   g_return_val_if_fail(value, NULL);
+  (void)alignment;
 
-  GParamSpecDouble *pdouble = G_PARAM_SPEC_DOUBLE(pspec);
+  GParamSpecDouble* pdouble = G_PARAM_SPEC_DOUBLE(pspec);
 
   return g_strdup_printf("Double. Range: %.2g - %.2g Default: %.2g",
                          pdouble->minimum, pdouble->maximum,
                          g_value_get_double(value));
 }
 
-static gchar *gst_child_inspector_type_bool_to_string(GParamSpec *pspec,
-                                                      GValue *value,
+static gchar* gst_child_inspector_type_bool_to_string(GParamSpec* pspec,
+                                                      GValue* value,
                                                       gint alignment) {
   g_return_val_if_fail(pspec, NULL);
   g_return_val_if_fail(value, NULL);
+  (void)alignment;
 
   return g_strdup_printf("Boolean. Default: %s",
                          g_value_get_boolean(value) ? "true" : "false");
 }
 
-static gchar *gst_child_inspector_type_enum_to_string(GParamSpec *pspec,
-                                                      GValue *value,
+static gchar* gst_child_inspector_type_enum_to_string(GParamSpec* pspec,
+                                                      GValue* value,
                                                       gint alignment) {
   g_return_val_if_fail(pspec, NULL);
   g_return_val_if_fail(value, NULL);
+  (void)alignment;
 
-  GParamSpecEnum *penum = G_PARAM_SPEC_ENUM(pspec);
+  GParamSpecEnum* penum = G_PARAM_SPEC_ENUM(pspec);
   return g_string_free(
       gst_child_inspector_build_string_for_enum(penum, value, alignment),
       FALSE);
 }
 
-static const gchar *gst_child_inspector_flag_to_string(GParamFlags flag) {
-  GstChildInspectorFlag *current_flag;
-  const gchar *to_string = NULL;
+static const gchar* gst_child_inspector_flag_to_string(GParamFlags flag) {
+  GstChildInspectorFlag* current_flag;
+  const gchar* to_string = NULL;
 
   for (current_flag = flags; current_flag->to_string; ++current_flag) {
     if (current_flag->value == flag) {
@@ -189,15 +194,15 @@ static const gchar *gst_child_inspector_flag_to_string(GParamFlags flag) {
   return to_string;
 }
 
-static gchar *gst_child_inspector_flags_to_string(GParamFlags flags) {
+static gchar* gst_child_inspector_flags_to_string(GParamFlags flags) {
   guint32 bit_flags = 0;
   gint i = 0;
-  gchar *serial_flags = NULL;
+  gchar* serial_flags = NULL;
 
   /* Walk through all the bits in the flags */
   bit_flags = flags;
   for (i = 31; i >= 0; --i) {
-    const gchar *serial_flag = NULL;
+    const gchar* serial_flag = NULL;
     guint32 bit_flag = 0;
 
     /* Filter the desired bit */
@@ -219,15 +224,15 @@ static gchar *gst_child_inspector_flags_to_string(GParamFlags flags) {
   return serial_flags;
 }
 
-static gchar *gst_child_inspector_type_to_string(GParamSpec *pspec,
-                                                 GValue *value,
+static gchar* gst_child_inspector_type_to_string(GParamSpec* pspec,
+                                                 GValue* value,
                                                  gint alignment) {
   g_return_val_if_fail(pspec, NULL);
   g_return_val_if_fail(value, NULL);
 
-  GstChildInspectorType *current_type = NULL;
+  GstChildInspectorType* current_type = NULL;
   const GType value_type = G_VALUE_TYPE(value);
-  gchar *to_string = NULL;
+  gchar* to_string = NULL;
 
   for (current_type = types; current_type->type_to_string; ++current_type) {
     if (g_type_is_a(value_type, current_type->value)) {
@@ -239,15 +244,15 @@ static gchar *gst_child_inspector_type_to_string(GParamSpec *pspec,
   return to_string;
 }
 
-gchar *gst_child_inspector_property_to_string(GObject *object,
-                                              GParamSpec *param,
+gchar* gst_child_inspector_property_to_string(GObject* object,
+                                              GParamSpec* param,
                                               guint alignment) {
   GValue value G_VALUE_INIT;
-  const gchar *name = NULL;
-  const gchar *blurb = NULL;
-  gchar *flags = NULL;
-  gchar *type = NULL;
-  gchar *prop = NULL;
+  const gchar* name = NULL;
+  const gchar* blurb = NULL;
+  gchar* flags = NULL;
+  gchar* type = NULL;
+  gchar* prop = NULL;
 
   g_return_val_if_fail(param, NULL);
   g_return_val_if_fail(G_IS_OBJECT(object), NULL);
@@ -276,14 +281,14 @@ gchar *gst_child_inspector_property_to_string(GObject *object,
   return prop;
 }
 
-gchar *gst_child_inspector_properties_to_string(GObject *object,
-                                                guint alignment, gchar *title) {
-  GParamSpec **property_specs = NULL;
+gchar* gst_child_inspector_properties_to_string(GObject* object,
+                                                guint alignment, gchar* title) {
+  GParamSpec** property_specs = NULL;
   guint num_properties = 0, i = 0;
-  GString *props = NULL;
-  gchar *prop = NULL;
+  GString* props = NULL;
+  gchar* prop = NULL;
 
-  gchar *props_ = NULL;
+  gchar* props_ = NULL;
 
   g_return_val_if_fail(G_IS_OBJECT(object), NULL);
 

@@ -557,7 +557,7 @@ static GstCaps* gst_pylon_src_get_caps(GstBaseSrc* src, GstCaps* filter) {
       GST_INFO_OBJECT(
           self,
           "Camera not open yet, returning src template caps %" GST_PTR_FORMAT,
-          outcaps);
+          (gpointer)outcaps);
       goto out;
     }
 
@@ -567,18 +567,20 @@ static GstCaps* gst_pylon_src_get_caps(GstBaseSrc* src, GstCaps* filter) {
       goto log_gst_error;
     }
 
-    GST_DEBUG_OBJECT(self, "Camera returned caps %" GST_PTR_FORMAT, outcaps);
+    GST_DEBUG_OBJECT(self, "Camera returned caps %" GST_PTR_FORMAT,
+                     (gpointer)outcaps);
 
     if (filter) {
       GstCaps* tmp = outcaps;
 
-      GST_DEBUG_OBJECT(self, "Filtering with %" GST_PTR_FORMAT, filter);
+      GST_DEBUG_OBJECT(self, "Filtering with %" GST_PTR_FORMAT,
+                       (gpointer)filter);
 
       outcaps = gst_caps_intersect(outcaps, filter);
       gst_caps_unref(tmp);
     }
 
-    GST_INFO_OBJECT(self, "Returning caps %" GST_PTR_FORMAT, outcaps);
+    GST_INFO_OBJECT(self, "Returning caps %" GST_PTR_FORMAT, (gpointer)outcaps);
   } catch (const GenICam::GenericException& e) {
     GST_ELEMENT_ERROR(self, LIBRARY, FAILED, ("Failed to get caps."),
                       ("%s", e.GetDescription()));
@@ -635,7 +637,7 @@ static GstCaps* gst_pylon_src_fixate(GstBaseSrc* src, GstCaps* caps) {
   gst_pylon_get_startup_geometry(self->pylon, &preferred_width,
                                  &preferred_height);
 
-  GST_DEBUG_OBJECT(self, "Fixating caps %" GST_PTR_FORMAT, caps);
+  GST_DEBUG_OBJECT(self, "Fixating caps %" GST_PTR_FORMAT, (gpointer)caps);
 
   if (gst_caps_is_fixed(caps)) {
     GST_DEBUG_OBJECT(self, "Caps are already fixed");
@@ -665,7 +667,7 @@ static GstCaps* gst_pylon_src_fixate(GstBaseSrc* src, GstCaps* caps) {
   /* fixate the remainder of the fields */
   outcaps = gst_caps_fixate(outcaps);
 
-  GST_INFO_OBJECT(self, "Fixated caps to %" GST_PTR_FORMAT, outcaps);
+  GST_INFO_OBJECT(self, "Fixated caps to %" GST_PTR_FORMAT, (gpointer)outcaps);
 
   return outcaps;
 }
@@ -684,7 +686,7 @@ static gboolean gst_pylon_src_set_caps(GstBaseSrc* src, GstCaps* caps) {
   const gchar* action = NULL;
 
   try {
-    GST_INFO_OBJECT(self, "Setting new caps: %" GST_PTR_FORMAT, caps);
+    GST_INFO_OBJECT(self, "Setting new caps: %" GST_PTR_FORMAT, (gpointer)caps);
 
     st = gst_caps_get_structure(caps, 0);
     gst_structure_get_int(st, "width", &width);
@@ -755,6 +757,7 @@ static gboolean gst_pylon_src_decide_allocation(GstBaseSrc* src,
                                                 GstQuery* query) {
   GstPylonSrc* self = GST_PYLON_SRC(src);
 
+  (void)query;
   GST_LOG_OBJECT(self, "decide_allocation");
 
   return TRUE;
@@ -1114,7 +1117,7 @@ static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf) {
 
     gst_plyon_src_add_metadata(self, *buf);
 
-    GST_LOG_OBJECT(self, "Created buffer %" GST_PTR_FORMAT, *buf);
+    GST_LOG_OBJECT(self, "Created buffer %" GST_PTR_FORMAT, (gpointer)*buf);
   } catch (const GenICam::GenericException& e) {
     GST_ELEMENT_ERROR(self, LIBRARY, FAILED, ("Failed to create buffer."),
                       ("%s", e.GetDescription()));
@@ -1127,11 +1130,13 @@ done:
 
 static guint gst_pylon_src_child_proxy_get_children_count(
     GstChildProxy* child_proxy) {
+  (void)child_proxy;
   return sizeof(gst_pylon_src_child_proxy_names) / sizeof(gchar*);
 }
 
 static GObject* gst_pylon_src_child_proxy_get_child_by_name(
     GstChildProxy* child_proxy, const gchar* name) {
+  (void)child_proxy;
   GstPylonSrc* self = GST_PYLON_SRC(child_proxy);
   GObject* obj = NULL;
   const guint property_id = gst_pylon_src_child_name_to_property_id(name);

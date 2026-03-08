@@ -43,20 +43,20 @@
 #include <gst/video/video.h>
 
 /* prototypes */
-static gboolean gst_pylon_meta_init(GstMeta *meta, gpointer params,
-                                    GstBuffer *buffer);
-static void gst_pylon_meta_free(GstMeta *meta, GstBuffer *buffer);
-static void gst_pylon_meta_add_chunk_as_meta(GstStructure *st,
-                                             GenApi::INode *node,
-                                             GenApi::INode *selector_node,
-                                             const guint64 &selector_value);
+static gboolean gst_pylon_meta_init(GstMeta* meta, gpointer params,
+                                    GstBuffer* buffer);
+static void gst_pylon_meta_free(GstMeta* meta, GstBuffer* buffer);
+static void gst_pylon_meta_add_chunk_as_meta(GstStructure* st,
+                                             GenApi::INode* node,
+                                             GenApi::INode* selector_node,
+                                             const guint64& selector_value);
 static void gst_pylon_meta_fill_result_chunks(
-    GstPylonMeta *self,
-    const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
+    GstPylonMeta* self,
+    const Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr);
 
 GType gst_pylon_meta_api_get_type(void) {
   static GType type = 0;
-  static const gchar *tags[] = {GST_META_TAG_VIDEO_STR, NULL};
+  static const gchar* tags[] = {GST_META_TAG_VIDEO_STR, NULL};
 
   if (g_once_init_enter(&type)) {
     GType _type = gst_meta_api_type_register("GstPylonMetaAPI", tags);
@@ -65,11 +65,11 @@ GType gst_pylon_meta_api_get_type(void) {
   return type;
 }
 
-const GstMetaInfo *gst_pylon_meta_get_info(void) {
-  static const GstMetaInfo *info = NULL;
+const GstMetaInfo* gst_pylon_meta_get_info(void) {
+  static const GstMetaInfo* info = NULL;
 
   if (g_once_init_enter(&info)) {
-    const GstMetaInfo *meta = gst_meta_register(
+    const GstMetaInfo* meta = gst_meta_register(
         GST_PYLON_META_API_TYPE, "GstPylonMeta", sizeof(GstPylonMeta),
         gst_pylon_meta_init, gst_pylon_meta_free, NULL);
     g_once_init_leave(&info, meta);
@@ -77,16 +77,16 @@ const GstMetaInfo *gst_pylon_meta_get_info(void) {
   return info;
 }
 
-static void gst_pylon_meta_add_chunk_as_meta(GstStructure *st,
-                                             GenApi::INode *node,
-                                             GenApi::INode *selector_node,
-                                             const guint64 &selector_value) {
+static void gst_pylon_meta_add_chunk_as_meta(GstStructure* st,
+                                             GenApi::INode* node,
+                                             GenApi::INode* selector_node,
+                                             const guint64& selector_value) {
   g_return_if_fail(st);
   g_return_if_fail(node);
 
   GValue value = G_VALUE_INIT;
   gboolean is_valid = TRUE;
-  gchar *name = NULL;
+  gchar* name = NULL;
 
   if (selector_node) {
     Pylon::CEnumParameter selparam(selector_node);
@@ -137,22 +137,22 @@ static void gst_pylon_meta_add_chunk_as_meta(GstStructure *st,
 }
 
 static void gst_pylon_meta_fill_result_chunks(
-    GstPylonMeta *self,
-    const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
+    GstPylonMeta* self,
+    const Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr) {
   g_return_if_fail(self);
 
-  GstStructure *st = self->chunks;
+  GstStructure* st = self->chunks;
 
-  GenApi::INodeMap &chunk_nodemap = grab_result_ptr->GetChunkDataNodeMap();
+  GenApi::INodeMap& chunk_nodemap = grab_result_ptr->GetChunkDataNodeMap();
   GenApi::NodeList_t chunk_nodes;
   chunk_nodemap.GetNodes(chunk_nodes);
 
-  for (auto &node : chunk_nodes) {
-    GenApi::INode *selector_node = NULL;
+  for (auto& node : chunk_nodes) {
+    GenApi::INode* selector_node = NULL;
     guint64 selector_value = 0;
 
     /* Only take into account valid Chunk nodes */
-    auto sel_node = dynamic_cast<GenApi::ISelector *>(node);
+    auto sel_node = dynamic_cast<GenApi::ISelector*>(node);
     if (!GenApi::IsAvailable(node) || !node->IsFeature() ||
         (node->GetName() == "Root") || !sel_node || sel_node->IsSelector()) {
       continue;
@@ -162,7 +162,7 @@ static void gst_pylon_meta_fill_result_chunks(
     try {
       enum_values = GstPylonFeatureWalker::process_selector_features(
           node, &selector_node);
-    } catch (const Pylon::GenericException &e) {
+    } catch (const Pylon::GenericException& e) {
       GST_WARNING("Chunk %s not added: %s", node->GetName().c_str(),
                   e.GetDescription());
       continue;
@@ -176,7 +176,7 @@ static void gst_pylon_meta_fill_result_chunks(
       selector_node = NULL;
     }
 
-    for (auto const &sel_pair : enum_values) {
+    for (auto const& sel_pair : enum_values) {
       if (param.IsValid()) {
         selector_value = param.GetEntryByName(sel_pair.c_str())->GetValue();
       }
@@ -186,14 +186,15 @@ static void gst_pylon_meta_fill_result_chunks(
 }
 
 void gst_buffer_add_pylon_meta(
-    GstBuffer *buffer,
-    const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
+    GstBuffer* buffer,
+    const Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr) {
   g_return_if_fail(buffer != NULL);
 
-  GST_LOG("Adding Pylon chunk meta to buffer %p", buffer);
+  GST_LOG("Adding Pylon chunk meta to buffer %" GST_PTR_FORMAT,
+          (gpointer)buffer);
 
-  GstPylonMeta *self =
-      (GstPylonMeta *)gst_buffer_add_meta(buffer, GST_PYLON_META_INFO, NULL);
+  GstPylonMeta* self =
+      (GstPylonMeta*)gst_buffer_add_meta(buffer, GST_PYLON_META_INFO, NULL);
 
   /* Add meta to GstPylonMeta */
   self->block_id = grab_result_ptr->GetImageNumber();
@@ -209,22 +210,25 @@ void gst_buffer_add_pylon_meta(
   }
 }
 
-static gboolean gst_pylon_meta_init(GstMeta *meta, gpointer params,
-                                    GstBuffer *buffer) {
-  GstPylonMeta *pylon_meta = (GstPylonMeta *)meta;
+static gboolean gst_pylon_meta_init(GstMeta* meta, gpointer params,
+                                    GstBuffer* buffer) {
+  GstPylonMeta* pylon_meta = (GstPylonMeta*)meta;
 
+  (void)params;
+  (void)buffer;
   pylon_meta->chunks = gst_structure_new_empty("meta/x-pylon");
 
   return TRUE;
 }
 
-static void gst_pylon_meta_free(GstMeta *meta, GstBuffer *buffer) {
-  GstPylonMeta *pylon_meta = (GstPylonMeta *)meta;
+static void gst_pylon_meta_free(GstMeta* meta, GstBuffer* buffer) {
+  GstPylonMeta* pylon_meta = (GstPylonMeta*)meta;
 
+  (void)buffer;
   gst_structure_free(pylon_meta->chunks);
 }
 
-GstPylonMeta *gst_buffer_get_pylon_meta(GstBuffer *buffer) {
-  return reinterpret_cast<GstPylonMeta *>(
+GstPylonMeta* gst_buffer_get_pylon_meta(GstBuffer* buffer) {
+  return reinterpret_cast<GstPylonMeta*>(
       gst_buffer_get_meta(buffer, GST_PYLON_META_API_TYPE));
 }

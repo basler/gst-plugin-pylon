@@ -36,8 +36,9 @@ GstPylonImageHandler::GstPylonImageHandler()
     : ptr_grab_result(NULL), grab_result_ready(false) {}
 
 void GstPylonImageHandler::OnImageGrabbed(
-    Pylon::CBaslerUniversalInstantCamera &camera,
-    const Pylon::CBaslerUniversalGrabResultPtr &grab_result) {
+    Pylon::CBaslerUniversalInstantCamera& camera,
+    const Pylon::CBaslerUniversalGrabResultPtr& grab_result) {
+  (void)camera;
   std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
   /* Return if an interrupt was received */
   if (this->grab_result_ready) {
@@ -49,11 +50,11 @@ void GstPylonImageHandler::OnImageGrabbed(
   this->grab_result_cv.notify_one();
 }
 
-Pylon::CBaslerUniversalGrabResultPtr *GstPylonImageHandler::WaitForImage() {
+Pylon::CBaslerUniversalGrabResultPtr* GstPylonImageHandler::WaitForImage() {
   std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
   this->grab_result_cv.wait(mutex_lock,
                             [this] { return this->grab_result_ready; });
-  Pylon::CBaslerUniversalGrabResultPtr *grab_result = this->ptr_grab_result;
+  Pylon::CBaslerUniversalGrabResultPtr* grab_result = this->ptr_grab_result;
   this->ptr_grab_result = NULL;
   this->grab_result_ready = false;
   mutex_lock.unlock();

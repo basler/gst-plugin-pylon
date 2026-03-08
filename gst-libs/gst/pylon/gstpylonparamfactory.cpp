@@ -194,7 +194,7 @@ GType GstPylonParamFactory::gst_pylon_make_enum_type(GenApi::INode* node) {
       enumvalues.push_back(ev);
     }
 
-    GEnumValue sentinel = {0};
+    GEnumValue sentinel = {0, nullptr, nullptr};
     enumvalues.push_back(sentinel);
 
     type = g_enum_register_static(name.c_str(), enumvalues.data());
