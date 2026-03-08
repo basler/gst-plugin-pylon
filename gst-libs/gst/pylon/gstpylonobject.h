@@ -69,8 +69,8 @@ EXT_PYLONSRC_API GType gst_pylon_object_register(const std::string& device_name,
                                                  GenApi::INodeMap& nodemap);
 EXT_PYLONSRC_API GObject* gst_pylon_object_new(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const std::string& device_name, GenApi::INodeMap* nodemap,
-    gboolean enable_correction);
+    const std::string& device_name, const std::string& schema_cache_key,
+    GenApi::INodeMap* nodemap, gboolean enable_correction);
 
 EXT_PYLONSRC_API void gst_pylon_object_set_pylon_selector(
     GenApi::INodeMap& nodemap, const gchar* selector_name,

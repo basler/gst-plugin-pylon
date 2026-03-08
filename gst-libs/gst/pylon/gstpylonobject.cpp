@@ -523,8 +523,8 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
 
 GObject* gst_pylon_object_new(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const std::string& device_name, GenApi::INodeMap* nodemap,
-    gboolean enable_correction) {
+    const std::string& device_name, const std::string& schema_cache_key,
+    GenApi::INodeMap* nodemap, gboolean enable_correction) {
   std::string type_name =
       gst_pylon_param_spec_sanitize_name(device_name.c_str());
 
@@ -533,10 +533,7 @@ GObject* gst_pylon_object_new(
   std::unique_ptr<GstPylonCache> feature_cache;
 
   if (!type) {
-    std::string cache_filename =
-        std::string(camera->GetDeviceInfo().GetModelName() + "_" +
-                    Pylon::GetPylonVersionString() + "_" + VERSION);
-    feature_cache = std::make_unique<GstPylonCache>(cache_filename);
+    feature_cache = std::make_unique<GstPylonCache>(schema_cache_key);
     type = gst_pylon_object_register(device_name, *feature_cache, *nodemap);
   }
 
