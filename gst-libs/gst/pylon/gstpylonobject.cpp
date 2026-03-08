@@ -123,10 +123,8 @@ gpointer gst_pylon_object_get_instance_private(GstPylonObject* self) {
 }
 
 /* prototypes */
-static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
-                                                GenApi::INodeMap& nodemap,
-                                                const std::string& device_name,
-                                                GstPylonCache& feature_cache);
+static void gst_pylon_object_install_properties(
+    GstPylonObjectClass* klass, const GstPylonObjectSchema& schema);
 
 static std::string gst_pylon_object_get_schema_type_name(
     const GstPylonObjectSchema& schema) {
@@ -189,16 +187,13 @@ typedef void (*GSetEnum)(GValue*, gint);
 
 /* implementations */
 
-static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
-                                                GenApi::INodeMap& nodemap,
-                                                const std::string& device_name,
-                                                GstPylonCache& feature_cache) {
+static void gst_pylon_object_install_properties(
+    GstPylonObjectClass* klass, const GstPylonObjectSchema& schema) {
   g_return_if_fail(klass);
 
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
-  GstPylonFeatureWalker::install_properties(oclass, nodemap, device_name,
-                                            feature_cache);
+  GstPylonFeatureWalker::install_properties(oclass, schema);
 }
 
 static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
@@ -209,9 +204,7 @@ static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
   oclass->get_property = gst_pylon_object_get_property;
   oclass->finalize = gst_pylon_object_finalize;
 
-  gst_pylon_object_install_properties(klass, class_data->schema.nodemap,
-                                      class_data->schema.device_full_name,
-                                      class_data->schema.feature_cache);
+  gst_pylon_object_install_properties(klass, class_data->schema);
 
   delete (class_data);
 }

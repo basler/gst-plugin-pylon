@@ -34,6 +34,11 @@
 #define _GST_PYLON_OBJECT_H_
 
 #include <gst/gst.h>
+#ifdef HAVE_CONFIG_H
+#  include "config.h"
+#endif
+
+#include <gst/pylon/gstpylon-prelude.h>
 #include <gst/pylon/gstpyloncache.h>
 #include <gst/pylon/gstpylonincludes.h>
 
