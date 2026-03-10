@@ -1,6 +1,16 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Changed
+- **Introspection speed**: Cache full gst-inspect output per camera model
+  - Second run with warm cache: ~0.4s vs ~1.3s (no camera opens)
+  - One device per unique model when building introspection
+  - Combined camera+stream pass avoids duplicate device enumeration
+- **Feature cache**: Extend to bool/string properties (flags only)
+  - Stable mapping preserved: no default/current values cached (user-set/PFS)
+  - Cache location: `~/.cache/gstpylon/` (`.config` for features, `.introspection` for blurbs)
+
 ## [1.0.0] - 2024-08-14
 ## Added
 - added script to generate release notes

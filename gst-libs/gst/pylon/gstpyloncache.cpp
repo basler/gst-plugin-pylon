@@ -40,11 +40,11 @@
 
 /* prototypes */
 static std::string gst_pylon_cache_create_filepath(
-    const std::string &cache_filename);
+    const std::string& cache_filename);
 
 static std::string gst_pylon_cache_create_filepath(
-    const std::string &cache_filename) {
-  gchar *filename_hash =
+    const std::string& cache_filename) {
+  gchar* filename_hash =
       g_compute_checksum_for_string(G_CHECKSUM_SHA256, cache_filename.c_str(),
                                     strlen(cache_filename.c_str()));
   std::string filename_hash_str = filename_hash;
@@ -65,7 +65,44 @@ static std::string gst_pylon_cache_create_filepath(
   return filepath;
 }
 
-GstPylonCache::GstPylonCache(const std::string &name)
+static std::string gst_pylon_cache_introspection_filepath(
+    const std::string& schema_key) {
+  gchar* filename_hash =
+      g_compute_checksum_for_string(G_CHECKSUM_SHA256, schema_key.c_str(),
+                                    static_cast<gssize>(schema_key.size()));
+  std::string dirpath = std::string(g_get_user_cache_dir()) + "/" + "gstpylon";
+  g_mkdir_with_parents(dirpath.c_str(), 0775);
+  std::string filepath = dirpath + "/" + filename_hash + ".introspection";
+  g_free(filename_hash);
+  return filepath;
+}
+
+gchar* GstPylonCache::GetIntrospection(const std::string& schema_key) {
+  std::string filepath = gst_pylon_cache_introspection_filepath(schema_key);
+  if (!g_file_test(filepath.c_str(), G_FILE_TEST_EXISTS)) {
+    return NULL;
+  }
+  gchar* contents = NULL;
+  gsize length = 0;
+  if (!g_file_get_contents(filepath.c_str(), &contents, &length, NULL)) {
+    return NULL;
+  }
+  return contents;
+}
+
+void GstPylonCache::SetIntrospection(const std::string& schema_key,
+                                     const std::string& content) {
+  std::string filepath = gst_pylon_cache_introspection_filepath(schema_key);
+  GError* err = NULL;
+  if (!g_file_set_contents(filepath.c_str(), content.c_str(),
+                           static_cast<gssize>(content.size()), &err)) {
+    GST_WARNING("Could not write introspection cache to %s: %s",
+                filepath.c_str(), err ? err->message : "unknown error");
+    if (err) g_error_free(err);
+  }
+}
+
+GstPylonCache::GstPylonCache(const std::string& name)
     : filepath(gst_pylon_cache_create_filepath(name)),
       feature_cache_dict(g_key_file_new()),
       is_modified(FALSE) {
@@ -99,10 +136,10 @@ gboolean GstPylonCache::LoadCacheFile() {
 gboolean GstPylonCache::HasNewSettings() { return is_modified; }
 
 void GstPylonCache::CreateCacheFile() {
-  GError *file_err = NULL;
+  GError* file_err = NULL;
 
 #if defined(GLIB_VERSION_2_66) && GLIB_VERSION_MIN_REQUIRED >= GLIB_VERSION_2_66
-  gchar *contents = NULL;
+  gchar* contents = NULL;
   gsize length = 0;
 
   contents = g_key_file_to_data(this->feature_cache_dict, &length, NULL);
@@ -126,23 +163,23 @@ void GstPylonCache::CreateCacheFile() {
   }
 }
 
-void GstPylonCache::SetIntegerAttribute(const char *feature,
-                                        const char *attribute,
+void GstPylonCache::SetIntegerAttribute(const char* feature,
+                                        const char* attribute,
                                         const gint64 val) {
   g_key_file_set_int64(this->feature_cache_dict, feature, attribute, val);
   is_modified = true;
 }
 
-void GstPylonCache::SetDoubleAttribute(const char *feature,
-                                       const char *attribute,
+void GstPylonCache::SetDoubleAttribute(const char* feature,
+                                       const char* attribute,
                                        const gdouble val) {
   g_key_file_set_double(this->feature_cache_dict, feature, attribute, val);
   is_modified = true;
 }
 
-bool GstPylonCache::GetIntegerAttribute(const char *feature,
-                                        const char *attribute, gint64 &val) {
-  GError *err = NULL;
+bool GstPylonCache::GetIntegerAttribute(const char* feature,
+                                        const char* attribute, gint64& val) {
+  GError* err = NULL;
 
   gint64 value =
       g_key_file_get_int64(this->feature_cache_dict, feature, attribute, &err);
@@ -156,9 +193,9 @@ bool GstPylonCache::GetIntegerAttribute(const char *feature,
   return true;
 }
 
-bool GstPylonCache::GetDoubleAttribute(const char *feature,
-                                       const char *attribute, gdouble &val) {
-  GError *err = NULL;
+bool GstPylonCache::GetDoubleAttribute(const char* feature,
+                                       const char* attribute, gdouble& val) {
+  GError* err = NULL;
 
   gdouble value =
       g_key_file_get_double(this->feature_cache_dict, feature, attribute, &err);
@@ -172,21 +209,21 @@ bool GstPylonCache::GetDoubleAttribute(const char *feature,
   return true;
 }
 
-void GstPylonCache::SetIntProps(const gchar *feature_name, const gint64 min,
+void GstPylonCache::SetIntProps(const gchar* feature_name, const gint64 min,
                                 const gint64 max, const GParamFlags flags) {
   SetIntegerAttribute(feature_name, "min", min);
   SetIntegerAttribute(feature_name, "max", max);
   SetIntegerAttribute(feature_name, "flags", static_cast<gint64>(flags));
 }
-void GstPylonCache::SetDoubleProps(const gchar *feature_name, const gdouble min,
+void GstPylonCache::SetDoubleProps(const gchar* feature_name, const gdouble min,
                                    const gdouble max, const GParamFlags flags) {
   SetDoubleAttribute(feature_name, "min", min);
   SetDoubleAttribute(feature_name, "max", max);
   SetIntegerAttribute(feature_name, "flags", static_cast<gint64>(flags));
 }
 
-bool GstPylonCache::GetIntProps(const gchar *feature_name, gint64 &min,
-                                gint64 &max, GParamFlags &flags) {
+bool GstPylonCache::GetIntProps(const gchar* feature_name, gint64& min,
+                                gint64& max, GParamFlags& flags) {
   if (!GetIntegerAttribute(feature_name, "min", min)) return false;
   if (!GetIntegerAttribute(feature_name, "max", max)) return false;
   gint64 flag_val = 0;
@@ -197,8 +234,8 @@ bool GstPylonCache::GetIntProps(const gchar *feature_name, gint64 &min,
   return true;
 }
 
-bool GstPylonCache::GetDoubleProps(const char *feature_name, gdouble &min,
-                                   gdouble &max, GParamFlags &flags) {
+bool GstPylonCache::GetDoubleProps(const char* feature_name, gdouble& min,
+                                   gdouble& max, GParamFlags& flags) {
   if (!GetDoubleAttribute(feature_name, "min", min)) return false;
   if (!GetDoubleAttribute(feature_name, "max", max)) return false;
 
@@ -208,4 +245,16 @@ bool GstPylonCache::GetDoubleProps(const char *feature_name, gdouble &min,
   flags = static_cast<GParamFlags>(flag_val);
 
   return true;
+}
+
+bool GstPylonCache::GetFlags(const gchar* feature_name, GParamFlags& flags) {
+  gint64 flag_val = 0;
+  if (!GetIntegerAttribute(feature_name, "flags", flag_val)) return false;
+  flags = static_cast<GParamFlags>(flag_val);
+  return true;
+}
+
+void GstPylonCache::SetFlags(const gchar* feature_name,
+                             const GParamFlags flags) {
+  SetIntegerAttribute(feature_name, "flags", static_cast<gint64>(flags));
 }

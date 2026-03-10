@@ -71,43 +71,43 @@ class GstPylonTypeAction : public GstPylonActions {
 };
 
 /* prototypes */
-GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *feature_node,
-                                         const GenICam::gcstring &limit);
-static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
-    GenApi::INode *feature_node);
+GenApi::INode* gst_pylon_find_limit_node(GenApi::INode* feature_node,
+                                         const GenICam::gcstring& limit);
+static std::vector<GenApi::INode*> gst_pylon_find_parent_features(
+    GenApi::INode* feature_node);
 void gst_pylon_add_all_property_values(
-    GenApi::INode *feature_node, std::string value,
-    std::unordered_map<std::string, GenApi::INode *> &invalidators);
-std::vector<GenApi::INode *> gst_pylon_get_available_features(
-    const std::set<GenApi::INode *> &feature_list);
+    GenApi::INode* feature_node, std::string value,
+    std::unordered_map<std::string, GenApi::INode*>& invalidators);
+std::vector<GenApi::INode*> gst_pylon_get_available_features(
+    const std::set<GenApi::INode*>& feature_list);
 template <class Type>
 std::vector<std::vector<Type>> gst_pylon_cartesian_product(
-    std::vector<std::vector<Type>> &v);
+    std::vector<std::vector<Type>>& v);
 template <class P, class T>
 T gst_pylon_check_for_feature_invalidators(
-    GenApi::INode *feature_node, GenApi::INode *limit_node, std::string limit,
-    std::unordered_map<std::string, GenApi::INode *> &invalidators);
+    GenApi::INode* feature_node, GenApi::INode* limit_node, std::string limit,
+    std::unordered_map<std::string, GenApi::INode*>& invalidators);
 template <class P, class T>
-T gst_pylon_query_feature_limits(GenApi::INode *feature_node,
-                                 const std::string &limit);
-std::vector<std::vector<GstPylonActions *>> gst_pylon_create_set_value_actions(
-    const std::vector<GenApi::INode *> &node_list);
+T gst_pylon_query_feature_limits(GenApi::INode* feature_node,
+                                 const std::string& limit);
+std::vector<std::vector<GstPylonActions*>> gst_pylon_create_set_value_actions(
+    const std::vector<GenApi::INode*>& node_list);
 template <class P, class T>
-void gst_pylon_find_limits(GenApi::INode *node,
-                           double &minimum_under_all_settings,
-                           double &maximum_under_all_settings,
-                           std::vector<GenApi::INode *> &invalidators_result);
+void gst_pylon_find_limits(GenApi::INode* node,
+                           double& minimum_under_all_settings,
+                           double& maximum_under_all_settings,
+                           std::vector<GenApi::INode*>& invalidators_result);
 template <class T>
 std::string gst_pylon_build_cache_value_string(GParamFlags flags,
                                                T minimum_under_all_settings,
                                                T maximum_under_all_settings);
 
-gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode *node);
+gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode* node);
 
-std::vector<GstPylonActions *> gst_pylon_create_reset_value_actions(
-    const std::vector<GenApi::INode *> &node_list);
+std::vector<GstPylonActions*> gst_pylon_create_reset_value_actions(
+    const std::vector<GenApi::INode*>& node_list);
 
-gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode *node) {
+gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode* node) {
   GenICam::gcstring value;
   GenICam::gcstring attribute;
   if (node->GetProperty("pIsLocked", value, attribute)) {
@@ -116,7 +116,7 @@ gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode *node) {
     GenApi::NodeList_t node_children;
     node->GetChildren(node_children);
     if (!node_children.empty()) {
-      for (auto &node_child : node_children) {
+      for (auto& node_child : node_children) {
         return gst_pylon_can_feature_later_be_writable(node_child);
       }
     }
@@ -124,8 +124,8 @@ gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode *node) {
   }
 }
 
-GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
-                                   GenApi::INode *node) {
+GParamFlags gst_pylon_query_access(GenApi::INodeMap& nodemap,
+                                   GenApi::INode* node) {
   gint flags = 0;
 
   g_return_val_if_fail(node, static_cast<GParamFlags>(flags));
@@ -169,9 +169,9 @@ GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
   return static_cast<GParamFlags>(flags);
 }
 
-GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *node,
-                                         const GenICam::gcstring &limit) {
-  GenApi::INode *limit_node = NULL;
+GenApi::INode* gst_pylon_find_limit_node(GenApi::INode* node,
+                                         const GenICam::gcstring& limit) {
+  GenApi::INode* limit_node = NULL;
   GenICam::gcstring value;
   GenICam::gcstring attribute;
 
@@ -193,11 +193,11 @@ GenApi::INode *gst_pylon_find_limit_node(GenApi::INode *node,
 }
 
 /* identify the first category a node belongs to */
-static const std::string gst_pylon_find_node_category(GenApi::INode *node) {
+static const std::string gst_pylon_find_node_category(GenApi::INode* node) {
   std::string category = "";
   g_return_val_if_fail(node, category);
 
-  GenApi::INode *curr_node = node;
+  GenApi::INode* curr_node = node;
 
   while (true) {
     if (curr_node->IsFeature() &&
@@ -221,9 +221,9 @@ static const std::string gst_pylon_find_node_category(GenApi::INode *node) {
   return category;
 }
 
-static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
-    GenApi::INode *node) {
-  std::vector<GenApi::INode *> parent_features;
+static std::vector<GenApi::INode*> gst_pylon_find_parent_features(
+    GenApi::INode* node) {
+  std::vector<GenApi::INode*> parent_features;
 
   g_return_val_if_fail(node, parent_features);
 
@@ -232,8 +232,8 @@ static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
   } else {
     GenApi::NodeList_t parents;
     node->GetParents(parents);
-    for (const auto &parent : parents) {
-      std::vector<GenApi::INode *> grandparents =
+    for (const auto& parent : parents) {
+      std::vector<GenApi::INode*> grandparents =
           gst_pylon_find_parent_features(parent);
       parent_features.insert(parent_features.end(), grandparents.begin(),
                              grandparents.end());
@@ -243,8 +243,8 @@ static std::vector<GenApi::INode *> gst_pylon_find_parent_features(
 }
 
 void gst_pylon_add_all_property_values(
-    GenApi::INode *node, std::string value,
-    std::unordered_map<std::string, GenApi::INode *> &invalidators) {
+    GenApi::INode* node, std::string value,
+    std::unordered_map<std::string, GenApi::INode*>& invalidators) {
   std::string delimiter = "\t";
   gsize pos = 0;
   std::string token;
@@ -264,10 +264,10 @@ void gst_pylon_add_all_property_values(
   }
 }
 
-std::vector<GenApi::INode *> gst_pylon_get_available_features(
-    const std::set<GenApi::INode *> &feature_list) {
-  std::vector<GenApi::INode *> available_features;
-  for (const auto &feature : feature_list) {
+std::vector<GenApi::INode*> gst_pylon_get_available_features(
+    const std::set<GenApi::INode*>& feature_list) {
+  std::vector<GenApi::INode*> available_features;
+  for (const auto& feature : feature_list) {
     if (GenApi::IsImplemented(feature)) {
       available_features.push_back(feature);
     }
@@ -275,10 +275,10 @@ std::vector<GenApi::INode *> gst_pylon_get_available_features(
   return available_features;
 }
 
-static std::vector<GenApi::INode *> gst_pylon_get_valid_categories(
-    const std::vector<GenApi::INode *> &feature_list) {
-  std::vector<GenApi::INode *> valid_features;
-  for (const auto &feature : feature_list) {
+static std::vector<GenApi::INode*> gst_pylon_get_valid_categories(
+    const std::vector<GenApi::INode*>& feature_list) {
+  std::vector<GenApi::INode*> valid_features;
+  for (const auto& feature : feature_list) {
     const std::string feature_category = gst_pylon_find_node_category(feature);
     if (!is_unsupported_category(feature_category)) {
       valid_features.push_back(feature);
@@ -287,16 +287,16 @@ static std::vector<GenApi::INode *> gst_pylon_get_valid_categories(
   return valid_features;
 }
 
-static std::vector<GenApi::INode *> gst_pylon_filter_gev_ctrl(
-    const std::vector<GenApi::INode *> &feature_list) {
-  std::vector<GenApi::INode *> valid_features;
+static std::vector<GenApi::INode*> gst_pylon_filter_gev_ctrl(
+    const std::vector<GenApi::INode*>& feature_list) {
+  std::vector<GenApi::INode*> valid_features;
   /* feature to filter */
   const std::vector<std::string> gst_feature_list(
       {"GevSCPSPacketSize", "GevSCPD", "GevSCFTD", "GevSCBWR",
        "GevSCBWRA"
        "GevGVSPExtendedIDMode"});
   /* filter out gev control features from feature_list */
-  for (const auto &feature : feature_list) {
+  for (const auto& feature : feature_list) {
     if (std::find(gst_feature_list.begin(), gst_feature_list.end(),
                   feature->GetName().c_str()) == gst_feature_list.end()) {
       valid_features.push_back(feature);
@@ -307,9 +307,9 @@ static std::vector<GenApi::INode *> gst_pylon_filter_gev_ctrl(
 
 template <class Type>
 std::vector<std::vector<Type>> gst_pylon_cartesian_product(
-    std::vector<std::vector<Type>> &values) {
+    std::vector<std::vector<Type>>& values) {
   std::vector<std::vector<Type>> result;
-  auto product = [](long long a, std::vector<Type> &b) { return a * b.size(); };
+  auto product = [](long long a, std::vector<Type>& b) { return a * b.size(); };
   const long long N = accumulate(values.begin(), values.end(), 1LL, product);
   std::vector<Type> result_combination(values.size());
   for (long long n = 0; n < N; ++n) {
@@ -324,8 +324,8 @@ std::vector<std::vector<Type>> gst_pylon_cartesian_product(
 }
 
 template <class P, class T>
-T gst_pylon_query_feature_limits(GenApi::INode *node,
-                                 const std::string &limit) {
+T gst_pylon_query_feature_limits(GenApi::INode* node,
+                                 const std::string& limit) {
   g_return_val_if_fail(node, 0);
 
   P param(node);
@@ -339,8 +339,8 @@ T gst_pylon_query_feature_limits(GenApi::INode *node,
 
 template <class P, class T>
 T gst_pylon_check_for_feature_invalidators(
-    GenApi::INode *node, GenApi::INode *limit_node, std::string limit,
-    std::unordered_map<std::string, GenApi::INode *> &invalidators) {
+    GenApi::INode* node, GenApi::INode* limit_node, std::string limit,
+    std::unordered_map<std::string, GenApi::INode*>& invalidators) {
   T limit_under_all_settings = 0;
   GenICam::gcstring value;
   GenICam::gcstring attribute;
@@ -359,12 +359,12 @@ T gst_pylon_check_for_feature_invalidators(
   return limit_under_all_settings;
 }
 
-std::vector<std::vector<GstPylonActions *>> gst_pylon_create_set_value_actions(
-    const std::vector<GenApi::INode *> &node_list) {
-  std::vector<std::vector<GstPylonActions *>> actions_list;
+std::vector<std::vector<GstPylonActions*>> gst_pylon_create_set_value_actions(
+    const std::vector<GenApi::INode*>& node_list) {
+  std::vector<std::vector<GstPylonActions*>> actions_list;
 
-  for (const auto &node : node_list) {
-    std::vector<GstPylonActions *> values;
+  for (const auto& node : node_list) {
+    std::vector<GstPylonActions*> values;
     switch (node->GetPrincipalInterfaceType()) {
       case GenApi::intfIBoolean: {
         Pylon::CBooleanParameter param(node);
@@ -400,7 +400,7 @@ std::vector<std::vector<GstPylonActions *>> gst_pylon_create_set_value_actions(
         Pylon::CEnumParameter param(node);
         GenApi::StringList_t settable_values;
         param.GetSettableValues(settable_values);
-        for (const auto &value : settable_values) {
+        for (const auto& value : settable_values) {
           /* Skip only check plugin supported formats */
           if (node->GetName() == "PixelFormat" &&
               !isSupportedPylonFormat(value.c_str())) {
@@ -428,12 +428,12 @@ std::vector<std::vector<GstPylonActions *>> gst_pylon_create_set_value_actions(
   return actions_list;
 }
 
-std::vector<GstPylonActions *> gst_pylon_create_reset_value_actions(
-    const std::vector<GenApi::INode *> &node_list) {
-  std::vector<GstPylonActions *> actions_list;
+std::vector<GstPylonActions*> gst_pylon_create_reset_value_actions(
+    const std::vector<GenApi::INode*>& node_list) {
+  std::vector<GstPylonActions*> actions_list;
 
-  for (const auto &node : node_list) {
-    std::vector<GstPylonActions *> values;
+  for (const auto& node : node_list) {
+    std::vector<GstPylonActions*> values;
     switch (node->GetPrincipalInterfaceType()) {
       case GenApi::intfIBoolean: {
         Pylon::CBooleanParameter param(node);
@@ -480,7 +480,7 @@ std::vector<GstPylonActions *> gst_pylon_create_reset_value_actions(
 using namespace std ::literals;
 class TimeLogger {
  public:
-  TimeLogger(const std::string &message)
+  TimeLogger(const std::string& message)
       : t0(std::chrono::system_clock::now()), message(message) {
     GST_DEBUG("Start Checking: %s ", message.c_str());
   };
@@ -488,12 +488,12 @@ class TimeLogger {
   ~TimeLogger() {
     auto t1 = std::chrono::system_clock::now();
     GST_DEBUG("TIMELOGGER %s %ld msec -> ", message.c_str(), (t1 - t0) / 1ms);
-    for (auto &info : info_list) {
+    for (auto& info : info_list) {
       GST_DEBUG("%s ", info.c_str());
     }
   }
 
-  void add_info(const std::string &info) { info_list.push_back(info); }
+  void add_info(const std::string& info) { info_list.push_back(info); }
 
  private:
   const std::chrono::time_point<std::chrono::system_clock> t0;
@@ -502,9 +502,9 @@ class TimeLogger {
 };
 
 template <class P, class T>
-void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
-                           T &maximum_under_all_settings) {
-  std::unordered_map<std::string, GenApi::INode *> invalidators;
+void gst_pylon_find_limits(GenApi::INode* node, T& minimum_under_all_settings,
+                           T& maximum_under_all_settings) {
+  std::unordered_map<std::string, GenApi::INode*> invalidators;
   maximum_under_all_settings = 0;
   minimum_under_all_settings = 0;
   g_return_if_fail(node);
@@ -513,13 +513,13 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
 
   /* Find the maximum value of a feature under the influence of other elements
    * of the nodemap */
-  GenApi::INode *pmax_node = gst_pylon_find_limit_node(node, "pMax");
+  GenApi::INode* pmax_node = gst_pylon_find_limit_node(node, "pMax");
   maximum_under_all_settings = gst_pylon_check_for_feature_invalidators<P, T>(
       node, pmax_node, "max", invalidators);
 
   /* Find the minimum value of a feature under the influence of other elements
    * of the nodemap */
-  GenApi::INode *pmin_node = gst_pylon_find_limit_node(node, "pMin");
+  GenApi::INode* pmin_node = gst_pylon_find_limit_node(node, "pMin");
   minimum_under_all_settings = gst_pylon_check_for_feature_invalidators<P, T>(
       node, pmin_node, "min", invalidators);
 
@@ -530,17 +530,17 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
 
   /* Find all features that control the node and
    * store results in a set to remove duplicates*/
-  std::set<GenApi::INode *> parent_invalidators;
-  for (const auto &inv : invalidators) {
-    std::vector<GenApi::INode *> parent_features =
+  std::set<GenApi::INode*> parent_invalidators;
+  for (const auto& inv : invalidators) {
+    std::vector<GenApi::INode*> parent_features =
         gst_pylon_find_parent_features(inv.second);
-    for (const auto &p_feat : parent_features) {
+    for (const auto& p_feat : parent_features) {
       parent_invalidators.insert(p_feat);
     }
   }
 
   /* Filter parent invalidators to only available ones */
-  std::vector<GenApi::INode *> available_parent_inv =
+  std::vector<GenApi::INode*> available_parent_inv =
       gst_pylon_get_available_features(parent_invalidators);
 
   /* workarounds for ace2/dart2/boost features high
@@ -670,16 +670,16 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
    * the gige setup parameters */
   available_parent_inv = gst_pylon_filter_gev_ctrl(available_parent_inv);
 
-  for (auto &node : available_parent_inv) {
+  for (auto& node : available_parent_inv) {
     tl.add_info(node->GetName().c_str());
   }
 
   /* Save current set of values */
-  std::vector<GstPylonActions *> reset_list =
+  std::vector<GstPylonActions*> reset_list =
       gst_pylon_create_reset_value_actions(available_parent_inv);
 
   /* Create list of extreme value settings per invalidator */
-  std::vector<std::vector<GstPylonActions *>> actions_list =
+  std::vector<std::vector<GstPylonActions*>> actions_list =
       gst_pylon_create_set_value_actions(available_parent_inv);
 
   /* try to get support for optimized bulk feature settings */
@@ -692,13 +692,13 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
   auto action_list_permutations = gst_pylon_cartesian_product(actions_list);
   std::vector<T> min_values;
   std::vector<T> max_values;
-  for (const auto &actions : action_list_permutations) {
+  for (const auto& actions : action_list_permutations) {
     reg_streaming_start.TryExecute();
-    for (const auto &action : actions) {
+    for (const auto& action : actions) {
       /* Some states might not be valid, so just skip them */
       try {
         action->set_value();
-      } catch (const GenICam::GenericException &e) {
+      } catch (const GenICam::GenericException& e) {
         GST_DEBUG("failed to set action");
         continue;
       }
@@ -718,33 +718,33 @@ void gst_pylon_find_limits(GenApi::INode *node, T &minimum_under_all_settings,
       *std::max_element(max_values.begin(), max_values.end());
 
   /* Reset to old values */
-  for (const auto &action : reset_list) {
+  for (const auto& action : reset_list) {
     try {
       action->set_value();
-    } catch (const Pylon::GenericException &) {
+    } catch (const Pylon::GenericException&) {
       continue;
     }
   }
 
   /* Clean up */
-  for (const auto &actions : actions_list) {
-    for (const auto &action : actions) {
+  for (const auto& actions : actions_list) {
+    for (const auto& action : actions) {
       delete action;
     }
   }
-  for (const auto &action : reset_list) {
+  for (const auto& action : reset_list) {
     delete action;
   }
 }
 
 void gst_pylon_query_feature_properties_double(
-    GenApi::INodeMap &nodemap, GenApi::INode *node,
-    GstPylonCache &feature_cache, GParamFlags &flags,
-    gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings,
-    GenApi::INode *selector, gint64 selector_value) {
+    GenApi::INodeMap& nodemap, GenApi::INode* node,
+    GstPylonCache& feature_cache, GParamFlags& flags,
+    gdouble& minimum_under_all_settings, gdouble& maximum_under_all_settings,
+    GenApi::INode* selector, gint64 selector_value) {
   g_return_if_fail(node);
 
-  gchar *feature_cache_name = NULL;
+  gchar* feature_cache_name = NULL;
   if (selector) {
     /* Set selector value value */
     gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
@@ -772,14 +772,41 @@ void gst_pylon_query_feature_properties_double(
   g_free(feature_cache_name);
 }
 
-void gst_pylon_query_feature_properties_integer(
-    GenApi::INodeMap &nodemap, GenApi::INode *node,
-    GstPylonCache &feature_cache, GParamFlags &flags,
-    gint64 &minimum_under_all_settings, gint64 &maximum_under_all_settings,
-    GenApi::INode *selector, gint64 selector_value) {
+void gst_pylon_query_feature_properties_flags(GenApi::INodeMap& nodemap,
+                                              GenApi::INode* node,
+                                              GstPylonCache& feature_cache,
+                                              GParamFlags& flags,
+                                              GenApi::INode* selector,
+                                              gint64 selector_value) {
   g_return_if_fail(node);
 
-  gchar *feature_cache_name = NULL;
+  gchar* feature_cache_name = NULL;
+  if (selector) {
+    gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
+                                        selector_value);
+    feature_cache_name = gst_pylon_create_selected_name(
+        nodemap, node->GetName().c_str(), selector->GetName().c_str(),
+        selector_value);
+  } else {
+    feature_cache_name = g_strdup(node->GetName().c_str());
+  }
+
+  if (!feature_cache.GetFlags(feature_cache_name, flags)) {
+    flags = gst_pylon_query_access(nodemap, node);
+    feature_cache.SetFlags(feature_cache_name, flags);
+  }
+
+  g_free(feature_cache_name);
+}
+
+void gst_pylon_query_feature_properties_integer(
+    GenApi::INodeMap& nodemap, GenApi::INode* node,
+    GstPylonCache& feature_cache, GParamFlags& flags,
+    gint64& minimum_under_all_settings, gint64& maximum_under_all_settings,
+    GenApi::INode* selector, gint64 selector_value) {
+  g_return_if_fail(node);
+
+  gchar* feature_cache_name = NULL;
   if (selector) {
     /* Set selector value value */
     gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
@@ -794,15 +821,13 @@ void gst_pylon_query_feature_properties_integer(
   }
 
   /* If access to a feature cache entry fails, create new props dynamically */
-  if (!feature_cache.GetIntProps(node->GetName().c_str(),
-                                 minimum_under_all_settings,
+  if (!feature_cache.GetIntProps(feature_cache_name, minimum_under_all_settings,
                                  maximum_under_all_settings, flags)) {
     flags = gst_pylon_query_access(nodemap, node);
     gst_pylon_find_limits<Pylon::CIntegerParameter, gint64>(
         node, minimum_under_all_settings, maximum_under_all_settings);
 
-    feature_cache.SetIntProps(node->GetName().c_str(),
-                              minimum_under_all_settings,
+    feature_cache.SetIntProps(feature_cache_name, minimum_under_all_settings,
                               maximum_under_all_settings, flags);
   }
 

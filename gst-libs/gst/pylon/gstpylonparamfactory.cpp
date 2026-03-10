@@ -80,10 +80,12 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_bool(
   g_return_val_if_fail(node, NULL);
 
   Pylon::CBooleanParameter param(node);
+  GParamFlags flags = G_PARAM_READABLE;
+  gst_pylon_query_feature_properties_flags(schema.nodemap, node,
+                                           schema.feature_cache, flags);
 
   return g_param_spec_boolean(node->GetName(), node->GetDisplayName(),
-                              node->GetToolTip(), param.GetValue(),
-                              gst_pylon_query_access(schema.nodemap, node));
+                              node->GetToolTip(), param.GetValue(), flags);
 }
 
 GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_bool(
@@ -92,11 +94,14 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_bool(
   g_return_val_if_fail(selector, NULL);
 
   Pylon::CBooleanParameter param(node);
+  GParamFlags flags = G_PARAM_READABLE;
+  gst_pylon_query_feature_properties_flags(schema.nodemap, node,
+                                           schema.feature_cache, flags,
+                                           selector, selector_value);
 
   return gst_pylon_param_spec_selector_boolean(
       schema.nodemap, node->GetName(), selector->GetName(), selector_value,
-      node->GetDisplayName(), node->GetToolTip(), param.GetValue(),
-      gst_pylon_query_access(schema.nodemap, node));
+      node->GetDisplayName(), node->GetToolTip(), param.GetValue(), flags);
 }
 
 GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_double(
@@ -140,10 +145,12 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_str(GenApi::INode* node) {
   g_return_val_if_fail(node, NULL);
 
   Pylon::CStringParameter param(node);
+  GParamFlags flags = G_PARAM_READABLE;
+  gst_pylon_query_feature_properties_flags(schema.nodemap, node,
+                                           schema.feature_cache, flags);
 
   return g_param_spec_string(node->GetName(), node->GetDisplayName(),
-                             node->GetToolTip(), param.GetValue(),
-                             gst_pylon_query_access(schema.nodemap, node));
+                             node->GetToolTip(), param.GetValue(), flags);
 }
 
 GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_str(
@@ -152,11 +159,14 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_str(
   g_return_val_if_fail(selector, NULL);
 
   Pylon::CStringParameter param(node);
+  GParamFlags flags = G_PARAM_READABLE;
+  gst_pylon_query_feature_properties_flags(schema.nodemap, node,
+                                           schema.feature_cache, flags,
+                                           selector, selector_value);
 
   return gst_pylon_param_spec_selector_string(
       schema.nodemap, node->GetName(), selector->GetName(), selector_value,
-      node->GetDisplayName(), node->GetToolTip(), param.GetValue(),
-      gst_pylon_query_access(schema.nodemap, node));
+      node->GetDisplayName(), node->GetToolTip(), param.GetValue(), flags);
 }
 
 GType GstPylonParamFactory::gst_pylon_make_enum_type(GenApi::INode* node) {
@@ -230,8 +240,9 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_enum(
       gst_pylon_query_access(schema.nodemap, node));
 }
 
-GParamSpec* GstPylonParamFactory::GstPylonParamFactory::make_param(
-    GenApi::INode* node, GenApi::INode* selector, guint64 selector_value) {
+GParamSpec* GstPylonParamFactory::make_param(GenApi::INode* node,
+                                             GenApi::INode* selector,
+                                             guint64 selector_value) {
   g_return_val_if_fail(node, NULL);
 
   GParamSpec* spec = NULL;

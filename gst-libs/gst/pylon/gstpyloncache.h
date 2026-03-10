@@ -39,38 +39,46 @@
 
 class GST_PLUGIN_EXPORT GstPylonCache {
  public:
-  GstPylonCache(const std::string &name);
+  GstPylonCache(const std::string& name);
   ~GstPylonCache();
   gboolean HasNewSettings();
 
-  void SetIntProps(const gchar *feature_name, const gint64 min,
+  void SetIntProps(const gchar* feature_name, const gint64 min,
                    const gint64 max, const GParamFlags flags);
-  void SetDoubleProps(const gchar *feature_name, const gdouble min,
+  void SetDoubleProps(const gchar* feature_name, const gdouble min,
                       const gdouble max, const GParamFlags flags);
 
-  bool GetIntProps(const gchar *feature_name, gint64 &min, gint64 &max,
-                   GParamFlags &flags);
-  bool GetDoubleProps(const gchar *feature_name, gdouble &min, gdouble &max,
-                      GParamFlags &flags);
+  bool GetIntProps(const gchar* feature_name, gint64& min, gint64& max,
+                   GParamFlags& flags);
+  bool GetDoubleProps(const gchar* feature_name, gdouble& min, gdouble& max,
+                      GParamFlags& flags);
+  /* For bool/string: cache flags only (readable/writable) */
+  bool GetFlags(const gchar* feature_name, GParamFlags& flags);
+  void SetFlags(const gchar* feature_name, const GParamFlags flags);
 
   /* Load from file system */
   gboolean LoadCacheFile();
   /* Persist cache to filesystem */
   void CreateCacheFile();
 
+  /* Introspection cache: full property blurb per schema (for gst-inspect) */
+  static gchar* GetIntrospection(const std::string& schema_key);
+  static void SetIntrospection(const std::string& schema_key,
+                               const std::string& content);
+
  private:
-  void SetIntegerAttribute(const char *feature, const char *attribute,
+  void SetIntegerAttribute(const char* feature, const char* attribute,
                            const gint64 val);
-  void SetDoubleAttribute(const char *feature, const char *attribute,
+  void SetDoubleAttribute(const char* feature, const char* attribute,
                           gdouble val);
 
-  bool GetIntegerAttribute(const char *feature, const char *attribute,
-                           gint64 &val);
-  bool GetDoubleAttribute(const char *feature, const char *attribute,
-                          gdouble &val);
+  bool GetIntegerAttribute(const char* feature, const char* attribute,
+                           gint64& val);
+  bool GetDoubleAttribute(const char* feature, const char* attribute,
+                          gdouble& val);
 
   std::string filepath;
-  GKeyFile *feature_cache_dict;
+  GKeyFile* feature_cache_dict;
   gboolean is_modified;
 };
 

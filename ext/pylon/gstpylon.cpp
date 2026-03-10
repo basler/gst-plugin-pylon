@@ -53,6 +53,7 @@
 
 #include <exception>
 #include <map>
+#include <set>
 #include <vector>
 
 /* retry open camera limits in case of collision with other
@@ -112,18 +113,11 @@ static void gst_pylon_append_properties(
     Pylon::CBaslerUniversalInstantCamera* camera,
     const GstPylonObjectSchema& schema, const std::string& device_type_str,
     gchar** device_properties, guint alignment);
-static void gst_pylon_append_camera_properties(
-    Pylon::CBaslerUniversalInstantCamera* camera, gchar** camera_properties,
-    guint alignment);
-static void gst_pylon_append_stream_grabber_properties(
-    Pylon::CBaslerUniversalInstantCamera* camera, gchar** sgrabber_properties,
-    guint alignment);
-typedef void (*GetStringProperties)(Pylon::CBaslerUniversalInstantCamera*,
-                                    gchar**, guint);
-static gchar* gst_pylon_get_string_properties(
-    GetStringProperties get_device_string_properties);
-
 static constexpr gint DEFAULT_ALIGNMENT = 35;
+
+/* Combined introspection: one device pass, cache, one output per schema */
+static void gst_pylon_get_introspection_strings_impl(gchar** cam_out,
+                                                     gchar** stream_out);
 
 struct _GstPylon {
   explicit _GstPylon(GstElement* element)
@@ -1140,83 +1134,164 @@ static void gst_pylon_append_properties(
   g_object_unref(device_obj);
 }
 
-static void gst_pylon_append_camera_properties(
-    Pylon::CBaslerUniversalInstantCamera* camera, gchar** camera_properties,
-    guint alignment) {
-  g_return_if_fail(camera);
-  g_return_if_fail(camera_properties);
+static gchar* gst_pylon_get_camera_properties_block(
+    Pylon::CBaslerUniversalInstantCamera* camera, guint alignment) {
+  g_return_val_if_fail(camera, NULL);
 
   GstPylonCache feature_cache(gst_pylon_get_camera_schema_cache_key(*camera));
   GstPylonObjectSchema schema =
       gst_pylon_get_camera_schema(*camera, feature_cache);
-  std::string device_type = "Camera";
-
-  gst_pylon_append_properties(camera, schema, device_type, camera_properties,
-                              alignment);
+  gchar* block = NULL;
+  gst_pylon_append_properties(camera, schema, "Camera", &block, alignment);
+  return block;
 }
 
-static void gst_pylon_append_stream_grabber_properties(
-    Pylon::CBaslerUniversalInstantCamera* camera, gchar** sgrabber_properties,
-    guint alignment) {
-  g_return_if_fail(camera);
-  g_return_if_fail(sgrabber_properties);
+static gchar* gst_pylon_get_stream_properties_block(
+    Pylon::CBaslerUniversalInstantCamera* camera, guint alignment) {
+  g_return_val_if_fail(camera, NULL);
 
   GstPylonCache feature_cache(gst_pylon_get_stream_schema_cache_key(*camera));
   GstPylonObjectSchema schema =
       gst_pylon_get_stream_schema(*camera, feature_cache);
-  std::string device_type = "Stream Grabber";
-
-  gst_pylon_append_properties(camera, schema, device_type, sgrabber_properties,
+  gchar* block = NULL;
+  gst_pylon_append_properties(camera, schema, "Stream Grabber", &block,
                               alignment);
+  return block;
 }
 
-static gchar* gst_pylon_get_string_properties(
-    GetStringProperties get_device_string_properties) {
+static void gst_pylon_get_introspection_strings_impl(gchar** cam_out,
+                                                     gchar** stream_out) {
   gchar* camera_properties = NULL;
+  gchar* stream_properties = NULL;
+  std::set<std::string> seen_camera_keys;
+  std::set<std::string> seen_stream_keys;
 
   Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
   Pylon::DeviceInfoList_t device_list;
-
   factory.EnumerateDevices(device_list);
 
+  /* One device per unique model (by GetModelName) to minimize device opens */
+  std::set<std::string> seen_models;
   for (const auto& device : device_list) {
+    const std::string model = std::string(device.GetModelName().c_str());
+    if (seen_models.find(model) != seen_models.end()) {
+      continue;
+    }
+    seen_models.insert(model);
     try {
       Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
                                                   Pylon::Cleanup_Delete);
       camera.Open();
 
-      /* Set the camera to a valid state
-       * close left open transactions on the device
-       */
+      /* Set the camera to a valid state */
       camera.DeviceFeaturePersistenceEnd.TryExecute();
       camera.DeviceRegistersStreamingEnd.TryExecute();
 
-      /* Set the camera to a valid state
-       * load the factory default set
-       */
+      /* Load factory default set (gst-inspect always uses Default) */
       if (camera.UserSetSelector.IsWritable()) {
         camera.UserSetSelector.SetValue("Default");
         camera.UserSetLoad.Execute();
       }
 
-      get_device_string_properties(&camera, &camera_properties,
-                                   DEFAULT_ALIGNMENT);
+      const std::string camera_key =
+          gst_pylon_get_camera_schema_cache_key(camera);
+      const std::string stream_key =
+          gst_pylon_get_stream_schema_cache_key(camera);
+
+      /* Camera: one output per unique schema, use introspection cache */
+      if (seen_camera_keys.find(camera_key) == seen_camera_keys.end()) {
+        seen_camera_keys.insert(camera_key);
+        gchar* cached = GstPylonCache::GetIntrospection(camera_key);
+        if (cached) {
+          if (camera_properties) {
+            gchar* tmp = g_strconcat(camera_properties, "\n", cached, NULL);
+            g_free(camera_properties);
+            g_free(cached);
+            camera_properties = tmp;
+          } else {
+            camera_properties = cached;
+          }
+        } else {
+          gchar* block =
+              gst_pylon_get_camera_properties_block(&camera, DEFAULT_ALIGNMENT);
+          GstPylonCache::SetIntrospection(camera_key,
+                                          std::string(block ? block : ""));
+          if (camera_properties) {
+            gchar* tmp = g_strconcat(camera_properties, "\n", block, NULL);
+            g_free(camera_properties);
+            g_free(block);
+            camera_properties = tmp;
+          } else {
+            camera_properties = block;
+          }
+        }
+      }
+
+      /* Stream: one output per unique schema, use introspection cache */
+      if (seen_stream_keys.find(stream_key) == seen_stream_keys.end()) {
+        seen_stream_keys.insert(stream_key);
+        gchar* cached = GstPylonCache::GetIntrospection(stream_key);
+        if (cached) {
+          if (stream_properties) {
+            gchar* tmp = g_strconcat(stream_properties, "\n", cached, NULL);
+            g_free(stream_properties);
+            g_free(cached);
+            stream_properties = tmp;
+          } else {
+            stream_properties = cached;
+          }
+        } else {
+          gchar* block =
+              gst_pylon_get_stream_properties_block(&camera, DEFAULT_ALIGNMENT);
+          GstPylonCache::SetIntrospection(stream_key,
+                                          std::string(block ? block : ""));
+          if (stream_properties) {
+            gchar* tmp = g_strconcat(stream_properties, "\n", block, NULL);
+            g_free(stream_properties);
+            g_free(block);
+            stream_properties = tmp;
+          } else {
+            stream_properties = block;
+          }
+        }
+      }
+
       camera.Close();
     } catch (const Pylon::GenericException&) {
       continue;
     }
   }
 
-  return camera_properties;
+  *cam_out = camera_properties ? camera_properties : g_strdup("");
+  *stream_out = stream_properties ? stream_properties : g_strdup("");
+}
+
+static void gst_pylon_get_introspection_strings(gchar** cam_out,
+                                                gchar** stream_out) {
+  static gchar* cached_cam = NULL;
+  static gchar* cached_stream = NULL;
+
+  if (cached_cam == NULL) {
+    gst_pylon_get_introspection_strings_impl(&cached_cam, &cached_stream);
+  }
+  *cam_out = g_strdup(cached_cam ? cached_cam : "");
+  *stream_out = g_strdup(cached_stream ? cached_stream : "");
 }
 
 gchar* gst_pylon_camera_get_string_properties() {
-  return gst_pylon_get_string_properties(gst_pylon_append_camera_properties);
+  gchar* cam = NULL;
+  gchar* stream = NULL;
+  gst_pylon_get_introspection_strings(&cam, &stream);
+  g_free(stream);
+  return cam;
 }
 
 gchar* gst_pylon_stream_grabber_get_string_properties() {
-  return gst_pylon_get_string_properties(
-      gst_pylon_append_stream_grabber_properties);
+  gchar* cam = NULL;
+  gchar* stream = NULL;
+  gst_pylon_get_introspection_strings(&cam, &stream);
+  g_free(cam);
+  return stream;
 }
 
 GObject* gst_pylon_get_camera(GstPylon* self) {
