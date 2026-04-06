@@ -1163,21 +1163,15 @@ static void gst_pylon_get_introspection_strings_impl(gchar** cam_out,
                                                      gchar** stream_out) {
   gchar* camera_properties = NULL;
   gchar* stream_properties = NULL;
-  std::set<std::string> seen_camera_keys;
-  std::set<std::string> seen_stream_keys;
 
   Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
   Pylon::DeviceInfoList_t device_list;
   factory.EnumerateDevices(device_list);
 
-  /* One device per unique model (by GetModelName) to minimize device opens */
-  std::set<std::string> seen_models;
+  /* One block per device (old behavior). Blocks have device-specific content
+   * (e.g. GType enum names), so we build each; introspection cache only helps
+   * when a single device is present. */
   for (const auto& device : device_list) {
-    const std::string model = std::string(device.GetModelName().c_str());
-    if (seen_models.find(model) != seen_models.end()) {
-      continue;
-    }
-    seen_models.insert(model);
     try {
       Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
                                                   Pylon::Cleanup_Delete);
@@ -1198,61 +1192,58 @@ static void gst_pylon_get_introspection_strings_impl(gchar** cam_out,
       const std::string stream_key =
           gst_pylon_get_stream_schema_cache_key(camera);
 
-      /* Camera: one output per unique schema, use introspection cache */
-      if (seen_camera_keys.find(camera_key) == seen_camera_keys.end()) {
-        seen_camera_keys.insert(camera_key);
+      /* Camera: build block (use cache only when single device for this schema)
+       */
+      gchar* cam_block = NULL;
+      if (device_list.size() == 1) {
         gchar* cached = GstPylonCache::GetIntrospection(camera_key);
         if (cached) {
-          if (camera_properties) {
-            gchar* tmp = g_strconcat(camera_properties, "\n", cached, NULL);
-            g_free(camera_properties);
-            g_free(cached);
-            camera_properties = tmp;
-          } else {
-            camera_properties = cached;
-          }
+          cam_block = cached;
+        }
+      }
+      if (!cam_block) {
+        cam_block =
+            gst_pylon_get_camera_properties_block(&camera, DEFAULT_ALIGNMENT);
+        if (device_list.size() == 1) {
+          GstPylonCache::SetIntrospection(
+              camera_key, std::string(cam_block ? cam_block : ""));
+        }
+      }
+      if (cam_block) {
+        if (camera_properties) {
+          gchar* tmp = g_strconcat(camera_properties, "\n", cam_block, NULL);
+          g_free(camera_properties);
+          g_free(cam_block);
+          camera_properties = tmp;
         } else {
-          gchar* block =
-              gst_pylon_get_camera_properties_block(&camera, DEFAULT_ALIGNMENT);
-          GstPylonCache::SetIntrospection(camera_key,
-                                          std::string(block ? block : ""));
-          if (camera_properties) {
-            gchar* tmp = g_strconcat(camera_properties, "\n", block, NULL);
-            g_free(camera_properties);
-            g_free(block);
-            camera_properties = tmp;
-          } else {
-            camera_properties = block;
-          }
+          camera_properties = cam_block;
         }
       }
 
-      /* Stream: one output per unique schema, use introspection cache */
-      if (seen_stream_keys.find(stream_key) == seen_stream_keys.end()) {
-        seen_stream_keys.insert(stream_key);
+      /* Stream: same */
+      gchar* stream_block = NULL;
+      if (device_list.size() == 1) {
         gchar* cached = GstPylonCache::GetIntrospection(stream_key);
         if (cached) {
-          if (stream_properties) {
-            gchar* tmp = g_strconcat(stream_properties, "\n", cached, NULL);
-            g_free(stream_properties);
-            g_free(cached);
-            stream_properties = tmp;
-          } else {
-            stream_properties = cached;
-          }
+          stream_block = cached;
+        }
+      }
+      if (!stream_block) {
+        stream_block =
+            gst_pylon_get_stream_properties_block(&camera, DEFAULT_ALIGNMENT);
+        if (device_list.size() == 1) {
+          GstPylonCache::SetIntrospection(
+              stream_key, std::string(stream_block ? stream_block : ""));
+        }
+      }
+      if (stream_block) {
+        if (stream_properties) {
+          gchar* tmp = g_strconcat(stream_properties, "\n", stream_block, NULL);
+          g_free(stream_properties);
+          g_free(stream_block);
+          stream_properties = tmp;
         } else {
-          gchar* block =
-              gst_pylon_get_stream_properties_block(&camera, DEFAULT_ALIGNMENT);
-          GstPylonCache::SetIntrospection(stream_key,
-                                          std::string(block ? block : ""));
-          if (stream_properties) {
-            gchar* tmp = g_strconcat(stream_properties, "\n", block, NULL);
-            g_free(stream_properties);
-            g_free(block);
-            stream_properties = tmp;
-          } else {
-            stream_properties = block;
-          }
+          stream_properties = stream_block;
         }
       }
 

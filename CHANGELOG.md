@@ -3,9 +3,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Changed
-- **Introspection speed**: Cache full gst-inspect output per camera model
+- **Introspection speed**: Cache full gst-inspect output (single-device case)
   - Second run with warm cache: ~0.4s vs ~1.3s (no camera opens)
-  - One device per unique model when building introspection
+  - One block per device (compatible with main)
   - Combined camera+stream pass avoids duplicate device enumeration
 - **Feature cache**: Extend to bool/string properties (flags only)
   - Stable mapping preserved: no default/current values cached (user-set/PFS)

@@ -102,6 +102,8 @@ static gboolean gst_pylon_src_teardown_session(GstPylonSrc* self,
 static gboolean gst_pylon_src_create_session(GstPylonSrc* self, GError** error);
 static gboolean gst_pylon_src_apply_session_config(GstPylonSrc* self,
                                                    GError** error);
+static void gst_pylon_src_discard_session(GstPylonSrc* self,
+                                          gboolean terminate_runtime);
 static GObject* gst_pylon_src_ref_child(GstPylonSrc* self, guint property_id);
 static guint gst_pylon_src_child_name_to_property_id(const gchar* name);
 
@@ -685,6 +687,12 @@ static gboolean gst_pylon_src_set_caps(GstBaseSrc* src, GstCaps* caps) {
   gboolean ret = FALSE;
   const gchar* action = NULL;
 
+  if (!self->pylon) {
+    action = "configure";
+    error_msg = g_strdup("Camera instance not initialised");
+    goto error;
+  }
+
   try {
     GST_INFO_OBJECT(self, "Setting new caps: %" GST_PTR_FORMAT, (gpointer)caps);
 
@@ -777,6 +785,9 @@ static gboolean gst_pylon_src_teardown_session(GstPylonSrc* self,
   }
 
   if (!gst_pylon_stop(self->pylon, error) && *error) {
+    if (terminate_runtime) {
+      Pylon::PylonTerminate();
+    }
     return FALSE;
   }
 
@@ -855,6 +866,40 @@ static gboolean gst_pylon_src_apply_session_config(GstPylonSrc* self,
   return !using_pfs || (ret && *error == NULL);
 }
 
+static void gst_pylon_src_discard_session(GstPylonSrc* self,
+                                          gboolean terminate_runtime) {
+  if (!self->pylon) {
+    if (terminate_runtime) {
+      Pylon::PylonTerminate();
+    }
+    return;
+  }
+
+  try {
+    GError* cleanup_error = NULL;
+    if (!gst_pylon_stop(self->pylon, &cleanup_error) && cleanup_error) {
+      GST_WARNING_OBJECT(self, "Ignoring stop error during cleanup: %s",
+                         cleanup_error->message);
+      g_error_free(cleanup_error);
+    }
+  } catch (const GenICam::GenericException& e) {
+    GST_WARNING_OBJECT(self, "Ignoring exception during cleanup stop: %s",
+                       e.GetDescription());
+  }
+
+  try {
+    gst_pylon_free(self->pylon);
+  } catch (const GenICam::GenericException& e) {
+    GST_WARNING_OBJECT(self, "Ignoring exception during cleanup free: %s",
+                       e.GetDescription());
+  }
+  self->pylon = NULL;
+
+  if (terminate_runtime) {
+    Pylon::PylonTerminate();
+  }
+}
+
 static GObject* gst_pylon_src_ref_child(GstPylonSrc* self, guint property_id) {
   g_return_val_if_fail(self, NULL);
 
@@ -891,18 +936,18 @@ static gboolean gst_pylon_src_start(GstBaseSrc* src) {
   gboolean ret = TRUE;
   gboolean same_device = TRUE;
 
+  GST_OBJECT_LOCK(self);
+  same_device =
+      self->pylon && gst_pylon_is_same_device(self->pylon, self->device_index,
+                                              self->device_user_name,
+                                              self->device_serial_number);
+  GST_OBJECT_UNLOCK(self);
+
+  if (same_device) {
+    goto out;
+  }
+
   try {
-    GST_OBJECT_LOCK(self);
-    same_device =
-        self->pylon && gst_pylon_is_same_device(self->pylon, self->device_index,
-                                                self->device_user_name,
-                                                self->device_serial_number);
-    GST_OBJECT_UNLOCK(self);
-
-    if (same_device) {
-      goto out;
-    }
-
     if (self->pylon) {
       if (!gst_pylon_src_teardown_session(self, FALSE, &error)) {
         ret = FALSE;
@@ -924,17 +969,22 @@ static gboolean gst_pylon_src_start(GstBaseSrc* src) {
   } catch (const GenICam::GenericException& e) {
     GST_ELEMENT_ERROR(self, LIBRARY, FAILED, ("Failed to start camera."),
                       ("%s", e.GetDescription()));
-    return FALSE;
+    ret = FALSE;
+    goto out;
   }
 
   goto out;
 
 log_gst_error:
-  GST_ELEMENT_ERROR(self, LIBRARY, FAILED, ("Failed to start camera."),
-                    ("%s", error->message));
-  g_error_free(error);
-
-  Pylon::PylonTerminate();
+  gst_pylon_src_discard_session(self, TRUE);
+  if (error) {
+    GST_ELEMENT_ERROR(self, LIBRARY, FAILED, ("Failed to start camera."),
+                      ("%s", error->message));
+    g_error_free(error);
+  } else {
+    GST_ELEMENT_ERROR(self, LIBRARY, FAILED, ("Failed to start camera."),
+                      ("Unknown error"));
+  }
 
 out:
   return ret;
@@ -957,6 +1007,7 @@ static gboolean gst_pylon_src_stop(GstBaseSrc* src) {
   } catch (const GenICam::GenericException& e) {
     GST_ELEMENT_ERROR(self, LIBRARY, FAILED, ("Failed to stop camera."),
                       ("%s", e.GetDescription()));
+    gst_pylon_src_discard_session(self, TRUE);
     ret = FALSE;
   }
 
@@ -969,6 +1020,10 @@ static gboolean gst_pylon_src_unlock(GstBaseSrc* src) {
   GstPylonSrc* self = GST_PYLON_SRC(src);
 
   GST_LOG_OBJECT(self, "unlock");
+
+  if (!self->pylon) {
+    return TRUE;
+  }
 
   gst_pylon_interrupt_capture(self->pylon);
 

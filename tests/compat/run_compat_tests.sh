@@ -43,10 +43,15 @@ fi
 # - strip trailing whitespace
 # - collapse multiple blank lines to one
 # - normalize Filename (path varies) and Version (git hash varies)
+# - normalize child-property Default: lines (live camera state can vary)
 normalize_inspect() {
   sed 's/[[:space:]]*$//' \
     | sed 's|Filename[[:space:]]*.*libgstpylon\.so.*|Filename                 libgstpylon.so|' \
     | sed '/^[[:space:]]*Version[[:space:]]/s/[[:space:]]*Version[[:space:]].*$/  Version                  PLACEHOLDER/' \
+    | sed '/^[[:space:]]\{20,\}/s/Default: true/Default: <bool>/g; /^[[:space:]]\{20,\}/s/Default: false/Default: <bool>/g' \
+    | sed '/^[[:space:]]\{20,\}/s/Default: [0-9][0-9.]*, "[^"]*"/Default: <enum>/g' \
+    | sed '/^[[:space:]]\{20,\}/s/Default: [0-9][0-9.e+-]*/Default: <num>/g' \
+    | sed '/^[[:space:]]\{20,\}/s/Default: "(null)"/Default: <str>/g; /^[[:space:]]\{20,\}/s/Default: ""/Default: <str>/g' \
     | cat -s
 }
 
