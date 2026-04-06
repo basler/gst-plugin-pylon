@@ -81,8 +81,9 @@ static const std::unordered_set<std::string> categoryfilter_set = {
                             events/msgs */
     "SequenceControl",   /* sequencer control relies on cmd feature */
     "SequencerControl",  /* sequencer control relies on cmd feature */
-    "MultipleROI",       /* workaround skip to avoid issues with ace2/dart2
-                           FIXME: this has to be fixed in feature walker */
+    "MultipleROI",       /* FIXME: workaround skip because feature walker
+                            currently supports only one selector per node;
+                            MultipleROI features typically have more. */
 };
 
 /* filter for selector nodes */

@@ -152,7 +152,7 @@ cdata.set('SIZEOF_OFF_T', cc.sizeof('off_t'))
 
 # Here be fixmes.
 # FIXME: check if this is correct
-cdata.set('HAVE_CPU_X86_64', host_machine.cpu() == 'amd64')
+cdata.set('HAVE_CPU_X86_64', host_machine.cpu_family() == 'x86_64')
 cdata.set('HAVE_GCC_ASM', cc.get_id() != 'msvc')
 cdata.set_quoted('VERSION', meson.project_version())
 cdata.set_quoted('PACKAGE_VERSION', meson.project_version())
@@ -293,17 +293,8 @@ if fs.is_dir(join_paths(root,'.git/hooks'))
 endif
 
 
-if meson.version().version_compare('>= 0.54')
-  plugin_names = []
-  foreach plugin: plugins
-    # FIXME: Use str.subtring() when we can depend on Meson 0.56
-    split = plugin.name().split('gst')
-    if split.length() == 2
-      plugin_names += [split[1]]
-    else
-      warning('Need substring API in meson >= 0.56 to properly parse plugin name: ' + plugin.name())
-      plugin_names += [plugin.name()]
-    endif
-  endforeach
-  summary({'Plugins':plugin_names}, list_sep: ', ')
-endif
+plugin_names = []
+foreach plugin: plugins
+  plugin_names += [plugin.name().substring(3)]
+endforeach
+summary({'Plugins':plugin_names}, list_sep: ', ')
