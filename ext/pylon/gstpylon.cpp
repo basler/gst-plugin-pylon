@@ -936,19 +936,39 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
     Pylon::CBooleanParameter framerate_enable(nodemap,
                                               "AcquisitionFrameRateEnable");
 
-    /* Basler dart gen1 models have no framerate_enable feature */
-    framerate_enable.TrySetValue(true);
-
-    gdouble div = 1.0 * gst_numerator / gst_denominator;
-    if (self->camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
-      Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
-      framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
-      GST_INFO("Set Feature AcquisitionFrameRate: %f", div);
+    /* By default, we expect to configure framerate based on caps, unless the
+     * framerate parameter is provided via pfs/properties, which indicates
+     * a specific upper limit that should be honored.
+     */
+    bool apply_caps_framerate = true;
+    if (framerate_enable.IsReadable() && framerate_enable.GetValue()) {
+      apply_caps_framerate = false;
+      GST_INFO("AcquisitionFrameRateEnable is already true, honoring "
+               "the already configured acquisition framerate");
     } else {
-      Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
-      framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
-      GST_INFO("Set Feature AcquisitionFrameRateAbs: %f", div);
+      /* Basler dart gen1 models have no framerate_enable feature so
+       * blindly try to enable this. */
+      framerate_enable.TrySetValue(true);
+      GST_INFO("AcquisitionFrameRateEnable is false or not supported. "
+               "Enabling and applying acquisition framerate from caps");
     }
+
+    /* If a framerate limit was not configured via PFS or properties,
+     * we apply the framerate set in the GStreamer caps to ensure the camera
+     * operates at the expected pipeline rate. */
+    if (apply_caps_framerate) {
+      gdouble div = 1.0 * gst_numerator / gst_denominator;
+      if (self->camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
+        Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
+        framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
+        GST_INFO("Set Feature AcquisitionFrameRate: %f", div);
+      } else {
+        Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
+        framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
+        GST_INFO("Set Feature AcquisitionFrameRateAbs: %f", div);
+      }
+    }
+
   } catch (const Pylon::GenericException &e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
