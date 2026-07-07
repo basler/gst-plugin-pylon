@@ -12,13 +12,23 @@ pylon_sources = [
   'gstpylonsysmembufferfactory.cpp',
 ]
 
+fs = import('fs')
+
+if fs.is_dir('/usr/src/jetson_multimedia_api/include/')
+    nvds_lib_dir = '/usr/lib/aarch64-linux-gnu/tegra'
+    nvds_inc_dir = '/usr/src/jetson_multimedia_api/include/'
+else
+    nvds_lib_dir = '/opt/nvidia/deepstream/deepstream/lib/'
+    nvds_inc_dir = '/opt/nvidia/deepstream/deepstream/sources/includes/'
+endif
+
 nvds_dep = cc.find_library('nvbufsurface',
-    dirs: '/opt/nvidia/deepstream/deepstream/lib/',
+    dirs: nvds_lib_dir,
     required: false
 )
 cuda_dep = dependency('cuda', version : '>=11', required: false)
 if nvds_dep.found() and cuda_dep.found()
-  nvds_include = include_directories('/opt/nvidia/deepstream/deepstream/sources/includes/')
+  nvds_include = include_directories(nvds_inc_dir)
 
   pylon_sources += ['gstpylondsnvmmbufferfactory.cpp']
 
