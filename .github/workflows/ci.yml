@@ -457,6 +457,18 @@ jobs:
             cat gst.log
             cat dev.log
 
+      - name: Resolve GStreamer root
+        id: gstreamer_root
+        shell: pwsh
+        run: |
+          $gstRoot = [Environment]::GetEnvironmentVariable('GSTREAMER_1_0_ROOT_MSVC_X86_64', 'Machine')
+          if (-not $gstRoot) {
+            $gstRoot = 'C:\Program Files\gstreamer\1.0\msvc_x86_64'
+          }
+          $gstRoot = $gstRoot.TrimEnd('\')
+          echo "GSTREAMER_1_0_ROOT_MSVC_X86_64=$gstRoot" >> $env:GITHUB_ENV
+          echo "gstreamer_root=$gstRoot" >> $env:GITHUB_OUTPUT
+
       - name: Set up Visual Studio shell
         uses: egor-tensin/vs-shell@v2
         with:
@@ -466,8 +478,8 @@ jobs:
         env:
           PYLON_ROOT: ${{ steps.set_pylon_root.outputs.pylon_root }}
         run: |
-          $env:GSTREAMER_1_0_ROOT_MSVC_X86_64 = "C:\gstreamer\1.0\msvc_x86_64"
-          $env:Path = "$env:GSTREAMER_1_0_ROOT_MSVC_X86_64\bin;" + $env:Path
+          $gstRoot = $env:GSTREAMER_1_0_ROOT_MSVC_X86_64.TrimEnd('\')
+          $env:Path = "$gstRoot\bin;$env:Path"
           $pylonRoot = $env:PYLON_ROOT
           if (Test-Path "$pylonRoot\Development\CMake\pylon") {
             $env:CMAKE_PREFIX_PATH = "$pylonRoot\Development\CMake\pylon\"
@@ -475,10 +487,10 @@ jobs:
           if (Test-Path "$pylonRoot\Runtime\x64") {
             $env:Path = "$pylonRoot\Runtime\x64\;$env:Path"
           }
-          $env:PKG_CONFIG_PATH = "$env:GSTREAMER_1_0_ROOT_MSVC_X86_64\lib\pkgconfig"
-          $env:PKG_CONFIG = "$env:GSTREAMER_1_0_ROOT_MSVC_X86_64\bin\pkg-config.exe"
+          $env:PKG_CONFIG_PATH = "$gstRoot\lib\pkgconfig"
+          $env:PKG_CONFIG = "$gstRoot\bin\pkg-config.exe"
 
-          meson setup build --prefix="$env:GSTREAMER_1_0_ROOT_MSVC_X86_64"
+          meson setup build --prefix="$gstRoot"
           ninja -C build
           ninja -C build test
           ninja -C build install
@@ -493,10 +505,11 @@ jobs:
           PYLON_ROOT: ${{ steps.set_pylon_root.outputs.pylon_root }}
         run: |
           $env:PYLON_CAMEMU="1"
-          $env:GSTREAMER_1_0_ROOT_MSVC_X86_64 = "C:\gstreamer\1.0\msvc_x86_64\"
+          $gstRoot = $env:GSTREAMER_1_0_ROOT_MSVC_X86_64.TrimEnd('\')
           $pylonRoot = $env:PYLON_ROOT
+          $env:Path = "$gstRoot\bin;$env:Path"
           if (Test-Path "$pylonRoot\Runtime\x64") {
-            $env:Path = "$pylonRoot\Runtime\x64\;$env:GSTREAMER_1_0_ROOT_MSVC_X86_64\bin;" + $env:Path
+            $env:Path = "$pylonRoot\Runtime\x64\;$env:Path"
           }
           gst-inspect-1.0.exe pylonsrc
           gst-launch-1.0.exe pylonsrc num-buffers=10 ! fakesink
