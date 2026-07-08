@@ -1,0 +1,114 @@
+/* Copyright (C) 2026 Basler AG
+ *
+ * gstcheck tests for pylonsrc using PYLON_CAMEMU (no physical camera).
+ * Buffer and format coverage lives in tests/camemu/run_camemu_tests.sh.
+ */
+
+#ifdef HAVE_CONFIG_H
+#  include "config.h"
+#endif
+
+#include <gst/check/gstcheck.h>
+
+#define EMU_SERIAL "0815-0000"
+
+static GstElement *
+make_pylonsrc_with_serial (const gchar * serial)
+{
+  GstElement *src;
+
+  src = gst_element_factory_make ("pylonsrc", NULL);
+  fail_if (src == NULL, "failed to create pylonsrc (is GST_PLUGIN_PATH set?)");
+  g_object_set (src, "device-serial-number", serial, NULL);
+  return src;
+}
+
+GST_START_TEST (test_pylonsrc_factory)
+{
+  GstElement *src;
+
+  src = gst_element_factory_make ("pylonsrc", NULL);
+  fail_unless (src != NULL);
+  gst_object_unref (src);
+}
+GST_END_TEST;
+
+GST_START_TEST (test_pylonsrc_null_state)
+{
+  GstElement *src;
+  GstStateChangeReturn ret;
+
+  src = make_pylonsrc_with_serial (EMU_SERIAL);
+  ret = gst_element_set_state (src, GST_STATE_NULL);
+  fail_unless (ret != GST_STATE_CHANGE_FAILURE);
+  gst_object_unref (src);
+}
+GST_END_TEST;
+
+GST_START_TEST (test_pylonsrc_ready_state)
+{
+  GstElement *src;
+  GstStateChangeReturn ret;
+
+  src = make_pylonsrc_with_serial (EMU_SERIAL);
+  ret = gst_element_set_state (src, GST_STATE_READY);
+  fail_unless (ret != GST_STATE_CHANGE_FAILURE);
+  gst_element_set_state (src, GST_STATE_NULL);
+  gst_object_unref (src);
+}
+GST_END_TEST;
+
+GST_START_TEST (test_pylonsrc_serial_property)
+{
+  GstElement *src;
+  gchar *serial = NULL;
+
+  src = make_pylonsrc_with_serial (EMU_SERIAL);
+  g_object_get (src, "device-serial-number", &serial, NULL);
+  fail_unless (serial != NULL);
+  fail_unless_equals_string (serial, EMU_SERIAL);
+  g_free (serial);
+  gst_object_unref (src);
+}
+GST_END_TEST;
+
+GST_START_TEST (test_pylonsrc_ambiguous_device_fails)
+{
+  GstElement *src;
+  GstStateChangeReturn ret;
+
+  /* Needs multiple emulated devices (PYLON_CAMEMU=3). */
+  if (g_getenv ("PYLON_CAMEMU") == NULL ||
+      g_ascii_strtoull (g_getenv ("PYLON_CAMEMU"), NULL, 10) < 3)
+    return;
+
+  src = gst_element_factory_make ("pylonsrc", NULL);
+  fail_if (src == NULL);
+  g_object_set (src, "num-buffers", 1, NULL);
+
+  ret = gst_element_set_state (src, GST_STATE_PLAYING);
+  fail_unless (ret == GST_STATE_CHANGE_FAILURE,
+      "expected PLAYING to fail without device selection when multiple devices exist");
+
+  gst_element_set_state (src, GST_STATE_NULL);
+  gst_object_unref (src);
+}
+GST_END_TEST;
+
+static Suite *
+pylonsrc_camemu_suite (void)
+{
+  Suite *s = suite_create ("pylonsrc_camemu");
+  TCase *tc = tcase_create ("general");
+
+  suite_add_tcase (s, tc);
+  tcase_add_test (tc, test_pylonsrc_factory);
+  tcase_add_test (tc, test_pylonsrc_null_state);
+  tcase_add_test (tc, test_pylonsrc_ready_state);
+  tcase_add_test (tc, test_pylonsrc_serial_property);
+  tcase_add_test (tc, test_pylonsrc_ambiguous_device_fails);
+
+  return s;
+}
+
+GST_CHECK_MAIN (pylonsrc_camemu);

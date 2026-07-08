@@ -69,7 +69,7 @@ run_gst_inspect() {
 }
 
 run_pipeline() {
-  timeout 60 gst-launch-1.0 -q pylonsrc device-index=0 num-buffers=5 ! fakesink 2>&1
+  timeout 60 gst-launch-1.0 -q pylonsrc device-serial-number=0815-0000 num-buffers=5 ! fakesink 2>&1
 }
 
 mkdir -p "$GOLDEN_DIR"

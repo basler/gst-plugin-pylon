@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Conan CI profiles and `conanfile.py` (pylon-core only)
 - `tests/compat/` golden regression harness for `gst-inspect pylonsrc`
+- `tests/camemu/` functional suite and `tests/check/pylon/pylonsrc_camemu.c` gstcheck tests
 
 ## [1.0.0] - 2024-08-14
 ## Added

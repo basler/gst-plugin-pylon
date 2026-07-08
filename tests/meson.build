@@ -4,6 +4,7 @@ endif
 
 if not get_option('tests').disabled()
   subdir('compat')
+  subdir('camemu')
 endif
 
 if not get_option('examples').disabled()
