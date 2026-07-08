@@ -23,7 +23,7 @@ class GstPluginPylonConanConsumer(ConanFile):
         if os_name == "linux":
             if arch == "x86_64":
                 platform_key = "linux_x86_64"
-            elif arch == "aarch64":
+            elif arch in ("aarch64", "armv8"):
                 platform_key = "linux_aarch64"
             else:
                 platform_key = "linux_x86_64"

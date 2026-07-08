@@ -1,5 +1,9 @@
+[env]
+CC=gcc-9
+CXX=g++-9
+
 [settings]
-arch=aarch64
+arch=armv8
 build_type=Release
 compiler=gcc
 compiler.libcxx=libstdc++11

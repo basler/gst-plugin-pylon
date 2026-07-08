@@ -602,12 +602,12 @@ jobs:
           pattern: Linux_x86_64_Pylon_SDK_${{ matrix.pylon_sdk }}
           path: pylon-sdk
 
-      - name: Extract pylon SDK
+      - name: Unpack pylon SDK to pylon-sdk folder
         run: |
-          sudo mkdir -p /opt/pylon
-          tar -xzf pylon-sdk/pylon_sdk.tar.gz -C /opt/pylon
+          tar -xzf pylon-sdk/pylon_sdk.tar.gz -C pylon-sdk
+          echo "PYLON_ROOT=${{ github.workspace }}/pylon-sdk/pylon" >> $GITHUB_ENV
           # install codemeter if available
-          sudo apt-get install -y /opt/pylon/share/pylon/codemeter_*.deb --fix-broken || echo "Codemeter install failed"
+          sudo apt-get install -y pylon-sdk/pylon/share/pylon/codemeter_*.deb --fix-broken || echo "Codemeter install failed"
 
       - name: install required environment
         run: |
@@ -622,8 +622,9 @@ jobs:
           pip install meson ninja
 
       - name: compile gcc
+        env:
+          PYLON_ROOT: ${{ env.PYLON_ROOT }}
         run: |
-          export PYLON_ROOT=/opt/pylon
           export CC=gcc
           export CXX=g++
           . build_python/bin/activate
@@ -633,8 +634,9 @@ jobs:
           ninja -C builddir_gcc install
 
       - name: compile clang
+        env:
+          PYLON_ROOT: ${{ env.PYLON_ROOT }}
         run: |
-          export PYLON_ROOT=/opt/pylon
           export CC=clang
           export CXX=clang++
           . build_python/bin/activate
