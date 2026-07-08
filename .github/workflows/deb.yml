@@ -154,7 +154,7 @@ jobs:
         shell: python
 
       - name: Tar pylon SDK files
-        run: cd conan && tar -czf ../pylon_sdk.tar.gz .
+        run: tar -czf pylon_sdk.tar.gz -C conan pylon
 
       - name: Upload pylon SDK for ${{ matrix.os }} packaging
         uses: actions/upload-artifact@v6
@@ -212,8 +212,7 @@ jobs:
           setup-hook: |
              ln -sfn packaging/debian
              apt-get update
-             mkdir -p /opt/pylon
-             tar -xzf /pylon-sdk/pylon_sdk.tar.gz -C /opt/pylon
+             tar -xzf /pylon-sdk/pylon_sdk.tar.gz -C /opt
              # patch version to contain platform info
              tools/patch_deb_changelog.sh
           docker-image: ${{ matrix.arch == 'arm64' && format('arm64v8/{0}', matrix.os) || format('{0}', matrix.os) }}
