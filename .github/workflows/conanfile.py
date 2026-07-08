@@ -58,7 +58,7 @@ class GstPluginPylonConanConsumer(ConanFile):
                 self.requires(f"{req}/{version}@release/potentially-public")
             else:
                 # Fallback version if not found in control file
-                self.requires(f"{req}/25.09@release/potentially-public")
+                self.requires(f"{req}/26.06@release/potentially-public")
 
     def imports(self):
         # Copy legal files based on the platform

@@ -46,8 +46,8 @@ jobs:
         set +x
         set -e
         build_config=$(cat .github/workflows/build_config.json)
-        # Use latest pylon version 26.01 (like pypylon)
-        pylon_default_version="26.01"
+        # Use latest pylon version 26.06 (like pypylon)
+        pylon_default_version="26.06"
         for os in $(echo $build_config | jq -r 'keys[]'); do
           # setup matrix keys
           if [[ $os == "windows" || $os == "macos" ]]; then

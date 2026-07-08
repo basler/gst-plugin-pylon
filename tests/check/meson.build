@@ -61,6 +61,8 @@ foreach t : pylon_tests
         'gst-plugin-pylon@' + meson.global_build_root())
     env.set('GST_PLUGIN_PATH_1_0', [meson.global_build_root()] + pluginsdirs)
     env.set('GSETTINGS_BACKEND', 'memory')
+    env.set('PYLON_CAMEMU', '1')
+    env.set('PYLON_ROOT', run_command('sh', '-c', 'echo ${PYLON_ROOT:-/opt/pylon}', check: true).stdout().strip())
 
     env.set('GST_REGISTRY', join_paths(meson.current_build_dir(), '@0@.registry'.format(test_name)))
     env.set('GST_PLUGIN_SCANNER_1_0', gst_plugin_scanner_path)

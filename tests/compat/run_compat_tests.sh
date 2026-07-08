@@ -55,6 +55,15 @@ normalize_inspect() {
     | cat -s
 }
 
+# Keep only the stable pylonsrc element properties. Dynamic cam/stream child
+# property trees depend on the emulated camera models visible at inspect time.
+extract_static_inspect() {
+  awk '
+    /^  cam / { exit }
+    { print }
+  '
+}
+
 run_gst_inspect() {
   gst-inspect-1.0 pylonsrc 2>/dev/null
 }
@@ -72,7 +81,7 @@ rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/gstpylon"
 
 if $generate; then
   echo "Generating golden files..."
-  run_gst_inspect | normalize_inspect > "$GOLDEN_DIR/gst_inspect_pylonsrc.txt"
+  run_gst_inspect | normalize_inspect | extract_static_inspect > "$GOLDEN_DIR/gst_inspect_pylonsrc.txt"
   run_pipeline
   echo "Golden files written to $GOLDEN_DIR"
   exit 0
@@ -90,7 +99,7 @@ failed=0
 
 # Test 1: gst-inspect structure
 actual_inspect=$(mktemp)
-run_gst_inspect | normalize_inspect > "$actual_inspect"
+run_gst_inspect | normalize_inspect | extract_static_inspect > "$actual_inspect"
 if ! diff -u "$GOLDEN_DIR/gst_inspect_pylonsrc.txt" "$actual_inspect"; then
   echo "FAIL: gst-inspect output differs from golden"
   failed=1

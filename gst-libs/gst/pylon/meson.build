@@ -12,22 +12,30 @@ if target_machine.system() == 'linux' and (pylon_path == 'PYLON_ROOT_NOT_SET' or
   error('PYLON_ROOT has to be set to location of pylon install e.g. /opt/pylon')
 endif
 
-# detect pylon 7.x
-pylon_dep = dependency('pylon', method : 'cmake', modules : ['pylon::PylonBase', 'pylon::PylonUtility'],
-        version : '>=7.1', cmake_args : [ '-DCMAKE_PREFIX_PATH=' + pylon_path / 'share/pylon/cmake/', '-DPYLON_ROOT=' + pylon_path ] , required: false)
-
-if pylon_dep.found()
-  # patch rpath on linux
-  if target_machine.system() == 'linux'
-    pylon_rpath = pylon_path / 'lib'
-  else
-    pylon_rpath = ''
+# Pylon Software Suite 26.x (C++ SDK 12.2+)
+pylon_cmake_prefixes = []
+if pylon_path != 'PYLON_ROOT_NOT_SET'
+  pylon_cmake_prefixes += [pylon_path / 'share/pylon/cmake']
+  if target_machine.system() == 'windows'
+    pylon_cmake_prefixes += [pylon_path / 'Development/CMake/pylon']
   endif
+endif
+
+pylon_cmake_args = ['-DPYLON_ROOT=' + pylon_path]
+foreach prefix : pylon_cmake_prefixes
+  pylon_cmake_args += ['-DCMAKE_PREFIX_PATH=' + prefix]
+endforeach
+
+pylon_dep = dependency('pylon', method : 'cmake',
+        modules : ['pylon::PylonBase', 'pylon::PylonUtility'],
+        version : '>=12.2',
+        cmake_args : pylon_cmake_args,
+        required : true)
+
+if target_machine.system() == 'linux'
+  pylon_rpath = pylon_path / 'lib'
 else
-    message('fallback to detect pylon 6.x')
-    pylon_dep = dependency('pylon', method : 'cmake', cmake_module_path: meson.project_source_root() + '/cmake', required: true)
-    # runtime path is properly defined by cmake
-    pylon_rpath = ''
+  pylon_rpath = ''
 endif
 
 gstpylon_sources = [ 

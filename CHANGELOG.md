@@ -2,14 +2,26 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+
+## [2.0.0] - 2026-07-08
 ### Changed
-- **Introspection speed**: Cache full gst-inspect output (single-device case)
-  - Second run with warm cache: ~0.4s vs ~1.3s (no camera opens)
-  - One block per device (compatible with main)
-  - Combined camera+stream pass avoids duplicate device enumeration
-- **Feature cache**: Extend to bool/string properties (flags only)
-  - Stable mapping preserved: no default/current values cached (user-set/PFS)
-  - Cache location: `~/.cache/gstpylon/` (`.config` for features, `.introspection` for blurbs)
+- Require **Pylon Software Suite 26.x** (C++ SDK 12.2+); drop pylon 6.x/7.x support
+- Align GitHub Actions with pypylon: Conan `pylon-core`, control-file SDK fetch, ubuntu-24.04 runners
+- Modernize meson (`>= 1.4.0`), GStreamer (`>= 1.20.0`), drop pylon 6 cmake fallback
+- Merge architecture refactor: schema-driven `GstPylonObject`, shared introspection cache
+- Compat tests compare stable pylonsrc properties only (emulator model trees vary)
+- Honor `AcquisitionFrameRate` from PFS/properties for hardware triggering (#147)
+- Jetson NVMM: detect `nvbufsurface` via L4T multimedia API paths (#148)
+
+### Fixed
+- Skip optional `OffsetX`/`OffsetY` during caps query on cameras without ROI offsets (#140)
+- Open camera by serial/user-name without full device enumeration (#138)
+- Relax PFS nodemap sanity check for manually edited float values (#136, #141)
+- State tests run with `PYLON_CAMEMU=1` to avoid timeouts without a camera
+
+### Added
+- Conan CI profiles and `conanfile.py` (pylon-core only)
+- `tests/compat/` golden regression harness for `gst-inspect pylonsrc`
 
 ## [1.0.0] - 2024-08-14
 ## Added

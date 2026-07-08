@@ -290,50 +290,63 @@ void GstPylon::Open(const gchar* device_user_name,
 
   if (device_user_name) {
     filter[0].SetUserDefinedName(device_user_name);
+    device_info.SetUserDefinedName(device_user_name);
   }
 
   if (device_serial_number) {
     filter[0].SetSerialNumber(device_serial_number);
+    device_info.SetSerialNumber(device_serial_number);
   }
 
-  factory.EnumerateDevices(device_list, filter);
-  GST_INFO_OBJECT(gstpylonsrc, "Enumerated %d matching devices",
-                  static_cast<gint>(device_list.size()));
+  const bool open_by_filter_directly =
+      (device_serial_number != nullptr || device_user_name != nullptr) &&
+      device_index == -1;
 
-  gint n_devices = device_list.size();
-  if (0 == n_devices) {
-    throw Pylon::GenericException(
-        "No devices found matching the specified criteria", __FILE__, __LINE__);
-  }
+  if (open_by_filter_directly) {
+    GST_INFO_OBJECT(gstpylonsrc,
+                    "Opening device directly by filter without enumeration");
+  } else {
+    factory.EnumerateDevices(device_list, filter);
+    GST_INFO_OBJECT(gstpylonsrc, "Enumerated %d matching devices",
+                    static_cast<gint>(device_list.size()));
 
-  if (n_devices > 1 && -1 == device_index) {
-    std::string msg =
-        "At least " + std::to_string(n_devices) +
-        " devices match the specified criteria, use "
-        "\"device-index\", \"device-serial-number\" or \"device-user-name\""
-        " to select one from the following list:\n";
-
-    for (gint i = 0; i < n_devices; i++) {
-      msg += "[" + std::to_string(i) +
-             "]: " + std::string(device_list.at(i).GetSerialNumber()) + "\t" +
-             std::string(device_list.at(i).GetModelName()) + "\t" +
-             std::string(device_list.at(i).GetUserDefinedName()) + "\n";
+    gint n_devices = device_list.size();
+    if (0 == n_devices) {
+      throw Pylon::GenericException(
+          "No devices found matching the specified criteria", __FILE__,
+          __LINE__);
     }
-    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+
+    if (n_devices > 1 && -1 == device_index) {
+      std::string msg =
+          "At least " + std::to_string(n_devices) +
+          " devices match the specified criteria, use "
+          "\"device-index\", \"device-serial-number\" or \"device-user-name\""
+          " to select one from the following list:\n";
+
+      for (gint i = 0; i < n_devices; i++) {
+        msg += "[" + std::to_string(i) +
+               "]: " + std::string(device_list.at(i).GetSerialNumber()) + "\t" +
+               std::string(device_list.at(i).GetModelName()) + "\t" +
+               std::string(device_list.at(i).GetUserDefinedName()) + "\n";
+      }
+      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    }
+
+    if (device_index >= n_devices) {
+      std::string msg = "Device index " + std::to_string(device_index) +
+                        " exceeds the " + std::to_string(n_devices) +
+                        " devices found to match the given criteria";
+      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    }
+
+    if (1 == n_devices) {
+      device_index = 0;
+    }
+
+    device_info = device_list.at(device_index);
   }
 
-  if (device_index >= n_devices) {
-    std::string msg = "Device index " + std::to_string(device_index) +
-                      " exceeds the " + std::to_string(n_devices) +
-                      " devices found to match the given criteria";
-    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
-  }
-
-  if (1 == n_devices) {
-    device_index = 0;
-  }
-
-  device_info = device_list.at(device_index);
   GST_INFO_OBJECT(gstpylonsrc, "Selected device %s",
                   device_info.GetSerialNumber().c_str());
 
@@ -455,7 +468,7 @@ gboolean GstPylon::LoadPfsConfig(const gchar* pfs_location, GError** err) {
   g_return_val_if_fail(pfs_location, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
-  static const bool check_nodemap_sanity = true;
+  static const bool check_nodemap_sanity = false;
 
   try {
     Pylon::CFeaturePersistence::Load(pfs_location, &camera->GetNodeMap(),
@@ -858,8 +871,17 @@ static void gst_pylon_query_caps(
   GValue value = G_VALUE_INIT;
 
   /* Save offset to later reset values after querying */
-  gint64 orig_offset_x = self->camera->OffsetX.GetValue();
-  gint64 orig_offset_y = self->camera->OffsetY.GetValue();
+  gint64 orig_offset_x = 0;
+  gint64 orig_offset_y = 0;
+  const bool has_offset_x = self->camera->OffsetX.IsReadable();
+  const bool has_offset_y = self->camera->OffsetY.IsReadable();
+
+  if (has_offset_x) {
+    orig_offset_x = self->camera->OffsetX.GetValue();
+  }
+  if (has_offset_y) {
+    orig_offset_y = self->camera->OffsetY.GetValue();
+  }
 
   const std::vector<std::pair<GstPylonQuery, const std::string>> queries = {
       {gst_pylon_query_width, "width"},
@@ -867,8 +889,12 @@ static void gst_pylon_query_caps(
       {gst_pylon_query_framerate, "framerate"}};
 
   /* Offsets are set to 0 to get the true image geometry */
-  self->camera->OffsetX.TrySetToMinimum();
-  self->camera->OffsetY.TrySetToMinimum();
+  if (has_offset_x) {
+    self->camera->OffsetX.TrySetToMinimum();
+  }
+  if (has_offset_y) {
+    self->camera->OffsetY.TrySetToMinimum();
+  }
 
   /* Pixel format is queried separately to support querying different pixel
    * format mappings */
@@ -886,8 +912,12 @@ static void gst_pylon_query_caps(
   }
 
   /* Reset offset after querying */
-  self->camera->OffsetX.TrySetValue(orig_offset_x);
-  self->camera->OffsetY.TrySetValue(orig_offset_y);
+  if (has_offset_x) {
+    self->camera->OffsetX.TrySetValue(orig_offset_x);
+  }
+  if (has_offset_y) {
+    self->camera->OffsetY.TrySetValue(orig_offset_y);
+  }
 }
 
 GstCaps* GstPylon::QueryConfiguration(GError** err) {
@@ -1031,41 +1061,56 @@ gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
     value_corrected = false;
     if (offsety_cache >= 0) {
       Pylon::CIntegerParameter offsety(nodemap, "OffsetY");
-      if (enable_correction) {
-        try {
-          offsety.SetValue(
-              offsety_cache,
-              Pylon::EIntegerValueCorrection::IntegerValueCorrection_None);
-        } catch (GenICam::OutOfRangeException&) {
-          offsety.SetValue(
-              offsety_cache,
-              Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);
-          value_corrected = true;
+      if (offsety.IsWritable()) {
+        if (enable_correction) {
+          try {
+            offsety.SetValue(
+                offsety_cache,
+                Pylon::EIntegerValueCorrection::IntegerValueCorrection_None);
+          } catch (GenICam::OutOfRangeException&) {
+            offsety.SetValue(
+                offsety_cache,
+                Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);
+            value_corrected = true;
+          }
+        } else {
+          offsety.SetValue(offsety_cache);
         }
-      } else {
-        offsety.SetValue(offsety_cache);
+        GST_INFO("Set Feature Offsety: %d %s",
+                 static_cast<gint>(offsety.GetValue()),
+                 value_corrected ? " [corrected]" : "");
+        offsety_cache = -1;
       }
-      GST_INFO("Set Feature Offsety: %d %s",
-               static_cast<gint>(offsety.GetValue()),
-               value_corrected ? " [corrected]" : "");
-      offsety_cache = -1;
     }
 
     Pylon::CBooleanParameter framerate_enable(nodemap,
                                               "AcquisitionFrameRateEnable");
 
-    /* Basler dart gen1 models have no framerate_enable feature */
-    framerate_enable.TrySetValue(true);
-
-    gdouble div = 1.0 * gst_numerator / gst_denominator;
-    if (camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
-      Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
-      framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
-      GST_INFO("Set Feature AcquisitionFrameRate: %f", div);
+    /* By default, configure framerate from caps unless already enabled via
+     * PFS or element properties (hardware trigger use case). */
+    bool apply_caps_framerate = true;
+    if (framerate_enable.IsReadable() && framerate_enable.GetValue()) {
+      apply_caps_framerate = false;
+      GST_INFO("AcquisitionFrameRateEnable is already true, honoring "
+               "the already configured acquisition framerate");
     } else {
-      Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
-      framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
-      GST_INFO("Set Feature AcquisitionFrameRateAbs: %f", div);
+      /* Basler dart gen1 models have no framerate_enable feature */
+      framerate_enable.TrySetValue(true);
+      GST_INFO("AcquisitionFrameRateEnable is false or not supported. "
+               "Enabling and applying acquisition framerate from caps");
+    }
+
+    if (apply_caps_framerate) {
+      gdouble div = 1.0 * gst_numerator / gst_denominator;
+      if (camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
+        Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRate");
+        framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
+        GST_INFO("Set Feature AcquisitionFrameRate: %f", div);
+      } else {
+        Pylon::CFloatParameter framerate(nodemap, "AcquisitionFrameRateAbs");
+        framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
+        GST_INFO("Set Feature AcquisitionFrameRateAbs: %f", div);
+      }
     }
 
     guint64 maxnumbuffers = 0;

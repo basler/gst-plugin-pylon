@@ -344,22 +344,18 @@ For any other OS you have to currently [build](#building) the plugin yourself.
 
 # Building
 
-This plugin is build using the [meson](https://mesonbuild.com/) build system. The meson version has to be >= 0.61.
+This plugin is build using the [meson](https://mesonbuild.com/) build system. Meson **>= 1.4.0** and GStreamer **>= 1.20** are required.
 
-As a first step install Basler pylon according to your platform. Downloads are available at: [Basler software downloads](https://www.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware;language=all;version=all)
+Install **Pylon Software Suite 26.x** (C++ SDK 12.2+) according to your platform. Downloads are available at: [Basler software downloads](https://www.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware;language=all;version=all)
 
-The supported pylon versions on the different platforms are:
+Supported platforms for pylon **26.06**:
 
-
-|                 | 7.5  | 7.4  | 6.2  |
-|-----------------|:----:|:----:|:----:|
-| Windows x86_64  |  x   |   x  |      |
-| Linux x86_64    |  x   |   x  |      |
-| Linux aarch64   |  x   |   x  |   x  |
-| macOS x86_64    |  -   |   -  |   -  |
-
-
-> macOS build not available for now due to current meson/cmake interaction issues
+|                 | 26.x |
+|-----------------|:----:|
+| Windows x86_64  |  x   |
+| Linux x86_64    |  x   |
+| Linux aarch64   |  x   |
+| macOS arm64     |  x   |
 
 Installing Basler pylon SDK will also install the Basler pylon viewer. You should use this tool to verify, that the cameras work properly in your system and to learn about the their features.
 

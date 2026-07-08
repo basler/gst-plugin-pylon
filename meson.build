@@ -1,13 +1,12 @@
 project('gst-plugin-pylon', 'c', 'cpp',
-  version : '1.0.0',
-  meson_version : '>= 0.61',
+  version : '2.0.0',
+  meson_version : '>= 1.4.0',
   default_options : [ 'warning_level=1',
                       'buildtype=debugoptimized' ])
 
-glib_req = '>= 2.56.0'
+glib_req = '>= 2.62.0'
 
-# TODO: Set this accordingly
-gst_req = '>= 1.0.0'
+gst_req = '>= 1.20.0'
 gst_dep = dependency('gstreamer-1.0', version : gst_req)
 
 gst_version = gst_dep.version()
