@@ -46,6 +46,7 @@ fi
 # - normalize child-property Default: lines (live camera state can vary)
 normalize_inspect() {
   sed 's/[[:space:]]*$//' \
+    | sed 's/ (GstValueList)//g; s/ (GstIntRange)//g; s/ (GstFractionRange)//g' \
     | sed 's|Filename[[:space:]]*.*libgstpylon\.so.*|Filename                 libgstpylon.so|' \
     | sed '/^[[:space:]]*Version[[:space:]]/s/[[:space:]]*Version[[:space:]].*$/  Version                  PLACEHOLDER/' \
     | sed '/^[[:space:]]\{20,\}/s/Default: true/Default: <bool>/g; /^[[:space:]]\{20,\}/s/Default: false/Default: <bool>/g' \

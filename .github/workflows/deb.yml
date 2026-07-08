@@ -13,7 +13,7 @@ jobs:
     outputs:
       is_release_build: ${{ env.RELEASE_BUILD == '1' }}
     steps:
-    - uses: jfrog/setup-jfrog-cli@v4
+    - uses: jfrog/setup-jfrog-cli@v5
       env:
        JF_URL: ${{ secrets.SDK_URL }}
        JF_ACCESS_TOKEN: ${{ secrets.SDK_TOKEN }}
@@ -22,7 +22,7 @@ jobs:
         disable-job-summary: true
 
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
@@ -46,8 +46,8 @@ jobs:
         set +x
         set -e
         build_config=$(cat .github/workflows/build_config.json)
-        # Use latest pylon version 26.01 (like pypylon)
-        pylon_default_version="26.01"
+        # Use latest pylon version 26.06 (like pypylon)
+        pylon_default_version="26.06"
         for os in $(echo $build_config | jq -r 'keys[]'); do
           for pylon_sdk in $(echo $build_config | jq -r --arg os "$os" '.[$os].pylon_sdk_packaging'); do
             # When TAG_NAME is set (release build), use the pylon version from the tag, stripping any rc suffix
@@ -72,13 +72,13 @@ jobs:
         done
 
     - name: Upload control files for Linux aarch64
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: Linux_aarch64_packaging_Pylon
         path: linux_aarch64
 
     - name: Upload control files for Linux x86_64
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: Linux_x86_64_packaging_Pylon
         path: linux_x86_64
@@ -93,12 +93,12 @@ jobs:
           - linux-aarch64
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.10"
 
@@ -126,7 +126,7 @@ jobs:
         shell: python
 
       - name: Download ${{ matrix.os }} control artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           pattern: ${{ matrix.os == 'linux-x86_64' && 'Linux_x86_64' || 'Linux_aarch64' }}*packaging*Pylon
           merge-multiple: true
@@ -157,7 +157,7 @@ jobs:
         run: cd conan && tar -czf ../pylon_sdk.tar.gz .
 
       - name: Upload pylon SDK for ${{ matrix.os }} packaging
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.os == 'linux-x86_64' && 'Linux_x86_64' || 'Linux_aarch64' }}_packaging_Pylon_SDK
           path: pylon_sdk.tar.gz
@@ -177,24 +177,24 @@ jobs:
         arch: ["arm64", "amd64"]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download x86_64 SDK
         if: matrix.arch == 'amd64'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
             name: Linux_x86_64_packaging_Pylon_SDK
             path: pylon-sdk
 
       - name: Download aarch64 SDK
         if: matrix.arch == 'arm64'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
             name: Linux_aarch64_packaging_Pylon_SDK
             path: pylon-sdk
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.2.0
+        uses: docker/setup-qemu-action@v3
         with:
           platforms: linux/amd64, linux/arm64
 
@@ -221,7 +221,7 @@ jobs:
           buildpackage-opts: --build=binary --no-sign
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: debian-packages-${{ env.SANITIZED_OS }}-${{ matrix.arch }}
           path: debian/artifacts/
@@ -244,7 +244,7 @@ jobs:
     ]
     runs-on: ubuntu-latest
     steps:
-    - uses: geekyeggo/delete-artifact@v5
+    - uses: geekyeggo/delete-artifact@v6
       continue-on-error: true
       with:
         name: |

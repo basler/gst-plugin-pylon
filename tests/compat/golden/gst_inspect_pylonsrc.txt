@@ -26,23 +26,20 @@ GObject
 Implemented Interfaces:
   GstChildProxy
 
-Element Flags:
-  - SOURCE
-
 Pad Templates:
   SRC template: 'src'
     Availability: Always
     Capabilities:
       video/x-raw
-                 format: { (string)GRAY8, (string)RGB, (string)BGR, (string)YUY2, (string)UYVY } (GstValueList)
-                  width: [ 1, 2147483647 ] (GstIntRange)
-                 height: [ 1, 2147483647 ] (GstIntRange)
-              framerate: [ 0/1, 2147483647/1 ] (GstFractionRange)
+                 format: { (string)GRAY8, (string)RGB, (string)BGR, (string)YUY2, (string)UYVY }
+                  width: [ 1, 2147483647 ]
+                 height: [ 1, 2147483647 ]
+              framerate: [ 0/1, 2147483647/1 ]
       video/x-bayer
-                 format: { (string)rggb, (string)bggr, (string)gbrg, (string)grbg } (GstValueList)
-                  width: [ 1, 2147483647 ] (GstIntRange)
-                 height: [ 1, 2147483647 ] (GstIntRange)
-              framerate: [ 0/1, 2147483647/1 ] (GstFractionRange)
+                 format: { (string)rggb, (string)bggr, (string)gbrg, (string)grbg }
+                  width: [ 1, 2147483647 ]
+                 height: [ 1, 2147483647 ]
+              framerate: [ 0/1, 2147483647/1 ]
 
 Element has no clocking capabilities.
 Element has no URI handling capabilities.
