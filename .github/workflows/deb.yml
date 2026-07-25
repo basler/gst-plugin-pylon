@@ -66,12 +66,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # System meson must be >= 0.61 (Ubuntu 20.04 / Bullseye are too old).
         os:
           - ubuntu:24.04
           - ubuntu:22.04
-          - ubuntu:20.04
           - debian:bookworm
-          - debian:bullseye
         arch: ["arm64", "amd64"]
     steps:
       - name: Checkout code
@@ -105,16 +104,29 @@ jobs:
       - name: Build Debian Package
         uses: jtdor/build-deb-action@v1
         env:
+          # noautodbgsym keeps artifacts small; tests still run (camemu via debian/rules).
           DEB_BUILD_OPTIONS: noautodbgsym
         with:
           setup-hook: |
+             set -e
              ln -sfn packaging/debian
+             chmod +x packaging/debian/rules tools/patch_deb_changelog.sh
              apt-get update
-             (cd /pylon-installer && tar -xvf *.tar.gz && apt-get install -y ./*.deb)
-             # patch version to contain platform info
+             # Install Pylon SDK debs from Artifactory artifact. Codemeter can
+             # complain about deps in minimal containers; keep going like local CI.
+             (cd /pylon-installer && tar -xvf *.tar.gz)
+             apt-get install -y /pylon-installer/codemeter_*.deb || true
+             apt-get install -y --fix-broken /pylon-installer/pylon_*.deb
+             test -d /opt/pylon
+             # Stamp changelog/control with platform + exact pylon version
              tools/patch_deb_changelog.sh
           docker-image: ${{ matrix.arch == 'arm64' && format('arm64v8/{0}', matrix.os) || format('{0}', matrix.os) }}
-          extra-docker-args: -v ${{ github.workspace }}/pylon-installer:/pylon-installer -e PYLON_ROOT=/opt/pylon --platform linux/${{ matrix.arch }}
+          extra-docker-args: >-
+            -v ${{ github.workspace }}/pylon-installer:/pylon-installer
+            -e PYLON_ROOT=/opt/pylon
+            -e PYLON_CAMEMU=3
+            -e LD_LIBRARY_PATH=/opt/pylon/lib
+            --platform linux/${{ matrix.arch }}
           buildpackage-opts: --build=binary --no-sign
 
       - name: Upload artifacts

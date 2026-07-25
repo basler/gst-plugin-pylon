@@ -337,8 +337,8 @@ The pylonsrc plugin can be downloaded for the following revisions of Ubuntu and 
 
 | Distribution | Versions |
 |--------------|---------------------|
-| Ubuntu       | 24.04, 22.04, 20.04 |
-| Debian       | 12 (Bookworm), 11 (Bullseye) |
+| Ubuntu       | 24.04, 22.04 |
+| Debian       | 12 (Bookworm) |
 
 For any other OS you have to currently [build](#building) the plugin yourself.
 
@@ -435,9 +435,11 @@ Install the pylon and codemeter debian packages. They will install into `/opt/py
 Install the platform dependencies:
 
 ```
-sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot\
-                     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-python3-plugin-loader \
-                     python3 python3-dev python3-pip python3-setuptools pybind11-dev
+sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot pkg-config \
+                     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+                     gstreamer1.0-tools gstreamer1.0-plugins-base \
+                     gstreamer1.0-python3-plugin-loader \
+                     python3 python3-dev python3-gi python3-setuptools pybind11-dev
 ```
 
 Prepare the build setup ( from main project folder ):
@@ -453,6 +455,9 @@ Build the debian packages
 PYLON_ROOT=/opt/pylon dpkg-buildpackage -us -uc -rfakeroot
 ```
 
+The package build uses the system Meson/Ninja packages (no pip bootstrap) and runs
+the Meson test suite, including camemu functional tests (`PYLON_CAMEMU=3`).
+
 ### Debian NVIDIA Packaging
 
 Install the pylon and codemeter debian packages. They will install into `/opt/pylon`
@@ -460,9 +465,11 @@ Install the pylon and codemeter debian packages. They will install into `/opt/py
 Install the platform dependencies:
 
 ```
-sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot\
-                     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-python3-plugin-loader \
-                     python3 python3-dev python3-pip python3-setuptools pybind11-dev \
+sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot pkg-config \
+                     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+                     gstreamer1.0-tools gstreamer1.0-plugins-base \
+                     gstreamer1.0-python3-plugin-loader \
+                     python3 python3-dev python3-gi python3-setuptools pybind11-dev \
                      deepstream-6.3 # depending on platform deepstream-6.4 or deepstream-7.0
 ```
 

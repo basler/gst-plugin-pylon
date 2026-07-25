@@ -31,4 +31,7 @@ __pycache__
 subprojects/packagecache
 subprojects/pybind11-*
 
-debian
+# Local dpkg-buildpackage symlink (ln -sfn packaging/debian)
+/debian
+# Local container package outputs
+/deb-out-*/

@@ -21,12 +21,15 @@ pygstpylon_deps = [
     gstpylon_dep
 ]
 
-destdir = get_option('libdir') / 'python' + py3_dep.version() / 'site-packages/pygstpylon'
+# Prefer the interpreter install dir so Debian packaging with
+# DEB_PYTHON_INSTALL_LAYOUT=deb lands under dist-packages.
+py_install_dir = py3.get_install_dir()
 incdir = include_directories('include')
 
 pymeta = py3.extension_module('pygstpylon',
                       pygstpylon_sources,
                       install : true,
+                      install_dir : py_install_dir,
                       install_rpath : pylon_rpath,
                       cpp_args: ['-DHAVE_CONFIG_H=1'],
                       include_directories : [configinc, incdir],

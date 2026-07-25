@@ -2,24 +2,30 @@ Source: gst-plugin-pylon
 Section: video
 Priority: optional
 Maintainer: Basler AG <support.europe@baslerweb.com>
-Build-Depends: debhelper-compat (= 11),
-               dh-python, cmake,
-               python3-pip,
-               python3-setuptools,
-               pybind11-dev,
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               meson (>= 0.61),
+               ninja-build,
+               cmake,
+               pkg-config,
                python3-dev,
+               python3-setuptools,
+               python3-gi,
+               pybind11-dev,
                libgstreamer1.0-dev,
                libgstreamer-plugins-base1.0-dev,
+               gstreamer1.0-tools,
+               gstreamer1.0-plugins-base,
                pylon,
                deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia>
-Standards-Version: 4.5.0
+Standards-Version: 4.6.2
 Homepage: https://github.com/basler/gst-plugin-pylon
 
 Package: gst-plugin-pylon
 Architecture: any
-Depends: libc6,
-         pylon,
+Depends: ${shlibs:Depends},
          ${misc:Depends},
+         pylon,
          gstreamer1.0-plugins-base,
          deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia>
 Description: GStreamer plugin for Basler cameras
@@ -28,20 +34,20 @@ Description: GStreamer plugin for Basler cameras
 
 Package: gst-plugin-pylon-dev
 Architecture: any
-Depends: pylon,
-         ${misc:Depends},
-         gst-plugin-pylon
+Depends: ${misc:Depends},
+         pylon,
+         gst-plugin-pylon (= ${binary:Version})
 Description: Development files for GStreamer plugin for Basler cameras
  This package contains the development files for the GStreamer plugin for
  Basler cameras.
 
 Package: python3-pygstpylon
 Architecture: any
-Depends: libc6,
-         python3,
-         pylon,
+Depends: ${shlibs:Depends},
          ${misc:Depends},
-         gst-plugin-pylon,
+         ${python3:Depends},
+         pylon,
+         gst-plugin-pylon (= ${binary:Version}),
          deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia>
 Description: Python module to access pylon specific gstreamer metadata.
  The python module pygstpylon allows to extract pylon specific metadata

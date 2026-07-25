@@ -87,8 +87,9 @@ fi
 # Get the exact Pylon package version
 PYLON_VERSION=$(dpkg -s pylon | grep Version | cut -d' ' -f2)
 
-# Modify the Depends lines to include exact Pylon version
-sed -i "s/Depends: pylon,/Depends: pylon (= $PYLON_VERSION),/" debian/control
+# Pin binary runtime Depends on pylon to the installed SDK version.
+# Build-Depends stays unversioned so builders can use any matching pylon package.
+sed -i -E "/^Package:/,/^$/ s/^(\\s*)pylon,\$/\\1pylon (= ${PYLON_VERSION}),/" debian/control
 
 echo "Pylon dependency set to ${PYLON_VERSION}"
 
