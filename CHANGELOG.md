@@ -9,15 +9,19 @@ All notable changes to this project will be documented in this file.
 - Align GitHub Actions with pypylon: Conan `pylon-core`, control-file SDK fetch, ubuntu-24.04 runners
 - Modernize meson (`>= 1.4.0`), GStreamer (`>= 1.20.0`), drop pylon 6 cmake fallback
 - Merge architecture refactor: schema-driven `GstPylonObject`, shared introspection cache
-- Compat tests compare stable pylonsrc properties only (emulator model trees vary)
+- Inspect-surface tests compare the full normalized `gst-inspect pylonsrc` output
 - Honor `AcquisitionFrameRate` from PFS/properties for hardware triggering (#147)
 - Jetson NVMM: detect `nvbufsurface` via L4T multimedia API paths (#148)
+- Debian packaging now targets distros with GStreamer >= 1.20.0
 
 ### Fixed
 - Skip optional `OffsetX`/`OffsetY` during caps query on cameras without ROI offsets (#140)
 - Open camera by serial/user-name without full device enumeration (#138)
 - Relax PFS nodemap sanity check for manually edited float values (#136, #141)
-- State tests run with `PYLON_CAMEMU=1` to avoid timeouts without a camera
+- Dedicated camemu tests cover `pylonsrc` state changes and functional capture
+- Failed camera startup tears down the Pylon runtime exactly once
+- Missing serial/user-name selection fails quickly instead of waiting through open retries
+- Introspection cache entries are versioned, validated, and rebuilt when empty or corrupt
 
 ### Added
 - Conan CI profiles and `conanfile.py` (pylon-core only)
