@@ -12,6 +12,19 @@
 
 #define EMU_SERIAL "0815-0000"
 
+static void
+require_camemu_devices (guint minimum)
+{
+  const gchar *env = g_getenv ("PYLON_CAMEMU");
+  guint64 count;
+
+  fail_unless (env != NULL, "PYLON_CAMEMU must be set for camemu tests");
+  count = g_ascii_strtoull (env, NULL, 10);
+  fail_unless (count >= minimum,
+      "PYLON_CAMEMU must provide at least %u device(s), got %" G_GUINT64_FORMAT,
+      minimum, count);
+}
+
 static GstElement *
 make_pylonsrc_with_serial (const gchar * serial)
 {
@@ -50,6 +63,7 @@ GST_START_TEST (test_pylonsrc_ready_state)
   GstElement *src;
   GstStateChangeReturn ret;
 
+  require_camemu_devices (1);
   src = make_pylonsrc_with_serial (EMU_SERIAL);
   ret = gst_element_set_state (src, GST_STATE_READY);
   fail_unless (ret != GST_STATE_CHANGE_FAILURE);
@@ -77,10 +91,7 @@ GST_START_TEST (test_pylonsrc_ambiguous_device_fails)
   GstElement *src;
   GstStateChangeReturn ret;
 
-  /* Needs multiple emulated devices (PYLON_CAMEMU=3). */
-  if (g_getenv ("PYLON_CAMEMU") == NULL ||
-      g_ascii_strtoull (g_getenv ("PYLON_CAMEMU"), NULL, 10) < 3)
-    return;
+  require_camemu_devices (3);
 
   src = gst_element_factory_make ("pylonsrc", NULL);
   fail_if (src == NULL);

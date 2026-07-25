@@ -43,6 +43,7 @@ endif
 gst_plugin_scanner_path = join_paths(gst_plugin_scanner_dir, 'gst-plugin-scanner')
 
 state_ignore_elements = '''
+pylonsrc
 '''
 
 test_deps = [gst_dep, gstbase_dep, gstcheck_dep, gstvideo_dep,

@@ -159,6 +159,11 @@ expect_fail "ambiguous_devices_without_selection" \
 expect_fail_output "ambiguous_devices_lists_emulators" "0815-0000" \
   gst_pipeline pylonsrc num-buffers=1 ! fakesink
 
+expect_fail_output "wrong_serial_fails_quickly" \
+  "No devices found matching the specified criteria" \
+  timeout 5 gst-launch-1.0 -q pylonsrc device-serial-number=NOSUCHSERIAL999 \
+    num-buffers=1 ! fakesink
+
 # --- formats / caps ---
 expect_ok "capture_gray8_fixed_caps" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=8 \

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Compatibility test suite for gst-plugin-pylon
-# Run with --generate to create golden files (do this on main).
-# Run without to compare current build against golden.
+# Inspect-surface regression test suite for gst-plugin-pylon.
+# Run with --generate only when intentionally accepting a property-surface
+# change. Run without arguments to compare the current build against golden.
 
 set -e
 
@@ -46,6 +46,7 @@ fi
 # - normalize child-property Default: lines (live camera state can vary)
 normalize_inspect() {
   sed 's/[[:space:]]*$//' \
+    | sed 's/^[[:space:]]*\t/\t/' \
     | sed 's/ (GstValueList)//g; s/ (GstIntRange)//g; s/ (GstFractionRange)//g' \
     | sed 's|Filename[[:space:]]*.*libgstpylon\.so.*|Filename                 libgstpylon.so|' \
     | sed '/^[[:space:]]*Version[[:space:]]/s/[[:space:]]*Version[[:space:]].*$/  Version                  PLACEHOLDER/' \
@@ -56,13 +57,8 @@ normalize_inspect() {
     | cat -s
 }
 
-# Keep only the stable pylonsrc element properties. Dynamic cam/stream child
-# property trees depend on the emulated camera models visible at inspect time.
-extract_static_inspect() {
-  awk '
-    /^  cam / { exit }
-    { print }
-  '
+extract_inspect_surface() {
+  cat
 }
 
 run_gst_inspect() {
@@ -71,6 +67,15 @@ run_gst_inspect() {
 
 run_pipeline() {
   timeout 60 gst-launch-1.0 -q pylonsrc device-serial-number=0815-0000 num-buffers=5 ! fakesink 2>&1
+}
+
+require_inspect_property() {
+  local file="$1"
+  local property="$2"
+  if ! grep -Eq "^[[:space:]]+$property[[:space:]]*:" "$file"; then
+    echo "FAIL: gst-inspect output is missing required property: $property"
+    failed=1
+  fi
 }
 
 mkdir -p "$GOLDEN_DIR"
@@ -82,7 +87,7 @@ rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/gstpylon"
 
 if $generate; then
   echo "Generating golden files..."
-  run_gst_inspect | normalize_inspect | extract_static_inspect > "$GOLDEN_DIR/gst_inspect_pylonsrc.txt"
+  run_gst_inspect | normalize_inspect | extract_inspect_surface > "$GOLDEN_DIR/gst_inspect_pylonsrc.txt"
   run_pipeline
   echo "Golden files written to $GOLDEN_DIR"
   exit 0
@@ -94,13 +99,20 @@ if [[ ! -f "$GOLDEN_DIR/gst_inspect_pylonsrc.txt" ]]; then
   exit 1
 fi
 
-echo "Running compatibility tests..."
+echo "Running inspect-surface regression tests..."
 
 failed=0
 
-# Test 1: gst-inspect structure
+# Test 1: gst-inspect surface
 actual_inspect=$(mktemp)
-run_gst_inspect | normalize_inspect | extract_static_inspect > "$actual_inspect"
+run_gst_inspect | normalize_inspect | extract_inspect_surface > "$actual_inspect"
+require_inspect_property "$actual_inspect" "device-serial-number"
+require_inspect_property "$actual_inspect" "pfs-location"
+require_inspect_property "$actual_inspect" "capture-error"
+require_inspect_property "$actual_inspect" "enable-correction"
+require_inspect_property "$actual_inspect" "user-set"
+require_inspect_property "$actual_inspect" "cam"
+require_inspect_property "$actual_inspect" "stream"
 if ! diff -u "$GOLDEN_DIR/gst_inspect_pylonsrc.txt" "$actual_inspect"; then
   echo "FAIL: gst-inspect output differs from golden"
   failed=1
@@ -119,7 +131,7 @@ fi
 
 if [[ $failed -eq 1 ]]; then
   echo ""
-  echo "Compatibility check FAILED. Do not merge if this breaks existing installations."
+  echo "Inspect-surface regression check FAILED. Review intentional API changes before updating the golden file."
   exit 1
 fi
 

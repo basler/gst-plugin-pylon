@@ -26,6 +26,9 @@ GObject
 Implemented Interfaces:
   GstChildProxy
 
+Element Flags:
+  - SOURCE
+
 Pad Templates:
   SRC template: 'src'
     Availability: Always
@@ -57,4 +60,1407 @@ Element Properties:
   blocksize           : Size in bytes to read per buffer (-1 = default)
                         flags: readable, writable
                         Unsigned Integer. Range: 0 - 4294967295 Default: <num>
+
+  cam                 : The camera to use.
+	According to the selected camera different properties will be available.
+	These properties can be accessed using the "cam::<property>" syntax.
+	The following list details the properties for each camera.
+       Basler Emulation (0815-0000) Camera:
+
+                                   name                               : The name of the object
+                                                                        flags: readable, writable
+                                                                        String. Default: <str>
+                                   parent                             : The parent of the object
+                                                                        flags: readable, writable
+                                                                        (null)
+                                   GainRaw                            : This is an integer value that sets the selected gain control in device specific units.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 192 - 1023 Default: <num>
+                                   Gain                               : Value of the currently selected gain in dB.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 48 Default: <num>
+                                   GainAuto                           : Sets the operation mode of the Gain Auto auto function.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__GainAuto" Default: <enum>
+                                                                           (0): Off                - Automatic gain adjustment is disabled.
+                                                                           (1): Once               - The gain is adjusted automatically to reach the specifed target value.
+                                                                           (2): Continuous         - The gain is adjusted continuously while images are being acquired.
+                                   BlackLevel                         : Black level value to be applied to the currently selected sensor tap.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+03 Default: <num>
+                                   Gamma                              : Gamma correction to be applied.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 4 Default: <num>
+                                   DigitalShift                       : Digital shift to be applied.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 4 Default: <num>
+                                   ReverseX                           : Enables horizontal mirroring of the image
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Boolean. Default: <bool>
+                                   ReverseY                           : Enables vertical mirroring of the image
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Boolean. Default: <bool>
+                                   SensorWidth                        : Indicates the width of the camera's sensor in pixels.
+                                                                        flags: readable, writable
+                                                                        Integer64. Range: 1024 - 32768 Default: <num>
+                                   SensorHeight                       : Indicates the height of the camera's sensor in pixels.
+                                                                        flags: readable, writable
+                                                                        Integer64. Range: 1040 - 32768 Default: <num>
+                                   BinningHorizontalMode              : Sets the binning mode for horizontal binning.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__BinningHorizontalMode" Default: <enum>
+                                                                           (0): Sum                - The values of the binned pixels are summed.
+                                                                           (1): Average            - The values of the binned pixels are averaged.
+                                   BinningHorizontal                  : Number of adjacent horizontal pixels to be summed.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 1 - 4 Default: <num>
+                                   BinningVerticalMode                : Sets the binning mode for vertical binning.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__BinningVerticalMode" Default: <enum>
+                                                                           (0): Sum                - The values of the binned pixels are summed.
+                                                                           (1): Average            - The values of the binned pixels are averaged.
+                                   BinningVertical                    : Number of adjacent vertical pixels to be summed.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 1 - 4 Default: <num>
+                                   WidthMax                           : Indicates the maximum allowed width of the image in pixels.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 1024 - 32768 Default: <num>
+                                   HeightMax                          : Indicates the maximum allowed height of the image in pixels.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 1040 - 32768 Default: <num>
+                                   OffsetX                            : Sets the X offset (left offset) of the area of interest in pixels.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 3072 Default: <num>
+                                   OffsetY                            : Sets the Y offset (top offset) for the area of interest in pixels.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 3056 Default: <num>
+                                   PixelSize                          : Indicates the depth of the pixel values in the image in bits per pixel.
+                                                                        flags: readable
+                                                                        Enum "_Emulation__0815_0000__PixelSize" Default: <enum>
+                                                                           (8): Bpp8               - Indicates that the depth of the pixel values in the acquired images is 8 bits per pixel.
+                                                                           (16): Bpp16              - Indicates that the depth of the pixel values in the acquired images is 16 bits per pixel.
+                                                                           (24): Bpp24              - Indicates that the depth of the pixel values in the acquired images is 24 bits per pixel.
+                                                                           (32): Bpp32              - Indicates that the depth of the pixel values in the acquired images is 32 bits per pixel.
+                                                                           (48): Bpp48              - Indicates that the depth of the pixel values in the acquired images is 48 bits per pixel.
+                                   PixelDynamicRangeMin               : Indicates the minimum possible pixel value that could be transferred from the camera.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 4294967295 Default: <num>
+                                   PixelDynamicRangeMax               : Indicates the maximum possible pixel value that could be transferred from the camera.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 4294967295 Default: <num>
+                                   TestImageSelector                  : Selecting a test image from the list will enable the test image.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TestImageSelector" Default: <enum>
+                                                                           (0): Off                - Sets the camera's test image generation capability to disabled.
+                                                                           (1): Testimage1         - Sets the camera to generate and transmit test images with a test image 1 pattern.
+                                                                           (2): Testimage2         - Sets the camera to generate and transmit test images with a test image 2 pattern.
+                                   ImageFilename                      : Enter the name of an image filename or a path to a directory containing image files.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        String. Default: <str>
+                                   ImageFileMode                      : Enables loading files from disk for image acquisition.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__ImageFileMode" Default: <enum>
+                                                                           (0): Off                - Sets the mode to off.
+                                                                           (1): On                 - Sets the mode to on.
+                                   ExposureTimeAbs                    : Controls the emulated absolute exposure time in microseconds (us).
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 1e+02 - 3e+06 Default: <num>
+                                   ExposureTimeBaseAbs                : Dummy: Sets the time base (in microseconds) that is used when the exposure time is set with the 'exposure time raw' setting.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 1 - 1e+02 Default: <num>
+                                   ExposureTimeRaw                    : Dummy: Sets the 'raw' exposure time.  Actual exposure time = raw exposure setting  x  exposure time base abs setting.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 100 - 3000000 Default: <num>
+                                   ExposureTime                       : Exposure time of the camera in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 1 - 1e+07 Default: <num>
+                                   AcquisitionMode                    : Sets the image acquisition mode.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Enum "_Emulation__0815_0000__AcquisitionMode" Default: <enum>
+                                                                           (0): SingleFrame        - Sets the acquisition mode to single frame.
+                                                                           (1): Continuous         - Sets the acquisition mode to continuous.
+                                   ExposureAuto                       : Sets the operation mode of the Exposure Auto auto function.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__ExposureAuto" Default: <enum>
+                                                                           (0): Off                - Automatic exposure time adjustment is disabled.
+                                                                           (1): Once               - The exposure time is adjusted automatically to reach the specified target value.
+                                                                           (2): Continuous         - The exposure time is adjusted continuously while images are being acquired.
+                                   ExposureMode                       : Sets the exposure mode.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__ExposureMode" Default: <enum>
+                                                                           (0): Timed              - The exposure mode is set to Timed.
+                                                                           (1): TriggerWidth       - The exposure mode is set to Trigger Width.
+                                                                           (2): TriggerControlled  - The exposure mode is set to Trigger Controlled.
+                                   TriggerMode-FrameBurstStart        : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-FrameBurstEnd          : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-FrameBurstActive       : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-FrameStart             : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-FrameEnd               : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-FrameActive            : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-ExposureStart          : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-ExposureEnd            : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-ExposureActive         : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerSource-FrameBurstStart      : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-FrameBurstEnd        : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-FrameBurstActive     : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-FrameStart           : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-FrameEnd             : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-FrameActive          : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-ExposureStart        : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-ExposureEnd          : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-ExposureActive       : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerActivation-FrameBurstStart  : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-FrameBurstEnd    : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-FrameBurstActive : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-FrameStart       : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-FrameEnd         : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-FrameActive      : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-ExposureStart    : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-ExposureEnd      : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-ExposureActive   : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerDelay-FrameBurstStart       : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-FrameBurstEnd         : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-FrameBurstActive      : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-FrameStart            : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-FrameEnd              : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-FrameActive           : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-ExposureStart         : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-ExposureEnd           : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-ExposureActive        : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   AcquisitionFrameRateEnable         : Enables setting the camera's acquisition frame rate to a specified value.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   AcquisitionFrameRate               : Acquisition frame rate of the camera in frames per second.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0.01 - 5e+03 Default: <num>
+                                   ResultingFrameRateAbs              : Dummy framerate feature.
+                                                                        flags: readable
+                                                                        Double. Range: -1.8e+308 - 1.8e+308 Default: <num>
+                                   AcquisitionStatus                  : Reads the selected acquisition status.
+                                                                        flags: readable
+                                                                        Boolean. Default: <bool>
+                                   LineInverter-Line1                 : Enables the signal inverter function for the currently selected input or output line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   LineInverter-Line2                 : Enables the signal inverter function for the currently selected input or output line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   LineInverter-Line3                 : Enables the signal inverter function for the currently selected input or output line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   LineMode-Line1                     : Sets the mode for the selected line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__LineMode" Default: <enum>
+                                                                           (0): Input              - The selected physical line can be used to input an electrical signal.
+                                                                           (1): Output             - The selected physical line can be used to output an electrical signal.
+                                                                           (2): InOut              - The selected physical line can be used to input and output an electrical signal.
+                                   LineMode-Line2                     : Sets the mode for the selected line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__LineMode" Default: <enum>
+                                                                           (0): Input              - The selected physical line can be used to input an electrical signal.
+                                                                           (1): Output             - The selected physical line can be used to output an electrical signal.
+                                                                           (2): InOut              - The selected physical line can be used to input and output an electrical signal.
+                                   LineMode-Line3                     : Sets the mode for the selected line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__LineMode" Default: <enum>
+                                                                           (0): Input              - The selected physical line can be used to input an electrical signal.
+                                                                           (1): Output             - The selected physical line can be used to output an electrical signal.
+                                                                           (2): InOut              - The selected physical line can be used to input and output an electrical signal.
+                                   LineSource-Line1                   : Sets the source signal for the currently selected line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__LineSource" Default: <enum>
+                                                                           (0): Off                - No source signal is set for the currently selected line.
+                                                                           (1): UserOutput1        - The source signal for the currently selected line is set to User Output 1.
+                                                                           (2): UserOutput2        - The source signal for the currently selected line is set to User Output 2.
+                                                                           (3): UserOutput3        - The source signal for the currently selected line is set to User Output 3.
+                                                                           (4): AcquisitionActive  - The source signal for the currently selected line is set to Acquisition Active.
+                                                                           (5): ExposureActive     - The source signal for the currently selected line is set to Exposure Active.
+                                                                           (6): ExposureTriggerWait - The source signal for the currently selected line is set to Exposure Trigger Wait.
+                                                                           (7): FrameBurstActive   - The source signal for the currently selected line is set to Frame Burst Active.
+                                                                           (8): FrameBurstTriggerWait - The source signal for the currently selected line is set to Frame Burst Trigger Wait.
+                                                                           (9): FrameTriggerWait   - The source signal for the currently selected line is set to Frame Trigger Wait.
+                                                                           (10): Counter1Active     - The source signal for the currently selected line is set to Counter 1 Active.
+                                                                           (11): Counter2Active     - The source signal for the currently selected line is set to Counter 2 Active.
+                                                                           (12): Timer1Active       - The source signal for the currently selected line is set to Timer 1 Active.
+                                                                           (13): Timer2Active       - The source signal for the currently selected line is set to Timer 2 Active.
+                                   LineSource-Line2                   : Sets the source signal for the currently selected line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__LineSource" Default: <enum>
+                                                                           (0): Off                - No source signal is set for the currently selected line.
+                                                                           (1): UserOutput1        - The source signal for the currently selected line is set to User Output 1.
+                                                                           (2): UserOutput2        - The source signal for the currently selected line is set to User Output 2.
+                                                                           (3): UserOutput3        - The source signal for the currently selected line is set to User Output 3.
+                                                                           (4): AcquisitionActive  - The source signal for the currently selected line is set to Acquisition Active.
+                                                                           (5): ExposureActive     - The source signal for the currently selected line is set to Exposure Active.
+                                                                           (6): ExposureTriggerWait - The source signal for the currently selected line is set to Exposure Trigger Wait.
+                                                                           (7): FrameBurstActive   - The source signal for the currently selected line is set to Frame Burst Active.
+                                                                           (8): FrameBurstTriggerWait - The source signal for the currently selected line is set to Frame Burst Trigger Wait.
+                                                                           (9): FrameTriggerWait   - The source signal for the currently selected line is set to Frame Trigger Wait.
+                                                                           (10): Counter1Active     - The source signal for the currently selected line is set to Counter 1 Active.
+                                                                           (11): Counter2Active     - The source signal for the currently selected line is set to Counter 2 Active.
+                                                                           (12): Timer1Active       - The source signal for the currently selected line is set to Timer 1 Active.
+                                                                           (13): Timer2Active       - The source signal for the currently selected line is set to Timer 2 Active.
+                                   LineSource-Line3                   : Sets the source signal for the currently selected line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__LineSource" Default: <enum>
+                                                                           (0): Off                - No source signal is set for the currently selected line.
+                                                                           (1): UserOutput1        - The source signal for the currently selected line is set to User Output 1.
+                                                                           (2): UserOutput2        - The source signal for the currently selected line is set to User Output 2.
+                                                                           (3): UserOutput3        - The source signal for the currently selected line is set to User Output 3.
+                                                                           (4): AcquisitionActive  - The source signal for the currently selected line is set to Acquisition Active.
+                                                                           (5): ExposureActive     - The source signal for the currently selected line is set to Exposure Active.
+                                                                           (6): ExposureTriggerWait - The source signal for the currently selected line is set to Exposure Trigger Wait.
+                                                                           (7): FrameBurstActive   - The source signal for the currently selected line is set to Frame Burst Active.
+                                                                           (8): FrameBurstTriggerWait - The source signal for the currently selected line is set to Frame Burst Trigger Wait.
+                                                                           (9): FrameTriggerWait   - The source signal for the currently selected line is set to Frame Trigger Wait.
+                                                                           (10): Counter1Active     - The source signal for the currently selected line is set to Counter 1 Active.
+                                                                           (11): Counter2Active     - The source signal for the currently selected line is set to Counter 2 Active.
+                                                                           (12): Timer1Active       - The source signal for the currently selected line is set to Timer 1 Active.
+                                                                           (13): Timer2Active       - The source signal for the currently selected line is set to Timer 2 Active.
+                                   UserOutputValue-UserOutput1        : Enables the selected user-settable output line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   UserOutputValue-UserOutput2        : Enables the selected user-settable output line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   UserOutputValue-UserOutput3        : Enables the selected user-settable output line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   DeviceVendorName                   : Indicates the name of the device's vendor.
+                                                                        flags: readable
+                                                                        String. Default: "Basler"
+                                   DeviceModelName                    : Indicates the model name of the device.
+                                                                        flags: readable
+                                                                        String. Default: "CamEmu"
+                                   DeviceManufacturerInfo             : Provides additional information from the vendor about the device.
+                                                                        flags: readable
+                                                                        String. Default: "none"
+                                   DeviceVersion                      : Indicates the version of the device.
+                                                                        flags: readable
+                                                                        String. Default: "12.2.0.1265"
+                                   DeviceFirmwareVersion              : Indicates the version of the device's firmware and software.
+                                                                        flags: readable
+                                                                        String. Default: "1.1"
+                                   DeviceUserID                       : A device ID that is user programmable.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        String. Default: <str>
+                                   DeviceLinkThroughputLimitMode      : Enables/disables the device link throughput limit.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__DeviceLinkThroughputLimitMode" Default: <enum>
+                                                                           (0): On                 - The Device Link Throughput Limit parameter is enabled.
+                                                                           (1): Off                - The Device Link Throughput Limit parameter is disabled.
+                                   DeviceLinkThroughputLimit          : Bandwidth limit for data transmission (in bytes per second).
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 524288 - 419430400 Default: <num>
+                                   DeviceTemperatureSelector          : Sets the location in the camera where the temperature will be measured.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0000__DeviceTemperatureSelector" Default: <enum>
+                                                                           (0): Coreboard          - The temperature is measured on the core board.
+                                                                           (1): Sensor             - The temperature is measured on the image sensor.
+                                   PayloadSize                        : Size of the payload in bytes.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 4294967295 Default: <num>
+                                   ForceFailedBufferCount             : Number of failed buffers to generate.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 1 - 1024 Default: <num>
+                                   BslImageCompressionBCBDecompressedImageSize:
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: -9223372036854775808 - 9223372036854775807 Default: <num>
+                                   GevSCPSPacketSize                  : Packet size in bytes on the selected stream channel. Excludes data leader and data trailer.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 220 - 9014 Default: <num>
+                                   GevSCPD                            : Delay between the transmission of each packet on the selected stream channel.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 787456 Default: <num>
+                                   GevSCFTD                           : Frame transmission delay on the selected stream channel.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 4194303 Default: <num>
+                                   GevSCBWR                           : Percentage of the Ethernet bandwidth assigned to the camera to be held in reserve.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 1 - 50 Default: <num>
+                                   GevSCBWRA                          : Multiplier for the Bandwidth Reserve parameter.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 1 - 20 Default: <num>
+       Basler Emulation (0815-0001) Camera:
+
+                                   name                               : The name of the object
+                                                                        flags: readable, writable
+                                                                        String. Default: <str>
+                                   parent                             : The parent of the object
+                                                                        flags: readable, writable
+                                                                        (null)
+                                   GainRaw                            : This is an integer value that sets the selected gain control in device specific units.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 192 - 1023 Default: <num>
+                                   Gain                               : Value of the currently selected gain in dB.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 48 Default: <num>
+                                   GainAuto                           : Sets the operation mode of the Gain Auto auto function.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__GainAuto" Default: <enum>
+                                                                           (0): Off                - Automatic gain adjustment is disabled.
+                                                                           (1): Once               - The gain is adjusted automatically to reach the specifed target value.
+                                                                           (2): Continuous         - The gain is adjusted continuously while images are being acquired.
+                                   BlackLevel                         : Black level value to be applied to the currently selected sensor tap.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+03 Default: <num>
+                                   Gamma                              : Gamma correction to be applied.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 4 Default: <num>
+                                   DigitalShift                       : Digital shift to be applied.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 4 Default: <num>
+                                   ReverseX                           : Enables horizontal mirroring of the image
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Boolean. Default: <bool>
+                                   ReverseY                           : Enables vertical mirroring of the image
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Boolean. Default: <bool>
+                                   SensorWidth                        : Indicates the width of the camera's sensor in pixels.
+                                                                        flags: readable, writable
+                                                                        Integer64. Range: 1024 - 32768 Default: <num>
+                                   SensorHeight                       : Indicates the height of the camera's sensor in pixels.
+                                                                        flags: readable, writable
+                                                                        Integer64. Range: 1040 - 32768 Default: <num>
+                                   BinningHorizontalMode              : Sets the binning mode for horizontal binning.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__BinningHorizontalMode" Default: <enum>
+                                                                           (0): Sum                - The values of the binned pixels are summed.
+                                                                           (1): Average            - The values of the binned pixels are averaged.
+                                   BinningHorizontal                  : Number of adjacent horizontal pixels to be summed.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 1 - 4 Default: <num>
+                                   BinningVerticalMode                : Sets the binning mode for vertical binning.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__BinningVerticalMode" Default: <enum>
+                                                                           (0): Sum                - The values of the binned pixels are summed.
+                                                                           (1): Average            - The values of the binned pixels are averaged.
+                                   BinningVertical                    : Number of adjacent vertical pixels to be summed.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 1 - 4 Default: <num>
+                                   WidthMax                           : Indicates the maximum allowed width of the image in pixels.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 1024 - 32768 Default: <num>
+                                   HeightMax                          : Indicates the maximum allowed height of the image in pixels.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 1040 - 32768 Default: <num>
+                                   OffsetX                            : Sets the X offset (left offset) of the area of interest in pixels.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 3072 Default: <num>
+                                   OffsetY                            : Sets the Y offset (top offset) for the area of interest in pixels.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 3056 Default: <num>
+                                   PixelSize                          : Indicates the depth of the pixel values in the image in bits per pixel.
+                                                                        flags: readable
+                                                                        Enum "_Emulation__0815_0001__PixelSize" Default: <enum>
+                                                                           (8): Bpp8               - Indicates that the depth of the pixel values in the acquired images is 8 bits per pixel.
+                                                                           (16): Bpp16              - Indicates that the depth of the pixel values in the acquired images is 16 bits per pixel.
+                                                                           (24): Bpp24              - Indicates that the depth of the pixel values in the acquired images is 24 bits per pixel.
+                                                                           (32): Bpp32              - Indicates that the depth of the pixel values in the acquired images is 32 bits per pixel.
+                                                                           (48): Bpp48              - Indicates that the depth of the pixel values in the acquired images is 48 bits per pixel.
+                                   PixelDynamicRangeMin               : Indicates the minimum possible pixel value that could be transferred from the camera.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 4294967295 Default: <num>
+                                   PixelDynamicRangeMax               : Indicates the maximum possible pixel value that could be transferred from the camera.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 4294967295 Default: <num>
+                                   TestImageSelector                  : Selecting a test image from the list will enable the test image.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TestImageSelector" Default: <enum>
+                                                                           (0): Off                - Sets the camera's test image generation capability to disabled.
+                                                                           (1): Testimage1         - Sets the camera to generate and transmit test images with a test image 1 pattern.
+                                                                           (2): Testimage2         - Sets the camera to generate and transmit test images with a test image 2 pattern.
+                                   ImageFilename                      : Enter the name of an image filename or a path to a directory containing image files.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        String. Default: <str>
+                                   ImageFileMode                      : Enables loading files from disk for image acquisition.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__ImageFileMode" Default: <enum>
+                                                                           (0): Off                - Sets the mode to off.
+                                                                           (1): On                 - Sets the mode to on.
+                                   ExposureTimeAbs                    : Controls the emulated absolute exposure time in microseconds (us).
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 1e+02 - 3e+06 Default: <num>
+                                   ExposureTimeBaseAbs                : Dummy: Sets the time base (in microseconds) that is used when the exposure time is set with the 'exposure time raw' setting.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 1 - 1e+02 Default: <num>
+                                   ExposureTimeRaw                    : Dummy: Sets the 'raw' exposure time.  Actual exposure time = raw exposure setting  x  exposure time base abs setting.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 100 - 3000000 Default: <num>
+                                   ExposureTime                       : Exposure time of the camera in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 1 - 1e+07 Default: <num>
+                                   AcquisitionMode                    : Sets the image acquisition mode.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Enum "_Emulation__0815_0001__AcquisitionMode" Default: <enum>
+                                                                           (0): SingleFrame        - Sets the acquisition mode to single frame.
+                                                                           (1): Continuous         - Sets the acquisition mode to continuous.
+                                   ExposureAuto                       : Sets the operation mode of the Exposure Auto auto function.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__ExposureAuto" Default: <enum>
+                                                                           (0): Off                - Automatic exposure time adjustment is disabled.
+                                                                           (1): Once               - The exposure time is adjusted automatically to reach the specified target value.
+                                                                           (2): Continuous         - The exposure time is adjusted continuously while images are being acquired.
+                                   ExposureMode                       : Sets the exposure mode.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__ExposureMode" Default: <enum>
+                                                                           (0): Timed              - The exposure mode is set to Timed.
+                                                                           (1): TriggerWidth       - The exposure mode is set to Trigger Width.
+                                                                           (2): TriggerControlled  - The exposure mode is set to Trigger Controlled.
+                                   TriggerMode-FrameBurstStart        : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-FrameBurstEnd          : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-FrameBurstActive       : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-FrameStart             : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-FrameEnd               : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-FrameActive            : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-ExposureStart          : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-ExposureEnd            : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerMode-ExposureActive         : Sets the mode for the currently selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerMode" Default: <enum>
+                                                                           (0): Off                - The currently selected trigger is turned off.
+                                                                           (1): On                 - The currently selected trigger is turned on.
+                                   TriggerSource-FrameBurstStart      : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-FrameBurstEnd        : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-FrameBurstActive     : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-FrameStart           : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-FrameEnd             : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-FrameActive          : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-ExposureStart        : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-ExposureEnd          : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerSource-ExposureActive       : Sets the source signal for the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerSource" Default: <enum>
+                                                                           (0): Software           - The source signal for the selected trigger is set to software triggering.
+                                                                           (1): Line1              - The source signal for the selected trigger is set to Line 1.
+                                                                           (2): Line2              - The source signal for the selected trigger is set to Line 2.
+                                                                           (3): Line3              - The source signal for the selected trigger is set to Line 3.
+                                                                           (4): SoftwareSignal1    - The source signal for the selected trigger is set to software signal 1.
+                                                                           (5): SoftwareSignal2    - The source signal for the selected trigger is set to software signal 2.
+                                                                           (6): SoftwareSignal3    - The source signal for the selected trigger is set to software signal 3.
+                                                                           (7): PeriodicSignal1    - The source signal for the selected trigger is set to Periodic Signal 1.
+                                                                           (8): Action1            - The source signal for the selected trigger is set to action command signal 1.
+                                                                           (9): Counter1Active     - The Counter 1 Active trigger can be configured.
+                                                                           (10): Counter1End        - The Counter 1 End trigger can be configured.
+                                                                           (11): Counter1Start      - The Counter 1 Start trigger can be configured.
+                                                                           (12): Counter2Active     - The Counter 2 Active trigger can be configured.
+                                                                           (13): Counter2End        - The Counter 2 End trigger can be configured.
+                                                                           (14): Counter2Start      - The Counter 2 Start trigger can be configured.
+                                                                           (15): Timer1Active       - The Timer 1 Active trigger can be configured.
+                                                                           (16): Timer1End          - The Timer 1 End trigger can be configured.
+                                                                           (17): Timer2Active       - The Timer 2 Active trigger can be configured.
+                                                                           (18): Timer2End          - The Timer 2 End trigger can be configured.
+                                   TriggerActivation-FrameBurstStart  : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-FrameBurstEnd    : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-FrameBurstActive : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-FrameStart       : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-FrameEnd         : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-FrameActive      : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-ExposureStart    : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-ExposureEnd      : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerActivation-ExposureActive   : Sets the type of signal transition that will activate the selected trigger.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__TriggerActivation" Default: <enum>
+                                                                           (0): RisingEdge         - Trigger on the rising edge of the selected source.
+                                                                           (1): FallingEdge        - Trigger on the falling edge of the selected source.
+                                                                           (2): AnyEdge            - Trigger on the rising or falling edge of the selected source.
+                                                                           (3): LevelHigh          - Trigger is active as long as the selected source signal is on a logic high level.
+                                                                           (4): LevelLow           - Trigger is active as long as the selected source signal is on a logic low level.
+                                   TriggerDelay-FrameBurstStart       : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-FrameBurstEnd         : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-FrameBurstActive      : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-FrameStart            : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-FrameEnd              : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-FrameActive           : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-ExposureStart         : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-ExposureEnd           : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   TriggerDelay-ExposureActive        : Trigger delay time in microseconds.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0 - 1e+04 Default: <num>
+                                   AcquisitionFrameRateEnable         : Enables setting the camera's acquisition frame rate to a specified value.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   AcquisitionFrameRate               : Acquisition frame rate of the camera in frames per second.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Double. Range: 0.01 - 5e+03 Default: <num>
+                                   ResultingFrameRateAbs              : Dummy framerate feature.
+                                                                        flags: readable
+                                                                        Double. Range: -1.8e+308 - 1.8e+308 Default: <num>
+                                   AcquisitionStatus                  : Reads the selected acquisition status.
+                                                                        flags: readable
+                                                                        Boolean. Default: <bool>
+                                   LineInverter-Line1                 : Enables the signal inverter function for the currently selected input or output line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   LineInverter-Line2                 : Enables the signal inverter function for the currently selected input or output line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   LineInverter-Line3                 : Enables the signal inverter function for the currently selected input or output line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   LineMode-Line1                     : Sets the mode for the selected line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__LineMode" Default: <enum>
+                                                                           (0): Input              - The selected physical line can be used to input an electrical signal.
+                                                                           (1): Output             - The selected physical line can be used to output an electrical signal.
+                                                                           (2): InOut              - The selected physical line can be used to input and output an electrical signal.
+                                   LineMode-Line2                     : Sets the mode for the selected line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__LineMode" Default: <enum>
+                                                                           (0): Input              - The selected physical line can be used to input an electrical signal.
+                                                                           (1): Output             - The selected physical line can be used to output an electrical signal.
+                                                                           (2): InOut              - The selected physical line can be used to input and output an electrical signal.
+                                   LineMode-Line3                     : Sets the mode for the selected line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__LineMode" Default: <enum>
+                                                                           (0): Input              - The selected physical line can be used to input an electrical signal.
+                                                                           (1): Output             - The selected physical line can be used to output an electrical signal.
+                                                                           (2): InOut              - The selected physical line can be used to input and output an electrical signal.
+                                   LineSource-Line1                   : Sets the source signal for the currently selected line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__LineSource" Default: <enum>
+                                                                           (0): Off                - No source signal is set for the currently selected line.
+                                                                           (1): UserOutput1        - The source signal for the currently selected line is set to User Output 1.
+                                                                           (2): UserOutput2        - The source signal for the currently selected line is set to User Output 2.
+                                                                           (3): UserOutput3        - The source signal for the currently selected line is set to User Output 3.
+                                                                           (4): AcquisitionActive  - The source signal for the currently selected line is set to Acquisition Active.
+                                                                           (5): ExposureActive     - The source signal for the currently selected line is set to Exposure Active.
+                                                                           (6): ExposureTriggerWait - The source signal for the currently selected line is set to Exposure Trigger Wait.
+                                                                           (7): FrameBurstActive   - The source signal for the currently selected line is set to Frame Burst Active.
+                                                                           (8): FrameBurstTriggerWait - The source signal for the currently selected line is set to Frame Burst Trigger Wait.
+                                                                           (9): FrameTriggerWait   - The source signal for the currently selected line is set to Frame Trigger Wait.
+                                                                           (10): Counter1Active     - The source signal for the currently selected line is set to Counter 1 Active.
+                                                                           (11): Counter2Active     - The source signal for the currently selected line is set to Counter 2 Active.
+                                                                           (12): Timer1Active       - The source signal for the currently selected line is set to Timer 1 Active.
+                                                                           (13): Timer2Active       - The source signal for the currently selected line is set to Timer 2 Active.
+                                   LineSource-Line2                   : Sets the source signal for the currently selected line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__LineSource" Default: <enum>
+                                                                           (0): Off                - No source signal is set for the currently selected line.
+                                                                           (1): UserOutput1        - The source signal for the currently selected line is set to User Output 1.
+                                                                           (2): UserOutput2        - The source signal for the currently selected line is set to User Output 2.
+                                                                           (3): UserOutput3        - The source signal for the currently selected line is set to User Output 3.
+                                                                           (4): AcquisitionActive  - The source signal for the currently selected line is set to Acquisition Active.
+                                                                           (5): ExposureActive     - The source signal for the currently selected line is set to Exposure Active.
+                                                                           (6): ExposureTriggerWait - The source signal for the currently selected line is set to Exposure Trigger Wait.
+                                                                           (7): FrameBurstActive   - The source signal for the currently selected line is set to Frame Burst Active.
+                                                                           (8): FrameBurstTriggerWait - The source signal for the currently selected line is set to Frame Burst Trigger Wait.
+                                                                           (9): FrameTriggerWait   - The source signal for the currently selected line is set to Frame Trigger Wait.
+                                                                           (10): Counter1Active     - The source signal for the currently selected line is set to Counter 1 Active.
+                                                                           (11): Counter2Active     - The source signal for the currently selected line is set to Counter 2 Active.
+                                                                           (12): Timer1Active       - The source signal for the currently selected line is set to Timer 1 Active.
+                                                                           (13): Timer2Active       - The source signal for the currently selected line is set to Timer 2 Active.
+                                   LineSource-Line3                   : Sets the source signal for the currently selected line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__LineSource" Default: <enum>
+                                                                           (0): Off                - No source signal is set for the currently selected line.
+                                                                           (1): UserOutput1        - The source signal for the currently selected line is set to User Output 1.
+                                                                           (2): UserOutput2        - The source signal for the currently selected line is set to User Output 2.
+                                                                           (3): UserOutput3        - The source signal for the currently selected line is set to User Output 3.
+                                                                           (4): AcquisitionActive  - The source signal for the currently selected line is set to Acquisition Active.
+                                                                           (5): ExposureActive     - The source signal for the currently selected line is set to Exposure Active.
+                                                                           (6): ExposureTriggerWait - The source signal for the currently selected line is set to Exposure Trigger Wait.
+                                                                           (7): FrameBurstActive   - The source signal for the currently selected line is set to Frame Burst Active.
+                                                                           (8): FrameBurstTriggerWait - The source signal for the currently selected line is set to Frame Burst Trigger Wait.
+                                                                           (9): FrameTriggerWait   - The source signal for the currently selected line is set to Frame Trigger Wait.
+                                                                           (10): Counter1Active     - The source signal for the currently selected line is set to Counter 1 Active.
+                                                                           (11): Counter2Active     - The source signal for the currently selected line is set to Counter 2 Active.
+                                                                           (12): Timer1Active       - The source signal for the currently selected line is set to Timer 1 Active.
+                                                                           (13): Timer2Active       - The source signal for the currently selected line is set to Timer 2 Active.
+                                   UserOutputValue-UserOutput1        : Enables the selected user-settable output line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   UserOutputValue-UserOutput2        : Enables the selected user-settable output line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   UserOutputValue-UserOutput3        : Enables the selected user-settable output line.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Boolean. Default: <bool>
+                                   DeviceVendorName                   : Indicates the name of the device's vendor.
+                                                                        flags: readable
+                                                                        String. Default: "Basler"
+                                   DeviceModelName                    : Indicates the model name of the device.
+                                                                        flags: readable
+                                                                        String. Default: "CamEmu"
+                                   DeviceManufacturerInfo             : Provides additional information from the vendor about the device.
+                                                                        flags: readable
+                                                                        String. Default: "none"
+                                   DeviceVersion                      : Indicates the version of the device.
+                                                                        flags: readable
+                                                                        String. Default: "12.2.0.1265"
+                                   DeviceFirmwareVersion              : Indicates the version of the device's firmware and software.
+                                                                        flags: readable
+                                                                        String. Default: "1.1"
+                                   DeviceUserID                       : A device ID that is user programmable.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        String. Default: <str>
+                                   DeviceLinkThroughputLimitMode      : Enables/disables the device link throughput limit.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__DeviceLinkThroughputLimitMode" Default: <enum>
+                                                                           (0): On                 - The Device Link Throughput Limit parameter is enabled.
+                                                                           (1): Off                - The Device Link Throughput Limit parameter is disabled.
+                                   DeviceLinkThroughputLimit          : Bandwidth limit for data transmission (in bytes per second).
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 524288 - 419430400 Default: <num>
+                                   DeviceTemperatureSelector          : Sets the location in the camera where the temperature will be measured.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Enum "_Emulation__0815_0001__DeviceTemperatureSelector" Default: <enum>
+                                                                           (0): Coreboard          - The temperature is measured on the core board.
+                                                                           (1): Sensor             - The temperature is measured on the image sensor.
+                                   PayloadSize                        : Size of the payload in bytes.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 4294967295 Default: <num>
+                                   ForceFailedBufferCount             : Number of failed buffers to generate.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 1 - 1024 Default: <num>
+                                   BslImageCompressionBCBDecompressedImageSize:
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: -9223372036854775808 - 9223372036854775807 Default: <num>
+                                   GevSCPSPacketSize                  : Packet size in bytes on the selected stream channel. Excludes data leader and data trailer.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 220 - 9014 Default: <num>
+                                   GevSCPD                            : Delay between the transmission of each packet on the selected stream channel.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 787456 Default: <num>
+                                   GevSCFTD                           : Frame transmission delay on the selected stream channel.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 4194303 Default: <num>
+                                   GevSCBWR                           : Percentage of the Ethernet bandwidth assigned to the camera to be held in reserve.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 1 - 50 Default: <num>
+                                   GevSCBWRA                          : Multiplier for the Bandwidth Reserve parameter.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 1 - 20 Default: <num>
+                        flags: readable
+                        Object of type "GObject"
+
+  capture-error       : The strategy to use in case of a camera capture error.
+                        flags: readable, writable, controllable
+                        Enum "GstPylonCaptureErrorEnum" Default: <enum>
+                           (0): Use partial or corrupt buffers - keep
+                           (1): Skip partial or corrupt buffers. A maximum of 100 buffers can be skipped before the pipeline aborts. - skip
+                           (2): Stop pipeline in case of any capture error - abort
+
+  device-index        : The index of the device to use.This index applies to the resulting device list after applying the other device selection properties. The index is mandatory if multiple devices match the given search criteria.
+                        flags: readable, writable, changeable only in NULL or READY state
+                        Integer. Range: -1 - 2147483647 Default: -1
+
+  device-serial-number: The serial number of the device to use. May be combined with other device selection properties to reduce the search.
+                        flags: readable, writable, changeable only in NULL or READY state
+                        String. Default: null
+
+  device-user-name    : The user-defined name of the device to use. May be combinedwith other device selection properties to reduce the search.
+                        flags: readable, writable, changeable only in NULL or READY state
+                        String. Default: null
+
+  do-timestamp        : Apply current stream time to buffers
+                        flags: readable, writable
+                        Boolean. Default: <bool>
+
+  enable-correction   : If enabled, the values from other parameters will be automatically corrected.  If any of the properties holds an incorrect value given an specific configuration it will be corrected
+                        flags: readable, writable, changeable only in NULL or READY state
+                        Boolean. Default: <bool>
+
+  name                : The name of the object
+                        flags: readable, writable
+                        String. Default: "pylonsrc0"
+
+  num-buffers         : Number of buffers to output before sending EOS (-1 = unlimited)
+                        flags: readable, writable
+                        Integer. Range: -1 - 2147483647 Default: -1
+
+  parent              : The parent of the object
+                        flags: readable, writable
+                        Object of type "GstObject"
+
+  pfs-location        : The filepath to the PFS file from which to load the device configuration. Setting this property will override the user set property if also set.
+                        flags: readable, writable, changeable only in NULL or READY state
+                        String. Default: null
+
+  stream              : The stream grabber to use.
+	According to the selected stream grabber different properties will be available.
+	These properties can be accessed using the "stream::<property>" syntax.
+	The following list details the properties for each stream grabber.
+       Basler Emulation (0815-0000) Stream Grabber:
+
+                                   name                               : The name of the object
+                                                                        flags: readable, writable
+                                                                        String. Default: <str>
+                                   parent                             : The parent of the object
+                                                                        flags: readable, writable
+                                                                        (null)
+                                   MaxNumBuffer                       : Number of buffers to be used.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 1 - 9223372036854775807 Default: <num>
+                                   MaxBufferSize                      : Buffer size in bytes
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 1 - 9223372036854775807 Default: <num>
+                                   Statistic-Total-Buffer-Count       : GigE cameras: Number of frames received. Other cameras: Number of buffers processed.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Failed-Buffer-Count      : GigE cameras: Number of buffers with at least one failed packet. A packet is considered failed if its status is not 'success'. Other cameras: Number of buffers that returned with an error status.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Buffer-Underrun-Count    : Number of frames lost because there were no buffers in the queue.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Total-Packet-Count       : Number of packets received.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Failed-Packet-Count      : Number of failed packets.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Resend-Request-Count     : Number of emitted packet resend commands sent.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Resend-Packet-Count      : Number of packets requested by packet resend commands.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Resynchronization-Count  : Number of stream resynchronizations.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Last-Block-Id            : Last grabbed block ID.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Out-Of-Memory-Error-Count: Number of out-of-memory errors.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   ThreadPriority                     : Priority value of the output thread (default=0).
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: -15 - 15 Default: <num>
+       Basler Emulation (0815-0001) Stream Grabber:
+
+                                   name                               : The name of the object
+                                                                        flags: readable, writable
+                                                                        String. Default: <str>
+                                   parent                             : The parent of the object
+                                                                        flags: readable, writable
+                                                                        (null)
+                                   MaxNumBuffer                       : Number of buffers to be used.
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 1 - 9223372036854775807 Default: <num>
+                                   MaxBufferSize                      : Buffer size in bytes
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: 1 - 9223372036854775807 Default: <num>
+                                   Statistic-Total-Buffer-Count       : GigE cameras: Number of frames received. Other cameras: Number of buffers processed.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Failed-Buffer-Count      : GigE cameras: Number of buffers with at least one failed packet. A packet is considered failed if its status is not 'success'. Other cameras: Number of buffers that returned with an error status.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Buffer-Underrun-Count    : Number of frames lost because there were no buffers in the queue.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Total-Packet-Count       : Number of packets received.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Failed-Packet-Count      : Number of failed packets.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Resend-Request-Count     : Number of emitted packet resend commands sent.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Resend-Packet-Count      : Number of packets requested by packet resend commands.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Resynchronization-Count  : Number of stream resynchronizations.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Last-Block-Id            : Last grabbed block ID.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   Statistic-Out-Of-Memory-Error-Count: Number of out-of-memory errors.
+                                                                        flags: readable
+                                                                        Integer64. Range: 0 - 9223372036854775807 Default: <num>
+                                   ThreadPriority                     : Priority value of the output thread (default=0).
+                                                                        flags: readable, writable, changeable only in NULL or READY state
+                                                                        Integer64. Range: -15 - 15 Default: <num>
+                        flags: readable
+                        Object of type "GObject"
+
+  typefind            : Run typefind before negotiating (deprecated, non-functional)
+                        flags: readable, writable, deprecated
+                        Boolean. Default: <bool>
+
+  user-set            : The user-defined configuration set to use. Leaving this property unset, or using 'Auto' result in selecting the power-on default camera configuration.
+                        flags: readable, writable, changeable only in NULL or READY state
+                        String. Default: null
 
