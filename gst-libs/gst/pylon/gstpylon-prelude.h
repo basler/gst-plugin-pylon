@@ -35,7 +35,8 @@
 
 #include <gst/gst.h>
 
-/* backport definition to support ubuntu 18.04 */
+/* Backport for GStreamer builds that lack GST_API_IMPORT (e.g. Ubuntu 20.04).
+ */
 #ifndef GST_API_IMPORT
 #  if defined(_MSC_VER) && !defined(GST_STATIC_COMPILATION)
 #    define GST_API_IMPORT __declspec(dllimport) extern
