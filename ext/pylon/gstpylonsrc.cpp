@@ -784,12 +784,7 @@ static gboolean gst_pylon_src_teardown_session(GstPylonSrc* self,
     return TRUE;
   }
 
-  if (!gst_pylon_stop(self->pylon, error) && *error) {
-    if (terminate_runtime) {
-      Pylon::PylonTerminate();
-    }
-    return FALSE;
-  }
+  const gboolean stopped = gst_pylon_stop(self->pylon, error);
 
   gst_pylon_free(self->pylon);
   self->pylon = NULL;
@@ -798,7 +793,7 @@ static gboolean gst_pylon_src_teardown_session(GstPylonSrc* self,
     Pylon::PylonTerminate();
   }
 
-  return TRUE;
+  return stopped && *error == NULL;
 }
 
 static gboolean gst_pylon_src_create_session(GstPylonSrc* self,
@@ -808,34 +803,46 @@ static gboolean gst_pylon_src_create_session(GstPylonSrc* self,
 
   GST_OBJECT_LOCK(self);
 
-  Pylon::PylonInitialize();
+  try {
+    Pylon::PylonInitialize();
 
-  GST_INFO_OBJECT(
-      self,
-      "Attempting to create camera device with the following configuration:"
-      "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s \n\tPFS "
-      "filepath: %s \n\tEnable correction: %s.\n"
-      "If defined, the PFS file will override the user set configuration.",
-      self->device_user_name, self->device_serial_number, self->device_index,
-      self->user_set, self->pfs_location,
-      ((self->enable_correction) ? "True" : "False"));
+    GST_INFO_OBJECT(
+        self,
+        "Attempting to create camera device with the following configuration:"
+        "\n\tname: %s\n\tserial number: %s\n\tindex: %d\n\tuser set: %s "
+        "\n\tPFS "
+        "filepath: %s \n\tEnable correction: %s.\n"
+        "If defined, the PFS file will override the user set configuration.",
+        self->device_user_name, self->device_serial_number, self->device_index,
+        self->user_set, self->pfs_location,
+        ((self->enable_correction) ? "True" : "False"));
 
-  self->pylon = gst_pylon_new(GST_ELEMENT_CAST(self), self->device_user_name,
-                              self->device_serial_number, self->device_index,
-                              self->enable_correction, error);
+    self->pylon = gst_pylon_new(GST_ELEMENT_CAST(self), self->device_user_name,
+                                self->device_serial_number, self->device_index,
+                                self->enable_correction, error);
 #ifdef NVMM_ENABLED
-  if (self->pylon) {
-    gst_pylon_set_nvsurface_layout(
-        self->pylon,
-        static_cast<GstPylonNvsurfaceLayoutEnum>(self->nvsurface_layout));
-    gst_pylon_set_gpu_id(self->pylon, self->gpu_id);
-  }
+    if (self->pylon) {
+      gst_pylon_set_nvsurface_layout(
+          self->pylon,
+          static_cast<GstPylonNvsurfaceLayoutEnum>(self->nvsurface_layout));
+      gst_pylon_set_gpu_id(self->pylon, self->gpu_id);
+    }
 #endif
+  } catch (const GenICam::GenericException& e) {
+    GST_OBJECT_UNLOCK(self);
+    g_set_error(error, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                e.GetDescription());
+    return FALSE;
+  } catch (const std::exception& e) {
+    GST_OBJECT_UNLOCK(self);
+    g_set_error(error, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                e.what());
+    return FALSE;
+  }
 
   GST_OBJECT_UNLOCK(self);
 
   if (*error) {
-    Pylon::PylonTerminate();
     return FALSE;
   }
 

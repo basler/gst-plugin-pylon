@@ -309,11 +309,11 @@ void GstPylonFeatureWalker::install_properties(
   }
 
   const std::string& device_fullname = schema.device_full_name;
-  GstPylonCache& feature_cache = schema.feature_cache;
+  GstPylonCache& feature_cache = schema.cache();
   auto param_factory = GstPylonParamFactory(schema);
 
   gint nprop = 1;
-  GenApi::INode* root_node = schema.nodemap.GetNode("Root");
+  GenApi::INode* root_node = schema.node_map().GetNode("Root");
   auto worklist = std::queue<GenApi::INode*>();
 
   worklist.push(root_node);

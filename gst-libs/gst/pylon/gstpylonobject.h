@@ -60,33 +60,30 @@ typedef struct {
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera;
   GenApi::INodeMap* nodemap;
   gboolean enable_correction;
+  bool* framerate_configured;
   dimension_t dimension_cache;
 } GstPylonObjectPrivate;
 
 typedef struct {
   std::string device_full_name;
   std::string schema_cache_key;
-  GstPylonCache& feature_cache;
-  GenApi::INodeMap& nodemap;
+  GstPylonCache* feature_cache;
+  GenApi::INodeMap* nodemap;
+
+  GstPylonCache& cache() const { return *feature_cache; }
+  GenApi::INodeMap& node_map() const { return *nodemap; }
 } GstPylonObjectSchema;
 
 typedef struct {
   GstPylonObjectSchema schema;
 } GstPylonObjectClassData;
 
-EXT_PYLONSRC_API GType gst_pylon_object_register(const std::string& device_name,
-                                                 GstPylonCache& feature_cache,
-                                                 GenApi::INodeMap& nodemap);
 EXT_PYLONSRC_API GType
 gst_pylon_object_register_schema(const GstPylonObjectSchema& schema);
-EXT_PYLONSRC_API GObject* gst_pylon_object_new(
-    std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const std::string& device_name, const std::string& schema_cache_key,
-    GenApi::INodeMap* nodemap, gboolean enable_correction);
 EXT_PYLONSRC_API GObject* gst_pylon_object_new_for_schema(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
     const GstPylonObjectSchema& schema, GenApi::INodeMap* nodemap,
-    gboolean enable_correction);
+    gboolean enable_correction, bool* framerate_configured = nullptr);
 
 EXT_PYLONSRC_API void gst_pylon_object_set_pylon_selector(
     GenApi::INodeMap& nodemap, const gchar* selector_name,

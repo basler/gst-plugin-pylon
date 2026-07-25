@@ -69,15 +69,6 @@ GType gst_pylon_object_register_schema(const GstPylonObjectSchema& schema) {
   return gst_pylon_object_ensure_schema_type(schema);
 }
 
-GType gst_pylon_object_register(const std::string& device_name,
-                                GstPylonCache& feature_cache,
-                                GenApi::INodeMap& exemplar) {
-  const std::string schema_cache_key = device_name;
-  GstPylonObjectSchema schema = {device_name, schema_cache_key, feature_cache,
-                                 exemplar};
-  return gst_pylon_object_register_schema(schema);
-}
-
 static GType gst_pylon_object_find_schema_type(
     const GstPylonObjectSchema& schema) {
   std::string type_name = gst_pylon_object_get_schema_type_name(schema);
@@ -267,6 +258,11 @@ void gst_pylon_object_set_pylon_feature<GGetDouble, Pylon::CFloatParameter>(
 
   GST_INFO("Set Feature %s: %s%s", name, param.ToString().c_str(),
            value_corrected ? " [corrected]" : "");
+  if (priv->framerate_configured &&
+      (!g_strcmp0(name, "AcquisitionFrameRate") ||
+       !g_strcmp0(name, "AcquisitionFrameRateAbs"))) {
+    *priv->framerate_configured = true;
+  }
 }
 
 template <>
@@ -549,19 +545,13 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
 GObject* gst_pylon_object_new_for_schema(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
     const GstPylonObjectSchema& schema, GenApi::INodeMap* nodemap,
-    gboolean enable_correction) {
+    gboolean enable_correction, bool* framerate_configured) {
   std::string type_name = gst_pylon_object_get_schema_type_name(schema);
 
   GType type = gst_pylon_object_find_schema_type(schema);
 
-  std::unique_ptr<GstPylonCache> feature_cache;
-
   if (!type) {
-    feature_cache = std::make_unique<GstPylonCache>(schema.schema_cache_key);
-    GstPylonObjectSchema resolved_schema = {schema.device_full_name,
-                                            schema.schema_cache_key,
-                                            *feature_cache, *nodemap};
-    type = gst_pylon_object_ensure_schema_type(resolved_schema);
+    type = gst_pylon_object_ensure_schema_type(schema);
   }
 
   GObject* obj = G_OBJECT(g_object_new(type, "name", type_name.c_str(), NULL));
@@ -572,6 +562,7 @@ GObject* gst_pylon_object_new_for_schema(
   priv->camera = std::move(camera);
   priv->nodemap = nodemap;
   priv->enable_correction = enable_correction;
+  priv->framerate_configured = framerate_configured;
 
   /* setup dimension cache
    * -1 -> not activly set
@@ -579,17 +570,6 @@ GObject* gst_pylon_object_new_for_schema(
   priv->dimension_cache = {-1, -1, -1, -1};
 
   return obj;
-}
-
-GObject* gst_pylon_object_new(
-    std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const std::string& device_name, const std::string& schema_cache_key,
-    GenApi::INodeMap* nodemap, gboolean enable_correction) {
-  GstPylonCache placeholder_cache(schema_cache_key);
-  GstPylonObjectSchema schema = {device_name, schema_cache_key,
-                                 placeholder_cache, *nodemap};
-  return gst_pylon_object_new_for_schema(std::move(camera), schema, nodemap,
-                                         enable_correction);
 }
 
 static void gst_pylon_object_finalize(GObject* object) {

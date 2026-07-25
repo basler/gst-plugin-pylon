@@ -126,6 +126,7 @@ struct _GstPylon {
         gstream_grabber(nullptr),
         mem_type(MEM_SYSMEM),
         requested_device_index(-1),
+        framerate_configured(false),
         handlers_registered(false) {
 #ifdef NVMM_ENABLED
     nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
@@ -134,13 +135,21 @@ struct _GstPylon {
   }
 
   ~_GstPylon() {
-    if (handlers_registered) {
-      camera->DeregisterImageEventHandler(&image_handler);
-      camera->DeregisterConfiguration(&disconnect_handler);
-    }
+    try {
+      if (handlers_registered) {
+        camera->DeregisterImageEventHandler(&image_handler);
+        camera->DeregisterConfiguration(&disconnect_handler);
+      }
 
-    if (camera->IsOpen()) {
-      camera->Close();
+      if (camera->IsOpen()) {
+        camera->Close();
+      }
+    } catch (const GenICam::GenericException& e) {
+      GST_WARNING_OBJECT(gstpylonsrc, "Ignoring exception during teardown: %s",
+                         e.GetDescription());
+    } catch (const std::exception& e) {
+      GST_WARNING_OBJECT(gstpylonsrc, "Ignoring exception during teardown: %s",
+                         e.what());
     }
 
     g_clear_object(&gcamera);
@@ -179,6 +188,7 @@ struct _GstPylon {
   std::string requested_device_user_name;
   std::string requested_device_serial_number;
   gint requested_device_index;
+  bool framerate_configured;
   bool handlers_registered;
 
 #ifdef NVMM_ENABLED
@@ -206,13 +216,17 @@ static std::string gst_pylon_get_sgrabber_name(
 
 static std::string gst_pylon_get_camera_schema_cache_key(
     Pylon::CBaslerUniversalInstantCamera& camera) {
-  return std::string(camera.DeviceModelName.GetValue() + "_" +
-                     camera.DeviceFirmwareVersion.GetValue() + "_" + VERSION);
+  return std::string(camera.GetDeviceInfo().GetFullName() + "_" +
+                     camera.DeviceModelName.GetValue() + "_" +
+                     camera.DeviceFirmwareVersion.GetValue() + "_" +
+                     Pylon::GetPylonVersionString() + "_" + VERSION);
 }
 
 static std::string gst_pylon_get_stream_schema_cache_key(
     Pylon::CBaslerUniversalInstantCamera& camera) {
-  return std::string(camera.GetDeviceInfo().GetModelName() + "_" +
+  return std::string(camera.GetDeviceInfo().GetFullName() + "_" +
+                     camera.GetDeviceInfo().GetModelName() + "_" +
+                     camera.DeviceFirmwareVersion.GetValue() + "_" +
                      Pylon::GetPylonVersionString() + "_" + VERSION);
 }
 
@@ -220,16 +234,16 @@ static GstPylonObjectSchema gst_pylon_get_camera_schema(
     Pylon::CBaslerUniversalInstantCamera& camera,
     GstPylonCache& feature_cache) {
   return {gst_pylon_get_camera_fullname(camera),
-          gst_pylon_get_camera_schema_cache_key(camera), feature_cache,
-          camera.GetNodeMap()};
+          gst_pylon_get_camera_schema_cache_key(camera), &feature_cache,
+          &camera.GetNodeMap()};
 }
 
 static GstPylonObjectSchema gst_pylon_get_stream_schema(
     Pylon::CBaslerUniversalInstantCamera& camera,
     GstPylonCache& feature_cache) {
   return {gst_pylon_get_sgrabber_name(camera),
-          gst_pylon_get_stream_schema_cache_key(camera), feature_cache,
-          camera.GetStreamGrabberNodeMap()};
+          gst_pylon_get_stream_schema_cache_key(camera), &feature_cache,
+          &camera.GetStreamGrabberNodeMap()};
 }
 
 static std::string gst_pylon_query_default_set(
@@ -282,6 +296,7 @@ void GstPylon::Open(const gchar* device_user_name,
   requested_device_user_name = device_user_name ? device_user_name : "";
   requested_device_serial_number =
       device_serial_number ? device_serial_number : "";
+  framerate_configured = false;
 
   Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
   Pylon::DeviceInfoList_t filter(1);
@@ -350,17 +365,38 @@ void GstPylon::Open(const gchar* device_user_name,
   GST_INFO_OBJECT(gstpylonsrc, "Selected device %s",
                   device_info.GetSerialNumber().c_str());
 
-  for (auto retry_idx = 0; retry_idx <= FAILED_OPEN_RETRY_COUNT; retry_idx++) {
+  if (open_by_filter_directly) {
     try {
       camera->Attach(factory.CreateDevice(device_info));
-      break;
     } catch (GenICam::GenericException& e) {
-      GST_INFO_OBJECT(gstpylonsrc, "Failed to Open %s (%s)\n",
-                      device_info.GetSerialNumber().c_str(),
-                      e.GetDescription());
-      g_usleep(FAILED_OPEN_RETRY_WAIT_TIME_MS * 1000);
+      std::string msg = "No devices found matching the specified criteria";
+      msg += ": ";
+      msg += e.GetDescription();
+      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    }
+  } else {
+    std::string last_error;
+    bool attached = false;
+    for (auto retry_idx = 0; retry_idx <= FAILED_OPEN_RETRY_COUNT;
+         retry_idx++) {
+      try {
+        camera->Attach(factory.CreateDevice(device_info));
+        attached = true;
+        break;
+      } catch (GenICam::GenericException& e) {
+        last_error = e.GetDescription();
+        GST_INFO_OBJECT(gstpylonsrc, "Failed to Open %s (%s)\n",
+                        device_info.GetSerialNumber().c_str(),
+                        e.GetDescription());
+        g_usleep(FAILED_OPEN_RETRY_WAIT_TIME_MS * 1000);
+      }
+    }
+
+    if (!attached) {
+      throw Pylon::GenericException(last_error.c_str(), __FILE__, __LINE__);
     }
   }
+
   camera->Open();
   GST_INFO_OBJECT(gstpylonsrc, "Camera opened");
 
@@ -380,7 +416,8 @@ void GstPylon::Open(const gchar* device_user_name,
   GstPylonObjectSchema camera_schema =
       gst_pylon_get_camera_schema(*camera, camera_feature_cache);
   gcamera = gst_pylon_object_new_for_schema(
-      camera, camera_schema, &camera_schema.nodemap, enable_correction);
+      camera, camera_schema, &camera_schema.node_map(), enable_correction,
+      &framerate_configured);
   GST_INFO_OBJECT(gstpylonsrc, "Created camera child object");
 
   GstPylonCache stream_feature_cache(
@@ -388,7 +425,7 @@ void GstPylon::Open(const gchar* device_user_name,
   GstPylonObjectSchema stream_schema =
       gst_pylon_get_stream_schema(*camera, stream_feature_cache);
   gstream_grabber = gst_pylon_object_new_for_schema(
-      camera, stream_schema, &stream_schema.nodemap, enable_correction);
+      camera, stream_schema, &stream_schema.node_map(), enable_correction);
   GST_INFO_OBJECT(gstpylonsrc, "Created stream grabber child object");
 
   camera->RegisterImageEventHandler(
@@ -473,6 +510,7 @@ gboolean GstPylon::LoadPfsConfig(const gchar* pfs_location, GError** err) {
   try {
     Pylon::CFeaturePersistence::Load(pfs_location, &camera->GetNodeMap(),
                                      check_nodemap_sanity);
+    framerate_configured = true;
   } catch (const Pylon::GenericException& e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                 "PFS file error: %s", e.GetDescription());
@@ -1086,18 +1124,15 @@ gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
     Pylon::CBooleanParameter framerate_enable(nodemap,
                                               "AcquisitionFrameRateEnable");
 
-    /* By default, configure framerate from caps unless already enabled via
-     * PFS or element properties (hardware trigger use case). */
-    bool apply_caps_framerate = true;
-    if (framerate_enable.IsReadable() && framerate_enable.GetValue()) {
-      apply_caps_framerate = false;
-      GST_INFO("AcquisitionFrameRateEnable is already true, honoring "
-               "the already configured acquisition framerate");
-    } else {
+    /* Honor framerate only when an explicit config source set it. Camera
+     * defaults may have AcquisitionFrameRateEnable already true. */
+    const bool apply_caps_framerate = !framerate_configured;
+    if (apply_caps_framerate) {
       /* Basler dart gen1 models have no framerate_enable feature */
       framerate_enable.TrySetValue(true);
-      GST_INFO("AcquisitionFrameRateEnable is false or not supported. "
-               "Enabling and applying acquisition framerate from caps");
+      GST_INFO("Applying acquisition framerate from caps");
+    } else {
+      GST_INFO("Honoring acquisition framerate from PFS or child property");
     }
 
     if (apply_caps_framerate) {
@@ -1204,6 +1239,43 @@ static gchar* gst_pylon_get_stream_properties_block(
   return block;
 }
 
+using GstPylonPropertiesBlockBuilder =
+    gchar* (*)(Pylon::CBaslerUniversalInstantCamera * camera, guint alignment);
+
+static void gst_pylon_append_cached_properties_block(
+    gchar** properties, Pylon::CBaslerUniversalInstantCamera* camera,
+    const std::string& cache_key, gboolean use_cache,
+    GstPylonPropertiesBlockBuilder build_block) {
+  g_return_if_fail(properties);
+  g_return_if_fail(camera);
+  g_return_if_fail(build_block);
+
+  gchar* block = NULL;
+  if (use_cache) {
+    block = GstPylonCache::GetIntrospection(cache_key);
+  }
+
+  if (!block) {
+    block = build_block(camera, DEFAULT_ALIGNMENT);
+    if (use_cache && block && block[0] != '\0') {
+      GstPylonCache::SetIntrospection(cache_key, block);
+    }
+  }
+
+  if (!block) {
+    return;
+  }
+
+  if (*properties) {
+    gchar* tmp = g_strconcat(*properties, "\n", block, NULL);
+    g_free(*properties);
+    g_free(block);
+    *properties = tmp;
+  } else {
+    *properties = block;
+  }
+}
+
 static void gst_pylon_get_introspection_strings_impl(gchar** cam_out,
                                                      gchar** stream_out) {
   gchar* camera_properties = NULL;
@@ -1236,61 +1308,14 @@ static void gst_pylon_get_introspection_strings_impl(gchar** cam_out,
           gst_pylon_get_camera_schema_cache_key(camera);
       const std::string stream_key =
           gst_pylon_get_stream_schema_cache_key(camera);
+      const gboolean use_cache = device_list.size() == 1;
 
-      /* Camera: build block (use cache only when single device for this schema)
-       */
-      gchar* cam_block = NULL;
-      if (device_list.size() == 1) {
-        gchar* cached = GstPylonCache::GetIntrospection(camera_key);
-        if (cached) {
-          cam_block = cached;
-        }
-      }
-      if (!cam_block) {
-        cam_block =
-            gst_pylon_get_camera_properties_block(&camera, DEFAULT_ALIGNMENT);
-        if (device_list.size() == 1) {
-          GstPylonCache::SetIntrospection(
-              camera_key, std::string(cam_block ? cam_block : ""));
-        }
-      }
-      if (cam_block) {
-        if (camera_properties) {
-          gchar* tmp = g_strconcat(camera_properties, "\n", cam_block, NULL);
-          g_free(camera_properties);
-          g_free(cam_block);
-          camera_properties = tmp;
-        } else {
-          camera_properties = cam_block;
-        }
-      }
-
-      /* Stream: same */
-      gchar* stream_block = NULL;
-      if (device_list.size() == 1) {
-        gchar* cached = GstPylonCache::GetIntrospection(stream_key);
-        if (cached) {
-          stream_block = cached;
-        }
-      }
-      if (!stream_block) {
-        stream_block =
-            gst_pylon_get_stream_properties_block(&camera, DEFAULT_ALIGNMENT);
-        if (device_list.size() == 1) {
-          GstPylonCache::SetIntrospection(
-              stream_key, std::string(stream_block ? stream_block : ""));
-        }
-      }
-      if (stream_block) {
-        if (stream_properties) {
-          gchar* tmp = g_strconcat(stream_properties, "\n", stream_block, NULL);
-          g_free(stream_properties);
-          g_free(stream_block);
-          stream_properties = tmp;
-        } else {
-          stream_properties = stream_block;
-        }
-      }
+      gst_pylon_append_cached_properties_block(
+          &camera_properties, &camera, camera_key, use_cache,
+          gst_pylon_get_camera_properties_block);
+      gst_pylon_append_cached_properties_block(
+          &stream_properties, &camera, stream_key, use_cache,
+          gst_pylon_get_stream_properties_block);
 
       camera.Close();
     } catch (const Pylon::GenericException&) {
