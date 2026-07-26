@@ -456,6 +456,11 @@ void gst_pylon_interrupt_capture(GstPylon *self) {
   self->image_handler.InterruptWaitForImage();
 }
 
+void gst_pylon_clear_capture_interrupt(GstPylon* self) {
+  g_return_if_fail(self);
+  self->image_handler.ClearInterrupt();
+}
+
 static void gst_pylon_add_result_meta(
     GstPylon *self, GstBuffer *buf,
     Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
@@ -490,10 +495,18 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
   Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr = NULL;
 
   while (retry_grab) {
-    grab_result_ptr = self->image_handler.WaitForImage();
+    Pylon::CBaslerUniversalGrabResultPtr* waited = NULL;
+    GstPylonImageHandlerResult wait_result =
+        self->image_handler.WaitForImage(&waited);
+    grab_result_ptr = waited;
 
-    /* Return if user requests to interrupt the grabbing thread */
-    if (!grab_result_ptr) {
+    if (wait_result == GstPylonImageHandlerResult::flushing) {
+      /* Caller maps this to GST_FLOW_FLUSHING; no GError */
+      return FALSE;
+    }
+    if (wait_result == GstPylonImageHandlerResult::disconnected) {
+      g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
+                  "Connection to camera was lost");
       return FALSE;
     }
 
