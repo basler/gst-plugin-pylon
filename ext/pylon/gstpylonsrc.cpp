@@ -93,6 +93,7 @@ static gboolean gst_pylon_src_decide_allocation(GstBaseSrc* src,
 static gboolean gst_pylon_src_start(GstBaseSrc* src);
 static gboolean gst_pylon_src_stop(GstBaseSrc* src);
 static gboolean gst_pylon_src_unlock(GstBaseSrc* src);
+static gboolean gst_pylon_src_unlock_stop(GstBaseSrc* src);
 static gboolean gst_pylon_src_query(GstBaseSrc* src, GstQuery* query);
 static void gst_plyon_src_add_metadata(GstPylonSrc* self, GstBuffer* buf);
 static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf);
@@ -328,11 +329,12 @@ static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
       gobject_class, PROP_NVSURFACE_LAYOUT,
       g_param_spec_enum("nvsurface-layout", "Surface layout",
                         "Surface layout. May be block-linear or pitch-linear. "
-                        "For a dGPU, only pitch-linear is valid.",
+                        "For a dGPU, only pitch-linear is valid. Applied when "
+                        "the device is created.",
                         GST_TYPE_NVSURFACE_LAYOUT_ENUM,
                         PROP_NVSURFACE_LAYOUT_DEFAULT,
                         static_cast<GParamFlags>(G_PARAM_READWRITE |
-                                                 GST_PARAM_CONTROLLABLE)));
+                                                 GST_PARAM_MUTABLE_READY)));
 
   g_object_class_install_property(
       gobject_class, PROP_GPU_ID,
@@ -397,6 +399,7 @@ static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
   base_src_class->start = GST_DEBUG_FUNCPTR(gst_pylon_src_start);
   base_src_class->stop = GST_DEBUG_FUNCPTR(gst_pylon_src_stop);
   base_src_class->unlock = GST_DEBUG_FUNCPTR(gst_pylon_src_unlock);
+  base_src_class->unlock_stop = GST_DEBUG_FUNCPTR(gst_pylon_src_unlock_stop);
   base_src_class->query = GST_DEBUG_FUNCPTR(gst_pylon_src_query);
   push_src_class->create = GST_DEBUG_FUNCPTR(gst_pylon_src_create);
 }
@@ -453,6 +456,9 @@ static void gst_pylon_src_set_property(GObject* object, guint property_id,
       break;
     case PROP_ENABLE_CORRECTION:
       self->enable_correction = g_value_get_boolean(value);
+      if (self->pylon) {
+        gst_pylon_set_enable_correction(self->pylon, self->enable_correction);
+      }
       break;
     case PROP_CAPTURE_ERROR:
       self->capture_error =
@@ -464,7 +470,7 @@ static void gst_pylon_src_set_property(GObject* object, guint property_id,
           static_cast<GstPylonNvsurfaceLayoutEnum>(g_value_get_enum(value));
       break;
     case PROP_GPU_ID:
-      self->gpu_id = g_value_get_int(value);
+      self->gpu_id = g_value_get_uint(value);
       break;
 #endif
     default:
@@ -543,6 +549,9 @@ static void gst_pylon_src_finalize(GObject* object) {
 
   g_free(self->user_set);
   self->user_set = NULL;
+
+  g_free(self->pfs_location);
+  self->pfs_location = NULL;
 
   G_OBJECT_CLASS(gst_pylon_src_parent_class)->finalize(object);
 }
@@ -737,12 +746,32 @@ static gboolean gst_pylon_src_set_caps(GstBaseSrc* src, GstCaps* caps) {
       goto log_error;
     }
 
-    ret = gst_video_info_from_caps(&self->video_info, caps);
+    if (gst_pylon_src_is_bayer(st)) {
+      gint height = 0;
+      gst_video_info_init(&self->video_info);
+      gst_structure_get_int(st, "height", &height);
+      self->video_info.width = width;
+      self->video_info.height = height;
+      ret = TRUE;
+    } else {
+      ret = gst_video_info_from_caps(&self->video_info, caps);
+      if (!ret) {
+        action = "parse";
+        error_msg =
+            g_strdup("Failed to parse GstVideoInfo from negotiated caps");
+        goto error_after_start;
+      }
+    }
   } catch (const GenICam::GenericException& e) {
     action = "configure";
     error_msg = g_strdup(e.GetDescription());
     ret = FALSE;
-    goto error;
+    goto error_after_start;
+  } catch (const std::exception& e) {
+    action = "configure";
+    error_msg = g_strdup(e.what());
+    ret = FALSE;
+    goto error_after_start;
   }
 
   goto out;
@@ -750,6 +779,14 @@ static gboolean gst_pylon_src_set_caps(GstBaseSrc* src, GstCaps* caps) {
 log_error:
   error_msg = g_strdup(error->message);
   g_error_free(error);
+
+error_after_start: {
+  GError* stop_error = NULL;
+  if (self->pylon) {
+    gst_pylon_stop(self->pylon, &stop_error);
+    g_clear_error(&stop_error);
+  }
+}
 
 error:
   GST_ELEMENT_ERROR(self, LIBRARY, FAILED, ("Failed to %s camera.", action),
@@ -801,7 +838,32 @@ static gboolean gst_pylon_src_create_session(GstPylonSrc* self,
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(error && *error == NULL, FALSE);
 
+  gchar* device_user_name = NULL;
+  gchar* device_serial_number = NULL;
+  gchar* user_set = NULL;
+  gchar* pfs_location = NULL;
+  gint device_index = PROP_DEVICE_INDEX_DEFAULT;
+  gboolean enable_correction = PROP_ENABLE_CORRECTION_DEFAULT;
+#ifdef NVMM_ENABLED
+  GstPylonNvsurfaceLayoutEnum nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
+  guint gpu_id = PROP_GPU_ID_DEFAULT;
+#endif
+  GstPylon* new_pylon = NULL;
+
   GST_OBJECT_LOCK(self);
+  device_user_name =
+      self->device_user_name ? g_strdup(self->device_user_name) : NULL;
+  device_serial_number =
+      self->device_serial_number ? g_strdup(self->device_serial_number) : NULL;
+  user_set = self->user_set ? g_strdup(self->user_set) : NULL;
+  pfs_location = self->pfs_location ? g_strdup(self->pfs_location) : NULL;
+  device_index = self->device_index;
+  enable_correction = self->enable_correction;
+#ifdef NVMM_ENABLED
+  nvsurface_layout = self->nvsurface_layout;
+  gpu_id = self->gpu_id;
+#endif
+  GST_OBJECT_UNLOCK(self);
 
   try {
     Pylon::PylonInitialize();
@@ -813,35 +875,43 @@ static gboolean gst_pylon_src_create_session(GstPylonSrc* self,
         "\n\tPFS "
         "filepath: %s \n\tEnable correction: %s.\n"
         "If defined, the PFS file will override the user set configuration.",
-        self->device_user_name, self->device_serial_number, self->device_index,
-        self->user_set, self->pfs_location,
-        ((self->enable_correction) ? "True" : "False"));
+        device_user_name, device_serial_number, device_index, user_set,
+        pfs_location, ((enable_correction) ? "True" : "False"));
 
-    self->pylon = gst_pylon_new(GST_ELEMENT_CAST(self), self->device_user_name,
-                                self->device_serial_number, self->device_index,
-                                self->enable_correction, error);
+    new_pylon = gst_pylon_new(GST_ELEMENT_CAST(self), device_user_name,
+                              device_serial_number, device_index,
+                              enable_correction, error);
 #ifdef NVMM_ENABLED
-    if (self->pylon) {
-      gst_pylon_set_nvsurface_layout(
-          self->pylon,
-          static_cast<GstPylonNvsurfaceLayoutEnum>(self->nvsurface_layout));
-      gst_pylon_set_gpu_id(self->pylon, self->gpu_id);
+    if (new_pylon) {
+      gst_pylon_set_nvsurface_layout(new_pylon, nvsurface_layout);
+      gst_pylon_set_gpu_id(new_pylon, gpu_id);
     }
 #endif
   } catch (const GenICam::GenericException& e) {
-    GST_OBJECT_UNLOCK(self);
     g_set_error(error, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
-    return FALSE;
+    goto out;
   } catch (const std::exception& e) {
-    GST_OBJECT_UNLOCK(self);
     g_set_error(error, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.what());
-    return FALSE;
+    goto out;
   }
 
-  GST_OBJECT_UNLOCK(self);
+  if (!*error) {
+    GST_OBJECT_LOCK(self);
+    self->pylon = new_pylon;
+    new_pylon = NULL;
+    GST_OBJECT_UNLOCK(self);
+  }
 
+out:
+  if (new_pylon) {
+    gst_pylon_free(new_pylon);
+  }
+  g_free(device_user_name);
+  g_free(device_serial_number);
+  g_free(user_set);
+  g_free(pfs_location);
   if (*error) {
     return FALSE;
   }
@@ -942,15 +1012,50 @@ static gboolean gst_pylon_src_start(GstBaseSrc* src) {
   GError* error = NULL;
   gboolean ret = TRUE;
   gboolean same_device = TRUE;
+  gboolean config_applied = FALSE;
+  gchar* user_set = NULL;
+  gchar* pfs_location = NULL;
+  gboolean enable_correction = PROP_ENABLE_CORRECTION_DEFAULT;
 
   GST_OBJECT_LOCK(self);
   same_device =
       self->pylon && gst_pylon_is_same_device(self->pylon, self->device_index,
                                               self->device_user_name,
                                               self->device_serial_number);
+  if (same_device) {
+    config_applied = gst_pylon_is_config_applied(self->pylon, self->user_set,
+                                                 self->pfs_location,
+                                                 self->enable_correction);
+    user_set = self->user_set ? g_strdup(self->user_set) : NULL;
+    pfs_location = self->pfs_location ? g_strdup(self->pfs_location) : NULL;
+    enable_correction = self->enable_correction;
+  }
   GST_OBJECT_UNLOCK(self);
 
   if (same_device) {
+    if (!config_applied) {
+      GST_INFO_OBJECT(
+          self, "Re-applying user-set/PFS/enable-correction on open device");
+      gst_pylon_set_enable_correction(self->pylon, enable_correction);
+
+      ret = gst_pylon_set_user_config(self->pylon, user_set, &error);
+      if (ret == FALSE && error) {
+        g_free(user_set);
+        g_free(pfs_location);
+        goto log_gst_error;
+      }
+
+      if (pfs_location) {
+        ret = gst_pylon_set_pfs_config(self->pylon, pfs_location, &error);
+        if (ret == FALSE && error) {
+          g_free(user_set);
+          g_free(pfs_location);
+          goto log_gst_error;
+        }
+      }
+    }
+    g_free(user_set);
+    g_free(pfs_location);
     goto out;
   }
 
@@ -1037,6 +1142,18 @@ static gboolean gst_pylon_src_unlock(GstBaseSrc* src) {
   return TRUE;
 }
 
+static gboolean gst_pylon_src_unlock_stop(GstBaseSrc* src) {
+  GstPylonSrc* self = GST_PYLON_SRC(src);
+
+  GST_LOG_OBJECT(self, "unlock_stop");
+
+  if (self->pylon) {
+    gst_pylon_clear_capture_interrupt(self->pylon);
+  }
+
+  return TRUE;
+}
+
 /* notify subclasses of a query */
 static gboolean gst_pylon_src_query(GstBaseSrc* src, GstQuery* query) {
   GstPylonSrc* self = GST_PYLON_SRC(src);
@@ -1115,7 +1232,11 @@ static void gst_plyon_src_add_metadata(GstPylonSrc* self, GstBuffer* buf) {
     abs_time = GST_CLOCK_TIME_NONE;
   }
 
-  timestamp = abs_time - base_time;
+  if (GST_CLOCK_TIME_IS_VALID(abs_time) && GST_CLOCK_TIME_IS_VALID(base_time)) {
+    timestamp = abs_time - base_time;
+  } else {
+    timestamp = GST_CLOCK_TIME_NONE;
+  }
   offset = pylon_meta->block_id;
 
   GST_BUFFER_TIMESTAMP(buf) = timestamp;
@@ -1169,10 +1290,8 @@ static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf) {
         g_error_free(error);
         ret = GST_FLOW_ERROR;
       } else {
-        GST_DEBUG_OBJECT(self,
-                         "Buffer not created, user requested EOS or device "
-                         "connection was lost");
-        ret = GST_FLOW_EOS;
+        GST_DEBUG_OBJECT(self, "Capture interrupted for flush/unlock");
+        ret = GST_FLOW_FLUSHING;
       }
       goto done;
     }

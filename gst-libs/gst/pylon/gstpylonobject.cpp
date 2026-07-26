@@ -457,9 +457,19 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
         throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
   } catch (const Pylon::GenericException& e) {
-    GST_ERROR("Unable to set pylon property \"%s\" on \"%s\": %s", pspec->name,
-              priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
-              e.GetDescription());
+    if (priv->owner) {
+      GST_ELEMENT_ERROR(
+          priv->owner, LIBRARY, SETTINGS,
+          ("Failed to set camera feature \"%s\".", pspec->name),
+          ("Device \"%s\": %s",
+           priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
+           e.GetDescription()));
+    } else {
+      GST_ERROR("Unable to set pylon property \"%s\" on \"%s\": %s",
+                pspec->name,
+                priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
+                e.GetDescription());
+    }
   }
 }
 
@@ -563,6 +573,7 @@ GObject* gst_pylon_object_new_for_schema(
   priv->nodemap = nodemap;
   priv->enable_correction = enable_correction;
   priv->framerate_configured = framerate_configured;
+  priv->owner = NULL;
 
   /* setup dimension cache
    * -1 -> not activly set
@@ -570,6 +581,25 @@ GObject* gst_pylon_object_new_for_schema(
   priv->dimension_cache = {-1, -1, -1, -1};
 
   return obj;
+}
+
+void gst_pylon_object_set_owner(GObject* obj, GstElement* owner) {
+  g_return_if_fail(obj);
+
+  GstPylonObject* self = GST_PYLON_OBJECT(obj);
+  GstPylonObjectPrivate* priv =
+      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  priv->owner = owner;
+}
+
+void gst_pylon_object_set_enable_correction(GObject* obj,
+                                            gboolean enable_correction) {
+  g_return_if_fail(obj);
+
+  GstPylonObject* self = GST_PYLON_OBJECT(obj);
+  GstPylonObjectPrivate* priv =
+      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  priv->enable_correction = enable_correction;
 }
 
 static void gst_pylon_object_finalize(GObject* object) {

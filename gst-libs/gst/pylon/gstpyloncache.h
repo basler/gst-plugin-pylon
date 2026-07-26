@@ -39,9 +39,10 @@
 
 class GST_PLUGIN_EXPORT GstPylonCache {
  public:
-  GstPylonCache(const std::string& name);
+  GstPylonCache(const std::string& name, gboolean enable_limit_probe = TRUE);
   ~GstPylonCache();
   gboolean HasNewSettings();
+  gboolean IsLimitProbeEnabled() const;
 
   void SetIntProps(const gchar* feature_name, const gint64 min,
                    const gint64 max, const GParamFlags flags);
@@ -80,6 +81,7 @@ class GST_PLUGIN_EXPORT GstPylonCache {
   std::string filepath;
   GKeyFile* feature_cache_dict;
   gboolean is_modified;
+  gboolean enable_limit_probe;
 };
 
 #endif

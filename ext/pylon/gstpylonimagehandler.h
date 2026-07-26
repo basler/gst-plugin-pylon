@@ -38,20 +38,36 @@
 #include <condition_variable>
 #include <mutex>
 
+enum class GstPylonImageHandlerResult {
+  ok,
+  flushing,
+  disconnected,
+};
+
 class GstPylonImageHandler : public Pylon::CBaslerUniversalImageEventHandler {
  public:
   GstPylonImageHandler();
   void OnImageGrabbed(
-      Pylon::CBaslerUniversalInstantCamera &camera,
-      const Pylon::CBaslerUniversalGrabResultPtr &grab_result) override;
-  Pylon::CBaslerUniversalGrabResultPtr *WaitForImage();
+      Pylon::CBaslerUniversalInstantCamera& camera,
+      const Pylon::CBaslerUniversalGrabResultPtr& grab_result) override;
+  GstPylonImageHandlerResult WaitForImage(
+      Pylon::CBaslerUniversalGrabResultPtr** grab_result);
   void InterruptWaitForImage();
+  void SignalDisconnect();
+  void ClearInterrupt();
 
  private:
+  enum class State {
+    Idle,
+    FrameReady,
+    Interrupted,
+    Disconnected,
+  };
+
   std::mutex grab_result_mutex;
   std::condition_variable grab_result_cv;
-  Pylon::CBaslerUniversalGrabResultPtr *ptr_grab_result;
-  bool grab_result_ready;
+  Pylon::CBaslerUniversalGrabResultPtr* ptr_grab_result;
+  State state;
 };
 
 #endif

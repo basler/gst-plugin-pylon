@@ -23,7 +23,7 @@ To display the video stream of a single Basler camera is as simple as:
 gst-launch-1.0 pylonsrc ! videoconvert ! autovideosink
 ```
 
-> The camera features are registered dynamically to gstreamer. This registration is executed once the first time a camera model is used in gstreamer and can take up to ~10s. The registration information is cached in the filesystem to speed up subsequent uses of the camera.
+> The camera features are registered dynamically to gstreamer. This registration is executed once the first time a camera model is used in gstreamer and can take up to ~10s. The registration information is cached in the filesystem to speed up subsequent uses of the camera. `gst-inspect-1.0 pylonsrc` uses read-only limit queries by default; set `GST_PYLON_PROBE_LIMITS=1` to force full dynamic limit probing while inspecting.
 
 The following sections describe how to select and configure the camera.
 
@@ -154,7 +154,7 @@ gst-launch-1.0 pylonsrc ! "video/x-raw(memory:NVMM), width=1920, height=1080"  !
 
 This feature is controlled by the enumeration property `capture-error`. You can choose one of the following options:
 
-* **keep:** Use the partial or corrupted buffers.
+* **keep:** Use the partial or corrupted buffers. These buffers are marked with the GStreamer `CORRUPTED` buffer flag.
 * **skip:** Skip the partial or corrupted buffers. A maximum of 100 buffers can be skipped before the pipeline aborts
 * **abort:** Stop pipeline in case of any capture error.
 
@@ -291,6 +291,8 @@ The pylon image meta data ( pylon GrabResult ) is appended per default. The valu
 * SkippedImages
 * OffsetX/Y
 * Camera Timestamp
+
+`BlockID` is the camera transport block ID reported by pylon. `ImageNumber` is the local grab result sequence number. GStreamer buffer PTS is pipeline-clock based; the camera timestamp is also attached as reference timestamp metadata.
 
 **Example**
 
@@ -624,4 +626,3 @@ This target will be integrated after a Basler pylon 7.x release for macOS
 
 * Under very specific conditions we've found that a set_state() followed immediately by a get_state() will report a failure. This has been found to be a bug in the GStreamer core, where a state conditional is not protected against spurious wakeups. An [upstream fix](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/4086) was merged to the mainline, and GStreamer 1.23 will include this fix. This issue has been reproduced in certain installations of NVIDIA Jetson boards.
   * As a workaround if you are using older GStreamer versions, is to configure `async=false` in all the sink elements in your pipeline, so that the state condition variable is not needed. Only use this is your pipeline does not require synchronization.
-

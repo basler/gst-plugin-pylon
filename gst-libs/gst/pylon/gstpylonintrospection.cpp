@@ -762,8 +762,17 @@ void gst_pylon_query_feature_properties_double(
                                     minimum_under_all_settings,
                                     maximum_under_all_settings, flags)) {
     flags = gst_pylon_query_access(nodemap, node);
-    gst_pylon_find_limits<Pylon::CFloatParameter, gdouble>(
-        node, minimum_under_all_settings, maximum_under_all_settings);
+    if (feature_cache.IsLimitProbeEnabled()) {
+      gst_pylon_find_limits<Pylon::CFloatParameter, gdouble>(
+          node, minimum_under_all_settings, maximum_under_all_settings);
+    } else {
+      minimum_under_all_settings =
+          gst_pylon_query_feature_limits<Pylon::CFloatParameter, gdouble>(
+              node, "min");
+      maximum_under_all_settings =
+          gst_pylon_query_feature_limits<Pylon::CFloatParameter, gdouble>(
+              node, "max");
+    }
 
     feature_cache.SetDoubleProps(feature_cache_name, minimum_under_all_settings,
                                  maximum_under_all_settings, flags);
@@ -824,8 +833,17 @@ void gst_pylon_query_feature_properties_integer(
   if (!feature_cache.GetIntProps(feature_cache_name, minimum_under_all_settings,
                                  maximum_under_all_settings, flags)) {
     flags = gst_pylon_query_access(nodemap, node);
-    gst_pylon_find_limits<Pylon::CIntegerParameter, gint64>(
-        node, minimum_under_all_settings, maximum_under_all_settings);
+    if (feature_cache.IsLimitProbeEnabled()) {
+      gst_pylon_find_limits<Pylon::CIntegerParameter, gint64>(
+          node, minimum_under_all_settings, maximum_under_all_settings);
+    } else {
+      minimum_under_all_settings =
+          gst_pylon_query_feature_limits<Pylon::CIntegerParameter, gint64>(
+              node, "min");
+      maximum_under_all_settings =
+          gst_pylon_query_feature_limits<Pylon::CIntegerParameter, gint64>(
+              node, "max");
+    }
 
     feature_cache.SetIntProps(feature_cache_name, minimum_under_all_settings,
                               maximum_under_all_settings, flags);

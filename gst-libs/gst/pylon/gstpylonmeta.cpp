@@ -197,7 +197,7 @@ void gst_buffer_add_pylon_meta(
       (GstPylonMeta*)gst_buffer_add_meta(buffer, GST_PYLON_META_INFO, NULL);
 
   /* Add meta to GstPylonMeta */
-  self->block_id = grab_result_ptr->GetImageNumber();
+  self->block_id = grab_result_ptr->GetBlockID();
   self->image_number = grab_result_ptr->GetImageNumber();
   self->skipped_images = grab_result_ptr->GetNumberOfSkippedImages();
   self->offset.offset_x = grab_result_ptr->GetOffsetX();

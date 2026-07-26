@@ -54,43 +54,49 @@ typedef enum {
 #  define PROP_NVSURFACE_LAYOUT_DEFAULT ENUM_PITCH
 #endif
 
-GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
-                        const gchar *device_serial_number, gint device_index,
-                        gboolean enable_correction, GError **err);
-gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
-                                   GError **err);
-void gst_pylon_free(GstPylon *self);
+GstPylon* gst_pylon_new(GstElement* gstpylonsrc, const gchar* device_user_name,
+                        const gchar* device_serial_number, gint device_index,
+                        gboolean enable_correction, GError** err);
+gboolean gst_pylon_set_user_config(GstPylon* self, const gchar* user_set,
+                                   GError** err);
+void gst_pylon_free(GstPylon* self);
 
-gboolean gst_pylon_start(GstPylon *self, GError **err);
-gboolean gst_pylon_stop(GstPylon *self, GError **err);
-void gst_pylon_interrupt_capture(GstPylon *self);
-gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
+gboolean gst_pylon_start(GstPylon* self, GError** err);
+gboolean gst_pylon_stop(GstPylon* self, GError** err);
+void gst_pylon_interrupt_capture(GstPylon* self);
+void gst_pylon_clear_capture_interrupt(GstPylon* self);
+gboolean gst_pylon_capture(GstPylon* self, GstBuffer** buf,
                            GstPylonCaptureErrorEnum capture_error,
-                           GError **err);
-GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err);
-gboolean gst_pylon_get_startup_geometry(GstPylon *self, gint *start_width,
-                                        gint *start_height);
-gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
-                                     GError **err);
-gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
-                                  GError **err);
-gchar *gst_pylon_camera_get_string_properties();
-gchar *gst_pylon_stream_grabber_get_string_properties();
+                           GError** err);
+GstCaps* gst_pylon_query_configuration(GstPylon* self, GError** err);
+gboolean gst_pylon_get_startup_geometry(GstPylon* self, gint* start_width,
+                                        gint* start_height);
+gboolean gst_pylon_set_configuration(GstPylon* self, const GstCaps* conf,
+                                     GError** err);
+gboolean gst_pylon_set_pfs_config(GstPylon* self, const gchar* pfs_location,
+                                  GError** err);
+gchar* gst_pylon_camera_get_string_properties();
+gchar* gst_pylon_stream_grabber_get_string_properties();
 
-GObject *gst_pylon_get_camera(GstPylon *self);
-GObject *gst_pylon_get_stream_grabber(GstPylon *self);
+GObject* gst_pylon_get_camera(GstPylon* self);
+GObject* gst_pylon_get_stream_grabber(GstPylon* self);
 
-gboolean gst_pylon_is_same_device(GstPylon *self, const gint device_index,
-                                  const gchar *device_user_name,
-                                  const gchar *device_serial_number);
+gboolean gst_pylon_is_same_device(GstPylon* self, const gint device_index,
+                                  const gchar* device_user_name,
+                                  const gchar* device_serial_number);
+gboolean gst_pylon_is_config_applied(GstPylon* self, const gchar* user_set,
+                                     const gchar* pfs_location,
+                                     gboolean enable_correction);
+void gst_pylon_set_enable_correction(GstPylon* self,
+                                     gboolean enable_correction);
 
 #ifdef NVMM_ENABLED
 void gst_pylon_set_nvsurface_layout(
-    GstPylon *self, const GstPylonNvsurfaceLayoutEnum nvsurface_layout);
-GstPylonNvsurfaceLayoutEnum gst_pylon_get_nvsurface_layout(GstPylon *self);
+    GstPylon* self, const GstPylonNvsurfaceLayoutEnum nvsurface_layout);
+GstPylonNvsurfaceLayoutEnum gst_pylon_get_nvsurface_layout(GstPylon* self);
 
-void gst_pylon_set_gpu_id(GstPylon *self, const gint gpu_id);
-guint gst_pylon_get_gpu_id(GstPylon *self);
+void gst_pylon_set_gpu_id(GstPylon* self, const gint gpu_id);
+guint gst_pylon_get_gpu_id(GstPylon* self);
 #endif /* NVMM_ENABLED */
 
 #endif

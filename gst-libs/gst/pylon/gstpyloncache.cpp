@@ -34,6 +34,7 @@
 
 #include <errno.h>
 #include <glib/gfileutils.h>
+#include <glib/gstdio.h>
 #include <gst/pylon/gstpylonincludes.h>
 
 #define DIRERR -1
@@ -53,7 +54,7 @@ static std::string gst_pylon_cache_create_filepath(
   std::string dirpath = std::string(g_get_user_cache_dir()) + "/" + "gstpylon";
 
   /* Create gstpylon directory */
-  gint dir_permissions = 0775;
+  gint dir_permissions = 0700;
   gint ret = g_mkdir_with_parents(dirpath.c_str(), dir_permissions);
   std::string filepath = dirpath + "/" + filename_hash_str + ".config";
   if (DIRERR == ret) {
@@ -71,7 +72,7 @@ static std::string gst_pylon_cache_introspection_filepath(
       g_compute_checksum_for_string(G_CHECKSUM_SHA256, schema_key.c_str(),
                                     static_cast<gssize>(schema_key.size()));
   std::string dirpath = std::string(g_get_user_cache_dir()) + "/" + "gstpylon";
-  g_mkdir_with_parents(dirpath.c_str(), 0775);
+  g_mkdir_with_parents(dirpath.c_str(), 0700);
   std::string filepath = dirpath + "/" + filename_hash + ".introspection";
   g_free(filename_hash);
   return filepath;
@@ -156,13 +157,18 @@ void GstPylonCache::SetIntrospection(const std::string& schema_key,
     GST_WARNING("Could not write introspection cache to %s: %s",
                 filepath.c_str(), err ? err->message : "unknown error");
     if (err) g_error_free(err);
+  } else if (g_chmod(filepath.c_str(), 0600) != 0) {
+    GST_WARNING("Failed to set permissions on introspection cache file %s: %s",
+                filepath.c_str(), strerror(errno));
   }
 }
 
-GstPylonCache::GstPylonCache(const std::string& name)
+GstPylonCache::GstPylonCache(const std::string& name,
+                             gboolean enable_limit_probe)
     : filepath(gst_pylon_cache_create_filepath(name)),
       feature_cache_dict(g_key_file_new()),
-      is_modified(FALSE) {
+      is_modified(FALSE),
+      enable_limit_probe(enable_limit_probe) {
   /* load initial cache file */
   if (!LoadCacheFile()) {
     GST_LOG("No feature cache file found");
@@ -170,6 +176,20 @@ GstPylonCache::GstPylonCache(const std::string& name)
 }
 
 GstPylonCache::~GstPylonCache() { g_key_file_free(this->feature_cache_dict); }
+
+gboolean GstPylonCache::IsLimitProbeEnabled() const {
+  const gchar* env = g_getenv("GST_PYLON_PROBE_LIMITS");
+  if (env) {
+    if (g_strcmp0(env, "0") == 0 || g_ascii_strcasecmp(env, "false") == 0) {
+      return FALSE;
+    }
+    if (g_strcmp0(env, "1") == 0 || g_ascii_strcasecmp(env, "true") == 0) {
+      return TRUE;
+    }
+  }
+
+  return enable_limit_probe;
+}
 
 gboolean GstPylonCache::LoadCacheFile() {
   gboolean ret = TRUE;
@@ -204,7 +224,7 @@ void GstPylonCache::CreateCacheFile() {
 
   gboolean ret = g_file_set_contents_full(
       this->filepath.c_str(), contents, length,
-      static_cast<GFileSetContentsFlags>(G_FILE_SET_CONTENTS_CONSISTENT), 0666,
+      static_cast<GFileSetContentsFlags>(G_FILE_SET_CONTENTS_CONSISTENT), 0600,
       &file_err);
 
   g_free(contents);
@@ -217,6 +237,11 @@ void GstPylonCache::CreateCacheFile() {
     std::string file_err_str = file_err->message;
     g_error_free(file_err);
     throw Pylon::GenericException(file_err_str.c_str(), __FILE__, __LINE__);
+  }
+
+  if (g_chmod(this->filepath.c_str(), 0600) != 0) {
+    GST_WARNING("Failed to set permissions on cache file %s: %s",
+                this->filepath.c_str(), strerror(errno));
   }
 }
 
@@ -285,6 +310,18 @@ bool GstPylonCache::GetIntProps(const gchar* feature_name, gint64& min,
   if (!GetIntegerAttribute(feature_name, "max", max)) return false;
   gint64 flag_val = 0;
   if (!GetIntegerAttribute(feature_name, "flags", flag_val)) return false;
+
+  static constexpr gint64 kMaxSaneDimension = 32768;
+  if ((g_str_has_suffix(feature_name, "Width") ||
+       g_str_has_suffix(feature_name, "Height") ||
+       g_strcmp0(feature_name, "Width") == 0 ||
+       g_strcmp0(feature_name, "Height") == 0) &&
+      (max > kMaxSaneDimension || min < 0 || min > max)) {
+    GST_WARNING("Ignoring invalid cache entry for %s (min=%" G_GINT64_FORMAT
+                " max=%" G_GINT64_FORMAT ")",
+                feature_name, min, max);
+    return false;
+  }
 
   flags = static_cast<GParamFlags>(flag_val);
 

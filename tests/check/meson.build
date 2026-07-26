@@ -80,3 +80,15 @@ foreach t : pylon_tests
     test(test_name, exe, env: env, timeout: env_overrides.get('timeout', 3 * 60))
   endif
 endforeach
+
+imagehandler_env = environment()
+imagehandler_env.set('PYLON_ROOT', run_command('sh', '-c', 'echo ${PYLON_ROOT:-/opt/pylon}', check: true).stdout().strip())
+
+imagehandler_test = executable('generic_imagehandler',
+  'generic/imagehandler.cpp',
+  '../../ext/pylon/gstpylonimagehandler.cpp',
+  include_directories : [configinc, include_directories('../../ext/pylon')],
+  cpp_args : ['-DHAVE_CONFIG_H=1'] + gst_plugin_pylon_args,
+  dependencies : [gstpylon_dep],
+)
+test('generic_imagehandler', imagehandler_test, env: imagehandler_env)

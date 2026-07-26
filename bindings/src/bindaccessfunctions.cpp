@@ -32,22 +32,13 @@
 
 #include "bindaccessfunctions.h"
 
-#include <gst/pylon/gstpylonmeta.h>
-
 namespace py = pybind11;
-using namespace pybind11::literals;
-using namespace std;
 
 namespace pygstpylon {
 
-void bindaccessfunctions(py::module &m) {
-  m.def(
-      "gst_buffer_get_pylon_meta",
-      [](size_t gst_buffer) {
-        auto *buffer = reinterpret_cast<GstBuffer *>(gst_buffer);
-        return gst_buffer_get_pylon_meta(buffer);
-      },
-      "buffer"_a, py::return_value_policy::reference);
+void bindaccessfunctions(py::module& m) {
+  /* gst_buffer_get_pylon_meta is registered from bindpylonmeta(). */
+  (void)m;
 }
 
 }  // namespace pygstpylon
