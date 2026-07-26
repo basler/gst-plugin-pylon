@@ -42,6 +42,7 @@ gstpylon_sources = [
   'gstpyloncache.cpp',
   'gstpylondebug.cpp',
   'gstpylonfeaturewalker.cpp',
+  'gstpyloninspectcache.cpp',
   'gstpylonintrospection.cpp',
   'gstpylonmeta.cpp',
   'gstpylonobject.cpp',

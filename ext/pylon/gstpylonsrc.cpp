@@ -927,20 +927,11 @@ static gboolean gst_pylon_src_apply_session_config(GstPylonSrc* self,
   g_return_val_if_fail(error && *error == NULL, FALSE);
 
   GST_OBJECT_LOCK(self);
-  ret = gst_pylon_set_user_config(self->pylon, self->user_set, error);
-  GST_OBJECT_UNLOCK(self);
-  if (!ret || *error) {
-    return FALSE;
-  }
-
-  GST_OBJECT_LOCK(self);
-  const gboolean using_pfs = self->pfs_location != NULL;
-  if (using_pfs) {
-    ret = gst_pylon_set_pfs_config(self->pylon, self->pfs_location, error);
-  }
+  ret = gst_pylon_apply_session_config(self->pylon, self->user_set,
+                                       self->pfs_location, error);
   GST_OBJECT_UNLOCK(self);
 
-  return !using_pfs || (ret && *error == NULL);
+  return ret && *error == NULL;
 }
 
 static void gst_pylon_src_discard_session(GstPylonSrc* self,
@@ -1012,7 +1003,6 @@ static gboolean gst_pylon_src_start(GstBaseSrc* src) {
   GError* error = NULL;
   gboolean ret = TRUE;
   gboolean same_device = TRUE;
-  gboolean config_applied = FALSE;
   gchar* user_set = NULL;
   gchar* pfs_location = NULL;
   gboolean enable_correction = PROP_ENABLE_CORRECTION_DEFAULT;
@@ -1022,42 +1012,26 @@ static gboolean gst_pylon_src_start(GstBaseSrc* src) {
       self->pylon && gst_pylon_is_same_device(self->pylon, self->device_index,
                                               self->device_user_name,
                                               self->device_serial_number);
-  if (same_device) {
-    config_applied = gst_pylon_is_config_applied(self->pylon, self->user_set,
-                                                 self->pfs_location,
-                                                 self->enable_correction);
-    user_set = self->user_set ? g_strdup(self->user_set) : NULL;
-    pfs_location = self->pfs_location ? g_strdup(self->pfs_location) : NULL;
-    enable_correction = self->enable_correction;
-  }
+  user_set = self->user_set ? g_strdup(self->user_set) : NULL;
+  pfs_location = self->pfs_location ? g_strdup(self->pfs_location) : NULL;
+  enable_correction = self->enable_correction;
   GST_OBJECT_UNLOCK(self);
 
   if (same_device) {
-    if (!config_applied) {
-      GST_INFO_OBJECT(
-          self, "Re-applying user-set/PFS/enable-correction on open device");
-      gst_pylon_set_enable_correction(self->pylon, enable_correction);
-
-      ret = gst_pylon_set_user_config(self->pylon, user_set, &error);
-      if (ret == FALSE && error) {
-        g_free(user_set);
-        g_free(pfs_location);
-        goto log_gst_error;
-      }
-
-      if (pfs_location) {
-        ret = gst_pylon_set_pfs_config(self->pylon, pfs_location, &error);
-        if (ret == FALSE && error) {
-          g_free(user_set);
-          g_free(pfs_location);
-          goto log_gst_error;
-        }
-      }
-    }
+    GST_INFO_OBJECT(
+        self, "Reusing open device; ensuring user-set/PFS/enable-correction");
+    ret = gst_pylon_ensure_configured(self->pylon, user_set, pfs_location,
+                                      enable_correction, &error);
     g_free(user_set);
     g_free(pfs_location);
+    if (!ret || error) {
+      goto log_gst_error;
+    }
     goto out;
   }
+
+  g_free(user_set);
+  g_free(pfs_location);
 
   try {
     if (self->pylon) {

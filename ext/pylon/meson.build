@@ -5,9 +5,14 @@ cpp_args = [gst_plugin_pylon_args]
 pylon_sources = [
   'gstchildinspector.cpp',
   'gstpylon.cpp',
+  'gstpyloncaps.cpp',
+  'gstpyloncapture.cpp',
   'gstpylondisconnecthandler.cpp',
   'gstpylonimagehandler.cpp',
+  'gstpyloninspect.cpp',
   'gstpylonplugin.cpp',
+  'gstpylonschema.cpp',
+  'gstpylonsession.cpp',
   'gstpylonsrc.cpp',
   'gstpylonsysmembufferfactory.cpp',
 ]

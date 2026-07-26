@@ -1,4 +1,4 @@
-/* Copyright (C) 2023 Basler AG
+/* Copyright (C) 2022 Basler AG
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,50 +30,18 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_FORMAT_MAPPING_
-#define _GST_PYLON_FORMAT_MAPPING_
+#ifndef _GST_PYLON_INSPECT_CACHE_H_
+#define _GST_PYLON_INSPECT_CACHE_H_
+
+#include <gst/gst.h>
 
 #include <string>
-#include <vector>
 
-bool isSupportedPylonFormat(const std::string& format);
-
-/* Pixel format definitions */
-typedef struct {
-  std::string pfnc_name;
-  std::string gst_name;
-} PixelFormatMappingType;
-
-const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
-    {"Mono8", "GRAY8"},        {"RGB8Packed", "RGB"},
-    {"BGR8Packed", "BGR"},     {"RGB8", "RGB"},
-    {"BGR8", "BGR"},           {"YCbCr422_8", "YUY2"},
-    {"YUV422_8_UYVY", "UYVY"}, {"YUV422_8", "YUY2"},
-    {"YUV422Packed", "UYVY"},  {"YUV422_YUYV_Packed", "YUY2"}};
-
-const std::vector<PixelFormatMappingType> pixel_format_mapping_bayer = {
-    {"BayerBG8", "bggr"},
-    {"BayerGR8", "grbg"},
-    {"BayerRG8", "rggb"},
-    {"BayerGB8", "gbrg"}};
-
-inline bool isSupportedPylonFormat(const std::string& format) {
-  bool res = false;
-  for (const auto& fd : pixel_format_mapping_raw) {
-    if (fd.pfnc_name == format) {
-      res = true;
-      break;
-    }
-  }
-  if (!res) {
-    for (const auto& fd : pixel_format_mapping_bayer) {
-      if (fd.pfnc_name == format) {
-        res = true;
-        break;
-      }
-    }
-  }
-  return res;
-}
+/* Disk cache of full gst-inspect property blurbs keyed by schema identity. */
+class GST_PLUGIN_EXPORT GstPylonInspectCache {
+ public:
+  static gchar* Get(const std::string& schema_key);
+  static void Set(const std::string& schema_key, const std::string& content);
+};
 
 #endif

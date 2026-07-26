@@ -62,11 +62,6 @@ class GST_PLUGIN_EXPORT GstPylonCache {
   /* Persist cache to filesystem */
   void CreateCacheFile();
 
-  /* Introspection cache: full property blurb per schema (for gst-inspect) */
-  static gchar* GetIntrospection(const std::string& schema_key);
-  static void SetIntrospection(const std::string& schema_key,
-                               const std::string& content);
-
  private:
   void SetIntegerAttribute(const char* feature, const char* attribute,
                            const gint64 val);
