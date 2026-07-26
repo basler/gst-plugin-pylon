@@ -33,5 +33,8 @@ PYLON_ROOT=/opt/pylon PYLON_CAMEMU=3 ./tests/camemu/run_camemu_tests.sh
 | Device selection | serial, index, ambiguous-device error, wrong-serial fast failure |
 | Formats | GRAY8, Bayer, framerate caps |
 | Configuration | `user-set=Auto`, `enable-correction` |
+| Property order | `cam::` before `user-set`/`pfs-location` still applies final config |
 | Pipeline | queue, videoconvert, sequential open/close |
 | Buffers | PyGObject appsink count when PyGObject is available |
+
+See also [MANUAL_TESTS.md](../MANUAL_TESTS.md) for camera/multi-process scenarios.

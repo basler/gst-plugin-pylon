@@ -72,3 +72,14 @@ foreach t : pylon_tests
     test(test_name, exe, env: env, timeout: 3 * 60)
   endif
 endforeach
+
+# Camera-free unit test for the image handler state machine
+imagehandler_test = executable(
+  'generic_imagehandler',
+  'generic/imagehandler.cpp',
+  '../../ext/pylon/gstpylonimagehandler.cpp',
+  include_directories: [configinc, include_directories('../../ext/pylon')],
+  dependencies: [pylon_dep],
+  cpp_args: ['-DHAVE_CONFIG_H=1'],
+)
+test('generic_imagehandler', imagehandler_test, timeout: 30)

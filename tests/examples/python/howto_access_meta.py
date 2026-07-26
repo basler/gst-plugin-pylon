@@ -88,7 +88,7 @@ if src_pad:
 
 
 def stop_main_loop():
-    print("Stopping the main loop after 10 seconds.")
+    print("Stopping the main loop after 1 second.")
     main_loop.quit()  # This will stop the main loop
 
 

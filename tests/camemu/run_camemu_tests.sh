@@ -167,6 +167,11 @@ expect_ok "capture_with_enable_correction" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" enable-correction=true \
     num-buffers=5 ! fakesink
 
+# cam:: before user-set must still apply the final userset (config reload)
+expect_ok "cam_property_before_user_set" \
+  gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" \
+    cam::Gain=1 user-set=Auto num-buffers=5 ! fakesink
+
 expect_ok "pipeline_with_queue" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=10 \
     ! queue max-size-buffers=2 ! fakesink
