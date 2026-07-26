@@ -7,7 +7,7 @@ Factory Details:
 
 Plugin Details:
   Name                     pylon
-  Description              Basler/Pylon plugin for pylon SDK 12.2.0(1265)
+  Description              Basler/Pylon plugin for pylon SDK 12.2.1(1300)
   Filename                 libgstpylon.so
   Version                  PLACEHOLDER
   License                  BSD
@@ -643,7 +643,7 @@ Element Properties:
                                                                         String. Default: "none"
                                    DeviceVersion                      : Indicates the version of the device.
                                                                         flags: readable
-                                                                        String. Default: "12.2.0.1265"
+                                                                        String. Default: "12.2.1.1300"
                                    DeviceFirmwareVersion              : Indicates the version of the device's firmware and software.
                                                                         flags: readable
                                                                         String. Default: "1.1"
@@ -1265,7 +1265,7 @@ Element Properties:
                                                                         String. Default: "none"
                                    DeviceVersion                      : Indicates the version of the device.
                                                                         flags: readable
-                                                                        String. Default: "12.2.0.1265"
+                                                                        String. Default: "12.2.1.1300"
                                    DeviceFirmwareVersion              : Indicates the version of the device's firmware and software.
                                                                         flags: readable
                                                                         String. Default: "1.1"

@@ -6,6 +6,7 @@ endif
 # name, condition when to skip the test and extra dependencies
 pylon_tests = [
   [ 'generic/states' ],
+  [ 'generic/meta', false, [gstpylon_dep] ],
   [ 'pylon/pylonsrc_camemu', false, [], [], { 'PYLON_CAMEMU': '3', 'CK_DEFAULT_TIMEOUT': '30' } ],
 ]
 
