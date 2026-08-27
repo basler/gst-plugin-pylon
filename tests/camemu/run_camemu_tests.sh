@@ -180,16 +180,27 @@ expect_ok "pipeline_with_videoconvert" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=5 \
     ! videoconvert ! video/x-raw,format=RGB ! fakesink
 
-if command -v python3 >/dev/null 2>&1; then
-  if python3 -c "import gi; gi.require_version('Gst','1.0'); from gi.repository import Gst" 2>/dev/null; then
+if command -v python3 >/dev/null 2>&1 || [[ -x /usr/bin/python3 ]]; then
+  # Prefer a Python that has PyGObject (system packages). A Meson/CI venv
+  # often shadows python3 without gi bindings.
+  PYTHON_GI=""
+  for py in /usr/bin/python3 python3; do
+    if command -v "$py" >/dev/null 2>&1 || [[ -x "$py" ]]; then
+      if "$py" -c "import gi; gi.require_version('Gst','1.0'); from gi.repository import Gst" 2>/dev/null; then
+        PYTHON_GI="$py"
+        break
+      fi
+    fi
+  done
+  if [[ -n "$PYTHON_GI" ]]; then
     expect_ok "appsink_buffer_count" \
-      python3 "$SCRIPT_DIR/appsink_buffer_count.py" \
+      "$PYTHON_GI" "$SCRIPT_DIR/appsink_buffer_count.py" \
         --serial "$EMU_SERIAL_0" --buffers 12
 
     # Restart cycles with 4096x4096 RGB (~50 MiB/frame): pipe FD growth and
     # RSS must stay bounded; abrupt stop leaves a pending grab in the handler.
     expect_ok "restart_resource_cleanup" \
-      python3 "$SCRIPT_DIR/restart_resource_leak.py" \
+      "$PYTHON_GI" "$SCRIPT_DIR/restart_resource_leak.py" \
         --serial "$EMU_SERIAL_0" --cycles 10 --max-pipe-growth 8
   else
     run_skip "appsink_buffer_count (PyGObject not available)"

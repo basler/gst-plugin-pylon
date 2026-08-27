@@ -216,7 +216,10 @@ jobs:
             # remove conflicting package
             dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && apt-get remove -y libunwind-14-dev
             # install required build tools
-            apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools python3-venv
+            # python3-gi: camemu restart_resource_cleanup / appsink regression tests
+            apt-get -y install python3 python3-pip python3-gi gir1.2-gstreamer-1.0 \
+              libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang \
+              gstreamer1.0-tools gstreamer1.0-plugins-base python3-venv
             python3 -m venv build_python
             # activate the python environment
             . build_python/bin/activate
@@ -227,6 +230,7 @@ jobs:
             export PYLON_ROOT=/opt/pylon
             export CC=gcc
             export CXX=g++
+            export PYLON_CAMEMU=3
             meson setup builddir_gcc --prefix $PWD/install_gcc
             ninja -C builddir_gcc
             ninja -C builddir_gcc test
@@ -236,6 +240,7 @@ jobs:
             export PYLON_ROOT=/opt/pylon
             export CC=clang
             export CXX=clang++
+            export PYLON_CAMEMU=3
             meson setup builddir_clang --prefix $PWD/install_clang
             ninja -C builddir_clang
             ninja -C builddir_clang test
@@ -290,7 +295,10 @@ jobs:
           # remove conflicting package
           sudo dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && sudo apt-get remove -y libunwind-14-dev
           # install required build tools
-          sudo apt-get -y install python3 python3-pip libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang gstreamer1.0-tools python3-venv
+          # python3-gi: camemu restart_resource_cleanup / appsink regression tests
+          sudo apt-get -y install python3 python3-pip python3-gi gir1.2-gstreamer-1.0 \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang \
+            gstreamer1.0-tools gstreamer1.0-plugins-base python3-venv
           python3 -m venv build_python
           . build_python/bin/activate
           pip install pip --upgrade
@@ -301,6 +309,7 @@ jobs:
           export PYLON_ROOT=/opt/pylon
           export CC=gcc
           export CXX=g++
+          export PYLON_CAMEMU=3
           . build_python/bin/activate
           meson setup builddir_gcc --prefix $PWD/install_gcc
           ninja -C builddir_gcc
@@ -312,6 +321,7 @@ jobs:
           export PYLON_ROOT=/opt/pylon
           export CC=clang
           export CXX=clang++
+          export PYLON_CAMEMU=3
           . build_python/bin/activate
           meson setup builddir_clang --prefix $PWD/install_clang
           ninja -C builddir_clang

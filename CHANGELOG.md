@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Camemu test `restart_resource_leak.py` uses 4096×4096 RGB frames and checks
   pipe FD + RSS growth across EOS and abrupt-stop pipeline restart cycles
+- CI installs `python3-gi` so camemu appsink / restart regression tests run
+  under `ninja test` (not skipped for missing PyGObject)
 
 ## [1.0.0] - 2024-08-14
 ## Added
