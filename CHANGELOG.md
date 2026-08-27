@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file.
   in finalize; free grab results on NVMM CUDA copy failure
 - Unlock maps to `GST_FLOW_FLUSHING` (with `unlock_stop` / ClearInterrupt) instead of EOS
 
+### Added
+- Camemu test `restart_resource_leak.py` checks pipe FD growth across EOS and
+  abrupt-stop pipeline restart cycles
+
 ## [1.0.0] - 2024-08-14
 ## Added
 - added script to generate release notes

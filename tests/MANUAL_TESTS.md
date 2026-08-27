@@ -22,10 +22,20 @@ without EOS.
 
 ## Pipeline restart resource cleanup
 
-Loop `NULL → PLAYING → NULL` on `pylonsrc ! fakesink` (e.g. 50 cycles) while
-watching `/proc/<pid>/fd` for `pipe:[...]` growth and RSS / heaptrack for
-frame-sized leaks. Pipe FD count and retained grab-result buffers must not
-grow linearly with the number of cycles.
+Automated with camemu (no physical camera):
+
+```bash
+PYLON_ROOT=/opt/pylon PYLON_CAMEMU=3 \
+  python3 tests/camemu/restart_resource_leak.py --serial 0815-0000
+```
+
+Or as part of the camemu suite (`restart_resource_cleanup`). The test loops
+`NULL → PLAYING → NULL` (clean EOS and abrupt stop-while-streaming) and fails
+if `pipe:[...]` FDs in `/proc/self/fd` grow beyond a small budget.
+
+On a physical camera, also watch RSS / heaptrack for frame-sized grab-result
+leaks under full load (camemu frames are small, so FD growth is the primary
+automated signal).
 
 ## Property order (cam:: before userset/pfs)
 
