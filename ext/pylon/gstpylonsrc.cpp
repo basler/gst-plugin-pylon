@@ -539,6 +539,9 @@ static void gst_pylon_src_finalize(GObject* object) {
   g_free(self->user_set);
   self->user_set = NULL;
 
+  g_free(self->pfs_location);
+  self->pfs_location = NULL;
+
   if (self->cam) {
     g_object_unref(self->cam);
     self->cam = NULL;
@@ -835,7 +838,12 @@ log_gst_error:
                     ("%s", error->message));
   g_error_free(error);
 
-  /* no camera found. Stop pylon SDK */
+  /* Free any partially opened session before dropping the SDK ref */
+  if (self->pylon) {
+    gst_pylon_free(self->pylon);
+    self->pylon = NULL;
+  }
+
   Pylon::PylonTerminate();
 
 out:

@@ -73,60 +73,60 @@ typedef enum {
 
 /* prototypes */
 static std::string gst_pylon_query_default_set(
-    const Pylon::CBaslerUniversalInstantCamera &camera);
-static void gst_pylon_apply_set(GstPylon *self, std::string &set);
+    const Pylon::CBaslerUniversalInstantCamera& camera);
+static void gst_pylon_apply_set(GstPylon* self, std::string& set);
 static std::string gst_pylon_get_camera_fullname(
-    Pylon::CBaslerUniversalInstantCamera &camera);
+    Pylon::CBaslerUniversalInstantCamera& camera);
 static std::string gst_pylon_get_sgrabber_name(
-    Pylon::CBaslerUniversalInstantCamera &camera);
+    Pylon::CBaslerUniversalInstantCamera& camera);
 static void free_ptr_grab_result(gpointer data);
 static void gst_pylon_query_format(
-    GstPylon *self, GValue *outvalue,
-    const std::vector<PixelFormatMappingType> &pixel_format_mapping);
-static void gst_pylon_query_integer(GstPylon *self, GValue *outvalue,
-                                    const std::string &name);
-static void gst_pylon_query_width(GstPylon *self, GValue *outvalue);
-static void gst_pylon_query_height(GstPylon *self, GValue *outvalue);
-static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue);
+    GstPylon* self, GValue* outvalue,
+    const std::vector<PixelFormatMappingType>& pixel_format_mapping);
+static void gst_pylon_query_integer(GstPylon* self, GValue* outvalue,
+                                    const std::string& name);
+static void gst_pylon_query_width(GstPylon* self, GValue* outvalue);
+static void gst_pylon_query_height(GstPylon* self, GValue* outvalue);
+static void gst_pylon_query_framerate(GstPylon* self, GValue* outvalue);
 static void gst_pylon_query_caps(
-    GstPylon *self, GstStructure *st,
-    const std::vector<PixelFormatMappingType> &pixel_format_mapping);
+    GstPylon* self, GstStructure* st,
+    const std::vector<PixelFormatMappingType>& pixel_format_mapping);
 static void gst_pylon_add_result_meta(
-    GstPylon *self, GstBuffer *buf,
-    Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
+    GstPylon* self, GstBuffer* buf,
+    Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr);
 static std::vector<std::string> gst_pylon_gst_to_pfnc(
-    const std::string &gst_format,
-    const std::vector<PixelFormatMappingType> &pixel_format_mapping);
+    const std::string& gst_format,
+    const std::vector<PixelFormatMappingType>& pixel_format_mapping);
 static std::vector<std::string> gst_pylon_pfnc_to_gst(
-    const std::string &genapi_format,
-    const std::vector<PixelFormatMappingType> &pixel_format_mapping);
+    const std::string& genapi_format,
+    const std::vector<PixelFormatMappingType>& pixel_format_mapping);
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
-    const GenApi::StringList_t &genapi_formats,
-    const std::vector<PixelFormatMappingType> &pixel_format_mapping);
+    const GenApi::StringList_t& genapi_formats,
+    const std::vector<PixelFormatMappingType>& pixel_format_mapping);
 static void gst_pylon_append_properties(
-    Pylon::CBaslerUniversalInstantCamera *camera,
-    const std::string &device_full_name, const std::string &device_type_str,
-    GstPylonCache &feature_cache, GenApi::INodeMap &nodemap,
-    gchar **device_properties, guint alignment);
+    Pylon::CBaslerUniversalInstantCamera* camera,
+    const std::string& device_full_name, const std::string& device_type_str,
+    GstPylonCache& feature_cache, GenApi::INodeMap& nodemap,
+    gchar** device_properties, guint alignment);
 static void gst_pylon_append_camera_properties(
-    Pylon::CBaslerUniversalInstantCamera *camera, gchar **camera_properties,
+    Pylon::CBaslerUniversalInstantCamera* camera, gchar** camera_properties,
     guint alignment);
 static void gst_pylon_append_stream_grabber_properties(
-    Pylon::CBaslerUniversalInstantCamera *camera, gchar **sgrabber_properties,
+    Pylon::CBaslerUniversalInstantCamera* camera, gchar** sgrabber_properties,
     guint alignment);
-typedef void (*GetStringProperties)(Pylon::CBaslerUniversalInstantCamera *,
-                                    gchar **, guint);
-static gchar *gst_pylon_get_string_properties(
+typedef void (*GetStringProperties)(Pylon::CBaslerUniversalInstantCamera*,
+                                    gchar**, guint);
+static gchar* gst_pylon_get_string_properties(
     GetStringProperties get_device_string_properties);
 
 static constexpr gint DEFAULT_ALIGNMENT = 35;
 
 struct _GstPylon {
-  GstElement *gstpylonsrc;
+  GstElement* gstpylonsrc;
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera =
       std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
-  GObject *gcamera;
-  GObject *gstream_grabber;
+  GObject* gcamera;
+  GObject* gstream_grabber;
   GstPylonImageHandler image_handler;
   GstPylonDisconnectHandler disconnect_handler;
 
@@ -144,24 +144,24 @@ struct _GstPylon {
 };
 
 using GrabResultPair = std::pair<std::shared_ptr<GstPylonBufferFactory>,
-                                 Pylon::CBaslerUniversalGrabResultPtr *>;
+                                 Pylon::CBaslerUniversalGrabResultPtr*>;
 
 static const std::vector<GstStPixelFormats> gst_structure_formats = {
     {"video/x-raw", pixel_format_mapping_raw},
     {"video/x-bayer", pixel_format_mapping_bayer}};
 
 static std::string gst_pylon_get_camera_fullname(
-    Pylon::CBaslerUniversalInstantCamera &camera) {
+    Pylon::CBaslerUniversalInstantCamera& camera) {
   return std::string(camera.GetDeviceInfo().GetFullName());
 }
 
 static std::string gst_pylon_get_sgrabber_name(
-    Pylon::CBaslerUniversalInstantCamera &camera) {
+    Pylon::CBaslerUniversalInstantCamera& camera) {
   return gst_pylon_get_camera_fullname(camera) + " StreamGrabber";
 }
 
 static std::string gst_pylon_query_default_set(
-    const Pylon::CBaslerUniversalInstantCamera &camera) {
+    const Pylon::CBaslerUniversalInstantCamera& camera) {
   std::string set;
 
   /* Return default for cameras that don't support wake up default sets e.g
@@ -178,7 +178,7 @@ static std::string gst_pylon_query_default_set(
   return set;
 }
 
-static void gst_pylon_apply_set(GstPylon *self, std::string &set) {
+static void gst_pylon_apply_set(GstPylon* self, std::string& set) {
   g_return_if_fail(self);
 
   /* If auto or nothing is set, return default config */
@@ -194,7 +194,7 @@ static void gst_pylon_apply_set(GstPylon *self, std::string &set) {
     std::string msg = "Invalid user set, has to be one of the following:\n";
     msg += "Auto\n";
 
-    for (const auto &value : values) {
+    for (const auto& value : values) {
       msg += std::string(value) + "\n";
     }
     throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
@@ -203,10 +203,10 @@ static void gst_pylon_apply_set(GstPylon *self, std::string &set) {
   self->camera->UserSetLoad.Execute();
 }
 
-GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
-                        const gchar *device_serial_number, gint device_index,
-                        gboolean enable_correction, GError **err) {
-  GstPylon *self = new GstPylon;
+GstPylon* gst_pylon_new(GstElement* gstpylonsrc, const gchar* device_user_name,
+                        const gchar* device_serial_number, gint device_index,
+                        gboolean enable_correction, GError** err) {
+  GstPylon* self = new GstPylon;
 
   self->gstpylonsrc = gstpylonsrc;
 
@@ -219,7 +219,7 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
       device_serial_number ? device_serial_number : "";
 
   try {
-    Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
+    Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
     Pylon::DeviceInfoList_t filter(1);
     Pylon::DeviceInfoList_t device_list;
     Pylon::CDeviceInfo device_info;
@@ -282,7 +282,7 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
       try {
         self->camera->Attach(factory.CreateDevice(device_info));
         break;
-      } catch (GenICam::GenericException &e) {
+      } catch (GenICam::GenericException& e) {
         GST_INFO_OBJECT(gstpylonsrc, "Failed to Open %s (%s)\n",
                         device_info.GetSerialNumber().c_str(),
                         e.GetDescription());
@@ -306,12 +306,12 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
       gst_pylon_apply_set(self, default_set);
     }
 
-    GenApi::INodeMap &cam_nodemap = self->camera->GetNodeMap();
+    GenApi::INodeMap& cam_nodemap = self->camera->GetNodeMap();
     self->gcamera = gst_pylon_object_new(
         self->camera, gst_pylon_get_camera_fullname(*self->camera),
         &cam_nodemap, enable_correction);
 
-    GenApi::INodeMap &sgrabber_nodemap =
+    GenApi::INodeMap& sgrabber_nodemap =
         self->camera->GetStreamGrabberNodeMap();
     self->gstream_grabber = gst_pylon_object_new(
         self->camera, gst_pylon_get_sgrabber_name(*self->camera),
@@ -333,7 +333,7 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
     self->gpu_id = PROP_GPU_ID_DEFAULT;
 #endif
 
-  } catch (const Pylon::GenericException &e) {
+  } catch (const Pylon::GenericException& e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
     delete self;
@@ -343,8 +343,8 @@ GstPylon *gst_pylon_new(GstElement *gstpylonsrc, const gchar *device_user_name,
   return self;
 }
 
-gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
-                                   GError **err) {
+gboolean gst_pylon_set_user_config(GstPylon* self, const gchar* user_set,
+                                   GError** err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
@@ -364,7 +364,7 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
 
     gst_pylon_apply_set(self, set);
 
-  } catch (const Pylon::GenericException &e) {
+  } catch (const Pylon::GenericException& e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
     return FALSE;
@@ -373,8 +373,8 @@ gboolean gst_pylon_set_user_config(GstPylon *self, const gchar *user_set,
   return TRUE;
 }
 
-gboolean gst_pylon_get_startup_geometry(GstPylon *self, gint *start_width,
-                                        gint *start_height) {
+gboolean gst_pylon_get_startup_geometry(GstPylon* self, gint* start_width,
+                                        gint* start_height) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(start_height, FALSE);
   g_return_val_if_fail(start_width, FALSE);
@@ -385,8 +385,8 @@ gboolean gst_pylon_get_startup_geometry(GstPylon *self, gint *start_width,
   return TRUE;
 }
 
-gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
-                                  GError **err) {
+gboolean gst_pylon_set_pfs_config(GstPylon* self, const gchar* pfs_location,
+                                  GError** err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(pfs_location, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
@@ -396,7 +396,7 @@ gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
   try {
     Pylon::CFeaturePersistence::Load(pfs_location, &self->camera->GetNodeMap(),
                                      check_nodemap_sanity);
-  } catch (const Pylon::GenericException &e) {
+  } catch (const Pylon::GenericException& e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                 "PFS file error: %s", e.GetDescription());
     return FALSE;
@@ -405,18 +405,51 @@ gboolean gst_pylon_set_pfs_config(GstPylon *self, const gchar *pfs_location,
   return TRUE;
 }
 
-void gst_pylon_free(GstPylon *self) {
+void gst_pylon_free(GstPylon* self) {
   g_return_if_fail(self);
 
-  self->camera->DeregisterImageEventHandler(&self->image_handler);
-  self->camera->DeregisterConfiguration(&self->disconnect_handler);
-  self->camera->Close();
-  g_object_unref(self->gcamera);
+  /* Drop any unconsumed grab result before tearing down the camera */
+  self->image_handler.InterruptWaitForImage();
+
+  try {
+    if (self->camera->IsGrabbing()) {
+      self->camera->StopGrabbing();
+    }
+  } catch (const Pylon::GenericException& e) {
+    GST_WARNING_OBJECT(self->gstpylonsrc, "StopGrabbing during free failed: %s",
+                       e.GetDescription());
+  }
+
+  try {
+    self->camera->DeregisterImageEventHandler(&self->image_handler);
+    self->camera->DeregisterConfiguration(&self->disconnect_handler);
+    if (self->camera->IsOpen()) {
+      self->camera->Close();
+    }
+    if (self->camera->IsPylonDeviceAttached()) {
+      self->camera->DestroyDevice();
+    }
+  } catch (const Pylon::GenericException& e) {
+    GST_WARNING_OBJECT(self->gstpylonsrc,
+                       "Camera teardown during free failed: %s",
+                       e.GetDescription());
+  }
+
+  /* Both GObjects hold shared_ptr refs to InstantCamera; leaking either
+   * keeps the camera (and its GenTL pipe FDs) alive across pipeline restarts */
+  if (self->gcamera) {
+    g_object_unref(self->gcamera);
+    self->gcamera = NULL;
+  }
+  if (self->gstream_grabber) {
+    g_object_unref(self->gstream_grabber);
+    self->gstream_grabber = NULL;
+  }
 
   delete self;
 }
 
-gboolean gst_pylon_start(GstPylon *self, GError **err) {
+gboolean gst_pylon_start(GstPylon* self, GError** err) {
   gboolean ret = TRUE;
 
   g_return_val_if_fail(self, FALSE);
@@ -425,7 +458,7 @@ gboolean gst_pylon_start(GstPylon *self, GError **err) {
   try {
     self->camera->StartGrabbing(Pylon::GrabStrategy_LatestImageOnly,
                                 Pylon::GrabLoop_ProvidedByInstantCamera);
-  } catch (const Pylon::GenericException &e) {
+  } catch (const Pylon::GenericException& e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
     ret = FALSE;
@@ -434,7 +467,7 @@ gboolean gst_pylon_start(GstPylon *self, GError **err) {
   return ret;
 }
 
-gboolean gst_pylon_stop(GstPylon *self, GError **err) {
+gboolean gst_pylon_stop(GstPylon* self, GError** err) {
   gboolean ret = TRUE;
 
   g_return_val_if_fail(self, FALSE);
@@ -442,7 +475,7 @@ gboolean gst_pylon_stop(GstPylon *self, GError **err) {
 
   try {
     self->camera->StopGrabbing();
-  } catch (const Pylon::GenericException &e) {
+  } catch (const Pylon::GenericException& e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
     ret = FALSE;
@@ -451,7 +484,7 @@ gboolean gst_pylon_stop(GstPylon *self, GError **err) {
   return ret;
 }
 
-void gst_pylon_interrupt_capture(GstPylon *self) {
+void gst_pylon_interrupt_capture(GstPylon* self) {
   g_return_if_fail(self);
   self->image_handler.InterruptWaitForImage();
 }
@@ -462,8 +495,8 @@ void gst_pylon_clear_capture_interrupt(GstPylon* self) {
 }
 
 static void gst_pylon_add_result_meta(
-    GstPylon *self, GstBuffer *buf,
-    Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr) {
+    GstPylon* self, GstBuffer* buf,
+    Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr) {
   g_return_if_fail(self);
   g_return_if_fail(buf);
 
@@ -473,17 +506,17 @@ static void gst_pylon_add_result_meta(
 static void free_ptr_grab_result(gpointer data) {
   g_return_if_fail(data);
 
-  auto wrapped_data = static_cast<GrabResultPair *>(data);
+  auto wrapped_data = static_cast<GrabResultPair*>(data);
 
-  Pylon::CBaslerUniversalGrabResultPtr *ptr_grab_result = wrapped_data->second;
+  Pylon::CBaslerUniversalGrabResultPtr* ptr_grab_result = wrapped_data->second;
   delete ptr_grab_result;
 
   delete wrapped_data;
 }
 
-gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
+gboolean gst_pylon_capture(GstPylon* self, GstBuffer** buf,
                            GstPylonCaptureErrorEnum capture_error,
-                           GError **err) {
+                           GError** err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(buf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
@@ -492,7 +525,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
   bool buffer_error = false;
   gint retry_frame_counter = 0;
   static const gint max_frames_to_skip = 100;
-  Pylon::CBaslerUniversalGrabResultPtr *grab_result_ptr = NULL;
+  Pylon::CBaslerUniversalGrabResultPtr* grab_result_ptr = NULL;
 
   while (retry_grab) {
     Pylon::CBaslerUniversalGrabResultPtr* waited = NULL;
@@ -559,8 +592,8 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
 
 #ifdef NVMM_ENABLED
   if (MEM_NVMM == self->mem_type) {
-    NvBufSurface *surf = reinterpret_cast<NvBufSurface *>(
-        (*grab_result_ptr)->GetBufferContext());
+    NvBufSurface* surf =
+        reinterpret_cast<NvBufSurface*>((*grab_result_ptr)->GetBufferContext());
 
     size_t src_stride;
     (*grab_result_ptr)->GetStride(src_stride);
@@ -580,6 +613,7 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
     if (cuda_err != cudaSuccess) {
       g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                   "Error copying memory to device");
+      delete grab_result_ptr;
       return FALSE;
     }
 
@@ -605,10 +639,10 @@ gboolean gst_pylon_capture(GstPylon *self, GstBuffer **buf,
 }
 
 static std::vector<std::string> gst_pylon_gst_to_pfnc(
-    const std::string &gst_format,
-    const std::vector<PixelFormatMappingType> &pixel_format_mapping) {
+    const std::string& gst_format,
+    const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
   std::vector<std::string> out_formats;
-  for (auto &entry : pixel_format_mapping) {
+  for (auto& entry : pixel_format_mapping) {
     if (entry.gst_name == gst_format) {
       out_formats.push_back(entry.pfnc_name);
     }
@@ -617,10 +651,10 @@ static std::vector<std::string> gst_pylon_gst_to_pfnc(
 }
 
 static std::vector<std::string> gst_pylon_pfnc_to_gst(
-    const std::string &genapi_format,
-    const std::vector<PixelFormatMappingType> &pixel_format_mapping) {
+    const std::string& genapi_format,
+    const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
   std::vector<std::string> out_formats;
-  for (auto &entry : pixel_format_mapping) {
+  for (auto& entry : pixel_format_mapping) {
     if (entry.pfnc_name == genapi_format) {
       out_formats.push_back(entry.gst_name);
     }
@@ -629,11 +663,11 @@ static std::vector<std::string> gst_pylon_pfnc_to_gst(
 }
 
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
-    const GenApi::StringList_t &genapi_formats,
-    const std::vector<PixelFormatMappingType> &pixel_format_mapping) {
+    const GenApi::StringList_t& genapi_formats,
+    const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
   std::vector<std::string> formats_list;
 
-  for (const auto &genapi_fmt : genapi_formats) {
+  for (const auto& genapi_fmt : genapi_formats) {
     std::vector<std::string> gst_fmts =
         gst_pylon_pfnc_to_gst(std::string(genapi_fmt), pixel_format_mapping);
 
@@ -644,15 +678,15 @@ static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
   return formats_list;
 }
 
-typedef void (*GstPylonQuery)(GstPylon *, GValue *);
+typedef void (*GstPylonQuery)(GstPylon*, GValue*);
 
 static void gst_pylon_query_format(
-    GstPylon *self, GValue *outvalue,
-    const std::vector<PixelFormatMappingType> &pixel_format_mapping) {
+    GstPylon* self, GValue* outvalue,
+    const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
   g_return_if_fail(self);
   g_return_if_fail(outvalue);
 
-  GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
+  GenApi::INodeMap& nodemap = self->camera->GetNodeMap();
   Pylon::CEnumParameter pixelformat(nodemap, "PixelFormat");
 
   GenApi::StringList_t genapi_formats;
@@ -668,7 +702,7 @@ static void gst_pylon_query_format(
   GValue value = G_VALUE_INIT;
   g_value_init(&value, G_TYPE_STRING);
 
-  for (const auto &fmt : gst_formats) {
+  for (const auto& fmt : gst_formats) {
     g_value_set_string(&value, fmt.c_str());
     gst_value_list_append_value(outvalue, &value);
   }
@@ -676,12 +710,12 @@ static void gst_pylon_query_format(
   g_value_unset(&value);
 }
 
-static void gst_pylon_query_integer(GstPylon *self, GValue *outvalue,
-                                    const std::string &name) {
+static void gst_pylon_query_integer(GstPylon* self, GValue* outvalue,
+                                    const std::string& name) {
   g_return_if_fail(self);
   g_return_if_fail(outvalue);
 
-  GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
+  GenApi::INodeMap& nodemap = self->camera->GetNodeMap();
   Pylon::CIntegerParameter param(nodemap, name.c_str());
 
   gint min = param.GetMin();
@@ -691,21 +725,21 @@ static void gst_pylon_query_integer(GstPylon *self, GValue *outvalue,
   gst_value_set_int_range(outvalue, min, max);
 }
 
-static void gst_pylon_query_width(GstPylon *self, GValue *outvalue) {
+static void gst_pylon_query_width(GstPylon* self, GValue* outvalue) {
   g_return_if_fail(self);
   g_return_if_fail(outvalue);
 
   gst_pylon_query_integer(self, outvalue, "Width");
 }
 
-static void gst_pylon_query_height(GstPylon *self, GValue *outvalue) {
+static void gst_pylon_query_height(GstPylon* self, GValue* outvalue) {
   g_return_if_fail(self);
   g_return_if_fail(outvalue);
 
   gst_pylon_query_integer(self, outvalue, "Height");
 }
 
-static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
+static void gst_pylon_query_framerate(GstPylon* self, GValue* outvalue) {
   g_return_if_fail(self);
   g_return_if_fail(outvalue);
 
@@ -713,7 +747,7 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
   gdouble max_fps = 1;
   Pylon::CFloatParameter framerate;
 
-  GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
+  GenApi::INodeMap& nodemap = self->camera->GetNodeMap();
 
   if (self->camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
     framerate.Attach(nodemap, "AcquisitionFrameRate");
@@ -747,8 +781,8 @@ static void gst_pylon_query_framerate(GstPylon *self, GValue *outvalue) {
 }
 
 static void gst_pylon_query_caps(
-    GstPylon *self, GstStructure *st,
-    const std::vector<PixelFormatMappingType> &pixel_format_mapping) {
+    GstPylon* self, GstStructure* st,
+    const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
   g_return_if_fail(self);
   g_return_if_fail(st);
 
@@ -773,9 +807,9 @@ static void gst_pylon_query_caps(
   gst_structure_set_value(st, "format", &value);
   g_value_unset(&value);
 
-  for (const auto &query : queries) {
+  for (const auto& query : queries) {
     GstPylonQuery func = query.first;
-    const gchar *name = query.second.c_str();
+    const gchar* name = query.second.c_str();
 
     func(self, &value);
     gst_structure_set_value(st, name, &value);
@@ -787,15 +821,15 @@ static void gst_pylon_query_caps(
   self->camera->OffsetY.TrySetValue(orig_offset_y);
 }
 
-GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
+GstCaps* gst_pylon_query_configuration(GstPylon* self, GError** err) {
   g_return_val_if_fail(self, NULL);
   g_return_val_if_fail(err && *err == NULL, NULL);
 
   /* Build gst caps */
-  GstCaps *caps = gst_caps_new_empty();
+  GstCaps* caps = gst_caps_new_empty();
 
-  for (const auto &gst_structure_format : gst_structure_formats) {
-    GstStructure *st =
+  for (const auto& gst_structure_format : gst_structure_formats) {
+    GstStructure* st =
         gst_structure_new_empty(gst_structure_format.st_name.c_str());
     try {
       gst_pylon_query_caps(self, st, gst_structure_format.format_map);
@@ -809,7 +843,7 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
           gst_caps_features_new("memory:NVMM", NULL));
 #endif
 
-    } catch (const Pylon::GenericException &e) {
+    } catch (const Pylon::GenericException& e) {
       gst_structure_free(st);
       gst_caps_unref(caps);
 
@@ -822,15 +856,15 @@ GstCaps *gst_pylon_query_configuration(GstPylon *self, GError **err) {
   return caps;
 }
 
-gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
-                                     GError **err) {
+gboolean gst_pylon_set_configuration(GstPylon* self, const GstCaps* conf,
+                                     GError** err) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(conf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
-  GstStructure *st = gst_caps_get_structure(conf, 0);
+  GstStructure* st = gst_caps_get_structure(conf, 0);
 
-  GenApi::INodeMap &nodemap = self->camera->GetNodeMap();
+  GenApi::INodeMap& nodemap = self->camera->GetNodeMap();
   Pylon::CEnumParameter pixelformat(nodemap, "PixelFormat");
 
   try {
@@ -862,12 +896,12 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
     }
 
     bool fmt_valid = false;
-    for (const auto &gst_structure_format : gst_structure_formats) {
+    for (const auto& gst_structure_format : gst_structure_formats) {
       const std::vector<std::string> pfnc_formats =
           gst_pylon_gst_to_pfnc(gst_format, gst_structure_format.format_map);
 
       /* In case of ambiguous format mapping choose first */
-      for (auto &fmt : pfnc_formats) {
+      for (auto& fmt : pfnc_formats) {
         fmt_valid = pixelformat.TrySetValue(fmt.c_str());
         if (fmt_valid) break;
       }
@@ -892,12 +926,12 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
      * -> offset will be adjusted to keep dimensions
      */
 
-    GstPylonObjectPrivate *cam_properties =
-        (GstPylonObjectPrivate *)gst_pylon_object_get_instance_private(
-            reinterpret_cast<GstPylonObject *>(self->gcamera));
+    GstPylonObjectPrivate* cam_properties =
+        (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(
+            reinterpret_cast<GstPylonObject*>(self->gcamera));
 
-    auto &offsetx_cache = cam_properties->dimension_cache.offsetx;
-    auto &offsety_cache = cam_properties->dimension_cache.offsety;
+    auto& offsetx_cache = cam_properties->dimension_cache.offsetx;
+    auto& offsety_cache = cam_properties->dimension_cache.offsety;
     auto enable_correction = cam_properties->enable_correction;
 
     bool value_corrected = false;
@@ -908,7 +942,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
           offsetx.SetValue(
               offsetx_cache,
               Pylon::EIntegerValueCorrection::IntegerValueCorrection_None);
-        } catch (GenICam::OutOfRangeException &) {
+        } catch (GenICam::OutOfRangeException&) {
           offsetx.SetValue(
               offsetx_cache,
               Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);
@@ -931,7 +965,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
           offsety.SetValue(
               offsety_cache,
               Pylon::EIntegerValueCorrection::IntegerValueCorrection_None);
-        } catch (GenICam::OutOfRangeException &) {
+        } catch (GenICam::OutOfRangeException&) {
           offsety.SetValue(
               offsety_cache,
               Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);
@@ -962,7 +996,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
       framerate.TrySetValue(div, Pylon::FloatValueCorrection_None);
       GST_INFO("Set Feature AcquisitionFrameRateAbs: %f", div);
     }
-  } catch (const Pylon::GenericException &e) {
+  } catch (const Pylon::GenericException& e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
     return FALSE;
@@ -973,7 +1007,7 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
   self->camera->MaxNumBuffer.TrySetValue(maxnumbuffers);
 
 #ifdef NVMM_ENABLED
-  GstCapsFeatures *features = gst_caps_get_features(conf, 0);
+  GstCapsFeatures* features = gst_caps_get_features(conf, 0);
   if (gst_caps_features_contains(features, "memory:NVMM")) {
     self->buffer_factory = std::make_shared<GstPylonDsNvmmBufferFactory>(
         self->nvsurface_layout, self->gpu_id);
@@ -995,22 +1029,22 @@ gboolean gst_pylon_set_configuration(GstPylon *self, const GstCaps *conf,
 }
 
 static void gst_pylon_append_properties(
-    Pylon::CBaslerUniversalInstantCamera *camera,
-    const std::string &device_full_name, const std::string &device_type_str,
-    GstPylonCache &feature_cache, GenApi::INodeMap &nodemap,
-    gchar **device_properties, guint alignment) {
+    Pylon::CBaslerUniversalInstantCamera* camera,
+    const std::string& device_full_name, const std::string& device_type_str,
+    GstPylonCache& feature_cache, GenApi::INodeMap& nodemap,
+    gchar** device_properties, guint alignment) {
   g_return_if_fail(camera);
   g_return_if_fail(device_properties);
 
   GType device_type =
       gst_pylon_object_register(device_full_name, feature_cache, nodemap);
-  GObject *device_obj = G_OBJECT(g_object_new(device_type, NULL));
+  GObject* device_obj = G_OBJECT(g_object_new(device_type, NULL));
 
-  gchar *device_name = g_strdup_printf(
+  gchar* device_name = g_strdup_printf(
       "%*s %s:\n", alignment, camera->GetDeviceInfo().GetFriendlyName().c_str(),
       device_type_str.c_str());
 
-  gchar *properties = gst_child_inspector_properties_to_string(
+  gchar* properties = gst_child_inspector_properties_to_string(
       device_obj, alignment, device_name);
 
   if (NULL == *device_properties) {
@@ -1027,12 +1061,12 @@ static void gst_pylon_append_properties(
 }
 
 static void gst_pylon_append_camera_properties(
-    Pylon::CBaslerUniversalInstantCamera *camera, gchar **camera_properties,
+    Pylon::CBaslerUniversalInstantCamera* camera, gchar** camera_properties,
     guint alignment) {
   g_return_if_fail(camera);
   g_return_if_fail(camera_properties);
 
-  GenApi::INodeMap &nodemap = camera->GetNodeMap();
+  GenApi::INodeMap& nodemap = camera->GetNodeMap();
   std::string camera_name = gst_pylon_get_camera_fullname(*camera);
   std::string device_type = "Camera";
   std::string cache_filename =
@@ -1046,12 +1080,12 @@ static void gst_pylon_append_camera_properties(
 }
 
 static void gst_pylon_append_stream_grabber_properties(
-    Pylon::CBaslerUniversalInstantCamera *camera, gchar **sgrabber_properties,
+    Pylon::CBaslerUniversalInstantCamera* camera, gchar** sgrabber_properties,
     guint alignment) {
   g_return_if_fail(camera);
   g_return_if_fail(sgrabber_properties);
 
-  GenApi::INodeMap &nodemap = camera->GetStreamGrabberNodeMap();
+  GenApi::INodeMap& nodemap = camera->GetStreamGrabberNodeMap();
   std::string sgrabber_name = gst_pylon_get_sgrabber_name(*camera);
   std::string device_type = "Stream Grabber";
   std::string cache_filename =
@@ -1064,16 +1098,16 @@ static void gst_pylon_append_stream_grabber_properties(
                               nodemap, sgrabber_properties, alignment);
 }
 
-static gchar *gst_pylon_get_string_properties(
+static gchar* gst_pylon_get_string_properties(
     GetStringProperties get_device_string_properties) {
-  gchar *camera_properties = NULL;
+  gchar* camera_properties = NULL;
 
-  Pylon::CTlFactory &factory = Pylon::CTlFactory::GetInstance();
+  Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
   Pylon::DeviceInfoList_t device_list;
 
   factory.EnumerateDevices(device_list);
 
-  for (const auto &device : device_list) {
+  for (const auto& device : device_list) {
     try {
       Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
                                                   Pylon::Cleanup_Delete);
@@ -1096,7 +1130,7 @@ static gchar *gst_pylon_get_string_properties(
       get_device_string_properties(&camera, &camera_properties,
                                    DEFAULT_ALIGNMENT);
       camera.Close();
-    } catch (const Pylon::GenericException &) {
+    } catch (const Pylon::GenericException&) {
       continue;
     }
   }
@@ -1104,30 +1138,30 @@ static gchar *gst_pylon_get_string_properties(
   return camera_properties;
 }
 
-gchar *gst_pylon_camera_get_string_properties() {
+gchar* gst_pylon_camera_get_string_properties() {
   return gst_pylon_get_string_properties(gst_pylon_append_camera_properties);
 }
 
-gchar *gst_pylon_stream_grabber_get_string_properties() {
+gchar* gst_pylon_stream_grabber_get_string_properties() {
   return gst_pylon_get_string_properties(
       gst_pylon_append_stream_grabber_properties);
 }
 
-GObject *gst_pylon_get_camera(GstPylon *self) {
+GObject* gst_pylon_get_camera(GstPylon* self) {
   g_return_val_if_fail(self, NULL);
 
   return G_OBJECT(g_object_ref(self->gcamera));
 }
 
-GObject *gst_pylon_get_stream_grabber(GstPylon *self) {
+GObject* gst_pylon_get_stream_grabber(GstPylon* self) {
   g_return_val_if_fail(self, NULL);
 
   return G_OBJECT(g_object_ref(self->gstream_grabber));
 }
 
-gboolean gst_pylon_is_same_device(GstPylon *self, const gint device_index,
-                                  const gchar *device_user_name,
-                                  const gchar *device_serial_number) {
+gboolean gst_pylon_is_same_device(GstPylon* self, const gint device_index,
+                                  const gchar* device_user_name,
+                                  const gchar* device_serial_number) {
   g_return_val_if_fail(self, FALSE);
 
   std::string user_name = device_user_name ? device_user_name : "";
@@ -1140,25 +1174,25 @@ gboolean gst_pylon_is_same_device(GstPylon *self, const gint device_index,
 
 #ifdef NVMM_ENABLED
 void gst_pylon_set_nvsurface_layout(
-    GstPylon *self, const GstPylonNvsurfaceLayoutEnum nvsurface_layout) {
+    GstPylon* self, const GstPylonNvsurfaceLayoutEnum nvsurface_layout) {
   g_return_if_fail(self);
 
   self->nvsurface_layout = nvsurface_layout;
 }
 
-GstPylonNvsurfaceLayoutEnum gst_pylon_get_nvsurface_layout(GstPylon *self) {
+GstPylonNvsurfaceLayoutEnum gst_pylon_get_nvsurface_layout(GstPylon* self) {
   g_return_val_if_fail(self, PROP_NVSURFACE_LAYOUT_DEFAULT);
 
   return self->nvsurface_layout;
 }
 
-void gst_pylon_set_gpu_id(GstPylon *self, const gint gpu_id) {
+void gst_pylon_set_gpu_id(GstPylon* self, const gint gpu_id) {
   g_return_if_fail(self);
 
   self->gpu_id = gpu_id;
 }
 
-guint gst_pylon_get_gpu_id(GstPylon *self) {
+guint gst_pylon_get_gpu_id(GstPylon* self) {
   g_return_val_if_fail(self, PROP_GPU_ID_DEFAULT);
 
   return self->gpu_id;

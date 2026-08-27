@@ -20,6 +20,13 @@ While running, send the pipeline to PAUSED then PLAYING (e.g. via
 `gst-launch` interactive mode or a short C app). The stream must resume
 without EOS.
 
+## Pipeline restart resource cleanup
+
+Loop `NULL → PLAYING → NULL` on `pylonsrc ! fakesink` (e.g. 50 cycles) while
+watching `/proc/<pid>/fd` for `pipe:[...]` growth and RSS / heaptrack for
+frame-sized leaks. Pipe FD count and retained grab-result buffers must not
+grow linearly with the number of cycles.
+
 ## Property order (cam:: before userset/pfs)
 
 ```bash

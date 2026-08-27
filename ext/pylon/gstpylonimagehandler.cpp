@@ -35,6 +35,15 @@
 GstPylonImageHandler::GstPylonImageHandler()
     : ptr_grab_result(NULL), state(State::Idle) {}
 
+GstPylonImageHandler::~GstPylonImageHandler() {
+  std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
+  if (this->ptr_grab_result) {
+    delete this->ptr_grab_result;
+    this->ptr_grab_result = NULL;
+  }
+  this->state = State::Idle;
+}
+
 void GstPylonImageHandler::OnImageGrabbed(
     Pylon::CBaslerUniversalInstantCamera& camera,
     const Pylon::CBaslerUniversalGrabResultPtr& grab_result) {

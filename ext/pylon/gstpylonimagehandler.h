@@ -50,6 +50,7 @@ enum class GstPylonImageHandlerResult {
 class GstPylonImageHandler : public Pylon::CBaslerUniversalImageEventHandler {
  public:
   GstPylonImageHandler();
+  ~GstPylonImageHandler() override;
   void OnImageGrabbed(
       Pylon::CBaslerUniversalInstantCamera& camera,
       const Pylon::CBaslerUniversalGrabResultPtr& grab_result) override;

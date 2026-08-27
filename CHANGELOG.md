@@ -1,6 +1,17 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- Release pending grab results on flush/disconnect and distinguish unlock from
+  disconnect in the image handler (frame buffer leak on pipeline stop)
+- Unref the stream-grabber GObject and destroy the InstantCamera device on
+  free so GenTL pipe FDs are not leaked across NULL→PLAYING→NULL restarts
+- Free `GstPylon` before `PylonTerminate` on start failures; free `pfs-location`
+  in finalize; free grab results on NVMM CUDA copy failure
+- Unlock maps to `GST_FLOW_FLUSHING` (with `unlock_stop` / ClearInterrupt) instead of EOS
+
 ## [1.0.0] - 2024-08-14
 ## Added
 - added script to generate release notes
