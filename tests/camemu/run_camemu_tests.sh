@@ -186,11 +186,11 @@ if command -v python3 >/dev/null 2>&1; then
       python3 "$SCRIPT_DIR/appsink_buffer_count.py" \
         --serial "$EMU_SERIAL_0" --buffers 12
 
-    # Restart cycles: pipe FD growth must stay bounded; abrupt stop exercises
-    # the grab-thread / unlock race that previously leaked grab results.
+    # Restart cycles with 4096x4096 RGB (~50 MiB/frame): pipe FD growth and
+    # RSS must stay bounded; abrupt stop leaves a pending grab in the handler.
     expect_ok "restart_resource_cleanup" \
       python3 "$SCRIPT_DIR/restart_resource_leak.py" \
-        --serial "$EMU_SERIAL_0" --cycles 20 --max-pipe-growth 8
+        --serial "$EMU_SERIAL_0" --cycles 10 --max-pipe-growth 8
   else
     run_skip "appsink_buffer_count (PyGObject not available)"
     run_skip "restart_resource_cleanup (PyGObject not available)"

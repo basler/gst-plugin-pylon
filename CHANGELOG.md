@@ -13,8 +13,8 @@ All notable changes to this project will be documented in this file.
 - Unlock maps to `GST_FLOW_FLUSHING` (with `unlock_stop` / ClearInterrupt) instead of EOS
 
 ### Added
-- Camemu test `restart_resource_leak.py` checks pipe FD growth across EOS and
-  abrupt-stop pipeline restart cycles
+- Camemu test `restart_resource_leak.py` uses 4096×4096 RGB frames and checks
+  pipe FD + RSS growth across EOS and abrupt-stop pipeline restart cycles
 
 ## [1.0.0] - 2024-08-14
 ## Added

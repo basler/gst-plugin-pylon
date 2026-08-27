@@ -16,6 +16,6 @@ test(
     'PYLON_CAMEMU': '3',
     'PYLON_ROOT': '/opt/pylon',
   },
-  timeout: 300,
+  timeout: 600,
   workdir: source_root,
 )

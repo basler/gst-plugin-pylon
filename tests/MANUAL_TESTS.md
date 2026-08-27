@@ -29,13 +29,11 @@ PYLON_ROOT=/opt/pylon PYLON_CAMEMU=3 \
   python3 tests/camemu/restart_resource_leak.py --serial 0815-0000
 ```
 
-Or as part of the camemu suite (`restart_resource_cleanup`). The test loops
-`NULL → PLAYING → NULL` (clean EOS and abrupt stop-while-streaming) and fails
-if `pipe:[...]` FDs in `/proc/self/fd` grow beyond a small budget.
-
-On a physical camera, also watch RSS / heaptrack for frame-sized grab-result
-leaks under full load (camemu frames are small, so FD growth is the primary
-automated signal).
+Or as part of the camemu suite (`restart_resource_cleanup`). The test uses
+**4096×4096 RGB** (~50 MiB/frame) and loops `NULL → PLAYING → NULL` (clean EOS
+and abrupt stop with a pending grab). It fails if `pipe:[...]` FDs grow beyond
+a small budget or if VmRSS grows by more than half a frame after `malloc_trim`
+(a real grab-result leak is ~1 frame per abrupt-stop cycle).
 
 ## Property order (cam:: before userset/pfs)
 
