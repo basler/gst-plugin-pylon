@@ -9,10 +9,13 @@ fs = import('fs')
 
 pylon_include_ok = pylon_path != 'PYLON_ROOT_NOT_SET' and (
   fs.exists(pylon_path / 'include/pylon') or
-  fs.exists(pylon_path / 'Development/include/pylon'))
+  fs.exists(pylon_path / 'Development/include/pylon') or
+  fs.exists(pylon_path / 'Library/Frameworks/pylon.framework/Headers') or
+  fs.exists(pylon_path / 'Frameworks/pylon.framework/Headers') or
+  fs.exists(pylon_path / 'Frameworks/pylon.framework/Versions/A/Headers'))
 
-if target_machine.system() == 'linux' and not pylon_include_ok
-  error('PYLON_ROOT has to be set to a pylon 26.x install that contains include/pylon (e.g. /opt/pylon)')
+if (target_machine.system() == 'linux' or target_machine.system() == 'darwin') and not pylon_include_ok
+  error('PYLON_ROOT has to be set to a pylon 26.x install (Linux: include/pylon, macOS: Frameworks/pylon.framework)')
 endif
 
 # Pylon Software Suite 26.x (C++ SDK 12.2+)
@@ -25,6 +28,14 @@ if pylon_path != 'PYLON_ROOT_NOT_SET'
   ]
   if target_machine.system() == 'windows'
     pylon_cmake_prefixes += [pylon_path / 'Development/CMake/pylon']
+  endif
+  if target_machine.system() == 'darwin'
+    pylon_cmake_prefixes += [
+      pylon_path / 'Library/Frameworks/pylon.framework/Resources',
+      pylon_path / 'Frameworks/pylon.framework/Resources',
+      pylon_path / 'Frameworks/pylon.framework/Versions/A/Resources',
+      pylon_path / 'Frameworks/pylon.framework',
+    ]
   endif
 endif
 

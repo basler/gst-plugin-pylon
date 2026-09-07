@@ -679,6 +679,76 @@ jobs:
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
 
+  build_macos:
+    needs: [setup, download_macos]
+    strategy:
+      matrix:
+        os: ${{ fromJson(needs.setup.outputs.macos_targets) }}
+        pylon_sdk: ${{ fromJson(needs.setup.outputs.macos_pylon_sdks) }}
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    name: Build pylon ${{ matrix.pylon_sdk }} on ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download pylon SDK
+        uses: actions/download-artifact@v7
+        with:
+          pattern: macOS_Pylon_SDK_${{ matrix.pylon_sdk }}
+          merge-multiple: true
+          path: pylon-sdk
+
+      - name: Unpack pylon SDK
+        run: |
+          tar -xzf pylon-sdk/pylon_sdk.tar.gz -C pylon-sdk
+          PYLON_ROOT="${{ github.workspace }}/pylon-sdk/pylon"
+          echo "PYLON_ROOT=$PYLON_ROOT" >> $GITHUB_ENV
+          echo "PYLON_ROOT contents:" && ls -la "$PYLON_ROOT" || true
+          find "$PYLON_ROOT" \( -name 'pylon.framework' -o -name '*Config*.cmake' \) | head -40 || true
+
+      - name: Install build tools
+        run: brew install meson ninja cmake pkgconf gstreamer
+
+      - name: compile
+        env:
+          PYLON_CAMEMU: "3"
+        run: |
+          export PYLON_ROOT="${PYLON_ROOT:-${{ github.workspace }}/pylon-sdk/pylon}"
+          for fw in "$PYLON_ROOT/Library/Frameworks" "$PYLON_ROOT/Frameworks"; do
+            if [[ -d "$fw" ]]; then
+              export DYLD_FRAMEWORK_PATH="$fw${DYLD_FRAMEWORK_PATH:+:$DYLD_FRAMEWORK_PATH}"
+            fi
+          done
+          export CMAKE_PREFIX_PATH="$PYLON_ROOT:$PYLON_ROOT/Frameworks/pylon.framework/Versions/A/Resources:$PYLON_ROOT/Frameworks/pylon.framework/Resources:${CMAKE_PREFIX_PATH:-}"
+          export PKG_CONFIG_PATH="$(brew --prefix)/lib/pkgconfig:$(brew --prefix gstreamer)/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+          meson setup builddir --prefix "$PWD/install"
+          ninja -C builddir
+          meson test -C builddir --print-errorlogs
+          ninja -C builddir install
+
+      - name: Print meson log
+        if: ${{ failure() }}
+        run: cat builddir/meson-logs/meson-log.txt
+
+      - name: smoke test
+        run: |
+          export PYLON_ROOT="${PYLON_ROOT:-${{ github.workspace }}/pylon-sdk/pylon}"
+          for fw in "$PYLON_ROOT/Library/Frameworks" "$PYLON_ROOT/Frameworks"; do
+            if [[ -d "$fw" ]]; then
+              export DYLD_FRAMEWORK_PATH="$fw${DYLD_FRAMEWORK_PATH:+:$DYLD_FRAMEWORK_PATH}"
+            fi
+          done
+          PLUGIN_SO="$(find "$PWD/install" -name 'libgstpylon.dylib' -o -name 'libgstpylon.so' | head -1)"
+          PLUGIN_DIR="$(dirname "$PLUGIN_SO")"
+          GSTLIB_DIR="$(dirname "$(find "$PWD/install" -name 'libgstpylon-1.0.dylib' | head -1)")"
+          export GST_PLUGIN_PATH="$PLUGIN_DIR"
+          export DYLD_LIBRARY_PATH="${GSTLIB_DIR}:${DYLD_LIBRARY_PATH:-}"
+          export PYLON_CAMEMU=1
+          export PATH="$(brew --prefix gstreamer)/bin:$PATH"
+          gst-inspect-1.0 pylonsrc
+          gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
+
   cleanup:
     if: always()
     needs: [
@@ -689,7 +759,8 @@ jobs:
             download_macos,
             build_linux_x86_64,
             build_linux_aarch64,
-            build_windows_x86_64
+            build_windows_x86_64,
+            build_macos
     ]
     runs-on: ubuntu-latest
     steps:

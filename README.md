@@ -359,7 +359,7 @@ The supported pylon versions on the different platforms are:
 | macOS           |   x   |
 
 
-CI builds pylon 26.06 on Ubuntu 24.04 (x86_64 and native arm64) and Windows. macOS SDK fetch is wired in CI; a full macOS compile job is not enabled yet.
+CI builds pylon 26.06 on Ubuntu 24.04 (x86_64 and native arm64), Windows, and macOS.
 
 Installing Basler pylon SDK will also install the Basler pylon viewer. You should use this tool to verify, that the cameras work properly in your system and to learn about the their features.
 
@@ -624,9 +624,18 @@ gst-inspect-1.0 pylonsrc
 ```
 
 ## macOS
-pylon Software Suite 26.06 supports macOS. Set `PYLON_ROOT` to the pylon install prefix, then use the same meson/ninja flow as on Linux.
+pylon Software Suite 26.06 supports macOS. Install GStreamer and the build tools with Homebrew, set `PYLON_ROOT` to the pylon prefix, then use meson/ninja:
 
-A dedicated GitHub Actions compile job for macOS is not enabled yet; SDK fetch for 26.06 is present in CI.
+```bash
+brew install meson ninja cmake pkgconf gstreamer
+export PYLON_ROOT=/Library/Frameworks   # or the extracted SDK tree
+export PKG_CONFIG_PATH="$(brew --prefix)/lib/pkgconfig:$(brew --prefix gstreamer)/lib/pkgconfig"
+meson setup builddir --prefix "$PWD/install"
+ninja -C builddir
+ninja -C builddir test
+```
+
+Camemu FD/RSS leak tests are Linux-only (`/proc`). CI compiles and smoke-tests `pylonsrc` on `macos-latest`.
 
 
 # Known issues
