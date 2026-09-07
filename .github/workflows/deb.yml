@@ -157,7 +157,9 @@ jobs:
           path: pylon_sdk.tar.gz
 
   build_deb:
-    runs-on: ubuntu-latest
+    # Native runners: compile CI already uses ubuntu-24.04-arm. Do not QEMU-emulate
+    # arm64 dpkg-buildpackage (camemu + meson tests are far too slow/flaky under qemu).
+    runs-on: ${{ matrix.runner }}
     needs: [setup, download_packaging]
     strategy:
       fail-fast: false
@@ -166,7 +168,12 @@ jobs:
           - ubuntu:24.04
           - ubuntu:22.04
           - debian:bookworm
-        arch: ["arm64", "amd64"]
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -184,11 +191,6 @@ jobs:
         with:
             name: Linux_aarch64_packaging_Pylon_SDK
             path: pylon-sdk
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-        with:
-          platforms: linux/amd64, linux/arm64
 
       - name: Set sanitized OS name
         id: sanitize_os
@@ -209,7 +211,7 @@ jobs:
              tools/register_pylon_from_tree.sh /pylon-sdk/pylon_sdk.tar.gz
              test -d /opt/pylon
              tools/patch_deb_changelog.sh
-          docker-image: ${{ matrix.arch == 'arm64' && format('arm64v8/{0}', matrix.os) || format('{0}', matrix.os) }}
+          docker-image: ${{ matrix.os }}
           extra-docker-args: >-
             -v ${{ github.workspace }}/pylon-sdk:/pylon-sdk
             -e PYLON_ROOT=/opt/pylon

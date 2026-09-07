@@ -26,6 +26,7 @@ All notable changes to this project will be documented in this file.
 - Camemu meson tests honor `PYLON_ROOT`; Debian CI registers a stub `pylon`
   package from the Conan SDK tree so `dpkg-buildpackage` can satisfy Depends
 - CI compiles on macOS (`macos-latest`) with Homebrew GStreamer
+- Debian arm64 package jobs run on native `ubuntu-24.04-arm` (no QEMU)
 - Camemu restart leak test is serialized, ignores Meson `MALLOC_PERTURB_`,
   and prints the script output on failure
 - Camemu meson tests run on every platform with bash; only the `/proc` FD/RSS
