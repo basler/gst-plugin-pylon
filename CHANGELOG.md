@@ -18,6 +18,12 @@ All notable changes to this project will be documented in this file.
 - CI installs `python3-gi` so camemu appsink / restart regression tests run
   under `ninja test` (not skipped for missing PyGObject)
 
+### Changed
+- CI targets pylon Software Suite 26.06 (C++ SDK >= 12.2) via Conan, GitHub
+  runners ubuntu-24.04 / ubuntu-24.04-arm / windows-latest, and GStreamer 1.26.9
+  on Windows (Linux uses distro GStreamer >= 1.20)
+- GitLab CI is disabled; GitHub Actions is the build source of truth
+
 ## [1.0.0] - 2024-08-14
 ## Added
 - added script to generate release notes

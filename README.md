@@ -344,22 +344,22 @@ For any other OS you have to currently [build](#building) the plugin yourself.
 
 # Building
 
-This plugin is build using the [meson](https://mesonbuild.com/) build system. The meson version has to be >= 0.61.
+This plugin is built using the [meson](https://mesonbuild.com/) build system. The meson version has to be >= 0.61. GStreamer 1.20 or newer is required.
 
 As a first step install Basler pylon according to your platform. Downloads are available at: [Basler software downloads](https://www.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware;language=all;version=all)
 
 The supported pylon versions on the different platforms are:
 
 
-|                 | 7.5  | 7.4  | 6.2  |
-|-----------------|:----:|:----:|:----:|
-| Windows x86_64  |  x   |   x  |      |
-| Linux x86_64    |  x   |   x  |      |
-| Linux aarch64   |  x   |   x  |   x  |
-| macOS x86_64    |  -   |   -  |   -  |
+|                 | 26.06 |
+|-----------------|:-----:|
+| Windows x86_64  |   x   |
+| Linux x86_64    |   x   |
+| Linux aarch64   |   x   |
+| macOS           |   x   |
 
 
-> macOS build not available for now due to current meson/cmake interaction issues
+CI builds pylon 26.06 on Ubuntu 24.04 (x86_64 and native arm64) and Windows. macOS SDK fetch is wired in CI; a full macOS compile job is not enabled yet.
 
 Installing Basler pylon SDK will also install the Basler pylon viewer. You should use this tool to verify, that the cameras work properly in your system and to learn about the their features.
 
@@ -372,10 +372,11 @@ Make sure the dependencies are properly installed. In Debian-based
 systems you can run the following commands:
 
 ```bash
-# Meson and ninja build system
-# Remove older meson and ninja from APT and install newer PIP version
-sudo apt remove meson ninja-build
-sudo -H python3 -m pip install meson ninja --upgrade
+# Meson and ninja build system (venv avoids Ubuntu 24.04 PEP 668 pip restrictions)
+sudo apt install python3 python3-venv python3-pip
+python3 -m venv build_python
+. build_python/bin/activate
+pip install meson ninja --upgrade
 
 # GStreamer
 sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake
@@ -558,7 +559,7 @@ GStreamer:
 
 Meson:
 * Install the meson build system from github releases https://github.com/mesonbuild/meson/releases
-* Use version meson-0.63.1-64.msi
+* Install a current meson from https://github.com/mesonbuild/meson/releases (1.x)
 
 Visual Studio:
 * Install Visual Studio (e.g. Community Edition) from Microsoft
@@ -573,9 +574,10 @@ set PKG_CONFIG_PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%lib\pkgconfig
 set PATH=%PATH%;%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin
 ```
 
-The build process relies on CMAKE_PREFIX_PATH pointing to Basler pylon cmake support files. This is normally set by the Basler pylon installer.
+The build process relies on `PYLON_ROOT` (and optionally `CMAKE_PREFIX_PATH`) pointing to Basler pylon cmake support files. This is normally set by the Basler pylon installer.
 ```bash
-set CMAKE_PREFIX_PATH=C:\Program Files\Basler\pylon 7\Development\CMake\pylon\
+set PYLON_ROOT=C:\Program Files\Basler\pylon
+set CMAKE_PREFIX_PATH=%PYLON_ROOT%\Development\CMake\pylon\
 ```
 
 
@@ -622,9 +624,9 @@ gst-inspect-1.0 pylonsrc
 ```
 
 ## macOS
-Installation on macOS is currently not supported due to conflicts between meson and underlying cmake in the configuration phase.
+pylon Software Suite 26.06 supports macOS. Set `PYLON_ROOT` to the pylon install prefix, then use the same meson/ninja flow as on Linux.
 
-This target will be integrated after a Basler pylon 7.x release for macOS
+A dedicated GitHub Actions compile job for macOS is not enabled yet; SDK fetch for 26.06 is present in CI.
 
 
 # Known issues

@@ -11,13 +11,14 @@ Build-Depends: debhelper-compat (= 13),
                python3-dev,
                python3-setuptools,
                python3-gi,
+               gir1.2-gstreamer-1.0,
                pybind11-dev,
-               libgstreamer1.0-dev,
+               libgstreamer1.0-dev (>= 1.20),
                libgstreamer-plugins-base1.0-dev,
                gstreamer1.0-tools,
                gstreamer1.0-plugins-base,
                pylon,
-               deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia>
+               deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia> | deepstream-7.1 <nvidia>
 Standards-Version: 4.6.2
 Homepage: https://github.com/basler/gst-plugin-pylon
 
@@ -27,7 +28,7 @@ Depends: ${shlibs:Depends},
          ${misc:Depends},
          pylon,
          gstreamer1.0-plugins-base,
-         deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia>
+         deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia> | deepstream-7.1 <nvidia>
 Description: GStreamer plugin for Basler cameras
  This plugin allows the use of any Basler 2D camera (supported by Basler pylon
  Camera Software Suite) as a source element in a GStreamer pipeline.
@@ -48,7 +49,7 @@ Depends: ${shlibs:Depends},
          ${python3:Depends},
          pylon,
          gst-plugin-pylon (= ${binary:Version}),
-         deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia>
+         deepstream-6.3 <nvidia> | deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia> | deepstream-7.1 <nvidia>
 Description: Python module to access pylon specific gstreamer metadata.
  The python module pygstpylon allows to extract pylon specific metadata
  from a buffer.
