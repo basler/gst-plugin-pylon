@@ -17,28 +17,56 @@ pass=0
 fail=0
 skip=0
 
-# Always include the Pylon runtime. Under fakeroot (dpkg-buildpackage) the
-# inherited LD_LIBRARY_PATH is only fakeroot paths, so DT_RUNPATH alone is not
-# enough for the plugin scanner child process on some distros.
-PYLON_LIB_DIR="${PYLON_ROOT}/lib"
-
-if [[ -d "$BUILD_PREFIX/lib64/gstreamer-1.0" ]] || [[ -d "$BUILD_PREFIX/lib/gstreamer-1.0" ]]; then
-  if [[ -d "$BUILD_PREFIX/lib64" ]]; then
-    LIB_DIR="$BUILD_PREFIX/lib64"
-  else
-    LIB_DIR="$BUILD_PREFIX/lib"
-  fi
-  GST_PLUGIN_PATH="$LIB_DIR/gstreamer-1.0"
-  LD_LIBRARY_PATH="$LIB_DIR:${PYLON_LIB_DIR}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-elif [[ -f "$BUILD_DIR/ext/pylon/libgstpylon.so" ]]; then
-  GST_PLUGIN_PATH="$BUILD_DIR/ext/pylon"
-  LD_LIBRARY_PATH="$BUILD_DIR/gst-libs/gst/pylon:${PYLON_LIB_DIR}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-else
+# Runtime search paths for the pylon SDK and libgstpylon.
+# Under fakeroot (dpkg-buildpackage) inherited LD_LIBRARY_PATH is only fakeroot
+# paths, so DT_RUNPATH alone is not enough for the plugin scanner child.
+plugin_file=""
+for dir in \
+    "$BUILD_PREFIX/lib64/gstreamer-1.0" \
+    "$BUILD_PREFIX/lib/gstreamer-1.0" \
+    "$BUILD_DIR/ext/pylon"
+do
+  for name in libgstpylon.so libgstpylon.dylib libgstpylon.dll gstpylon.dll; do
+    if [[ -f "$dir/$name" ]]; then
+      plugin_file="$dir/$name"
+      GST_PLUGIN_PATH="$dir"
+      break 2
+    fi
+  done
+done
+if [[ -z "$plugin_file" ]]; then
   echo "No pylonsrc plugin found. Build with: ninja -C build"
   exit 1
 fi
 
-export PYLON_ROOT PYLON_CAMEMU GST_PLUGIN_PATH LD_LIBRARY_PATH
+EXTRA_LIBS=()
+if [[ "$GST_PLUGIN_PATH" == *ext/pylon || "$GST_PLUGIN_PATH" == *ext\\pylon ]]; then
+  EXTRA_LIBS+=("$BUILD_DIR/gst-libs/gst/pylon")
+else
+  EXTRA_LIBS+=("$(dirname "$GST_PLUGIN_PATH")")
+fi
+if [[ -d "$PYLON_ROOT/lib" ]]; then
+  EXTRA_LIBS+=("$PYLON_ROOT/lib")
+fi
+if [[ -d "$PYLON_ROOT/Runtime/x64" ]]; then
+  PATH="$PYLON_ROOT/Runtime/x64:$PATH"
+fi
+DYLD_FRAMEWORK_PATH="${DYLD_FRAMEWORK_PATH:-}"
+for fw in "$PYLON_ROOT/Library/Frameworks" "$PYLON_ROOT/Frameworks"; do
+  if [[ -d "$fw" ]]; then
+    DYLD_FRAMEWORK_PATH="$fw${DYLD_FRAMEWORK_PATH:+:$DYLD_FRAMEWORK_PATH}"
+  fi
+done
+
+lib_join=""
+for p in "${EXTRA_LIBS[@]}"; do
+  lib_join="$p${lib_join:+:$lib_join}"
+done
+LD_LIBRARY_PATH="${lib_join}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+DYLD_LIBRARY_PATH="${lib_join}${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+
+export PYLON_ROOT PYLON_CAMEMU GST_PLUGIN_PATH PATH
+export LD_LIBRARY_PATH DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH
 export GST_DEBUG_NO_COLOR=1
 
 run_pass() {
@@ -113,8 +141,28 @@ expect_fail_output() {
   fi
 }
 
+# GNU timeout is Linux; macOS may have gtimeout from coreutils; do not invoke
+# Windows timeout.exe (different CLI, can block).
+TIMEOUT_CMD=""
+case "$(uname -s)" in
+  Linux*)
+    if command -v timeout >/dev/null 2>&1; then
+      TIMEOUT_CMD=timeout
+    fi
+    ;;
+  Darwin*)
+    if command -v gtimeout >/dev/null 2>&1; then
+      TIMEOUT_CMD=gtimeout
+    fi
+    ;;
+esac
+
 gst_pipeline() {
-  timeout 90 gst-launch-1.0 -q "$@" 2>&1
+  if [[ -n "$TIMEOUT_CMD" ]]; then
+    "$TIMEOUT_CMD" 90 gst-launch-1.0 -q "$@" 2>&1
+  else
+    gst-launch-1.0 -q "$@" 2>&1
+  fi
 }
 
 echo "camemu functional tests (PYLON_CAMEMU=$PYLON_CAMEMU, PYLON_ROOT=$PYLON_ROOT)"
@@ -145,9 +193,15 @@ expect_fail "ambiguous_devices_without_selection" \
 expect_fail_output "ambiguous_devices_lists_emulators" "$EMU_SERIAL_0" \
   gst_pipeline pylonsrc num-buffers=1 ! fakesink
 
-expect_fail_output "wrong_serial_fails_quickly" "No devices found matching" \
-  timeout 5 gst-launch-1.0 -q pylonsrc device-serial-number=NOSUCHSERIAL999 \
-    num-buffers=1 ! fakesink
+if [[ -n "$TIMEOUT_CMD" ]]; then
+  expect_fail_output "wrong_serial_fails_quickly" "No devices found matching" \
+    "$TIMEOUT_CMD" 5 gst-launch-1.0 -q pylonsrc device-serial-number=NOSUCHSERIAL999 \
+      num-buffers=1 ! fakesink
+else
+  expect_fail_output "wrong_serial_fails_quickly" "No devices found matching" \
+    gst-launch-1.0 -q pylonsrc device-serial-number=NOSUCHSERIAL999 \
+      num-buffers=1 ! fakesink
+fi
 
 expect_ok "capture_gray8_fixed_caps" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=8 \
@@ -199,16 +253,22 @@ if command -v python3 >/dev/null 2>&1 || [[ -x /usr/bin/python3 ]]; then
       "$PYTHON_GI" "$SCRIPT_DIR/appsink_buffer_count.py" \
         --serial "$EMU_SERIAL_0" --buffers 12
 
-    # Restart cycles with 4096x4096 RGB (~50 MiB/frame): pipe FD growth and
-    # RSS must stay bounded; abrupt stop leaves a pending grab in the handler.
-    # RSS threshold is in frames (~50 MiB at 4096² RGB). Meson sets
-    # MALLOC_PERTURB_ which inflates RSS; CI also runs other tests in
-    # parallel unless camemu is marked is_parallel=false. Allow a few
-    # cached pool pages (real grab-result leaks are ~1 frame/cycle).
-    expect_ok "restart_resource_cleanup" \
-      "$PYTHON_GI" "$SCRIPT_DIR/restart_resource_leak.py" \
-        --serial "$EMU_SERIAL_0" --cycles 10 --max-pipe-growth 8 \
-        --max-rss-frames 3 --settle-ms 400
+    # Pipe FD / VmRSS sampling uses /proc (Linux). Camemu itself is
+    # cross-platform; skip only this check elsewhere.
+    if [[ -d /proc/self/fd ]]; then
+      # Restart cycles with 4096x4096 RGB (~50 MiB/frame): pipe FD growth and
+      # RSS must stay bounded; abrupt stop leaves a pending grab in the handler.
+      # RSS threshold is in frames (~50 MiB at 4096² RGB). Meson sets
+      # MALLOC_PERTURB_ which inflates RSS; CI also runs other tests in
+      # parallel unless camemu is marked is_parallel=false. Allow a few
+      # cached pool pages (real grab-result leaks are ~1 frame/cycle).
+      expect_ok "restart_resource_cleanup" \
+        "$PYTHON_GI" "$SCRIPT_DIR/restart_resource_leak.py" \
+          --serial "$EMU_SERIAL_0" --cycles 10 --max-pipe-growth 8 \
+          --max-rss-frames 3 --settle-ms 400
+    else
+      run_skip "restart_resource_cleanup (/proc FD and VmRSS sampling is Linux-only)"
+    fi
   else
     run_skip "appsink_buffer_count (PyGObject not available)"
     run_skip "restart_resource_cleanup (PyGObject not available)"

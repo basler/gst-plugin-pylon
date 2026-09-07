@@ -36,6 +36,6 @@ PYLON_ROOT=/opt/pylon PYLON_CAMEMU=3 ./tests/camemu/run_camemu_tests.sh
 | Property order | `cam::` before `user-set`/`pfs-location` still applies final config |
 | Pipeline | queue, videoconvert, sequential open/close |
 | Buffers | PyGObject appsink count when PyGObject is available |
-| Restart cleanup | `restart_resource_leak.py`: 4096x4096 RGB; pipe FD + RSS across EOS and abrupt-stop cycles |
+| Restart cleanup | `restart_resource_leak.py`: 4096x4096 RGB; pipe FD + RSS across EOS and abrupt-stop cycles (Linux `/proc` only; skipped elsewhere) |
 
 See also [MANUAL_TESTS.md](../MANUAL_TESTS.md) for camera/multi-process scenarios.

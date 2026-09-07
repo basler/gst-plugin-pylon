@@ -635,7 +635,7 @@ ninja -C builddir
 ninja -C builddir test
 ```
 
-Camemu FD/RSS leak tests are Linux-only (`/proc`). CI compiles and smoke-tests `pylonsrc` on `macos-latest`.
+Camemu functional tests run on Linux and macOS (and on Windows when `bash` is available). The pipe-FD / RSS leak check needs `/proc` and is skipped on other platforms.
 
 
 # Known issues

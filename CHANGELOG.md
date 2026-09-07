@@ -28,6 +28,8 @@ All notable changes to this project will be documented in this file.
 - CI compiles on macOS (`macos-latest`) with Homebrew GStreamer
 - Camemu restart leak test is serialized, ignores Meson `MALLOC_PERTURB_`,
   and prints the script output on failure
+- Camemu meson tests run on every platform with bash; only the `/proc` FD/RSS
+  leak check is Linux-only
 
 ## [1.0.0] - 2024-08-14
 ## Added

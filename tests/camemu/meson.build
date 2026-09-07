@@ -1,8 +1,9 @@
-# Functional camemu tests for pylonsrc.
-# /proc FD and VmRSS sampling is Linux-only; skip the suite on macOS/Windows.
-if host_machine.system() == 'linux'
-  # The harness is a Bash script (pipefail, [[ ]], etc.); do not run it with dash.
-  bash = find_program('bash')
+# Functional camemu tests for pylonsrc (PYLON_CAMEMU on Linux, macOS, Windows).
+# The harness is a Bash script (pipefail, [[ ]], etc.); do not run it with dash.
+bash = find_program('bash', required: false)
+if not bash.found()
+  warning('Skipping camemu tests: bash not found')
+else
   camemu_script = files('run_camemu_tests.sh')
   build_root = meson.project_build_root()
   source_root = meson.project_source_root()
