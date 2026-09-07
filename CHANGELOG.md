@@ -25,6 +25,8 @@ All notable changes to this project will be documented in this file.
 - GitLab CI is disabled; GitHub Actions is the build source of truth
 - Camemu meson tests honor `PYLON_ROOT`; Debian CI registers a stub `pylon`
   package from the Conan SDK tree so `dpkg-buildpackage` can satisfy Depends
+- Camemu restart leak test is serialized, ignores Meson `MALLOC_PERTURB_`,
+  and prints the script output on failure
 
 ## [1.0.0] - 2024-08-14
 ## Added

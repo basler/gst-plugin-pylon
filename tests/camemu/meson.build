@@ -20,7 +20,10 @@ test(
     'BUILD_PREFIX': install_prefix,
     'PYLON_CAMEMU': '3',
     'PYLON_ROOT': camemu_pylon_root,
+    # Meson injects MALLOC_PERTURB_ which defeats malloc_trim RSS checks.
+    'MALLOC_PERTURB_': '0',
   },
   timeout: 600,
+  is_parallel: false,
   workdir: source_root,
 )

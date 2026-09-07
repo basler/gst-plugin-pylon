@@ -322,6 +322,9 @@ def main() -> int:
         failed = True
 
     if failed:
+        # Also print to stdout so meson --print-errorlogs captures it when
+        # the harness only forwards a truncated tail.
+        print("FAIL: restart resource cleanup thresholds exceeded", flush=True)
         return 1
 
     print(

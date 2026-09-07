@@ -62,10 +62,12 @@ run_skip() {
 expect_ok() {
   local name="$1"
   shift
-  if "$@" >/dev/null 2>&1; then
+  local output
+  if output="$("$@" 2>&1)"; then
     run_pass "$name"
   else
     run_fail "$name" "command exited non-zero: $*"
+    echo "$output" | tail -n 80
   fi
 }
 
@@ -199,9 +201,14 @@ if command -v python3 >/dev/null 2>&1 || [[ -x /usr/bin/python3 ]]; then
 
     # Restart cycles with 4096x4096 RGB (~50 MiB/frame): pipe FD growth and
     # RSS must stay bounded; abrupt stop leaves a pending grab in the handler.
+    # RSS threshold is in frames (~50 MiB at 4096² RGB). Meson sets
+    # MALLOC_PERTURB_ which inflates RSS; CI also runs other tests in
+    # parallel unless camemu is marked is_parallel=false. Allow a few
+    # cached pool pages (real grab-result leaks are ~1 frame/cycle).
     expect_ok "restart_resource_cleanup" \
       "$PYTHON_GI" "$SCRIPT_DIR/restart_resource_leak.py" \
-        --serial "$EMU_SERIAL_0" --cycles 10 --max-pipe-growth 8
+        --serial "$EMU_SERIAL_0" --cycles 10 --max-pipe-growth 8 \
+        --max-rss-frames 3 --settle-ms 400
   else
     run_skip "appsink_buffer_count (PyGObject not available)"
     run_skip "restart_resource_cleanup (PyGObject not available)"
