@@ -78,14 +78,22 @@ echo "Changelog updated successfully to version ${new_version}"
 
 # prepare patching the control file
 
-# Check if pylon package is installed
+# Prefer the installed pylon dpkg (official debs or CI stub from
+# tools/register_pylon_from_tree.sh). Fall back to PYLON_ROOT layout.
 if ! dpkg -s pylon &> /dev/null; then
-    echo "Error: pylon package is not installed" >&2
-    exit 1
+    echo "Warning: pylon dpkg is not installed; using PYLON_ROOT=${PYLON_ROOT:-/opt/pylon}" >&2
+    if [[ ! -d "${PYLON_ROOT:-/opt/pylon}/include/pylon" ]]; then
+        echo "Error: pylon package is not installed and PYLON_ROOT has no include/pylon" >&2
+        exit 1
+    fi
 fi
 
-# Get the exact Pylon package version
-PYLON_VERSION=$(dpkg -s pylon | grep Version | cut -d' ' -f2)
+# Get the exact Pylon package version (dummy CI package or official deb)
+if dpkg -s pylon &> /dev/null; then
+    PYLON_VERSION=$(dpkg -s pylon | grep Version | cut -d' ' -f2)
+else
+    PYLON_VERSION="${PYLON_PKG_VERSION:-26.06}"
+fi
 
 # Pin binary runtime Depends on pylon to the installed SDK version.
 # Build-Depends stays unversioned so builders can use any matching pylon package.

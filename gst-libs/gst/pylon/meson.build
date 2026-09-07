@@ -7,15 +7,22 @@ pylon_path = run_command(python3, '-c', 'import os; print(os.environ.get("PYLON_
 
 fs = import('fs')
 
-if target_machine.system() == 'linux' and (pylon_path == 'PYLON_ROOT_NOT_SET' or not fs.exists(pylon_path / 'include/pylon'))
-  # PYLON_ROOT has to be set
-  error('PYLON_ROOT has to be set to location of pylon install e.g. /opt/pylon')
+pylon_include_ok = pylon_path != 'PYLON_ROOT_NOT_SET' and (
+  fs.exists(pylon_path / 'include/pylon') or
+  fs.exists(pylon_path / 'Development/include/pylon'))
+
+if target_machine.system() == 'linux' and not pylon_include_ok
+  error('PYLON_ROOT has to be set to a pylon 26.x install that contains include/pylon (e.g. /opt/pylon)')
 endif
 
 # Pylon Software Suite 26.x (C++ SDK 12.2+)
 pylon_cmake_prefixes = []
 if pylon_path != 'PYLON_ROOT_NOT_SET'
-  pylon_cmake_prefixes += [pylon_path / 'share/pylon/cmake']
+  pylon_cmake_prefixes += [
+    pylon_path,
+    pylon_path / 'share/pylon/cmake',
+    pylon_path / 'lib/cmake/pylon',
+  ]
   if target_machine.system() == 'windows'
     pylon_cmake_prefixes += [pylon_path / 'Development/CMake/pylon']
   endif

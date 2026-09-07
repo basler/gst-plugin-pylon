@@ -6,6 +6,11 @@ build_root = meson.project_build_root()
 source_root = meson.project_source_root()
 install_prefix = source_root / 'install'
 
+# Honor PYLON_ROOT from the environment (CI unpacks Conan to a workspace path).
+camemu_pylon_root = run_command(python3, '-c',
+  'import os; print(os.environ.get("PYLON_ROOT", "/opt/pylon"))',
+  check: false).stdout().strip()
+
 test(
   'camemu_pylonsrc',
   bash,
@@ -14,7 +19,7 @@ test(
     'BUILD_DIR': build_root,
     'BUILD_PREFIX': install_prefix,
     'PYLON_CAMEMU': '3',
-    'PYLON_ROOT': '/opt/pylon',
+    'PYLON_ROOT': camemu_pylon_root,
   },
   timeout: 600,
   workdir: source_root,

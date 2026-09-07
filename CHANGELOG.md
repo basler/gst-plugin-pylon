@@ -23,6 +23,8 @@ All notable changes to this project will be documented in this file.
   runners ubuntu-24.04 / ubuntu-24.04-arm / windows-latest, and GStreamer 1.26.9
   on Windows (Linux uses distro GStreamer >= 1.20)
 - GitLab CI is disabled; GitHub Actions is the build source of truth
+- Camemu meson tests honor `PYLON_ROOT`; Debian CI registers a stub `pylon`
+  package from the Conan SDK tree so `dpkg-buildpackage` can satisfy Depends
 
 ## [1.0.0] - 2024-08-14
 ## Added
