@@ -33,8 +33,9 @@ All notable changes to this project will be documented in this file.
   unchanged artifacts are install-tested on 22.04, 24.04, and bookworm
 - README documents from-source `PYLON_ROOT` installs versus Debian packaging
   that still requires a dpkg `pylon` package (official or stub)
-- Debian packages declare pylon 26.x compatibility instead of pinning the
-  exact SDK build; `pygstpylon` uses CPython's stable ABI (Python 3.10+)
+- Debian packages depend on `pylon (>= 26.06)` (suite-date dpkg Version);
+  binary compatibility is C++ SDK 12.x / `libpylonbase.so.12`, not `<< 27`
+- `pygstpylon` uses CPython's stable ABI (Python 3.10+)
 - Debian package versions use epoch 1 so the universal package upgrades the
   former distro-suffixed `1.0.0-1~...` packages
 - Camemu restart leak test is serialized, ignores Meson `MALLOC_PERTURB_`,

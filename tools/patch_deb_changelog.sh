@@ -83,9 +83,9 @@ mv "$temp_file" "$changelog_file"
 
 echo "Changelog updated successfully to version ${new_version}"
 
-# Verify the build SDK. Runtime compatibility is declared statically in
-# debian/control as pylon >= 26.06 and << 27; never pin binaries to the exact
-# version of the SDK or CI stub used for this build.
+# Verify the build SDK. Runtime Depends use the suite-date dpkg Version
+# (pylon >= 26.06, first C++ SDK 12 / SONAME .so.12). Never pin binaries to
+# the exact SDK or CI stub, and do not use pylon (<< 27) as an ABI cap.
 if ! dpkg -s pylon &> /dev/null; then
     echo "Warning: pylon dpkg is not installed; using PYLON_ROOT=${PYLON_ROOT:-/opt/pylon}" >&2
     if [[ ! -d "${PYLON_ROOT:-/opt/pylon}/include/pylon" ]]; then

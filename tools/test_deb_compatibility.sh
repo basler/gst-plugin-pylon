@@ -36,9 +36,12 @@ if (( ${#plugin_debs[@]} != 1 ||
 fi
 
 depends="$(dpkg-deb -f "${plugin_debs[0]}" Depends)"
-if [[ "$depends" != *"pylon (>= 26.06)"* ||
-      "$depends" != *"pylon (<< 27)"* ]]; then
+if [[ "$depends" != *"pylon (>= 26.06)"* ]]; then
   echo "Unexpected pylon compatibility: $depends" >&2
+  exit 1
+fi
+if [[ "$depends" == *"pylon (<<"* ]]; then
+  echo "Do not cap pylon by suite date or SDK number in Depends: $depends" >&2
   exit 1
 fi
 

@@ -348,18 +348,20 @@ This plugin is built using the [meson](https://mesonbuild.com/) build system. Th
 
 As a first step install Basler pylon according to your platform. Downloads are available at: [Basler software downloads](https://www.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware;language=all;version=all)
 
-The supported pylon versions on the different platforms are:
+The supported pylon versions on the different platforms are the Software Suite
+releases that ship **C++ SDK 12.x** (`libpylonbase.so.12`), starting with 26.06
+(CMake 12.2.1) through at least 26.08.1 (CMake 12.3.0):
 
 
-|                 | 26.06 |
-|-----------------|:-----:|
-| Windows x86_64  |   x   |
-| Linux x86_64    |   x   |
-| Linux aarch64   |   x   |
-| macOS           |   x   |
+|                 | 26.06+ (SDK 12.x) |
+|-----------------|:-----------------:|
+| Windows x86_64  |         x         |
+| Linux x86_64    |         x         |
+| Linux aarch64   |         x         |
+| macOS           |         x         |
 
-
-CI builds pylon 26.06 on Ubuntu 24.04 (x86_64 and native arm64), Windows, and macOS.
+CI currently builds against pylon 26.06. Official Linux debs use a date
+Version (`pylon_26.08.1-deb0_amd64.deb` → `Version: 26.08.1-deb0`).
 
 Installing Basler pylon SDK will also install the Basler pylon viewer. You should use this tool to verify, that the cameras work properly in your system and to learn about the their features.
 
@@ -448,9 +450,12 @@ package directory (often under `/usr/local/lib/python3/dist-packages` even when
 The release packages are built once per architecture on Ubuntu 22.04, the
 oldest supported userspace (glibc and GStreamer 1.20), and install-tested
 unchanged on Ubuntu 22.04, Ubuntu 24.04, and Debian bookworm. They declare
-compatibility with pylon Software Suite 26.x (`>= 26.06`, `<< 27`).
+compatibility with the pylon C++ SDK 12.x ABI (`libpylonbase.so.12`). The
+Debian `pylon` package uses a date Version (`26.08.1-deb0` for suite 26.08),
+so Depends are `pylon (>= 26.06)` — the first suite that shipped SDK 12 —
+not `pylon (>= 12)` or `pylon (<< 27)`.
 
-`dpkg-buildpackage` needs a dpkg `pylon` package in that range (Build-Depends
+`dpkg-buildpackage` needs a dpkg `pylon` package at that floor (Build-Depends
 and runtime Depends). A tree at `PYLON_ROOT` is not enough by itself.
 
 Install the official pylon and CodeMeter Debian packages (they land in
