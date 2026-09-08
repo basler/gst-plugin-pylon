@@ -7,6 +7,6 @@ setuptools.setup(
     description="python bindings to gstpylon",
     url="baslerweb.com",
     packages=[''],
-    package_data={'': ['pygstpylon.so']},
+    package_data={'': ['pygstpylon.abi3.so']},
     install_requires=["pgi", "PyGObject"]
 )

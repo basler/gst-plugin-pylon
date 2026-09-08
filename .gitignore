@@ -29,7 +29,6 @@ __pycache__
 
 # subprojects
 subprojects/packagecache
-subprojects/pybind11-*
 
 # Local dpkg-buildpackage symlink (ln -sfn packaging/debian)
 /debian
