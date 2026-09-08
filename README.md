@@ -382,14 +382,22 @@ pip install meson ninja --upgrade
 sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake
 # if you want to use the sample python plugin
 sudo apt install gstreamer1.0-python3-plugin-loader
+# required only when enabling -Dpython-bindings=enabled
+sudo apt install python3-dev python3-gi gir1.2-gstreamer-1.0
 
 ```
 
-The build process relies on `PYLON_ROOT` pointing to the Basler pylon install directory.
+The build process relies on `PYLON_ROOT` pointing to a pylon Software Suite 26.x
+tree with `include/pylon` (official installer under `/opt/pylon`, or any other
+extracted SDK). Meson finds pylon via CMake using that path and sets an install
+RPATH to `$PYLON_ROOT/lib`, so a from-source install does **not** require a
+`pylon` Debian package.
 
 ```bash
-# for pylon in default location
+# official Linux installer
 export PYLON_ROOT=/opt/pylon
+# or a local SDK, for example:
+# export PYLON_ROOT=/path/to/pylon
 ```
 
 Then proceed to configure the project. Check `meson_options.txt` for a
@@ -414,10 +422,12 @@ Build, test and install the project:
 # Build
 ninja -C builddir
 
-# Test
+# Test (camemu uses PYLON_CAMEMU from meson; pygstpylon needs bindings + gi)
 ninja -C builddir test
+# or a single suite:
+# meson test -C builddir pygstpylon --print-errorlogs
 
-# Install
+# Install plugin (and pygstpylon if bindings were enabled)
 sudo ninja -C builddir install
 ```
 
@@ -426,6 +436,10 @@ Finally, test for proper installation:
 ```bash
 gst-inspect-1.0 pylonsrc
 ```
+
+If you enabled Python bindings, `pygstpylon` is installed into the interpreter's
+package directory (often under `/usr/local/lib/python3/dist-packages` even when
+`--prefix` is `/usr`). Confirm with `python3 -c "import pygstpylon; print(pygstpylon.__version__)"`.
 
 ## Linux package building
 
@@ -436,7 +450,16 @@ oldest supported userspace (glibc and GStreamer 1.20), and install-tested
 unchanged on Ubuntu 22.04, Ubuntu 24.04, and Debian bookworm. They declare
 compatibility with pylon Software Suite 26.x (`>= 26.06`, `<< 27`).
 
-Install the pylon and codemeter Debian packages. They install into `/opt/pylon`.
+`dpkg-buildpackage` needs a dpkg `pylon` package in that range (Build-Depends
+and runtime Depends). A tree at `PYLON_ROOT` is not enough by itself.
+
+Install the official pylon and CodeMeter Debian packages (they land in
+`/opt/pylon`), **or** register a local SDK archive as a stub package:
+
+```
+# tarball must contain a top-level pylon/ directory (sudo tar -czf ... -C /opt pylon)
+sudo tools/register_pylon_from_tree.sh /path/to/pylon_sdk.tar.gz
+```
 
 Install the platform dependencies:
 
@@ -462,7 +485,8 @@ PYLON_ROOT=/opt/pylon dpkg-buildpackage -us -uc -rfakeroot
 ```
 
 The package build uses the system Meson/Ninja packages (no pip bootstrap) and runs
-the Meson test suite, including camemu functional tests (`PYLON_CAMEMU=3`).
+the Meson test suite, including camemu and pygstpylon (`PYLON_CAMEMU=4`). Skip
+tests with `DEB_BUILD_OPTIONS=nocheck` if you have no emulators.
 `python3-pygstpylon` uses CPython's stable ABI with a Python 3.10 floor, so the
 same package imports with the distro Python on every supported target.
 

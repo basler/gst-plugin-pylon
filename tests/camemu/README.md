@@ -52,5 +52,5 @@ dict. Bindings default to disabled; configure with
 
 ```bash
 meson setup build -Dpython-bindings=enabled
-PYLON_ROOT=/opt/pylon PYLON_CAMEMU=4 ninja -C build test -- pygstpylon
+PYLON_ROOT=/opt/pylon meson test -C build pygstpylon --print-errorlogs
 ```

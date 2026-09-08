@@ -31,6 +31,8 @@ All notable changes to this project will be documented in this file.
 - Debian arm64 package jobs run on native `ubuntu-24.04-arm` (no QEMU)
 - Debian packages are built once per architecture on Ubuntu 22.04, then the
   unchanged artifacts are install-tested on 22.04, 24.04, and bookworm
+- README documents from-source `PYLON_ROOT` installs versus Debian packaging
+  that still requires a dpkg `pylon` package (official or stub)
 - Debian packages declare pylon 26.x compatibility instead of pinning the
   exact SDK build; `pygstpylon` uses CPython's stable ABI (Python 3.10+)
 - Debian package versions use epoch 1 so the universal package upgrades the

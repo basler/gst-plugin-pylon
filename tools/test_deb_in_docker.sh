@@ -29,7 +29,7 @@ docker run --rm \
   -v "$OUT_DIR:/out" \
   -e DEBIAN_FRONTEND=noninteractive \
   -e PYLON_ROOT=/opt/pylon \
-  -e PYLON_CAMEMU=3 \
+  -e PYLON_CAMEMU=4 \
   ubuntu:22.04 \
   bash -c '
 set -euo pipefail
@@ -50,7 +50,7 @@ tools/register_pylon_from_tree.sh /pylon-sdk/pylon_sdk.tar.gz
 tools/patch_deb_changelog.sh
 
 PYLON_ROOT=/opt/pylon \
-PYLON_CAMEMU=3 \
+PYLON_CAMEMU=4 \
 LD_LIBRARY_PATH=/opt/pylon/lib \
 dpkg-buildpackage -us -uc -b -rfakeroot
 
@@ -67,7 +67,7 @@ for image in "${TARGETS[@]}"; do
     -v "$ROOT:/src:ro" \
     -v "$PYLON_SDK_TGZ:/pylon-sdk/pylon_sdk.tar.gz:ro" \
     -v "$OUT_DIR:/packages:ro" \
-    -e PYLON_CAMEMU=3 \
+    -e PYLON_CAMEMU=4 \
     "$image" \
     bash /src/tools/test_deb_compatibility.sh \
       /packages /pylon-sdk/pylon_sdk.tar.gz
