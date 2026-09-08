@@ -17,6 +17,8 @@ All notable changes to this project will be documented in this file.
   pipe FD + RSS growth across EOS and abrupt-stop pipeline restart cycles
 - CI installs `python3-gi` so camemu appsink / restart regression tests run
   under `ninja test` (not skipped for missing PyGObject)
+- `meson test pygstpylon` covers the Python bindings (API, live GstPylonMeta,
+  four parallel camemu streams); Linux CI builds with `-Dpython-bindings=enabled`
 
 ### Changed
 - CI targets pylon Software Suite 26.06 (C++ SDK >= 12.2) via Conan, GitHub

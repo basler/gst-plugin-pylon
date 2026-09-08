@@ -205,7 +205,7 @@ jobs:
           extra-docker-args: >-
             -v ${{ github.workspace }}/pylon-sdk:/pylon-sdk
             -e PYLON_ROOT=/opt/pylon
-            -e PYLON_CAMEMU=3
+            -e PYLON_CAMEMU=4
             -e LD_LIBRARY_PATH=/opt/pylon/lib
             --platform linux/${{ matrix.arch }}
           buildpackage-opts: --build=binary --no-sign
@@ -263,7 +263,7 @@ jobs:
             -v "$PWD:/src:ro" \
             -v "$PWD/debian-packages:/packages:ro" \
             -v "$PWD/pylon-sdk:/pylon-sdk:ro" \
-            -e PYLON_CAMEMU=3 \
+            -e PYLON_CAMEMU=4 \
             ${{ matrix.os }} \
             /src/tools/test_deb_compatibility.sh \
               /packages /pylon-sdk/pylon_sdk.tar.gz

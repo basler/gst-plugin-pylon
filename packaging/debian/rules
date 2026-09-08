@@ -11,7 +11,7 @@ export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 export DEB_PYTHON_INSTALL_LAYOUT = deb
 
 # Emulators for camemu functional tests during the package build
-export PYLON_CAMEMU ?= 3
+export PYLON_CAMEMU ?= 4
 export PYLON_ROOT ?= /opt/pylon
 # Ensure pylon libs are visible under fakeroot (which resets LD_LIBRARY_PATH)
 export LD_LIBRARY_PATH := /opt/pylon/lib$(if $(LD_LIBRARY_PATH),:$(LD_LIBRARY_PATH))

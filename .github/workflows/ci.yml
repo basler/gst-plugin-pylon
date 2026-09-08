@@ -539,8 +539,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && sudo apt-get remove -y libunwind-14-dev
-          # python3-gi: camemu restart_resource_cleanup / appsink regression tests
-          sudo apt-get -y install python3 python3-pip python3-gi gir1.2-gstreamer-1.0 \
+          # python3-gi: camemu restart_resource_cleanup / appsink / pygstpylon tests
+          # python3-dev: pygstpylon CPython limited-API module
+          sudo apt-get -y install python3 python3-pip python3-dev python3-gi gir1.2-gstreamer-1.0 \
             libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang \
             gstreamer1.0-tools gstreamer1.0-plugins-base python3-venv
           python3 -m venv build_python --system-site-packages
@@ -556,7 +557,7 @@ jobs:
           export CXX=g++
           export PYLON_CAMEMU=3
           . build_python/bin/activate
-          meson setup builddir_gcc --prefix $PWD/install_gcc
+          meson setup builddir_gcc --prefix $PWD/install_gcc -Dpython-bindings=enabled
           ninja -C builddir_gcc
           meson test -C builddir_gcc --print-errorlogs
           ninja -C builddir_gcc install
@@ -569,7 +570,7 @@ jobs:
           export CXX=clang++
           export PYLON_CAMEMU=3
           . build_python/bin/activate
-          meson setup builddir_clang --prefix $PWD/install_clang
+          meson setup builddir_clang --prefix $PWD/install_clang -Dpython-bindings=enabled
           ninja -C builddir_clang
           meson test -C builddir_clang --print-errorlogs
           ninja -C builddir_clang install
@@ -626,8 +627,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && sudo apt-get remove -y libunwind-14-dev
-          # python3-gi: camemu restart_resource_cleanup / appsink regression tests
-          sudo apt-get -y install python3 python3-pip python3-gi gir1.2-gstreamer-1.0 \
+          # python3-gi: camemu restart_resource_cleanup / appsink / pygstpylon tests
+          # python3-dev: pygstpylon CPython limited-API module
+          sudo apt-get -y install python3 python3-pip python3-dev python3-gi gir1.2-gstreamer-1.0 \
             libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang \
             gstreamer1.0-tools gstreamer1.0-plugins-base python3-venv
           python3 -m venv build_python --system-site-packages
@@ -643,7 +645,7 @@ jobs:
           export CXX=g++
           export PYLON_CAMEMU=3
           . build_python/bin/activate
-          meson setup builddir_gcc --prefix $PWD/install_gcc
+          meson setup builddir_gcc --prefix $PWD/install_gcc -Dpython-bindings=enabled
           ninja -C builddir_gcc
           meson test -C builddir_gcc --print-errorlogs
           ninja -C builddir_gcc install
@@ -656,7 +658,7 @@ jobs:
           export CXX=clang++
           export PYLON_CAMEMU=3
           . build_python/bin/activate
-          meson setup builddir_clang --prefix $PWD/install_clang
+          meson setup builddir_clang --prefix $PWD/install_clang -Dpython-bindings=enabled
           ninja -C builddir_clang
           meson test -C builddir_clang --print-errorlogs
           ninja -C builddir_clang install
