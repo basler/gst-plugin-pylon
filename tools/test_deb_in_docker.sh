@@ -38,7 +38,7 @@ apt-get install -y -qq \
   build-essential ca-certificates cmake debhelper dh-python fakeroot git \
   gir1.2-gstreamer-1.0 gstreamer1.0-plugins-base gstreamer1.0-tools \
   libgstreamer-plugins-base1.0-dev libgstreamer1.0-dev \
-  meson ninja-build pkg-config python3-dev python3-gi python3-setuptools
+  meson ninja-build pkg-config python3-dev python3-gi
 
 cp -a /src /build
 cd /build

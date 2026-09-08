@@ -473,7 +473,7 @@ sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot pkg-co
                      libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
                      gstreamer1.0-tools gstreamer1.0-plugins-base \
                      gstreamer1.0-python3-plugin-loader \
-                     python3 python3-dev python3-gi python3-setuptools
+                     python3 python3-dev python3-gi
 ```
 
 Prepare the build setup ( from main project folder ):
@@ -513,7 +513,7 @@ sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot pkg-co
                      libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
                      gstreamer1.0-tools gstreamer1.0-plugins-base \
                      gstreamer1.0-python3-plugin-loader \
-                     python3 python3-dev python3-gi python3-setuptools \
+                     python3 python3-dev python3-gi \
                      deepstream-6.3 # depending on platform deepstream-6.4 or deepstream-7.0
 ```
 

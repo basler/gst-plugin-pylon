@@ -20,6 +20,9 @@ All notable changes to this project will be documented in this file.
 - `meson test pygstpylon` covers the Python bindings (API, live GstPylonMeta,
   four parallel camemu streams); Linux CI builds with `-Dpython-bindings=enabled`
 
+### Removed
+- Unused `bindings/packaging/setup.py` (pygstpylon is installed by Meson, not setuptools)
+
 ### Changed
 - CI targets pylon Software Suite 26.06 (C++ SDK >= 12.2) via Conan, GitHub
   runners ubuntu-24.04 / ubuntu-24.04-arm / windows-latest, and GStreamer 1.26.9
