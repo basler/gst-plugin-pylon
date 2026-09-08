@@ -27,6 +27,12 @@ All notable changes to this project will be documented in this file.
   package from the Conan SDK tree so `dpkg-buildpackage` can satisfy Depends
 - CI compiles on macOS (`macos-latest`) with Homebrew GStreamer
 - Debian arm64 package jobs run on native `ubuntu-24.04-arm` (no QEMU)
+- Debian packages are built once per architecture on Ubuntu 22.04, then the
+  unchanged artifacts are install-tested on 22.04, 24.04, and bookworm
+- Debian packages declare pylon 26.x compatibility instead of pinning the
+  exact SDK build; `pygstpylon` uses CPython's stable ABI (Python 3.10+)
+- Debian package versions use epoch 1 so the universal package upgrades the
+  former distro-suffixed `1.0.0-1~...` packages
 - Camemu restart leak test is serialized, ignores Meson `MALLOC_PERTURB_`,
   and prints the script output on failure
 - Camemu meson tests run on every platform with bash; only the `/proc` FD/RSS

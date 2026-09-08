@@ -431,7 +431,12 @@ gst-inspect-1.0 pylonsrc
 
 ### Debian Packaging
 
-Install the pylon and codemeter debian packages. They will install into `/opt/pylon`
+The release packages are built once per architecture on Ubuntu 22.04, the
+oldest supported userspace (glibc and GStreamer 1.20), and install-tested
+unchanged on Ubuntu 22.04, Ubuntu 24.04, and Debian bookworm. They declare
+compatibility with pylon Software Suite 26.x (`>= 26.06`, `<< 27`).
+
+Install the pylon and codemeter Debian packages. They install into `/opt/pylon`.
 
 Install the platform dependencies:
 
@@ -440,7 +445,7 @@ sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot pkg-co
                      libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
                      gstreamer1.0-tools gstreamer1.0-plugins-base \
                      gstreamer1.0-python3-plugin-loader \
-                     python3 python3-dev python3-gi python3-setuptools pybind11-dev
+                     python3 python3-dev python3-gi python3-setuptools
 ```
 
 Prepare the build setup ( from main project folder ):
@@ -458,6 +463,15 @@ PYLON_ROOT=/opt/pylon dpkg-buildpackage -us -uc -rfakeroot
 
 The package build uses the system Meson/Ninja packages (no pip bootstrap) and runs
 the Meson test suite, including camemu functional tests (`PYLON_CAMEMU=3`).
+`python3-pygstpylon` uses CPython's stable ABI with a Python 3.10 floor, so the
+same package imports with the distro Python on every supported target.
+
+To reproduce the build-once/install-many check locally, provide an SDK archive
+containing a top-level `pylon/` directory:
+
+```bash
+PYLON_SDK_TGZ=/path/to/pylon_sdk.tar.gz tools/test_deb_in_docker.sh
+```
 
 ### Debian NVIDIA Packaging
 
@@ -470,7 +484,7 @@ sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot pkg-co
                      libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
                      gstreamer1.0-tools gstreamer1.0-plugins-base \
                      gstreamer1.0-python3-plugin-loader \
-                     python3 python3-dev python3-gi python3-setuptools pybind11-dev \
+                     python3 python3-dev python3-gi python3-setuptools \
                      deepstream-6.3 # depending on platform deepstream-6.4 or deepstream-7.0
 ```
 

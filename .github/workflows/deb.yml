@@ -157,17 +157,13 @@ jobs:
           path: pylon_sdk.tar.gz
 
   build_deb:
-    # Native runners: compile CI already uses ubuntu-24.04-arm. Do not QEMU-emulate
-    # arm64 dpkg-buildpackage (camemu + meson tests are far too slow/flaky under qemu).
+    # Build once per architecture on the oldest supported userspace. Packages
+    # linked against its glibc/GStreamer remain usable on newer distributions.
     runs-on: ${{ matrix.runner }}
     needs: [setup, download_packaging]
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu:24.04
-          - ubuntu:22.04
-          - debian:bookworm
         arch: [amd64, arm64]
         include:
           - arch: amd64
@@ -192,12 +188,6 @@ jobs:
             name: Linux_aarch64_packaging_Pylon_SDK
             path: pylon-sdk
 
-      - name: Set sanitized OS name
-        id: sanitize_os
-        run: |
-          SANITIZED_OS=$(echo ${{ matrix.os }} | sed 's/:/./g')
-          echo "SANITIZED_OS=$SANITIZED_OS" >> $GITHUB_ENV
-
       - name: Build Debian Package
         uses: jtdor/build-deb-action@v1
         env:
@@ -211,7 +201,7 @@ jobs:
              tools/register_pylon_from_tree.sh /pylon-sdk/pylon_sdk.tar.gz
              test -d /opt/pylon
              tools/patch_deb_changelog.sh
-          docker-image: ${{ matrix.os }}
+          docker-image: ubuntu:22.04
           extra-docker-args: >-
             -v ${{ github.workspace }}/pylon-sdk:/pylon-sdk
             -e PYLON_ROOT=/opt/pylon
@@ -223,7 +213,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: debian-packages-${{ env.SANITIZED_OS }}-${{ matrix.arch }}
+          name: debian-packages-${{ matrix.arch }}
           path: debian/artifacts/
 
       - name: Upload Release Asset
@@ -234,12 +224,57 @@ jobs:
         with:
           files: ./debian/artifacts/*.deb
 
+  test_deb:
+    name: test_deb (${{ matrix.os }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    needs: [download_packaging, build_deb]
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - debian:bookworm
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download packages
+        uses: actions/download-artifact@v7
+        with:
+          name: debian-packages-${{ matrix.arch }}
+          path: debian-packages
+
+      - name: Download pylon SDK
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ matrix.arch == 'amd64' && 'Linux_x86_64' || 'Linux_aarch64' }}_packaging_Pylon_SDK
+          path: pylon-sdk
+
+      - name: Install and test the same packages
+        run: |
+          docker run --rm --platform linux/${{ matrix.arch }} \
+            -v "$PWD:/src:ro" \
+            -v "$PWD/debian-packages:/packages:ro" \
+            -v "$PWD/pylon-sdk:/pylon-sdk:ro" \
+            -e PYLON_CAMEMU=3 \
+            ${{ matrix.os }} \
+            /src/tools/test_deb_compatibility.sh \
+              /packages /pylon-sdk/pylon_sdk.tar.gz
+
   cleanup:
     if: always()
     needs: [
             setup,
             download_packaging,
-            build_deb
+            build_deb,
+            test_deb
     ]
     runs-on: ubuntu-latest
     steps:

@@ -57,9 +57,16 @@ temp_file=$(mktemp)
 # Extract the current version from the changelog
 current_version=$(head -n 1 "$changelog_file" | sed -n 's/.*(\(.*\)).*/\1/p')
 
-# Remove any existing suffix and create the new version with the platform and version suffix
+# Remove any old distro suffix. Normal packages are built once on the oldest
+# supported distro and keep one version across all target distributions.
+# NVIDIA packages retain a platform suffix because their DeepStream/L4T ABI is
+# a separate build target.
 base_version=$(echo "$current_version" | sed 's/-1~.*//')
-new_version="${base_version}-1~${PLATFORM_VERSION}"
+if [[ -f /etc/nv_tegra_release ]]; then
+    new_version="${base_version}-1~${PLATFORM_VERSION}"
+else
+    new_version="${base_version}"
+fi
 
 # Replace the version in the first line of the changelog
 sed "1s/(${current_version})/(${new_version})/" "$changelog_file" > "$temp_file"
@@ -76,10 +83,9 @@ mv "$temp_file" "$changelog_file"
 
 echo "Changelog updated successfully to version ${new_version}"
 
-# prepare patching the control file
-
-# Prefer the installed pylon dpkg (official debs or CI stub from
-# tools/register_pylon_from_tree.sh). Fall back to PYLON_ROOT layout.
+# Verify the build SDK. Runtime compatibility is declared statically in
+# debian/control as pylon >= 26.06 and << 27; never pin binaries to the exact
+# version of the SDK or CI stub used for this build.
 if ! dpkg -s pylon &> /dev/null; then
     echo "Warning: pylon dpkg is not installed; using PYLON_ROOT=${PYLON_ROOT:-/opt/pylon}" >&2
     if [[ ! -d "${PYLON_ROOT:-/opt/pylon}/include/pylon" ]]; then
@@ -88,16 +94,5 @@ if ! dpkg -s pylon &> /dev/null; then
     fi
 fi
 
-# Get the exact Pylon package version (dummy CI package or official deb)
-if dpkg -s pylon &> /dev/null; then
-    PYLON_VERSION=$(dpkg -s pylon | grep Version | cut -d' ' -f2)
-else
-    PYLON_VERSION="${PYLON_PKG_VERSION:-26.06}"
-fi
-
-# Pin binary runtime Depends on pylon to the installed SDK version.
-# Build-Depends stays unversioned so builders can use any matching pylon package.
-sed -i -E "/^Package:/,/^$/ s/^(\\s*)pylon,\$/\\1pylon (= ${PYLON_VERSION}),/" debian/control
-
-echo "Pylon dependency set to ${PYLON_VERSION}"
+echo "Pylon compatibility remains the range declared in debian/control"
 
