@@ -57,9 +57,16 @@ temp_file=$(mktemp)
 # Extract the current version from the changelog
 current_version=$(head -n 1 "$changelog_file" | sed -n 's/.*(\(.*\)).*/\1/p')
 
-# Remove any existing suffix and create the new version with the platform and version suffix
+# Remove any old distro suffix. Normal packages are built once on the oldest
+# supported distro and keep one version across all target distributions.
+# NVIDIA packages retain a platform suffix because their DeepStream/L4T ABI is
+# a separate build target.
 base_version=$(echo "$current_version" | sed 's/-1~.*//')
-new_version="${base_version}-1~${PLATFORM_VERSION}"
+if [[ -f /etc/nv_tegra_release ]]; then
+    new_version="${base_version}-1~${PLATFORM_VERSION}"
+else
+    new_version="${base_version}"
+fi
 
 # Replace the version in the first line of the changelog
 sed "1s/(${current_version})/(${new_version})/" "$changelog_file" > "$temp_file"
@@ -76,20 +83,16 @@ mv "$temp_file" "$changelog_file"
 
 echo "Changelog updated successfully to version ${new_version}"
 
-# prepare patching the control file
-
-# Check if pylon package is installed
+# Verify the build SDK. Runtime Depends use the suite-date dpkg Version
+# (pylon >= 26.06, first C++ SDK 12 / SONAME .so.12). Never pin binaries to
+# the exact SDK or CI stub, and do not use pylon (<< 27) as an ABI cap.
 if ! dpkg -s pylon &> /dev/null; then
-    echo "Error: pylon package is not installed" >&2
-    exit 1
+    echo "Warning: pylon dpkg is not installed; using PYLON_ROOT=${PYLON_ROOT:-/opt/pylon}" >&2
+    if [[ ! -d "${PYLON_ROOT:-/opt/pylon}/include/pylon" ]]; then
+        echo "Error: pylon package is not installed and PYLON_ROOT has no include/pylon" >&2
+        exit 1
+    fi
 fi
 
-# Get the exact Pylon package version
-PYLON_VERSION=$(dpkg -s pylon | grep Version | cut -d' ' -f2)
-
-# Pin binary runtime Depends on pylon to the installed SDK version.
-# Build-Depends stays unversioned so builders can use any matching pylon package.
-sed -i -E "/^Package:/,/^$/ s/^(\\s*)pylon,\$/\\1pylon (= ${PYLON_VERSION}),/" debian/control
-
-echo "Pylon dependency set to ${PYLON_VERSION}"
+echo "Pylon compatibility remains the range declared in debian/control"
 

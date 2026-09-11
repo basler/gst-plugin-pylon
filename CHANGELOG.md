@@ -1,6 +1,67 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- Release pending grab results on flush/disconnect and distinguish unlock from
+  disconnect in the image handler (frame buffer leak on pipeline stop)
+- Unref the stream-grabber GObject and destroy the InstantCamera device on
+  free so GenTL pipe FDs are not leaked across NULL→PLAYING→NULL restarts
+- Free `GstPylon` before `PylonTerminate` on start failures; free `pfs-location`
+  in finalize; free grab results on NVMM CUDA copy failure
+- Unlock maps to `GST_FLOW_FLUSHING` (with `unlock_stop` / ClearInterrupt) instead of EOS
+
+### Added
+- Camemu test `restart_resource_leak.py` uses 4096×4096 RGB frames and checks
+  pipe FD + RSS growth across EOS and abrupt-stop pipeline restart cycles
+- CI installs `python3-gi` so camemu appsink / restart regression tests run
+  under `ninja test` (not skipped for missing PyGObject)
+- `meson test pygstpylon` covers the Python bindings (API, live GstPylonMeta,
+  four parallel camemu streams); Linux CI builds with `-Dpython-bindings=enabled`
+
+### Removed
+- Unused `bindings/packaging/setup.py` (pygstpylon is installed by Meson, not setuptools)
+
+### Changed
+- NVIDIA Debian packaging supports DeepStream 6.4, 7.0, and 7.1; native ARM CI
+  compile-checks each profile against real NVIDIA SDK files without publishing
+  the unqualified artifacts
+- NVIDIA CI also fetches `nvidia-l4t-multimedia-utils` so the plugin can link
+  `libnvbufsurface` (L4T, not shipped in the DeepStream tarball)
+- NVIDIA CI unpacks CUDA `cudart`, `nvcc`, and `cccl` redistributables so
+  `cuda_runtime.h` can include `crt/host_config.h`
+- The nvidia profile requires NVMM (`-Dnvmm=enabled`) and the README documents
+  building and testing a local package directly from the GitHub source
+- CUDA is detected via `cuda.pc` or the JetPack `/usr/local/cuda` toolkit layout
+- Camemu package tests pin system-memory caps so NVMM builds pass under fakeroot
+- Restart leak test downsizes 4096² RGB on hosts with low `MemAvailable`
+- CI targets pylon Software Suite 26.06 via Conan, GitHub runners
+  ubuntu-24.04 / ubuntu-24.04-arm / windows-latest / macos-latest, and
+  GStreamer 1.26.9 on Windows (Linux uses distro GStreamer >= 1.20)
+- Meson still accepts pylon 7.1+ and the 6.x aarch64 fallback; C++ SDK 12.2
+  is not a source-level requirement
+- GitLab CI is disabled; GitHub Actions is the build source of truth
+- Camemu meson tests honor `PYLON_ROOT`; Debian CI registers a stub `pylon`
+  package from the Conan SDK tree so `dpkg-buildpackage` can satisfy Depends
+- CI compiles on macOS (`macos-latest`) with Homebrew GStreamer
+- Debian arm64 package jobs run on native `ubuntu-24.04-arm` (no QEMU)
+- Debian packages are built once per architecture on Ubuntu 22.04, then the
+  unchanged artifacts are install-tested on 22.04, 24.04, and bookworm
+- README documents from-source `PYLON_ROOT` installs versus Debian packaging
+  that still requires a dpkg `pylon` package (official or stub)
+- Debian packages depend on `pylon (>= 26.06)` (suite-date dpkg Version);
+  binary compatibility is C++ SDK 12.x / `libpylonbase.so.12`, not `<< 27`
+- Debian packages record the exact build-time pylon package version in the
+  `Pylon-Built-Against` control field
+- `pygstpylon` uses CPython's stable ABI (Python 3.10+)
+- Debian package versions use epoch 1 so the universal package upgrades the
+  former distro-suffixed `1.0.0-1~...` packages
+- Camemu restart leak test is serialized, ignores Meson `MALLOC_PERTURB_`,
+  and prints the script output on failure
+- Camemu meson tests run on every platform with bash; only the `/proc` FD/RSS
+  leak check is Linux-only
+
 ## [1.0.0] - 2024-08-14
 ## Added
 - added script to generate release notes

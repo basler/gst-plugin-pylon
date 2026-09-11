@@ -58,19 +58,19 @@
 
 struct _GstPylonSrc {
   GstPushSrc base_pylonsrc;
-  GstPylon *pylon;
+  GstPylon* pylon;
   GstClockTime duration;
   GstVideoInfo video_info;
 
-  gchar *device_user_name;
-  gchar *device_serial_number;
+  gchar* device_user_name;
+  gchar* device_serial_number;
   gint device_index;
-  gchar *user_set;
-  gchar *pfs_location;
+  gchar* user_set;
+  gchar* pfs_location;
   gboolean enable_correction;
   GstPylonCaptureErrorEnum capture_error;
-  GObject *cam;
-  GObject *stream;
+  GObject* cam;
+  GObject* stream;
 
 #ifdef NVMM_ENABLED
   GstPylonNvsurfaceLayoutEnum nvsurface_layout;
@@ -80,26 +80,27 @@ struct _GstPylonSrc {
 
 /* prototypes */
 
-static void gst_pylon_src_set_property(GObject *object, guint property_id,
-                                       const GValue *value, GParamSpec *pspec);
-static void gst_pylon_src_get_property(GObject *object, guint property_id,
-                                       GValue *value, GParamSpec *pspec);
-static void gst_pylon_src_finalize(GObject *object);
+static void gst_pylon_src_set_property(GObject* object, guint property_id,
+                                       const GValue* value, GParamSpec* pspec);
+static void gst_pylon_src_get_property(GObject* object, guint property_id,
+                                       GValue* value, GParamSpec* pspec);
+static void gst_pylon_src_finalize(GObject* object);
 
-static GstCaps *gst_pylon_src_get_caps(GstBaseSrc *src, GstCaps *filter);
-static gboolean gst_pylon_src_is_bayer(GstStructure *st);
-static GstCaps *gst_pylon_src_fixate(GstBaseSrc *src, GstCaps *caps);
-static gboolean gst_pylon_src_set_caps(GstBaseSrc *src, GstCaps *caps);
-static gboolean gst_pylon_src_decide_allocation(GstBaseSrc *src,
-                                                GstQuery *query);
-static gboolean gst_pylon_src_start(GstBaseSrc *src);
-static gboolean gst_pylon_src_stop(GstBaseSrc *src);
-static gboolean gst_pylon_src_unlock(GstBaseSrc *src);
-static gboolean gst_pylon_src_query(GstBaseSrc *src, GstQuery *query);
-static void gst_plyon_src_add_metadata(GstPylonSrc *self, GstBuffer *buf);
-static GstFlowReturn gst_pylon_src_create(GstPushSrc *src, GstBuffer **buf);
+static GstCaps* gst_pylon_src_get_caps(GstBaseSrc* src, GstCaps* filter);
+static gboolean gst_pylon_src_is_bayer(GstStructure* st);
+static GstCaps* gst_pylon_src_fixate(GstBaseSrc* src, GstCaps* caps);
+static gboolean gst_pylon_src_set_caps(GstBaseSrc* src, GstCaps* caps);
+static gboolean gst_pylon_src_decide_allocation(GstBaseSrc* src,
+                                                GstQuery* query);
+static gboolean gst_pylon_src_start(GstBaseSrc* src);
+static gboolean gst_pylon_src_stop(GstBaseSrc* src);
+static gboolean gst_pylon_src_unlock(GstBaseSrc* src);
+static gboolean gst_pylon_src_unlock_stop(GstBaseSrc* src);
+static gboolean gst_pylon_src_query(GstBaseSrc* src, GstQuery* query);
+static void gst_plyon_src_add_metadata(GstPylonSrc* self, GstBuffer* buf);
+static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf);
 
-static void gst_pylon_src_child_proxy_init(GstChildProxyInterface *iface);
+static void gst_pylon_src_child_proxy_init(GstChildProxyInterface* iface);
 
 enum {
   PROP_0,
@@ -138,7 +139,7 @@ enum {
 #define GST_TYPE_CAPTURE_ERROR_ENUM (gst_pylon_capture_error_enum_get_type())
 
 /* Child proxy interface names */
-static const gchar *gst_pylon_src_child_proxy_names[] = {"cam", "stream"};
+static const gchar* gst_pylon_src_child_proxy_names[] = {"cam", "stream"};
 
 static GType gst_pylon_capture_error_enum_get_type(void) {
   static gsize gtype = 0;
@@ -217,16 +218,16 @@ G_DEFINE_TYPE_WITH_CODE(GstPylonSrc, gst_pylon_src, GST_TYPE_PUSH_SRC,
                         G_IMPLEMENT_INTERFACE(GST_TYPE_CHILD_PROXY,
                                               gst_pylon_src_child_proxy_init));
 
-static void gst_pylon_src_class_init(GstPylonSrcClass *klass) {
-  GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
-  GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS(klass);
-  GstPushSrcClass *push_src_class = GST_PUSH_SRC_CLASS(klass);
-  gchar *cam_params = NULL;
-  gchar *cam_blurb = NULL;
-  gchar *stream_params = NULL;
-  gchar *stream_blurb = NULL;
-  const gchar *cam_prolog = NULL;
-  const gchar *stream_prolog = NULL;
+static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
+  GObjectClass* gobject_class = G_OBJECT_CLASS(klass);
+  GstBaseSrcClass* base_src_class = GST_BASE_SRC_CLASS(klass);
+  GstPushSrcClass* push_src_class = GST_PUSH_SRC_CLASS(klass);
+  gchar* cam_params = NULL;
+  gchar* cam_blurb = NULL;
+  gchar* stream_params = NULL;
+  gchar* stream_blurb = NULL;
+  const gchar* cam_prolog = NULL;
+  const gchar* stream_prolog = NULL;
 
   Pylon::PylonAutoInitTerm init_pylon;
 
@@ -391,12 +392,13 @@ static void gst_pylon_src_class_init(GstPylonSrcClass *klass) {
   base_src_class->start = GST_DEBUG_FUNCPTR(gst_pylon_src_start);
   base_src_class->stop = GST_DEBUG_FUNCPTR(gst_pylon_src_stop);
   base_src_class->unlock = GST_DEBUG_FUNCPTR(gst_pylon_src_unlock);
+  base_src_class->unlock_stop = GST_DEBUG_FUNCPTR(gst_pylon_src_unlock_stop);
   base_src_class->query = GST_DEBUG_FUNCPTR(gst_pylon_src_query);
   push_src_class->create = GST_DEBUG_FUNCPTR(gst_pylon_src_create);
 }
 
-static void gst_pylon_src_init(GstPylonSrc *self) {
-  GstBaseSrc *base = GST_BASE_SRC(self);
+static void gst_pylon_src_init(GstPylonSrc* self) {
+  GstBaseSrc* base = GST_BASE_SRC(self);
 
   self->pylon = NULL;
   self->duration = GST_CLOCK_TIME_NONE;
@@ -419,9 +421,9 @@ static void gst_pylon_src_init(GstPylonSrc *self) {
   gst_base_src_set_format(base, GST_FORMAT_TIME);
 }
 
-static void gst_pylon_src_set_property(GObject *object, guint property_id,
-                                       const GValue *value, GParamSpec *pspec) {
-  GstPylonSrc *self = GST_PYLON_SRC(object);
+static void gst_pylon_src_set_property(GObject* object, guint property_id,
+                                       const GValue* value, GParamSpec* pspec) {
+  GstPylonSrc* self = GST_PYLON_SRC(object);
 
   GST_LOG_OBJECT(self, "set_property");
 
@@ -471,9 +473,9 @@ static void gst_pylon_src_set_property(GObject *object, guint property_id,
   GST_OBJECT_UNLOCK(self);
 }
 
-static void gst_pylon_src_get_property(GObject *object, guint property_id,
-                                       GValue *value, GParamSpec *pspec) {
-  GstPylonSrc *self = GST_PYLON_SRC(object);
+static void gst_pylon_src_get_property(GObject* object, guint property_id,
+                                       GValue* value, GParamSpec* pspec) {
+  GstPylonSrc* self = GST_PYLON_SRC(object);
 
   GST_LOG_OBJECT(self, "get_property");
 
@@ -523,8 +525,8 @@ static void gst_pylon_src_get_property(GObject *object, guint property_id,
   GST_OBJECT_UNLOCK(self);
 }
 
-static void gst_pylon_src_finalize(GObject *object) {
-  GstPylonSrc *self = GST_PYLON_SRC(object);
+static void gst_pylon_src_finalize(GObject* object) {
+  GstPylonSrc* self = GST_PYLON_SRC(object);
 
   GST_LOG_OBJECT(self, "finalize");
 
@@ -536,6 +538,9 @@ static void gst_pylon_src_finalize(GObject *object) {
 
   g_free(self->user_set);
   self->user_set = NULL;
+
+  g_free(self->pfs_location);
+  self->pfs_location = NULL;
 
   if (self->cam) {
     g_object_unref(self->cam);
@@ -551,10 +556,10 @@ static void gst_pylon_src_finalize(GObject *object) {
 }
 
 /* get caps from subclass */
-static GstCaps *gst_pylon_src_get_caps(GstBaseSrc *src, GstCaps *filter) {
-  GstPylonSrc *self = GST_PYLON_SRC(src);
-  GstCaps *outcaps = NULL;
-  GError *error = NULL;
+static GstCaps* gst_pylon_src_get_caps(GstBaseSrc* src, GstCaps* filter) {
+  GstPylonSrc* self = GST_PYLON_SRC(src);
+  GstCaps* outcaps = NULL;
+  GError* error = NULL;
 
   if (!self->pylon) {
     outcaps = gst_pad_get_pad_template_caps(GST_BASE_SRC_PAD(self));
@@ -574,7 +579,7 @@ static GstCaps *gst_pylon_src_get_caps(GstBaseSrc *src, GstCaps *filter) {
   GST_DEBUG_OBJECT(self, "Camera returned caps %" GST_PTR_FORMAT, outcaps);
 
   if (filter) {
-    GstCaps *tmp = outcaps;
+    GstCaps* tmp = outcaps;
 
     GST_DEBUG_OBJECT(self, "Filtering with %" GST_PTR_FORMAT, filter);
 
@@ -595,7 +600,7 @@ out:
   return outcaps;
 }
 
-static gboolean gst_pylon_src_is_bayer(GstStructure *st) {
+static gboolean gst_pylon_src_is_bayer(GstStructure* st) {
   gboolean is_bayer = FALSE;
 
   g_return_val_if_fail(st, FALSE);
@@ -607,12 +612,12 @@ static gboolean gst_pylon_src_is_bayer(GstStructure *st) {
 }
 
 /* called if, in negotiation, caps need fixating */
-static GstCaps *gst_pylon_src_fixate(GstBaseSrc *src, GstCaps *caps) {
-  GstPylonSrc *self = GST_PYLON_SRC(src);
-  GstCaps *outcaps = NULL;
-  GstStructure *st = NULL;
-  GstCapsFeatures *features = NULL;
-  const GValue *width_field = NULL;
+static GstCaps* gst_pylon_src_fixate(GstBaseSrc* src, GstCaps* caps) {
+  GstPylonSrc* self = GST_PYLON_SRC(src);
+  GstCaps* outcaps = NULL;
+  GstStructure* st = NULL;
+  GstCapsFeatures* features = NULL;
+  const GValue* width_field = NULL;
   static const gint width_1080p = 1920;
   static const gint height_1080p = 1080;
   static const gint preferred_framerate_num = 30;
@@ -661,17 +666,17 @@ static GstCaps *gst_pylon_src_fixate(GstBaseSrc *src, GstCaps *caps) {
 }
 
 /* notify the subclass of new caps */
-static gboolean gst_pylon_src_set_caps(GstBaseSrc *src, GstCaps *caps) {
-  GstPylonSrc *self = GST_PYLON_SRC(src);
-  GstStructure *st = NULL;
+static gboolean gst_pylon_src_set_caps(GstBaseSrc* src, GstCaps* caps) {
+  GstPylonSrc* self = GST_PYLON_SRC(src);
+  GstStructure* st = NULL;
   gint numerator = 0;
   gint denominator = 0;
   gint width = 0;
   static const gint byte_alignment = 4;
-  gchar *error_msg = NULL;
-  GError *error = NULL;
+  gchar* error_msg = NULL;
+  GError* error = NULL;
   gboolean ret = FALSE;
-  const gchar *action = NULL;
+  const gchar* action = NULL;
 
   GST_INFO_OBJECT(self, "Setting new caps: %" GST_PTR_FORMAT, caps);
 
@@ -733,9 +738,9 @@ out:
 }
 
 /* setup allocation query */
-static gboolean gst_pylon_src_decide_allocation(GstBaseSrc *src,
-                                                GstQuery *query) {
-  GstPylonSrc *self = GST_PYLON_SRC(src);
+static gboolean gst_pylon_src_decide_allocation(GstBaseSrc* src,
+                                                GstQuery* query) {
+  GstPylonSrc* self = GST_PYLON_SRC(src);
 
   GST_LOG_OBJECT(self, "decide_allocation");
 
@@ -743,9 +748,9 @@ static gboolean gst_pylon_src_decide_allocation(GstBaseSrc *src,
 }
 
 /* start and stop processing, ideal for opening/closing the resource */
-static gboolean gst_pylon_src_start(GstBaseSrc *src) {
-  GstPylonSrc *self = GST_PYLON_SRC(src);
-  GError *error = NULL;
+static gboolean gst_pylon_src_start(GstBaseSrc* src) {
+  GstPylonSrc* self = GST_PYLON_SRC(src);
+  GError* error = NULL;
   gboolean ret = TRUE;
   gboolean using_pfs = FALSE;
   gboolean same_device = TRUE;
@@ -833,16 +838,21 @@ log_gst_error:
                     ("%s", error->message));
   g_error_free(error);
 
-  /* no camera found. Stop pylon SDK */
+  /* Free any partially opened session before dropping the SDK ref */
+  if (self->pylon) {
+    gst_pylon_free(self->pylon);
+    self->pylon = NULL;
+  }
+
   Pylon::PylonTerminate();
 
 out:
   return ret;
 }
 
-static gboolean gst_pylon_src_stop(GstBaseSrc *src) {
-  GstPylonSrc *self = GST_PYLON_SRC(src);
-  GError *error = NULL;
+static gboolean gst_pylon_src_stop(GstBaseSrc* src) {
+  GstPylonSrc* self = GST_PYLON_SRC(src);
+  GError* error = NULL;
   gboolean ret = TRUE;
 
   GST_INFO_OBJECT(self, "Stopping camera device");
@@ -865,19 +875,33 @@ static gboolean gst_pylon_src_stop(GstBaseSrc *src) {
 
 /* unlock any pending access to the resource. subclasses should unlock
  * any function ASAP. */
-static gboolean gst_pylon_src_unlock(GstBaseSrc *src) {
-  GstPylonSrc *self = GST_PYLON_SRC(src);
+static gboolean gst_pylon_src_unlock(GstBaseSrc* src) {
+  GstPylonSrc* self = GST_PYLON_SRC(src);
 
   GST_LOG_OBJECT(self, "unlock");
 
-  gst_pylon_interrupt_capture(self->pylon);
+  if (self->pylon) {
+    gst_pylon_interrupt_capture(self->pylon);
+  }
+
+  return TRUE;
+}
+
+static gboolean gst_pylon_src_unlock_stop(GstBaseSrc* src) {
+  GstPylonSrc* self = GST_PYLON_SRC(src);
+
+  GST_LOG_OBJECT(self, "unlock_stop");
+
+  if (self->pylon) {
+    gst_pylon_clear_capture_interrupt(self->pylon);
+  }
 
   return TRUE;
 }
 
 /* notify subclasses of a query */
-static gboolean gst_pylon_src_query(GstBaseSrc *src, GstQuery *query) {
-  GstPylonSrc *self = GST_PYLON_SRC(src);
+static gboolean gst_pylon_src_query(GstBaseSrc* src, GstQuery* query) {
+  GstPylonSrc* self = GST_PYLON_SRC(src);
   gboolean res = FALSE;
 
   switch (GST_QUERY_TYPE(query)) {
@@ -912,15 +936,15 @@ static gboolean gst_pylon_src_query(GstBaseSrc *src, GstQuery *query) {
 }
 
 /* add time metadata to buffer */
-static void gst_plyon_src_add_metadata(GstPylonSrc *self, GstBuffer *buf) {
-  GstClock *clock = NULL;
+static void gst_plyon_src_add_metadata(GstPylonSrc* self, GstBuffer* buf) {
+  GstClock* clock = NULL;
   GstClockTime abs_time = GST_CLOCK_TIME_NONE;
   GstClockTime base_time = GST_CLOCK_TIME_NONE;
   GstClockTime timestamp = GST_CLOCK_TIME_NONE;
-  GstCaps *ref = NULL;
+  GstCaps* ref = NULL;
   guint64 offset = G_GUINT64_CONSTANT(0);
   GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
-  GstPylonMeta *pylon_meta = NULL;
+  GstPylonMeta* pylon_meta = NULL;
   guint width = 0;
   guint height = 0;
   guint n_planes = 0;
@@ -929,8 +953,7 @@ static void gst_plyon_src_add_metadata(GstPylonSrc *self, GstBuffer *buf) {
   g_return_if_fail(self);
   g_return_if_fail(buf);
 
-  pylon_meta =
-      (GstPylonMeta *)gst_buffer_get_meta(buf, GST_PYLON_META_API_TYPE);
+  pylon_meta = (GstPylonMeta*)gst_buffer_get_meta(buf, GST_PYLON_META_API_TYPE);
 
   GST_OBJECT_LOCK(self);
   /* set duration */
@@ -954,7 +977,11 @@ static void gst_plyon_src_add_metadata(GstPylonSrc *self, GstBuffer *buf) {
     abs_time = GST_CLOCK_TIME_NONE;
   }
 
-  timestamp = abs_time - base_time;
+  if (GST_CLOCK_TIME_IS_VALID(abs_time) && GST_CLOCK_TIME_IS_VALID(base_time)) {
+    timestamp = abs_time - base_time;
+  } else {
+    timestamp = GST_CLOCK_TIME_NONE;
+  }
   offset = pylon_meta->block_id;
 
   GST_BUFFER_TIMESTAMP(buf) = timestamp;
@@ -985,9 +1012,9 @@ static void gst_plyon_src_add_metadata(GstPylonSrc *self, GstBuffer *buf) {
 
 /* ask the subclass to create a buffer with offset and size, the default
  * implementation will call alloc and fill. */
-static GstFlowReturn gst_pylon_src_create(GstPushSrc *src, GstBuffer **buf) {
-  GstPylonSrc *self = GST_PYLON_SRC(src);
-  GError *error = NULL;
+static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf) {
+  GstPylonSrc* self = GST_PYLON_SRC(src);
+  GError* error = NULL;
   gboolean pylon_ret = TRUE;
   GstFlowReturn ret = GST_FLOW_OK;
   gint capture_error = -1;
@@ -1007,10 +1034,8 @@ static GstFlowReturn gst_pylon_src_create(GstPushSrc *src, GstBuffer **buf) {
       g_error_free(error);
       ret = GST_FLOW_ERROR;
     } else {
-      GST_DEBUG_OBJECT(self,
-                       "Buffer not created, user requested EOS or device "
-                       "connection was lost");
-      ret = GST_FLOW_EOS;
+      GST_DEBUG_OBJECT(self, "Capture interrupted for flush/unlock");
+      ret = GST_FLOW_FLUSHING;
     }
     goto done;
   }
@@ -1024,14 +1049,14 @@ done:
 }
 
 static guint gst_pylon_src_child_proxy_get_children_count(
-    GstChildProxy *child_proxy) {
-  return sizeof(gst_pylon_src_child_proxy_names) / sizeof(gchar *);
+    GstChildProxy* child_proxy) {
+  return sizeof(gst_pylon_src_child_proxy_names) / sizeof(gchar*);
 }
 
-static GObject *gst_pylon_src_child_proxy_get_child_by_name(
-    GstChildProxy *child_proxy, const gchar *name) {
-  GstPylonSrc *self = GST_PYLON_SRC(child_proxy);
-  GObject *obj = NULL;
+static GObject* gst_pylon_src_child_proxy_get_child_by_name(
+    GstChildProxy* child_proxy, const gchar* name) {
+  GstPylonSrc* self = GST_PYLON_SRC(child_proxy);
+  GObject* obj = NULL;
 
   GST_DEBUG_OBJECT(self, "Looking for child \"%s\"", name);
 
@@ -1059,10 +1084,10 @@ static GObject *gst_pylon_src_child_proxy_get_child_by_name(
   return obj;
 }
 
-static GObject *gst_pylon_src_child_proxy_get_child_by_index(
-    GstChildProxy *child_proxy, guint index) {
-  GstPylonSrc *self = GST_PYLON_SRC(child_proxy);
-  GObject *obj = NULL;
+static GObject* gst_pylon_src_child_proxy_get_child_by_index(
+    GstChildProxy* child_proxy, guint index) {
+  GstPylonSrc* self = GST_PYLON_SRC(child_proxy);
+  GObject* obj = NULL;
 
   GST_DEBUG_OBJECT(self, "Looking for child at index \"%d\"", index);
 
@@ -1080,7 +1105,7 @@ done:
   return obj;
 }
 
-static void gst_pylon_src_child_proxy_init(GstChildProxyInterface *iface) {
+static void gst_pylon_src_child_proxy_init(GstChildProxyInterface* iface) {
   iface->get_child_by_name = gst_pylon_src_child_proxy_get_child_by_name;
   iface->get_child_by_index = gst_pylon_src_child_proxy_get_child_by_index;
   iface->get_children_count = gst_pylon_src_child_proxy_get_children_count;
