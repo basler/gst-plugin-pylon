@@ -36,9 +36,11 @@ All notable changes to this project will be documented in this file.
 - CUDA is detected via `cuda.pc` or the JetPack `/usr/local/cuda` toolkit layout
 - Camemu package tests pin system-memory caps so NVMM builds pass under fakeroot
 - Restart leak test downsizes 4096² RGB on hosts with low `MemAvailable`
-- CI targets pylon Software Suite 26.06 (C++ SDK >= 12.2) via Conan, GitHub
-  runners ubuntu-24.04 / ubuntu-24.04-arm / windows-latest, and GStreamer 1.26.9
-  on Windows (Linux uses distro GStreamer >= 1.20)
+- CI targets pylon Software Suite 26.06 via Conan, GitHub runners
+  ubuntu-24.04 / ubuntu-24.04-arm / windows-latest / macos-latest, and
+  GStreamer 1.26.9 on Windows (Linux uses distro GStreamer >= 1.20)
+- Meson still accepts pylon 7.1+ and the 6.x aarch64 fallback; C++ SDK 12.2
+  is not a source-level requirement
 - GitLab CI is disabled; GitHub Actions is the build source of truth
 - Camemu meson tests honor `PYLON_ROOT`; Debian CI registers a stub `pylon`
   package from the Conan SDK tree so `dpkg-buildpackage` can satisfy Depends
@@ -50,6 +52,8 @@ All notable changes to this project will be documented in this file.
   that still requires a dpkg `pylon` package (official or stub)
 - Debian packages depend on `pylon (>= 26.06)` (suite-date dpkg Version);
   binary compatibility is C++ SDK 12.x / `libpylonbase.so.12`, not `<< 27`
+- Debian packages record the exact build-time pylon package version in the
+  `Pylon-Built-Against` control field
 - `pygstpylon` uses CPython's stable ABI (Python 3.10+)
 - Debian package versions use epoch 1 so the universal package upgrades the
   former distro-suffixed `1.0.0-1~...` packages

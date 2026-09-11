@@ -26,6 +26,7 @@ Homepage: https://github.com/basler/gst-plugin-pylon
 
 Package: gst-plugin-pylon
 Architecture: any
+XB-Pylon-Built-Against: ${pylon:Built-Against}
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          pylon (>= 26.06),
@@ -37,6 +38,7 @@ Description: GStreamer plugin for Basler cameras
 
 Package: gst-plugin-pylon-dev
 Architecture: any
+XB-Pylon-Built-Against: ${pylon:Built-Against}
 Depends: ${misc:Depends},
          pylon (>= 26.06),
          gst-plugin-pylon (= ${binary:Version})
@@ -46,6 +48,7 @@ Description: Development files for GStreamer plugin for Basler cameras
 
 Package: python3-pygstpylon
 Architecture: any
+XB-Pylon-Built-Against: ${pylon:Built-Against}
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          ${python3:Depends},

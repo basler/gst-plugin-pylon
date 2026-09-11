@@ -45,6 +45,13 @@ if [[ "$depends" == *"pylon (<<"* ]]; then
   exit 1
 fi
 
+built_against="$(dpkg-deb -f "${plugin_debs[0]}" Pylon-Built-Against)"
+installed_pylon="$(dpkg-query -W -f='${Version}' pylon)"
+if [[ "$built_against" != "$installed_pylon" ]]; then
+  echo "Pylon-Built-Against=$built_against, expected $installed_pylon" >&2
+  exit 1
+fi
+
 python_depends="$(dpkg-deb -f "${python_debs[0]}" Depends)"
 if grep -Eq 'python3(:any)? \(<<' <<<"$python_depends"; then
   echo "Python package is tied to the build interpreter: $python_depends" >&2

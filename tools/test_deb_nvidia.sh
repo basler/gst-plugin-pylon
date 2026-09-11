@@ -21,6 +21,8 @@ fi
 deb="${plugin_debs[0]}"
 depends="$(dpkg-deb -f "$deb" Depends)"
 version="$(dpkg-deb -f "$deb" Version)"
+built_against="$(dpkg-deb -f "$deb" Pylon-Built-Against)"
+installed_pylon="$(dpkg-query -W -f='${Version}' pylon)"
 pkg="deepstream-${DS_VERSION}"
 
 if [[ "$depends" != *"$pkg"* ]]; then
@@ -33,6 +35,10 @@ if [[ "$depends" != *"pylon (>= 26.06)"* ]]; then
 fi
 if [[ "$version" != *"~"* ]]; then
   echo "NVIDIA package Version should include an L4T suffix, got: $version" >&2
+  exit 1
+fi
+if [[ "$built_against" != "$installed_pylon" ]]; then
+  echo "Pylon-Built-Against=$built_against, expected $installed_pylon" >&2
   exit 1
 fi
 
@@ -59,5 +65,6 @@ fi
 
 echo "NVIDIA Debian package OK: $deb"
 echo "  Version=$version"
+echo "  Pylon-Built-Against=$built_against"
 echo "  Depends=$depends"
 echo "  NEEDED nvbufsurface+cudart"

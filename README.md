@@ -348,20 +348,23 @@ This plugin is built using the [meson](https://mesonbuild.com/) build system. Th
 
 As a first step install Basler pylon according to your platform. Downloads are available at: [Basler software downloads](https://www.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware;language=all;version=all)
 
-The supported pylon versions on the different platforms are the Software Suite
-releases that ship **C++ SDK 12.x** (`libpylonbase.so.12`), starting with 26.06
-(CMake 12.2.1) through at least 26.08.1 (CMake 12.3.0):
+The supported pylon versions on the different platforms are:
 
+|                 | > 26.06 | 26.06 | 7.5 | 7.4 | 6.2 |
+|-----------------|:-------:|:-----:|:---:|:---:|:---:|
+| Windows x86_64  |    x    |   x   |  x  |  x  |     |
+| Linux x86_64    |    x    |   x   |  x  |  x  |     |
+| Linux aarch64   |    x    |   x   |  x  |  x  |  x  |
+| macOS           |    x    |   x   |  -  |  -  |  -  |
 
-|                 | 26.06+ (SDK 12.x) |
-|-----------------|:-----------------:|
-| Windows x86_64  |         x         |
-| Linux x86_64    |         x         |
-| Linux aarch64   |         x         |
-| macOS           |         x         |
+A from-source meson build does not require C++ SDK 12.2. It still detects
+pylon 7.1+ via CMake and falls back to the 6.x finder on aarch64.
 
-CI currently builds against pylon 26.06. Official Linux debs use a date
-Version (`pylon_26.08.1-deb0_amd64.deb` → `Version: 26.08.1-deb0`).
+CI builds all four platforms against pylon 26.06. Official Linux debs use a
+date Version (`pylon_26.08.1-deb0_amd64.deb` → `Version: 26.08.1-deb0`) and
+Depend on `pylon (>= 26.06)`. Each generated gst-plugin-pylon Debian package
+records the exact build-time package version in `Pylon-Built-Against`; inspect
+it with `dpkg-deb -f <package.deb> Pylon-Built-Against`.
 
 Installing Basler pylon SDK will also install the Basler pylon viewer. You should use this tool to verify, that the cameras work properly in your system and to learn about the their features.
 
@@ -389,11 +392,11 @@ sudo apt install python3-dev python3-gi gir1.2-gstreamer-1.0
 
 ```
 
-The build process relies on `PYLON_ROOT` pointing to a pylon Software Suite 26.x
-tree with `include/pylon` (official installer under `/opt/pylon`, or any other
-extracted SDK). Meson finds pylon via CMake using that path and sets an install
-RPATH to `$PYLON_ROOT/lib`, so a from-source install does **not** require a
-`pylon` Debian package.
+The build process relies on `PYLON_ROOT` pointing to a pylon tree with
+`include/pylon` (official installer under `/opt/pylon`, or any other extracted
+SDK). Meson finds pylon via CMake using that path and sets an install RPATH to
+`$PYLON_ROOT/lib`, so a from-source install does **not** require a `pylon`
+Debian package.
 
 ```bash
 # official Linux installer
@@ -449,11 +452,17 @@ package directory (often under `/usr/local/lib/python3/dist-packages` even when
 
 The release packages are built once per architecture on Ubuntu 22.04, the
 oldest supported userspace (glibc and GStreamer 1.20), and install-tested
-unchanged on Ubuntu 22.04, Ubuntu 24.04, and Debian bookworm. They declare
-compatibility with the pylon C++ SDK 12.x ABI (`libpylonbase.so.12`). The
-Debian `pylon` package uses a date Version (`26.08.1-deb0` for suite 26.08),
-so Depends are `pylon (>= 26.06)` — the first suite that shipped SDK 12 —
-not `pylon (>= 12)` or `pylon (<< 27)`.
+unchanged on Ubuntu 22.04, Ubuntu 24.04, and Debian bookworm. The Debian
+`pylon` package uses a date Version (`26.08.1-deb0` for suite 26.08), so the
+binary Depends are `pylon (>= 26.06)` — not `pylon (>= 12)` or `pylon (<< 27)`.
+A from-source build can still use older suites from the table above.
+
+The exact pylon package used for compilation is informational metadata rather
+than a runtime pin. Inspect it with:
+
+```
+dpkg-deb -f gst-plugin-pylon_*.deb Pylon-Built-Against
+```
 
 `dpkg-buildpackage` needs a dpkg `pylon` package at that floor (Build-Depends
 and runtime Depends). A tree at `PYLON_ROOT` is not enough by itself.

@@ -15,12 +15,11 @@ pylon_include_ok = pylon_path != 'PYLON_ROOT_NOT_SET' and (
   fs.exists(pylon_path / 'Frameworks/pylon.framework/Versions/A/Headers'))
 
 if (target_machine.system() == 'linux' or target_machine.system() == 'darwin') and not pylon_include_ok
-  error('PYLON_ROOT has to be set to a pylon install with C++ SDK 12.x (Linux: include/pylon, macOS: Frameworks/pylon.framework)')
+  error('PYLON_ROOT has to be set to a pylon install (Linux: include/pylon, macOS: Frameworks/pylon.framework)')
 endif
 
-# Binary compatibility is the C++ SDK / SONAME (libpylonbase.so.12), not the
-# Software Suite date (deb Version 26.08.1-deb0). 26.06 shipped 12.2.1; 26.08
-# ships 12.3.0 with the same SONAME.
+# From-source builds still accept pylon 7.1+ (CMake package) and the 6.x
+# fallback. Debian packages separately Depend on pylon (>= 26.06).
 pylon_cmake_prefixes = []
 if pylon_path != 'PYLON_ROOT_NOT_SET'
   pylon_cmake_prefixes += [
@@ -48,16 +47,21 @@ endforeach
 
 pylon_dep = dependency('pylon', method : 'cmake',
         modules : ['pylon::PylonBase', 'pylon::PylonUtility'],
-        version : '>=12.2',
+        version : '>=7.1',
         cmake_args : pylon_cmake_args,
-        required : true)
-if not pylon_dep.version().version_compare('<13')
-  error('Need pylon C++ SDK 12.x (SONAME libpylonbase.so.12), found ' + pylon_dep.version())
-endif
+        required : false)
 
-if target_machine.system() == 'linux'
-  pylon_rpath = pylon_path / 'lib'
+if pylon_dep.found()
+  if target_machine.system() == 'linux'
+    pylon_rpath = pylon_path / 'lib'
+  else
+    pylon_rpath = ''
+  endif
 else
+  message('fallback to detect pylon 6.x')
+  pylon_dep = dependency('pylon', method : 'cmake',
+          cmake_module_path: meson.project_source_root() + '/cmake',
+          required : true)
   pylon_rpath = ''
 endif
 
