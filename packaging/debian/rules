@@ -13,17 +13,30 @@ export DEB_PYTHON_INSTALL_LAYOUT = deb
 # Emulators for camemu functional tests during the package build
 export PYLON_CAMEMU ?= 4
 export PYLON_ROOT ?= /opt/pylon
-# Ensure pylon libs are visible under fakeroot (which resets LD_LIBRARY_PATH)
-export LD_LIBRARY_PATH := /opt/pylon/lib$(if $(LD_LIBRARY_PATH),:$(LD_LIBRARY_PATH))
+
+# fakeroot resets LD_LIBRARY_PATH; keep pylon (and DeepStream/CUDA for NVMM) visible
+PYLON_LIB := /opt/pylon/lib
+NVDS_LIB := /opt/nvidia/deepstream/deepstream/lib
+NVIDIA_LIB := /usr/lib/aarch64-linux-gnu/nvidia
+CUDA_LIB := /usr/local/cuda/lib64
+SHLIB_DIRS := -l$(PYLON_LIB)
+MESON_NVMM :=
+
+ifneq ($(filter nvidia,$(DEB_BUILD_PROFILES)),)
+SHLIB_DIRS += -l$(NVDS_LIB) -l$(NVIDIA_LIB) -l$(CUDA_LIB)
+MESON_NVMM := -Dnvmm=enabled
+endif
+
+export LD_LIBRARY_PATH := $(PYLON_LIB):$(NVDS_LIB):$(NVIDIA_LIB):$(CUDA_LIB)$(if $(LD_LIBRARY_PATH),:$(LD_LIBRARY_PATH))
 
 %:
 	dh $@ --with python3 --buildsystem=meson
 
 override_dh_auto_configure:
-	dh_auto_configure -- -Dpython-bindings=enabled
+	dh_auto_configure -- -Dpython-bindings=enabled $(MESON_NVMM)
 
 # Skip tests for nvidia profile builds when not on NVIDIA hardware.
-# Otherwise run the full Meson test suite (including camemu).
+# GitHub's ARM job is a compile/link check and sets DEB_BUILD_OPTIONS=nocheck.
 override_dh_auto_test:
 	if echo "$(DEB_BUILD_PROFILES)" | grep -q "nvidia"; then \
 		if [ ! -f /proc/device-tree/compatible ] || ! grep -q "nvidia" /proc/device-tree/compatible; then \
@@ -35,4 +48,4 @@ override_dh_auto_test:
 
 # handle pylon libs versioning and rpath
 override_dh_shlibdeps:
-	dh_shlibdeps -a -l/opt/pylon/lib -- --ignore-missing-info
+	dh_shlibdeps -a $(SHLIB_DIRS) -- --ignore-missing-info

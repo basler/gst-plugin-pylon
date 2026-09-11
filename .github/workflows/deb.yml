@@ -268,13 +268,92 @@ jobs:
             /src/tools/test_deb_compatibility.sh \
               /packages /pylon-sdk/pylon_sdk.tar.gz
 
+  build_deb_nvidia:
+    # Compile/link against real NVIDIA Jetson SDK files on an ARM CPU runner.
+    # This proves the package can be built; NVMM runtime needs a real Jetson.
+    # Deliberately do not upload or release these packages yet.
+    name: build_deb_nvidia (DS ${{ matrix.deepstream }}, JP ${{ matrix.jetpack }})
+    runs-on: ubuntu-24.04-arm
+    needs: [setup, download_packaging]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - deepstream: "6.4"
+            cuda: "12.2.2"
+            jetpack: "6.0 DP"
+            l4t: "36.2.0"
+          - deepstream: "7.0"
+            cuda: "12.2.2"
+            jetpack: "6.0 GA"
+            l4t: "36.3.0"
+          - deepstream: "7.1"
+            cuda: "12.6.3"
+            jetpack: "6.2"
+            l4t: "36.4.3"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download aarch64 SDK
+        uses: actions/download-artifact@v7
+        with:
+          name: Linux_aarch64_packaging_Pylon_SDK
+          path: pylon-sdk
+
+      - name: Download NVIDIA build inputs
+        run: |
+          chmod +x tools/fetch_nvidia_build_sdk.sh
+          tools/fetch_nvidia_build_sdk.sh \
+            ${{ matrix.deepstream }} ${{ matrix.cuda }} ${{ matrix.l4t }} \
+            nvidia-sdk-downloads
+
+      - name: Build NVIDIA Debian package
+        uses: jtdor/build-deb-action@v1
+        env:
+          # A GitHub ARM runner has no Jetson GPU. Build/link only.
+          DEB_BUILD_OPTIONS: nocheck noautodbgsym
+          DEB_BUILD_PROFILES: nvidia
+        with:
+          setup-hook: |
+             set -e
+             ln -sfn packaging/debian
+             chmod +x packaging/debian/rules \
+               tools/patch_deb_changelog.sh \
+               tools/register_pylon_from_tree.sh \
+               tools/install_nvidia_build_sdk.sh \
+               tools/test_deb_nvidia.sh
+             apt-get update
+             tools/install_nvidia_build_sdk.sh \
+               ${{ matrix.deepstream }} ${{ matrix.cuda }} ${{ matrix.l4t }} \
+               /nvidia-sdk
+             tools/register_pylon_from_tree.sh /pylon-sdk/pylon_sdk.tar.gz
+             test -d /opt/pylon
+             test -f /opt/nvidia/deepstream/deepstream/lib/libnvbufsurface.so
+             tools/patch_deb_changelog.sh
+          docker-image: ubuntu:22.04
+          extra-docker-args: >-
+            -v ${{ github.workspace }}/pylon-sdk:/pylon-sdk
+            -v ${{ github.workspace }}/nvidia-sdk-downloads:/nvidia-sdk:ro
+            -e PYLON_ROOT=/opt/pylon
+            -e DEB_BUILD_PROFILES=nvidia
+            -e LD_LIBRARY_PATH=/opt/pylon/lib:/opt/nvidia/deepstream/deepstream/lib:/usr/lib/aarch64-linux-gnu/nvidia:/usr/local/cuda/lib64
+            --platform linux/arm64
+          buildpackage-opts: --build=binary --no-sign
+
+      - name: Verify NVMM package metadata and link
+        run: |
+          chmod +x tools/test_deb_nvidia.sh
+          tools/test_deb_nvidia.sh debian/artifacts ${{ matrix.deepstream }}
+
   cleanup:
     if: always()
     needs: [
             setup,
             download_packaging,
             build_deb,
-            test_deb
+            test_deb,
+            build_deb_nvidia
     ]
     runs-on: ubuntu-latest
     steps:

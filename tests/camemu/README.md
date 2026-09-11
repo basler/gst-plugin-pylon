@@ -35,7 +35,7 @@ PYLON_ROOT=/opt/pylon PYLON_CAMEMU=3 ./tests/camemu/run_camemu_tests.sh
 | Formats | GRAY8, Bayer, framerate caps |
 | Configuration | `user-set=Auto`, `enable-correction` |
 | Property order | `cam::` before `user-set`/`pfs-location` still applies final config |
-| Pipeline | queue, videoconvert, sequential open/close |
+| Pipeline | queue, videoconvert, sequential open/close (system-memory caps so NVMM builds work under fakeroot) |
 | Buffers | PyGObject appsink count when PyGObject is available |
 | Restart cleanup | `restart_resource_leak.py`: 4096x4096 RGB; pipe FD + RSS across EOS and abrupt-stop cycles (Linux `/proc` only; skipped elsewhere) |
 

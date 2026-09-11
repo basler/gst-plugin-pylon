@@ -504,9 +504,32 @@ PYLON_SDK_TGZ=/path/to/pylon_sdk.tar.gz tools/test_deb_in_docker.sh
 
 ### Debian NVIDIA Packaging
 
-Install the pylon and codemeter debian packages. They will install into `/opt/pylon`
+NVMM (`memory:NVMM`) needs DeepStream and CUDA at build time. GitHub CI
+compile-checks the NVIDIA Debian profile on a native ARM runner against the
+real NVIDIA headers and libraries for these combinations:
 
-Install the platform dependencies:
+| JetPack / L4T | CUDA | DeepStream |
+|---------------|------|------------|
+| 6.0 DP / 36.2 | 12.2 | 6.4 |
+| 6.0 GA / 36.3 | 12.2 | 7.0 |
+| 6.2 / 36.4.3 | 12.6 | 7.1 |
+
+The CI jobs have no Jetson GPU: they prove that the packages compile, link to
+`libnvbufsurface` and `libcudart`, and contain the expected Debian dependency.
+`libnvbufsurface` comes from L4T (`nvidia-l4t-multimedia-utils`), not from the
+DeepStream tarball, so CI downloads that Jetson package as a build input only.
+They do not execute NVMM and their `.deb` files are deliberately not published.
+Runtime qualification requires a real Jetson worker.
+
+DeepStream 6.3 is not in this matrix because its JetPack 5.1.2 image provides
+GStreamer 1.16, while this plug-in requires GStreamer 1.20 or newer.
+
+#### Build the package locally on a Jetson
+
+Install the matching JetPack and DeepStream release first. Install the official
+pylon and CodeMeter Debian packages; they place pylon under `/opt/pylon`.
+
+Install the platform dependencies (match the DeepStream package to your JetPack):
 
 ```
 sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot pkg-config \
@@ -514,21 +537,40 @@ sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot pkg-co
                      gstreamer1.0-tools gstreamer1.0-plugins-base \
                      gstreamer1.0-python3-plugin-loader \
                      python3 python3-dev python3-gi \
-                     deepstream-6.3 # depending on platform deepstream-6.4 or deepstream-7.0
+                     gir1.2-gstreamer-1.0 \
+                     deepstream-7.1   # use deepstream-6.4 or -7.0 on matching JetPack
 ```
 
-Prepare the build setup ( from main project folder ):
+Download the source directly from GitHub. Prefer a release tag once one includes
+these NVIDIA packaging changes; use `main` to build the current development code:
 
 ```
+git clone --depth 1 --branch main \
+  https://github.com/basler/gst-plugin-pylon.git
+cd gst-plugin-pylon
+
 ln -sfn packaging/debian
 tools/patch_deb_changelog.sh
 ```
 
-Build the debian packages using the nvidia profile
+Build with the `nvidia` profile. This requires NVMM support to be found instead
+of silently producing a system-memory-only package. The build also runs the
+Meson and pylon camera-emulator tests on the Jetson:
 
 ```
 DEB_BUILD_PROFILES=nvidia PYLON_ROOT=/opt/pylon dpkg-buildpackage -us -uc -rfakeroot
 ```
+
+The `.deb` files are written to the parent directory. Install them with:
+
+```
+sudo apt-get install ../gst-plugin-pylon_*.deb \
+                     ../gst-plugin-pylon-dev_*.deb \
+                     ../python3-pygstpylon_*.deb
+```
+
+Only if the pylon camera emulator is unavailable, skip tests explicitly with
+`DEB_BUILD_OPTIONS=nocheck`; do not use that for a qualified package build.
 
 ### Integrating with GStreamer monorepo
 

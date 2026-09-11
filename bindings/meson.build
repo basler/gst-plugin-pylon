@@ -53,10 +53,13 @@ else
     check: false,
   ).stdout().strip()
 
-  pygstpylon_lib_path = ':'.join([
+  pygstpylon_lib_dirs = [
     meson.project_build_root() / 'gst-libs' / 'gst' / 'pylon',
     join_paths(pygstpylon_pylon_root, 'lib'),
-  ])
+    '/opt/nvidia/deepstream/deepstream/lib',
+    '/usr/local/cuda/lib64',
+  ]
+  pygstpylon_lib_path = ':'.join(pygstpylon_lib_dirs)
   pygstpylon_plugin_path = meson.project_build_root() / 'ext' / 'pylon'
   pygstpylon_test_env = {
     'PYLON_CAMEMU': '4',

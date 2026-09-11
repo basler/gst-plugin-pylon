@@ -33,10 +33,41 @@ gi.require_version("Gst", "1.0")
 from gi.repository import Gst  # noqa: E402
 
 # Default camemu stress geometry: large enough that one leaked GrabResult is
-# obvious in VmRSS (~50 MiB for RGB).
+# obvious in VmRSS (~50 MiB for RGB). Downsized automatically on hosts with
+# little free RAM (e.g. Jetson Orin NX 8 GB with DeepStream).
 DEFAULT_WIDTH = 4096
 DEFAULT_HEIGHT = 4096
 DEFAULT_FORMAT = "RGB"
+
+
+def mem_available_bytes() -> int | None:
+    path = Path("/proc/meminfo")
+    if not path.is_file():
+        return None
+    for line in path.read_text().splitlines():
+        if line.startswith("MemAvailable:"):
+            return int(line.split()[1]) * 1024
+    return None
+
+
+def default_stress_geometry() -> tuple[int, int]:
+    """Pick 4096² when RAM allows; otherwise a smaller RGB frame."""
+    available = mem_available_bytes()
+    if available is None or available >= 2 * 1024 * 1024 * 1024:
+        return DEFAULT_WIDTH, DEFAULT_HEIGHT
+    if available >= 768 * 1024 * 1024:
+        print(
+            f"low MemAvailable ({available / (1024 * 1024):.0f} MiB); "
+            "using 1920x1080 RGB for restart leak test",
+            flush=True,
+        )
+        return 1920, 1080
+    print(
+        f"low MemAvailable ({available / (1024 * 1024):.0f} MiB); "
+        "using 640x480 RGB for restart leak test",
+        flush=True,
+    )
+    return 640, 480
 
 
 def caps_string(width: int, height: int, fmt: str) -> str:
@@ -180,8 +211,8 @@ def parse_args() -> argparse.Namespace:
         default=2,
         help="num-buffers for the clean EOS scenario (default: 2)",
     )
-    parser.add_argument("--width", type=int, default=DEFAULT_WIDTH)
-    parser.add_argument("--height", type=int, default=DEFAULT_HEIGHT)
+    parser.add_argument("--width", type=int, default=None)
+    parser.add_argument("--height", type=int, default=None)
     parser.add_argument("--format", default=DEFAULT_FORMAT)
     parser.add_argument(
         "--max-pipe-growth",
@@ -226,8 +257,15 @@ def main() -> int:
         print("FAIL: /proc/self/fd is required", file=sys.stderr)
         return 2
 
-    caps = caps_string(args.width, args.height, args.format)
-    one_frame = frame_bytes(args.width, args.height, args.format)
+    width = args.width
+    height = args.height
+    if width is None or height is None:
+        auto_w, auto_h = default_stress_geometry()
+        width = auto_w if width is None else width
+        height = auto_h if height is None else height
+
+    caps = caps_string(width, height, args.format)
+    one_frame = frame_bytes(width, height, args.format)
     max_rss_growth = int(args.max_rss_frames * one_frame)
     settle_s = args.settle_ms / 1000.0
     pending_wait_s = args.pending_wait_ms / 1000.0

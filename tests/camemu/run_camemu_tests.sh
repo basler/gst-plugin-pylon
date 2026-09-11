@@ -48,6 +48,13 @@ fi
 if [[ -d "$PYLON_ROOT/lib" ]]; then
   EXTRA_LIBS+=("$PYLON_ROOT/lib")
 fi
+# NVMM-enabled builds also need DeepStream / CUDA at plugin-load time.
+if [[ -d /opt/nvidia/deepstream/deepstream/lib ]]; then
+  EXTRA_LIBS+=("/opt/nvidia/deepstream/deepstream/lib")
+fi
+if [[ -d /usr/local/cuda/lib64 ]]; then
+  EXTRA_LIBS+=("/usr/local/cuda/lib64")
+fi
 if [[ -d "$PYLON_ROOT/Runtime/x64" ]]; then
   PATH="$PYLON_ROOT/Runtime/x64:$PATH"
 fi
@@ -178,14 +185,22 @@ expect_output "inspect_has_device_serial_property" "device-serial-number" \
 expect_output "inspect_has_child_properties" "cam|stream" \
   gst-inspect-1.0 pylonsrc
 
+# Pin system memory. NVMM is first in the pad template, so `pylonsrc ! fakesink`
+# would otherwise pick memory:NVMM and call NvBufSurfaceAllocate (fails under
+# fakeroot / dpkg-buildpackage, and is too heavy for 8 GB Jetson test runs).
+SYS_CAPS="video/x-raw,format=GRAY8,width=640,height=480"
+
 expect_ok "capture_by_emulator_serial_0" \
-  gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=10 ! fakesink
+  gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=10 \
+    ! "$SYS_CAPS" ! fakesink
 
 expect_ok "capture_by_emulator_serial_1" \
-  gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_1" num-buffers=5 ! fakesink
+  gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_1" num-buffers=5 \
+    ! "$SYS_CAPS" ! fakesink
 
 expect_ok "capture_by_device_index_1" \
-  gst_pipeline pylonsrc device-index=1 num-buffers=5 ! fakesink
+  gst_pipeline pylonsrc device-index=1 num-buffers=5 \
+    ! "$SYS_CAPS" ! fakesink
 
 expect_fail "ambiguous_devices_without_selection" \
   gst_pipeline pylonsrc num-buffers=1 ! fakesink
@@ -217,24 +232,24 @@ expect_ok "capture_with_framerate_cap" \
 
 expect_ok "capture_with_user_set_auto" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" user-set=Auto \
-    num-buffers=5 ! fakesink
+    num-buffers=5 ! "$SYS_CAPS" ! fakesink
 
 expect_ok "capture_with_enable_correction" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" enable-correction=true \
-    num-buffers=5 ! fakesink
+    num-buffers=5 ! "$SYS_CAPS" ! fakesink
 
 # cam:: before user-set must still apply the final userset (config reload)
 expect_ok "cam_property_before_user_set" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" \
-    cam::Gain=1 user-set=Auto num-buffers=5 ! fakesink
+    cam::Gain=1 user-set=Auto num-buffers=5 ! "$SYS_CAPS" ! fakesink
 
 expect_ok "pipeline_with_queue" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=10 \
-    ! queue max-size-buffers=2 ! fakesink
+    ! "$SYS_CAPS" ! queue max-size-buffers=2 ! fakesink
 
 expect_ok "pipeline_with_videoconvert" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=5 \
-    ! videoconvert ! video/x-raw,format=RGB ! fakesink
+    ! "$SYS_CAPS" ! videoconvert ! video/x-raw,format=RGB ! fakesink
 
 if command -v python3 >/dev/null 2>&1 || [[ -x /usr/bin/python3 ]]; then
   # Prefer a Python that has PyGObject (system packages). A Meson/CI venv
@@ -281,7 +296,7 @@ fi
 expect_ok "sequential_pipeline_runs" \
   bash -c '
     for i in 1 2 3; do
-      gst-launch-1.0 -q pylonsrc device-serial-number='"$EMU_SERIAL_0"' num-buffers=3 ! fakesink || exit 1
+      gst-launch-1.0 -q pylonsrc device-serial-number='"$EMU_SERIAL_0"' num-buffers=3 ! '"$SYS_CAPS"' ! fakesink || exit 1
     done
   '
 

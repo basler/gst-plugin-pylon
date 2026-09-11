@@ -24,6 +24,18 @@ All notable changes to this project will be documented in this file.
 - Unused `bindings/packaging/setup.py` (pygstpylon is installed by Meson, not setuptools)
 
 ### Changed
+- NVIDIA Debian packaging supports DeepStream 6.4, 7.0, and 7.1; native ARM CI
+  compile-checks each profile against real NVIDIA SDK files without publishing
+  the unqualified artifacts
+- NVIDIA CI also fetches `nvidia-l4t-multimedia-utils` so the plugin can link
+  `libnvbufsurface` (L4T, not shipped in the DeepStream tarball)
+- NVIDIA CI unpacks CUDA `cudart`, `nvcc`, and `cccl` redistributables so
+  `cuda_runtime.h` can include `crt/host_config.h`
+- The nvidia profile requires NVMM (`-Dnvmm=enabled`) and the README documents
+  building and testing a local package directly from the GitHub source
+- CUDA is detected via `cuda.pc` or the JetPack `/usr/local/cuda` toolkit layout
+- Camemu package tests pin system-memory caps so NVMM builds pass under fakeroot
+- Restart leak test downsizes 4096² RGB on hosts with low `MemAvailable`
 - CI targets pylon Software Suite 26.06 (C++ SDK >= 12.2) via Conan, GitHub
   runners ubuntu-24.04 / ubuntu-24.04-arm / windows-latest, and GStreamer 1.26.9
   on Windows (Linux uses distro GStreamer >= 1.20)
