@@ -22,7 +22,6 @@ deb="${plugin_debs[0]}"
 depends="$(dpkg-deb -f "$deb" Depends)"
 version="$(dpkg-deb -f "$deb" Version)"
 built_against="$(dpkg-deb -f "$deb" Pylon-Built-Against)"
-installed_pylon="$(dpkg-query -W -f='${Version}' pylon)"
 pkg="deepstream-${DS_VERSION}"
 
 if [[ "$depends" != *"$pkg"* ]]; then
@@ -37,9 +36,18 @@ if [[ "$version" != *"~"* ]]; then
   echo "NVIDIA package Version should include an L4T suffix, got: $version" >&2
   exit 1
 fi
-if [[ "$built_against" != "$installed_pylon" ]]; then
-  echo "Pylon-Built-Against=$built_against, expected $installed_pylon" >&2
+if [[ -z "$built_against" ]]; then
+  echo "Pylon-Built-Against is empty" >&2
   exit 1
+fi
+# This script runs on the GitHub runner after the Docker build. pylon is
+# installed only inside that container; compare versions when it is present.
+if dpkg-query -W -f='${Status}' pylon 2>/dev/null | grep -q 'install ok installed'; then
+  installed_pylon="$(dpkg-query -W -f='${Version}' pylon)"
+  if [[ "$built_against" != "$installed_pylon" ]]; then
+    echo "Pylon-Built-Against=$built_against, expected $installed_pylon" >&2
+    exit 1
+  fi
 fi
 
 tmp="$(mktemp -d)"
