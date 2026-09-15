@@ -273,14 +273,14 @@ if command -v python3 >/dev/null 2>&1 || [[ -x /usr/bin/python3 ]]; then
     if [[ -d /proc/self/fd ]]; then
       # Restart cycles with 4096x4096 RGB (~50 MiB/frame): pipe FD growth and
       # RSS must stay bounded; abrupt stop leaves a pending grab in the handler.
-      # RSS threshold is in frames (~50 MiB at 4096² RGB). Meson sets
+      # The RSS budget is per cycle because a real grab-result leak is ~1
+      # frame/cycle, while retained heap pages grow far slower. Meson sets
       # MALLOC_PERTURB_ which inflates RSS; CI also runs other tests in
-      # parallel unless camemu is marked is_parallel=false. Allow a few
-      # cached pool pages (real grab-result leaks are ~1 frame/cycle).
+      # parallel unless camemu is marked is_parallel=false.
       expect_ok "restart_resource_cleanup" \
         "$PYTHON_GI" "$SCRIPT_DIR/restart_resource_leak.py" \
           --serial "$EMU_SERIAL_0" --cycles 10 --max-pipe-growth 8 \
-          --max-rss-frames 3 --settle-ms 400
+          --max-rss-frames-per-cycle 0.5 --settle-ms 400
     else
       run_skip "restart_resource_cleanup (/proc FD and VmRSS sampling is Linux-only)"
     fi

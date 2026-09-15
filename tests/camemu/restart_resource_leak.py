@@ -224,13 +224,22 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--max-rss-frames",
+        "--max-rss-frames-per-cycle",
         type=float,
         default=0.5,
         help=(
-            "allowed RSS growth as a fraction of one frame buffer over each "
-            "scenario after malloc_trim (default: 0.5; a real grab-result leak "
-            "is ~1.0 frame per abrupt-stop cycle)"
+            "allowed RSS growth per cycle, in frame buffers, over each scenario "
+            "after malloc_trim (default: 0.5; a real grab-result leak is ~1.0 "
+            "frame per cycle)"
+        ),
+    )
+    parser.add_argument(
+        "--rss-frames-base",
+        type=float,
+        default=1.0,
+        help=(
+            "one-time RSS allowance, in frame buffers, for heap pages the "
+            "allocator keeps after malloc_trim (default: 1.0)"
         ),
     )
     parser.add_argument(
@@ -266,7 +275,13 @@ def main() -> int:
 
     caps = caps_string(width, height, args.format)
     one_frame = frame_bytes(width, height, args.format)
-    max_rss_growth = int(args.max_rss_frames * one_frame)
+    # A leak scales with the cycle count, while the heap pages the allocator
+    # keeps back grow far slower (roughly one frame per doubling of --cycles),
+    # so budget a fixed base plus a per-cycle rate.
+    max_rss_growth = int(
+        (args.rss_frames_base + args.max_rss_frames_per_cycle * args.cycles)
+        * one_frame
+    )
     settle_s = args.settle_ms / 1000.0
     pending_wait_s = args.pending_wait_ms / 1000.0
 
@@ -274,7 +289,8 @@ def main() -> int:
 
     print(
         f"using caps {caps} (~{one_frame / (1024 * 1024):.1f} MiB/frame); "
-        f"max_rss_growth={max_rss_growth / (1024 * 1024):.1f} MiB"
+        f"max_rss_growth={max_rss_growth / (1024 * 1024):.1f} MiB "
+        f"over {args.cycles} cycles"
     )
 
     # Warmup so one-time GStreamer/Pylon/allocator cost is not counted.
@@ -345,7 +361,8 @@ def main() -> int:
     if eos_rss_growth > max_rss_growth:
         print(
             f"FAIL: EOS RSS growth {eos_rss_growth / (1024 * 1024):.1f} MiB "
-            f"> {max_rss_growth / (1024 * 1024):.1f} MiB",
+            f"> {max_rss_growth / (1024 * 1024):.1f} MiB "
+            f"(~{eos_rss_growth / one_frame / args.cycles:.2f} frames/cycle)",
             file=sys.stderr,
         )
         failed = True
@@ -354,7 +371,8 @@ def main() -> int:
             f"FAIL: abrupt-stop RSS growth "
             f"{abrupt_rss_growth / (1024 * 1024):.1f} MiB "
             f"> {max_rss_growth / (1024 * 1024):.1f} MiB "
-            f"(~{abrupt_rss_growth / one_frame:.2f} leaked frames)",
+            f"(~{abrupt_rss_growth / one_frame / args.cycles:.2f} "
+            f"leaked frames/cycle)",
             file=sys.stderr,
         )
         failed = True

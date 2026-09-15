@@ -24,6 +24,8 @@ All notable changes to this project will be documented in this file.
 - Unused `bindings/packaging/setup.py` (pygstpylon is installed by Meson, not setuptools)
 
 ### Changed
+- `restart_resource_leak.py` budgets RSS growth per restart cycle instead of a
+  fixed total, so retained heap pages no longer look like a leak
 - NVIDIA Debian packaging supports DeepStream 6.4, 7.0, and 7.1; native ARM CI
   compile-checks each profile against real NVIDIA SDK files without publishing
   the unqualified artifacts

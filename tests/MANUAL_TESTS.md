@@ -32,8 +32,8 @@ PYLON_ROOT=/opt/pylon PYLON_CAMEMU=3 \
 Or as part of the camemu suite (`restart_resource_cleanup`). The test uses
 **4096×4096 RGB** (~50 MiB/frame) and loops `NULL → PLAYING → NULL` (clean EOS
 and abrupt stop with a pending grab). It fails if `pipe:[...]` FDs grow beyond
-a small budget or if VmRSS grows by more than half a frame after `malloc_trim`
-(a real grab-result leak is ~1 frame per abrupt-stop cycle).
+a small budget or if VmRSS grows by more than half a frame per cycle after
+`malloc_trim` (a real grab-result leak is ~1 frame per cycle).
 
 ## Property order (cam:: before userset/pfs)
 
