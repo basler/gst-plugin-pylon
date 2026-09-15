@@ -7,27 +7,62 @@ pylon_path = run_command(python3, '-c', 'import os; print(os.environ.get("PYLON_
 
 fs = import('fs')
 
-if target_machine.system() == 'linux' and (pylon_path == 'PYLON_ROOT_NOT_SET' or not fs.exists(pylon_path / 'include/pylon'))
-  # PYLON_ROOT has to be set
-  error('PYLON_ROOT has to be set to location of pylon install e.g. /opt/pylon')
+pylon_include_ok = pylon_path != 'PYLON_ROOT_NOT_SET' and (
+  fs.exists(pylon_path / 'include/pylon') or
+  fs.exists(pylon_path / 'Development/include/pylon') or
+  fs.exists(pylon_path / 'Library/Frameworks/pylon.framework/Headers') or
+  fs.exists(pylon_path / 'Frameworks/pylon.framework/Headers') or
+  fs.exists(pylon_path / 'Frameworks/pylon.framework/Versions/A/Headers'))
+
+if (target_machine.system() == 'linux' or target_machine.system() == 'darwin') and not pylon_include_ok
+  error('PYLON_ROOT has to be set to a pylon install (Linux: include/pylon, macOS: Frameworks/pylon.framework)')
 endif
 
-# detect pylon 7.x
-pylon_dep = dependency('pylon', method : 'cmake', modules : ['pylon::PylonBase', 'pylon::PylonUtility'],
-        version : '>=7.1', cmake_args : [ '-DCMAKE_PREFIX_PATH=' + pylon_path / 'share/pylon/cmake/', '-DPYLON_ROOT=' + pylon_path ] , required: false)
+# From-source builds still accept pylon 7.1+ (CMake package) and the 6.x
+# fallback. Debian packages separately Depend on pylon (>= 26.06).
+pylon_cmake_prefixes = []
+if pylon_path != 'PYLON_ROOT_NOT_SET'
+  pylon_cmake_prefixes += [
+    pylon_path,
+    pylon_path / 'share/pylon/cmake',
+    pylon_path / 'lib/cmake/pylon',
+  ]
+  if target_machine.system() == 'windows'
+    pylon_cmake_prefixes += [pylon_path / 'Development/CMake/pylon']
+  endif
+  if target_machine.system() == 'darwin'
+    pylon_cmake_prefixes += [
+      pylon_path / 'Library/Frameworks/pylon.framework/Resources',
+      pylon_path / 'Frameworks/pylon.framework/Resources',
+      pylon_path / 'Frameworks/pylon.framework/Versions/A/Resources',
+      pylon_path / 'Frameworks/pylon.framework',
+    ]
+  endif
+endif
+
+pylon_cmake_args = ['-DPYLON_ROOT=' + pylon_path]
+foreach prefix : pylon_cmake_prefixes
+  pylon_cmake_args += ['-DCMAKE_PREFIX_PATH=' + prefix]
+endforeach
+
+pylon_dep = dependency('pylon', method : 'cmake',
+        modules : ['pylon::PylonBase', 'pylon::PylonUtility'],
+        version : '>=7.1',
+        cmake_args : pylon_cmake_args,
+        required : false)
 
 if pylon_dep.found()
-  # patch rpath on linux
   if target_machine.system() == 'linux'
     pylon_rpath = pylon_path / 'lib'
   else
     pylon_rpath = ''
   endif
 else
-    message('fallback to detect pylon 6.x')
-    pylon_dep = dependency('pylon', method : 'cmake', cmake_module_path: meson.project_source_root() + '/cmake', required: true)
-    # runtime path is properly defined by cmake
-    pylon_rpath = ''
+  message('fallback to detect pylon 6.x')
+  pylon_dep = dependency('pylon', method : 'cmake',
+          cmake_module_path: meson.project_source_root() + '/cmake',
+          required : true)
+  pylon_rpath = ''
 endif
 
 gstpylon_sources = [ 

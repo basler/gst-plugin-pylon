@@ -6,8 +6,7 @@ project('gst-plugin-pylon', 'c', 'cpp',
 
 glib_req = '>= 2.56.0'
 
-# TODO: Set this accordingly
-gst_req = '>= 1.0.0'
+gst_req = '>= 1.20.0'
 gst_dep = dependency('gstreamer-1.0', version : gst_req)
 
 gst_version = gst_dep.version()
@@ -152,7 +151,7 @@ cdata.set('SIZEOF_OFF_T', cc.sizeof('off_t'))
 
 # Here be fixmes.
 # FIXME: check if this is correct
-cdata.set('HAVE_CPU_X86_64', host_machine.cpu() == 'amd64')
+cdata.set('HAVE_CPU_X86_64', host_machine.cpu_family() == 'x86_64')
 cdata.set('HAVE_GCC_ASM', cc.get_id() != 'msvc')
 cdata.set_quoted('VERSION', meson.project_version())
 cdata.set_quoted('PACKAGE_VERSION', meson.project_version())

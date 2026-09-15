@@ -344,22 +344,27 @@ For any other OS you have to currently [build](#building) the plugin yourself.
 
 # Building
 
-This plugin is build using the [meson](https://mesonbuild.com/) build system. The meson version has to be >= 0.61.
+This plugin is built using the [meson](https://mesonbuild.com/) build system. The meson version has to be >= 0.61. GStreamer 1.20 or newer is required.
 
 As a first step install Basler pylon according to your platform. Downloads are available at: [Basler software downloads](https://www.baslerweb.com/en/downloads/software-downloads/#type=pylonsoftware;language=all;version=all)
 
 The supported pylon versions on the different platforms are:
 
+|                 | > 26.06 | 26.06 | 7.5 | 7.4 | 6.2 |
+|-----------------|:-------:|:-----:|:---:|:---:|:---:|
+| Windows x86_64  |    x    |   x   |  x  |  x  |     |
+| Linux x86_64    |    x    |   x   |  x  |  x  |     |
+| Linux aarch64   |    x    |   x   |  x  |  x  |  x  |
+| macOS           |    x    |   x   |  -  |  -  |  -  |
 
-|                 | 7.5  | 7.4  | 6.2  |
-|-----------------|:----:|:----:|:----:|
-| Windows x86_64  |  x   |   x  |      |
-| Linux x86_64    |  x   |   x  |      |
-| Linux aarch64   |  x   |   x  |   x  |
-| macOS x86_64    |  -   |   -  |   -  |
+A from-source meson build does not require C++ SDK 12.2. It still detects
+pylon 7.1+ via CMake and falls back to the 6.x finder on aarch64.
 
-
-> macOS build not available for now due to current meson/cmake interaction issues
+CI builds all four platforms against pylon 26.06. Official Linux debs use a
+date Version (`pylon_26.08.1-deb0_amd64.deb` → `Version: 26.08.1-deb0`) and
+Depend on `pylon (>= 26.06)`. Each generated gst-plugin-pylon Debian package
+records the exact build-time package version in `Pylon-Built-Against`; inspect
+it with `dpkg-deb -f <package.deb> Pylon-Built-Against`.
 
 Installing Basler pylon SDK will also install the Basler pylon viewer. You should use this tool to verify, that the cameras work properly in your system and to learn about the their features.
 
@@ -372,23 +377,32 @@ Make sure the dependencies are properly installed. In Debian-based
 systems you can run the following commands:
 
 ```bash
-# Meson and ninja build system
-# Remove older meson and ninja from APT and install newer PIP version
-sudo apt remove meson ninja-build
-sudo -H python3 -m pip install meson ninja --upgrade
+# Meson and ninja build system (venv avoids Ubuntu 24.04 PEP 668 pip restrictions)
+sudo apt install python3 python3-venv python3-pip
+python3 -m venv build_python
+. build_python/bin/activate
+pip install meson ninja --upgrade
 
 # GStreamer
 sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake
 # if you want to use the sample python plugin
 sudo apt install gstreamer1.0-python3-plugin-loader
+# required only when enabling -Dpython-bindings=enabled
+sudo apt install python3-dev python3-gi gir1.2-gstreamer-1.0
 
 ```
 
-The build process relies on `PYLON_ROOT` pointing to the Basler pylon install directory.
+The build process relies on `PYLON_ROOT` pointing to a pylon tree with
+`include/pylon` (official installer under `/opt/pylon`, or any other extracted
+SDK). Meson finds pylon via CMake using that path and sets an install RPATH to
+`$PYLON_ROOT/lib`, so a from-source install does **not** require a `pylon`
+Debian package.
 
 ```bash
-# for pylon in default location
+# official Linux installer
 export PYLON_ROOT=/opt/pylon
+# or a local SDK, for example:
+# export PYLON_ROOT=/path/to/pylon
 ```
 
 Then proceed to configure the project. Check `meson_options.txt` for a
@@ -413,10 +427,12 @@ Build, test and install the project:
 # Build
 ninja -C builddir
 
-# Test
+# Test (camemu uses PYLON_CAMEMU from meson; pygstpylon needs bindings + gi)
 ninja -C builddir test
+# or a single suite:
+# meson test -C builddir pygstpylon --print-errorlogs
 
-# Install
+# Install plugin (and pygstpylon if bindings were enabled)
 sudo ninja -C builddir install
 ```
 
@@ -426,11 +442,38 @@ Finally, test for proper installation:
 gst-inspect-1.0 pylonsrc
 ```
 
+If you enabled Python bindings, `pygstpylon` is installed into the interpreter's
+package directory (often under `/usr/local/lib/python3/dist-packages` even when
+`--prefix` is `/usr`). Confirm with `python3 -c "import pygstpylon; print(pygstpylon.__version__)"`.
+
 ## Linux package building
 
 ### Debian Packaging
 
-Install the pylon and codemeter debian packages. They will install into `/opt/pylon`
+The release packages are built once per architecture on Ubuntu 22.04, the
+oldest supported userspace (glibc and GStreamer 1.20), and install-tested
+unchanged on Ubuntu 22.04, Ubuntu 24.04, and Debian bookworm. The Debian
+`pylon` package uses a date Version (`26.08.1-deb0` for suite 26.08), so the
+binary Depends are `pylon (>= 26.06)` — not `pylon (>= 12)` or `pylon (<< 27)`.
+A from-source build can still use older suites from the table above.
+
+The exact pylon package used for compilation is informational metadata rather
+than a runtime pin. Inspect it with:
+
+```
+dpkg-deb -f gst-plugin-pylon_*.deb Pylon-Built-Against
+```
+
+`dpkg-buildpackage` needs a dpkg `pylon` package at that floor (Build-Depends
+and runtime Depends). A tree at `PYLON_ROOT` is not enough by itself.
+
+Install the official pylon and CodeMeter Debian packages (they land in
+`/opt/pylon`), **or** register a local SDK archive as a stub package:
+
+```
+# tarball must contain a top-level pylon/ directory (sudo tar -czf ... -C /opt pylon)
+sudo tools/register_pylon_from_tree.sh /path/to/pylon_sdk.tar.gz
+```
 
 Install the platform dependencies:
 
@@ -439,7 +482,7 @@ sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot pkg-co
                      libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
                      gstreamer1.0-tools gstreamer1.0-plugins-base \
                      gstreamer1.0-python3-plugin-loader \
-                     python3 python3-dev python3-gi python3-setuptools pybind11-dev
+                     python3 python3-dev python3-gi
 ```
 
 Prepare the build setup ( from main project folder ):
@@ -456,35 +499,87 @@ PYLON_ROOT=/opt/pylon dpkg-buildpackage -us -uc -rfakeroot
 ```
 
 The package build uses the system Meson/Ninja packages (no pip bootstrap) and runs
-the Meson test suite, including camemu functional tests (`PYLON_CAMEMU=3`).
+the Meson test suite, including camemu and pygstpylon (`PYLON_CAMEMU=4`). Skip
+tests with `DEB_BUILD_OPTIONS=nocheck` if you have no emulators.
+`python3-pygstpylon` uses CPython's stable ABI with a Python 3.10 floor, so the
+same package imports with the distro Python on every supported target.
+
+To reproduce the build-once/install-many check locally, provide an SDK archive
+containing a top-level `pylon/` directory:
+
+```bash
+PYLON_SDK_TGZ=/path/to/pylon_sdk.tar.gz tools/test_deb_in_docker.sh
+```
 
 ### Debian NVIDIA Packaging
 
-Install the pylon and codemeter debian packages. They will install into `/opt/pylon`
+NVMM (`memory:NVMM`) needs DeepStream and CUDA at build time. GitHub CI
+compile-checks the NVIDIA Debian profile on a native ARM runner against the
+real NVIDIA headers and libraries for these combinations:
 
-Install the platform dependencies:
+| JetPack / L4T | CUDA | DeepStream |
+|---------------|------|------------|
+| 6.0 DP / 36.2 | 12.2 | 6.4 |
+| 6.0 GA / 36.3 | 12.2 | 7.0 |
+| 6.2 / 36.4.3 | 12.6 | 7.1 |
+
+The CI jobs have no Jetson GPU: they prove that the packages compile, link to
+`libnvbufsurface` and `libcudart`, and contain the expected Debian dependency.
+`libnvbufsurface` comes from L4T (`nvidia-l4t-multimedia-utils`), not from the
+DeepStream tarball, so CI downloads that Jetson package as a build input only.
+They do not execute NVMM and their `.deb` files are deliberately not published.
+Runtime qualification requires a real Jetson worker.
+
+DeepStream 6.3 is not in this matrix because its JetPack 5.1.2 image provides
+GStreamer 1.16, while this plug-in requires GStreamer 1.20 or newer.
+
+#### Build the package locally on a Jetson
+
+Install the matching JetPack and DeepStream release first. Install the official
+pylon and CodeMeter Debian packages; they place pylon under `/opt/pylon`.
+
+Install the platform dependencies (match the DeepStream package to your JetPack):
 
 ```
 sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot pkg-config \
                      libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
                      gstreamer1.0-tools gstreamer1.0-plugins-base \
                      gstreamer1.0-python3-plugin-loader \
-                     python3 python3-dev python3-gi python3-setuptools pybind11-dev \
-                     deepstream-6.3 # depending on platform deepstream-6.4 or deepstream-7.0
+                     python3 python3-dev python3-gi \
+                     gir1.2-gstreamer-1.0 \
+                     deepstream-7.1   # use deepstream-6.4 or -7.0 on matching JetPack
 ```
 
-Prepare the build setup ( from main project folder ):
+Download the source directly from GitHub. Prefer a release tag once one includes
+these NVIDIA packaging changes; use `main` to build the current development code:
 
 ```
+git clone --depth 1 --branch main \
+  https://github.com/basler/gst-plugin-pylon.git
+cd gst-plugin-pylon
+
 ln -sfn packaging/debian
 tools/patch_deb_changelog.sh
 ```
 
-Build the debian packages using the nvidia profile
+Build with the `nvidia` profile. This requires NVMM support to be found instead
+of silently producing a system-memory-only package. The build also runs the
+Meson and pylon camera-emulator tests on the Jetson:
 
 ```
 DEB_BUILD_PROFILES=nvidia PYLON_ROOT=/opt/pylon dpkg-buildpackage -us -uc -rfakeroot
 ```
+
+The `.deb` files are written to the parent directory. Install them with:
+
+```
+sudo apt-get install ../gst-plugin-pylon_*.deb \
+                     ../gst-plugin-pylon-dev_*.deb \
+                     ../python3-pygstpylon_*.deb
+```
+
+Only if the pylon camera emulator is unavailable, skip tests explicitly with
+`DEB_BUILD_OPTIONS=nocheck`; do not use that for a qualified package build.
 
 ### Integrating with GStreamer monorepo
 
@@ -558,7 +653,7 @@ GStreamer:
 
 Meson:
 * Install the meson build system from github releases https://github.com/mesonbuild/meson/releases
-* Use version meson-0.63.1-64.msi
+* Install a current meson from https://github.com/mesonbuild/meson/releases (1.x)
 
 Visual Studio:
 * Install Visual Studio (e.g. Community Edition) from Microsoft
@@ -573,9 +668,10 @@ set PKG_CONFIG_PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%lib\pkgconfig
 set PATH=%PATH%;%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin
 ```
 
-The build process relies on CMAKE_PREFIX_PATH pointing to Basler pylon cmake support files. This is normally set by the Basler pylon installer.
+The build process relies on `PYLON_ROOT` (and optionally `CMAKE_PREFIX_PATH`) pointing to Basler pylon cmake support files. This is normally set by the Basler pylon installer.
 ```bash
-set CMAKE_PREFIX_PATH=C:\Program Files\Basler\pylon 7\Development\CMake\pylon\
+set PYLON_ROOT=C:\Program Files\Basler\pylon
+set CMAKE_PREFIX_PATH=%PYLON_ROOT%\Development\CMake\pylon\
 ```
 
 
@@ -622,9 +718,18 @@ gst-inspect-1.0 pylonsrc
 ```
 
 ## macOS
-Installation on macOS is currently not supported due to conflicts between meson and underlying cmake in the configuration phase.
+pylon Software Suite 26.06 supports macOS. Install GStreamer and the build tools with Homebrew, set `PYLON_ROOT` to the pylon prefix, then use meson/ninja:
 
-This target will be integrated after a Basler pylon 7.x release for macOS
+```bash
+brew install meson ninja cmake pkgconf gstreamer
+export PYLON_ROOT=/Library/Frameworks   # or the extracted SDK tree
+export PKG_CONFIG_PATH="$(brew --prefix)/lib/pkgconfig:$(brew --prefix gstreamer)/lib/pkgconfig"
+meson setup builddir --prefix "$PWD/install"
+ninja -C builddir
+ninja -C builddir test
+```
+
+Camemu functional tests run on Linux and macOS (and on Windows when `bash` is available). The pipe-FD / RSS leak check needs `/proc` and is skipped on other platforms.
 
 
 # Known issues
