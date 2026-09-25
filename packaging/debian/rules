@@ -50,6 +50,18 @@ override_dh_auto_test:
 override_dh_shlibdeps:
 	dh_shlibdeps -a $(SHLIB_DIRS) -- --ignore-missing-info
 
+# Binary Depends pin the build-time pylon dpkg Version exactly
+# (or PYLON_PKG_VERSION when only a tree is registered). Same value is
+# recorded in Pylon-Built-Against.
 override_dh_gencontrol:
-	pylon_version="$$(dpkg-query -W -f='$${Version}' pylon)" && \
-	dh_gencontrol -- -Vpylon:Built-Against="$$pylon_version"
+	if dpkg-query -W -f='$${Status}' pylon 2>/dev/null | grep -q 'install ok installed'; then \
+		pylon_version="$$(dpkg-query -W -f='$${Version}' pylon)"; \
+	elif [ -n "$${PYLON_PKG_VERSION}" ]; then \
+		pylon_version="$${PYLON_PKG_VERSION}"; \
+	else \
+		echo "error: need an installed pylon dpkg or PYLON_PKG_VERSION" >&2; \
+		exit 1; \
+	fi; \
+	dh_gencontrol -- \
+		-Vpylon:Built-Against="$$pylon_version" \
+		-Vpylon:Version="$$pylon_version"

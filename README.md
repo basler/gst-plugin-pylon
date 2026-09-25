@@ -361,10 +361,20 @@ A from-source meson build does not require C++ SDK 12.2. It still detects
 pylon 7.1+ via CMake and falls back to the 6.x finder on aarch64.
 
 CI builds all four platforms against pylon 26.06. Official Linux debs use a
-date Version (`pylon_26.08.1-deb0_amd64.deb` → `Version: 26.08.1-deb0`) and
-Depend on `pylon (>= 26.06)`. Each generated gst-plugin-pylon Debian package
-records the exact build-time package version in `Pylon-Built-Against`; inspect
-it with `dpkg-deb -f <package.deb> Pylon-Built-Against`.
+date Version (`pylon_26.08.1-deb0_amd64.deb` → `Version: 26.08.1-deb0`).
+Each generated gst-plugin-pylon Debian package records that build-time pylon
+version in three places that stay in sync:
+
+- runtime `Depends: pylon (= <build-time>)`
+- control field `Pylon-Built-Against`
+- Debian package `Version` suffix `+pylon<build-time>` (visible in the `.deb`
+  filename, e.g. `gst-plugin-pylon_1.0.0+pylon7.4.0_arm64.deb`)
+
+Inspect them with:
+
+```
+dpkg-deb -f gst-plugin-pylon_*.deb Version Depends Pylon-Built-Against
+```
 
 Installing Basler pylon SDK will also install the Basler pylon viewer. You should use this tool to verify, that the cameras work properly in your system and to learn about the their features.
 
@@ -452,26 +462,41 @@ package directory (often under `/usr/local/lib/python3/dist-packages` even when
 
 The release packages are built once per architecture on Ubuntu 22.04, the
 oldest supported userspace (glibc and GStreamer 1.20), and install-tested
-unchanged on Ubuntu 22.04, Ubuntu 24.04, and Debian bookworm. The Debian
-`pylon` package uses a date Version (`26.08.1-deb0` for suite 26.08), so the
-binary Depends are `pylon (>= 26.06)` — not `pylon (>= 12)` or `pylon (<< 27)`.
-A from-source build can still use older suites from the table above.
+unchanged on Ubuntu 22.04, Ubuntu 24.04, and Debian bookworm. Runtime
+`Depends` pin the build-time pylon dpkg Version exactly
+(`pylon (= <build-time>)`), because pylon builds are not binary-compatible
+across versions. The same version is written into `Pylon-Built-Against`
+and into the Debian package Version as `+pylon…` so the `.deb` filename
+shows which pylon the binary was built for.
+A from-source meson build can still use older suites from the table above.
 
-The exact pylon package used for compilation is informational metadata rather
-than a runtime pin. Inspect it with:
+`tools/patch_deb_changelog.sh` reads the installed `pylon` package (or
+`PYLON_PKG_VERSION`) and appends that suffix before `dpkg-buildpackage`.
+Example, after registering a 7.4.0 stub:
 
 ```
-dpkg-deb -f gst-plugin-pylon_*.deb Pylon-Built-Against
+# → gst-plugin-pylon_1.0.0+pylon7.4.0_arm64.deb
+#   Depends: pylon (= 7.4.0)
+#   Pylon-Built-Against: 7.4.0
+PYLON_PKG_VERSION=7.4.0 sudo tools/register_pylon_from_tree.sh /path/to/pylon_sdk.tar.gz
 ```
 
-`dpkg-buildpackage` needs a dpkg `pylon` package at that floor (Build-Depends
-and runtime Depends). A tree at `PYLON_ROOT` is not enough by itself.
+Inspect a built package with:
+
+```
+dpkg-deb -f gst-plugin-pylon_*.deb Version Depends Pylon-Built-Against
+```
+
+`dpkg-buildpackage` needs a dpkg `pylon` package (Build-Depends is unversioned;
+runtime Depends use the build-time Version). A tree at `PYLON_ROOT` is not
+enough by itself.
 
 Install the official pylon and CodeMeter Debian packages (they land in
 `/opt/pylon`), **or** register a local SDK archive as a stub package:
 
 ```
 # tarball must contain a top-level pylon/ directory (sudo tar -czf ... -C /opt pylon)
+# Optional: PYLON_PKG_VERSION=7.4.0 when registering a non-date-versioned SDK tree
 sudo tools/register_pylon_from_tree.sh /path/to/pylon_sdk.tar.gz
 ```
 
@@ -564,11 +589,18 @@ tools/patch_deb_changelog.sh
 
 Build with the `nvidia` profile. This requires NVMM support to be found instead
 of silently producing a system-memory-only package. The build also runs the
-Meson and pylon camera-emulator tests on the Jetson:
+Meson and pylon camera-emulator tests on the Jetson. Run
+`tools/patch_deb_changelog.sh` first so the `.deb` Version carries
+`+pylon<build-time>` and runtime Depends match that pylon:
 
 ```
+tools/patch_deb_changelog.sh
 DEB_BUILD_PROFILES=nvidia PYLON_ROOT=/opt/pylon dpkg-buildpackage -us -uc -rfakeroot
 ```
+
+On pylon 7.4.0 that yields a name like
+`gst-plugin-pylon_1.0.0+pylon7.4.0-1~<L4T>_arm64.deb` with
+`Depends: pylon (= 7.4.0)`.
 
 The `.deb` files are written to the parent directory. Install them with:
 

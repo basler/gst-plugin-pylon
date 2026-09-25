@@ -28,16 +28,21 @@ if [[ "$depends" != *"$pkg"* ]]; then
   echo "Depends does not mention $pkg: $depends" >&2
   exit 1
 fi
-if [[ "$depends" != *"pylon (>= 26.06)"* ]]; then
-  echo "Unexpected pylon compatibility: $depends" >&2
+if [[ -z "$built_against" ]]; then
+  echo "Pylon-Built-Against is empty" >&2
+  exit 1
+fi
+if [[ "$depends" != *"pylon (= ${built_against})"* ]]; then
+  echo "Depends must pin build-time pylon (= ${built_against}): $depends" >&2
   exit 1
 fi
 if [[ "$version" != *"~"* ]]; then
   echo "NVIDIA package Version should include an L4T suffix, got: $version" >&2
   exit 1
 fi
-if [[ -z "$built_against" ]]; then
-  echo "Pylon-Built-Against is empty" >&2
+pylon_safe="$(echo "$built_against" | tr '-' '.' | sed 's/[^A-Za-z0-9.~+]/./g')"
+if [[ "$version" != *"+pylon${pylon_safe}"* ]]; then
+  echo "Package Version should include +pylon${pylon_safe}, got: $version" >&2
   exit 1
 fi
 # This script runs on the GitHub runner after the Docker build. pylon is
