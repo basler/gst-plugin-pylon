@@ -37,8 +37,12 @@ detect_os_version() {
 # Resolve the pylon dpkg Version used for this build. Appears in the Debian
 # package Version as +pylon<ver> (visible in the .deb filename) and is what
 # debian/rules later substitutes into Depends / Pylon-Built-Against.
+# Only "install ok installed" counts. apt remove leaves "deinstall ok
+# config-files" and the old Version, which dpkg-checkbuilddeps rejects.
 resolve_pylon_version() {
-    if dpkg -s pylon &>/dev/null; then
+    local status
+    status="$(dpkg-query -W -f='${Status}' pylon 2>/dev/null || true)"
+    if [[ "$status" == "install ok installed" ]]; then
         dpkg-query -W -f='${Version}' pylon
         return
     fi
@@ -46,8 +50,13 @@ resolve_pylon_version() {
         echo "${PYLON_PKG_VERSION}"
         return
     fi
-    echo "Error: pylon dpkg is not installed and PYLON_PKG_VERSION is unset." >&2
-    echo "Install a pylon package, run tools/register_pylon_from_tree.sh, or set PYLON_PKG_VERSION." >&2
+    if [[ -n "$status" ]]; then
+        echo "Error: pylon dpkg status is '${status}', not 'install ok installed' (Version still recorded: $(dpkg-query -W -f='${Version}' pylon))." >&2
+        echo "Reinstall the pylon package. A removed package is not a build dependency." >&2
+    else
+        echo "Error: pylon dpkg is not installed and PYLON_PKG_VERSION is unset." >&2
+        echo "Install a pylon package, run tools/register_pylon_from_tree.sh, or set PYLON_PKG_VERSION." >&2
+    fi
     if [[ ! -d "${PYLON_ROOT:-/opt/pylon}/include/pylon" ]]; then
         echo "Error: PYLON_ROOT=${PYLON_ROOT:-/opt/pylon} also has no include/pylon." >&2
     fi
