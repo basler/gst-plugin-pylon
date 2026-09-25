@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Function to parse the L4T version string and format it
 parse_nvidia_version() {
@@ -33,6 +34,42 @@ detect_os_version() {
     fi
 }
 
+# Resolve the pylon dpkg Version used for this build. Appears in the Debian
+# package Version as +pylon<ver> (visible in the .deb filename) and is what
+# debian/rules later substitutes into Depends / Pylon-Built-Against.
+# Only "install ok installed" counts. apt remove leaves "deinstall ok
+# config-files" and the old Version, which dpkg-checkbuilddeps rejects.
+resolve_pylon_version() {
+    local status
+    status="$(dpkg-query -W -f='${Status}' pylon 2>/dev/null || true)"
+    if [[ "$status" == "install ok installed" ]]; then
+        dpkg-query -W -f='${Version}' pylon
+        return
+    fi
+    if [[ -n "${PYLON_PKG_VERSION:-}" ]]; then
+        echo "${PYLON_PKG_VERSION}"
+        return
+    fi
+    if [[ -n "$status" ]]; then
+        echo "Error: pylon dpkg status is '${status}', not 'install ok installed' (Version still recorded: $(dpkg-query -W -f='${Version}' pylon))." >&2
+        echo "Reinstall the pylon package. A removed package is not a build dependency." >&2
+    else
+        echo "Error: pylon dpkg is not installed and PYLON_PKG_VERSION is unset." >&2
+        echo "Install a pylon package, run tools/register_pylon_from_tree.sh, or set PYLON_PKG_VERSION." >&2
+    fi
+    if [[ ! -d "${PYLON_ROOT:-/opt/pylon}/include/pylon" ]]; then
+        echo "Error: PYLON_ROOT=${PYLON_ROOT:-/opt/pylon} also has no include/pylon." >&2
+    fi
+    exit 1
+}
+
+# Debian Version may only use [A-Za-z0-9.+~:-]. Map '-' (as in
+# 26.08.1-deb0) to '.' so the +pylon suffix never collides with an NVIDIA
+# '-1~L4T' platform suffix when stripping on re-runs.
+sanitize_pylon_version_for_deb() {
+    echo "$1" | tr '-' '.' | sed 's/[^A-Za-z0-9.~+]/\./g'
+}
+
 # Extract L4T version information from /etc/nv_tegra_release
 if [[ -f /etc/nv_tegra_release ]]; then
     nvidia_version_string=$(head -n 1 /etc/nv_tegra_release)
@@ -51,48 +88,29 @@ if [ ! -f "$changelog_file" ]; then
     exit 1
 fi
 
+PYLON_VERSION="$(resolve_pylon_version)"
+PYLON_VERSION_SAFE="$(sanitize_pylon_version_for_deb "$PYLON_VERSION")"
+echo "Build-time pylon version: ${PYLON_VERSION}"
+
 # Create a temporary file
 temp_file=$(mktemp)
 
 # Extract the current version from the changelog
 current_version=$(head -n 1 "$changelog_file" | sed -n 's/.*(\(.*\)).*/\1/p')
 
-# Remove any old distro suffix. Normal packages are built once on the oldest
-# supported distro and keep one version across all target distributions.
-# NVIDIA packages retain a platform suffix because their DeepStream/L4T ABI is
-# a separate build target.
-base_version=$(echo "$current_version" | sed 's/-1~.*//')
+# Strip prior +pylon / -1~ platform suffixes so the script is idempotent.
+# Normal packages:  <base>+pylon<ver>
+# NVIDIA packages:  <base>+pylon<ver>-1~<L4T>
+# +pylon ver is sanitized (no '-'), so '-1~' always marks the L4T suffix.
+base_version=$(echo "$current_version" | sed -E 's/\+pylon[A-Za-z0-9.~+]*//; s/-1~.*//')
 if [[ -f /etc/nv_tegra_release ]]; then
-    new_version="${base_version}-1~${PLATFORM_VERSION}"
+    new_version="${base_version}+pylon${PYLON_VERSION_SAFE}-1~${PLATFORM_VERSION}"
 else
-    new_version="${base_version}"
+    new_version="${base_version}+pylon${PYLON_VERSION_SAFE}"
 fi
 
-# Replace the version in the first line of the changelog
 sed "1s/(${current_version})/(${new_version})/" "$changelog_file" > "$temp_file"
-
-# Check if sed command was successful
-if [ $? -ne 0 ]; then
-    echo "Error: Failed to modify the changelog."
-    rm "$temp_file"
-    exit 1
-fi
-
-# Replace the original file with the modified version
 mv "$temp_file" "$changelog_file"
 
 echo "Changelog updated successfully to version ${new_version}"
-
-# Verify the build SDK. Runtime Depends use the suite-date dpkg Version
-# (pylon >= 26.06, first C++ SDK 12 / SONAME .so.12). Never pin binaries to
-# the exact SDK or CI stub, and do not use pylon (<< 27) as an ABI cap.
-if ! dpkg -s pylon &> /dev/null; then
-    echo "Warning: pylon dpkg is not installed; using PYLON_ROOT=${PYLON_ROOT:-/opt/pylon}" >&2
-    if [[ ! -d "${PYLON_ROOT:-/opt/pylon}/include/pylon" ]]; then
-        echo "Error: pylon package is not installed and PYLON_ROOT has no include/pylon" >&2
-        exit 1
-    fi
-fi
-
-echo "Pylon compatibility remains the range declared in debian/control"
-
+echo "Runtime Depends will be pylon (= ${PYLON_VERSION}); .deb name carries +pylon${PYLON_VERSION_SAFE}"

@@ -35,20 +35,27 @@ if (( ${#plugin_debs[@]} != 1 ||
   exit 1
 fi
 
+installed_pylon="$(dpkg-query -W -f='${Version}' pylon)"
 depends="$(dpkg-deb -f "${plugin_debs[0]}" Depends)"
-if [[ "$depends" != *"pylon (>= 26.06)"* ]]; then
-  echo "Unexpected pylon compatibility: $depends" >&2
+version="$(dpkg-deb -f "${plugin_debs[0]}" Version)"
+built_against="$(dpkg-deb -f "${plugin_debs[0]}" Pylon-Built-Against)"
+
+if [[ "$depends" != *"pylon (= ${installed_pylon})"* ]]; then
+  echo "Depends must pin build-time pylon (= ${installed_pylon}): $depends" >&2
   exit 1
 fi
 if [[ "$depends" == *"pylon (<<"* ]]; then
   echo "Do not cap pylon by suite date or SDK number in Depends: $depends" >&2
   exit 1
 fi
-
-built_against="$(dpkg-deb -f "${plugin_debs[0]}" Pylon-Built-Against)"
-installed_pylon="$(dpkg-query -W -f='${Version}' pylon)"
 if [[ "$built_against" != "$installed_pylon" ]]; then
   echo "Pylon-Built-Against=$built_against, expected $installed_pylon" >&2
+  exit 1
+fi
+# Filename / Version encodes the same build SDK (sanitized +pylon suffix).
+pylon_safe="$(echo "$installed_pylon" | tr '-' '.' | sed 's/[^A-Za-z0-9.~+]/./g')"
+if [[ "$version" != *"+pylon${pylon_safe}"* ]]; then
+  echo "Package Version should include +pylon${pylon_safe}, got: $version" >&2
   exit 1
 fi
 

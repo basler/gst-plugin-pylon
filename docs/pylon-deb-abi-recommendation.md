@@ -26,7 +26,11 @@ We therefore cannot write a correct `Depends` on ABI using `Version:`:
 - `pylon (>= 12), pylon (<< 13)` **rejects** `26.08.1-deb0` (dpkg compares 26.08 to 13).
 - `pylon (<< 27)` **rejects a future 27.xx** that may still be `.so.12`.
 
-Today Debian packages can only use a date floor (`pylon (>= 26.06)` = first suite with SDK 12). That is a packaging contract, not a Meson/source requirement: from-source still builds against pylon 7.x and 6.2.
+pylon builds are not binary-compatible across versions, so gst-plugin-pylon
+pins each artifact to the pylon dpkg Version it was built against:
+`Depends: pylon (= …)`, `Pylon-Built-Against`, and a `+pylon…` package
+Version suffix. That is a packaging contract per artifact, not a Meson/source
+requirement: from-source still builds against pylon 7.x and 6.2.
 
 Debian Policy (chapter 8) puts ABI in the **package name / Provides / shlibs**, not in a marketing `Version`.
 
@@ -79,9 +83,11 @@ A C++ `symbols` file is not recommended here; `shlibs` is the right tool.
 
 ## What gst-plugin-pylon will do as a consumer
 
-Until `Provides` / `shlibs` exist: Debian `Depends: pylon (>= 26.06)`. Meson keeps detecting 7.1+ and 6.x.
+Debian binary `Depends` pin the build-time pylon Version
+(`pylon (= ${pylon:Version})`). Meson keeps detecting 7.1+ and 6.x.
 
-Once `pylon-abi-12` and shlibs ship: switch to `Depends: pylon-abi-12` (or `${shlibs:Depends}`) and drop suite-date ceilings.
+Once `pylon-abi-12` and shlibs ship and a real ABI guarantee exists, switch to
+`Depends: pylon-abi-12` (or `${shlibs:Depends}`). Until then the pin stays exact.
 
 ## Ask
 
