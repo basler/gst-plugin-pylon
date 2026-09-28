@@ -23,6 +23,9 @@ Build
 # vs code
 .devcontainer
 
+# JetBrains IDEs
+.idea/
+
 # temp files 
 .ipynb_checkpoints
 __pycache__
