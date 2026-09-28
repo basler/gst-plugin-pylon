@@ -147,6 +147,12 @@ jobs:
           ], check=True)
         shell: python
 
+      - name: Record resolved pylon-core version
+        run: |
+          os_key="$(printf '%s' '${{ matrix.os }}' | tr '-' '_')"
+          jq -er '[.[] | select(.name == "pylon-core") | .version] | first // "26.06"' \
+            "pylon-install-files/report_${os_key}.json" > pylon-core-version.txt
+
       - name: Tar pylon SDK files
         run: tar -czf pylon_sdk.tar.gz -C conan pylon
 
@@ -154,7 +160,9 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.os == 'linux-x86_64' && 'Linux_x86_64' || 'Linux_aarch64' }}_packaging_Pylon_SDK
-          path: pylon_sdk.tar.gz
+          path: |
+            pylon_sdk.tar.gz
+            pylon-core-version.txt
 
   build_deb:
     # Build once per architecture on the oldest supported userspace. Packages
@@ -223,6 +231,121 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: ./debian/artifacts/*.deb
+
+  sbom:
+    name: Build dependency SBOMs and vulnerability reports (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    needs: [build_deb, download_packaging]
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            linux_arch: x86_64
+            runner: ubuntu-24.04
+          - arch: arm64
+            linux_arch: aarch64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download Debian packages for ${{ matrix.arch }}
+        uses: actions/download-artifact@v7
+        with:
+          name: debian-packages-${{ matrix.arch }}
+          path: debian-packages
+
+      - name: Download Pylon SDK metadata for ${{ matrix.arch }}
+        uses: actions/download-artifact@v7
+        with:
+          name: Linux_${{ matrix.linux_arch }}_packaging_Pylon_SDK
+          path: pylon-sdk
+
+      - name: Generate three build dependency SBOMs
+        run: |
+          set -euo pipefail
+          mkdir -p sbom-work
+          package_dir=debian-packages
+          version_file=pylon-sdk/pylon-core-version.txt
+          if [[ ! -s "$version_file" ]]; then
+            echo "Missing Pylon version metadata: $version_file" >&2
+            exit 1
+          fi
+          for package in gst-plugin-pylon gst-plugin-pylon-dev python3-pygstpylon; do
+            mapfile -t debs < <(find "$package_dir" -maxdepth 1 -type f -name "${package}_*.deb" -print)
+            mapfile -t buildinfos < <(find "$package_dir" -maxdepth 1 -type f -name '*.buildinfo' -print)
+            if [[ "${#debs[@]}" -ne 1 || "${#buildinfos[@]}" -ne 1 ]]; then
+              echo "Expected one ${package} package and one buildinfo for ${{ matrix.arch }}" >&2
+              printf 'Packages: %s\nBuildinfo: %s\n' "${debs[*]}" "${buildinfos[*]}" >&2
+              exit 1
+            fi
+            python3 tools/generate_build_sbom.py \
+              "${debs[0]}" \
+              "${buildinfos[0]}" \
+              "$version_file" \
+              "sbom-work/${package}.cdx.json" \
+              "${{ matrix.arch }}"
+          done
+
+      - name: Scan plugin SBOM
+        uses: anchore/scan-action@v7
+        with:
+          sbom: sbom-work/gst-plugin-pylon.cdx.json
+          output-format: json
+          output-file: sbom-work/gst-plugin-pylon.grype.json
+          fail-build: false
+
+      - name: Scan plugin-dev SBOM
+        uses: anchore/scan-action@v7
+        with:
+          sbom: sbom-work/gst-plugin-pylon-dev.cdx.json
+          output-format: json
+          output-file: sbom-work/gst-plugin-pylon-dev.grype.json
+          fail-build: false
+
+      - name: Scan Python SBOM
+        uses: anchore/scan-action@v7
+        with:
+          sbom: sbom-work/python3-pygstpylon.cdx.json
+          output-format: json
+          output-file: sbom-work/python3-pygstpylon.grype.json
+          fail-build: false
+
+      - name: Create summaries and name output files
+        run: |
+          set -euo pipefail
+          for package in gst-plugin-pylon gst-plugin-pylon-dev python3-pygstpylon; do
+            mapfile -t debs < <(find debian-packages -maxdepth 1 -type f -name "${package}_*.deb" -print)
+            if [[ "${#debs[@]}" -ne 1 ]]; then
+              echo "Expected exactly one ${package} Debian package" >&2
+              exit 1
+            fi
+            package_version="$(dpkg-deb --field "${debs[0]}" Version)"
+            package_version="${package_version#*:}"
+            output_stem="${package}-${package_version}-linux-${{ matrix.linux_arch }}"
+            python3 tools/summarize_grype_report.py \
+              "sbom-work/${package}.grype.json" \
+              "sbom-work/${package}.cdx.json" \
+              "sbom-work/${package}.grype.txt"
+            mv "sbom-work/${package}.cdx.json" \
+              "sbom-work/${output_stem}.cdx.json"
+            mv "sbom-work/${package}.grype.json" \
+              "sbom-work/${output_stem}.grype.json"
+            mv "sbom-work/${package}.grype.txt" \
+              "sbom-work/${output_stem}.grype.txt"
+          done
+
+      - name: Upload SBOM and vulnerability report
+        uses: actions/upload-artifact@v6
+        with:
+          name: debian-packages-${{ matrix.arch }}-sboms
+          path: |
+            sbom-work/*.cdx.json
+            sbom-work/*.grype.json
+            sbom-work/*.grype.txt
 
   test_deb:
     name: test_deb (${{ matrix.os }}, ${{ matrix.arch }})
@@ -353,6 +476,7 @@ jobs:
             download_packaging,
             build_deb,
             test_deb,
+            sbom,
             build_deb_nvidia
     ]
     runs-on: ubuntu-latest
