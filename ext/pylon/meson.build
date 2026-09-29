@@ -28,11 +28,17 @@ cuda_incdir = '/usr/local/cuda/include'
 
 nvmm_opt = get_option('nvmm')
 if not nvmm_opt.disabled()
+  fs_nvmm = import('fs')
+  # Jetson without DeepStream ships nvbufsurface.h in the Multimedia API.
+  jetson_mmapi_incdir = '/usr/src/jetson_multimedia_api/include'
+  if not fs_nvmm.exists(nvds_incdir / 'nvbufsurface.h') and fs_nvmm.exists(jetson_mmapi_incdir / 'nvbufsurface.h')
+    nvds_incdir = jetson_mmapi_incdir
+  endif
+
   nvds_dep = cc.find_library('nvbufsurface', dirs: nvds_libdir, required: false)
   cuda_dep = dependency('cuda', version : '>=11', required: false)
   if not cuda_dep.found()
     # JetPack often has no cuda.pc; fall back to the toolkit layout.
-    fs_nvmm = import('fs')
     cuda_lib = cc.find_library('cudart', dirs: cuda_libdirs, required: false)
     if cuda_lib.found() and fs_nvmm.exists(cuda_incdir / 'cuda_runtime.h')
       cuda_dep = declare_dependency(
