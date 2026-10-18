@@ -33,15 +33,20 @@
 #include "gstpylonimagehandler.h"
 
 GstPylonImageHandler::GstPylonImageHandler()
-    : ptr_grab_result(NULL), state(State::Idle) {}
+    : max_pending_frames(1), state(State::Idle) {}
 
 GstPylonImageHandler::~GstPylonImageHandler() {
   std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
-  if (this->ptr_grab_result) {
-    delete this->ptr_grab_result;
-    this->ptr_grab_result = NULL;
-  }
+  this->ClearPendingFrames();
   this->state = State::Idle;
+}
+
+/* Caller must hold grab_result_mutex */
+void GstPylonImageHandler::ClearPendingFrames() {
+  for (auto ptr_grab_result : this->pending_frames) {
+    delete ptr_grab_result;
+  }
+  this->pending_frames.clear();
 }
 
 void GstPylonImageHandler::OnImageGrabbed(
@@ -54,13 +59,15 @@ void GstPylonImageHandler::OnImageGrabbed(
     return;
   }
 
-  /* LatestImageOnly: replace any unconsumed pending frame */
-  if (this->ptr_grab_result) {
-    delete this->ptr_grab_result;
-    this->ptr_grab_result = NULL;
+  /* Queue full: drop the oldest unconsumed frame. With the default of one
+   * pending frame this replaces it (LatestImageOnly). */
+  while (this->pending_frames.size() >= this->max_pending_frames) {
+    delete this->pending_frames.front();
+    this->pending_frames.pop_front();
   }
 
-  this->ptr_grab_result = new Pylon::CBaslerUniversalGrabResultPtr(grab_result);
+  this->pending_frames.push_back(
+      new Pylon::CBaslerUniversalGrabResultPtr(grab_result));
   this->state = State::FrameReady;
   mutex_lock.unlock();
   this->grab_result_cv.notify_one();
@@ -82,9 +89,11 @@ GstPylonImageHandlerResult GstPylonImageHandler::WaitForImage(
     return GstPylonImageHandlerResult::disconnected;
   }
 
-  *grab_result = this->ptr_grab_result;
-  this->ptr_grab_result = NULL;
-  this->state = State::Idle;
+  *grab_result = this->pending_frames.front();
+  this->pending_frames.pop_front();
+  if (this->pending_frames.empty()) {
+    this->state = State::Idle;
+  }
   mutex_lock.unlock();
 
   return GstPylonImageHandlerResult::ok;
@@ -92,10 +101,7 @@ GstPylonImageHandlerResult GstPylonImageHandler::WaitForImage(
 
 void GstPylonImageHandler::InterruptWaitForImage() {
   std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
-  if (this->ptr_grab_result) {
-    delete this->ptr_grab_result;
-    this->ptr_grab_result = NULL;
-  }
+  this->ClearPendingFrames();
   /* Do not override a terminal disconnect with a flush interrupt */
   if (this->state != State::Disconnected) {
     this->state = State::Interrupted;
@@ -107,10 +113,7 @@ void GstPylonImageHandler::InterruptWaitForImage() {
 
 void GstPylonImageHandler::SignalDisconnect() {
   std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
-  if (this->ptr_grab_result) {
-    delete this->ptr_grab_result;
-    this->ptr_grab_result = NULL;
-  }
+  this->ClearPendingFrames();
   this->state = State::Disconnected;
   mutex_lock.unlock();
 
@@ -122,4 +125,18 @@ void GstPylonImageHandler::ClearInterrupt() {
   if (this->state == State::Interrupted) {
     this->state = State::Idle;
   }
+}
+
+void GstPylonImageHandler::SetMaxPendingFrames(size_t max_pending_frames) {
+  std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
+  this->max_pending_frames = max_pending_frames < 1 ? 1 : max_pending_frames;
+  while (this->pending_frames.size() > this->max_pending_frames) {
+    delete this->pending_frames.front();
+    this->pending_frames.pop_front();
+  }
+}
+
+size_t GstPylonImageHandler::GetMaxPendingFrames() {
+  std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
+  return this->max_pending_frames;
 }

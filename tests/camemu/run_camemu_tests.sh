@@ -185,6 +185,9 @@ expect_output "inspect_has_device_serial_property" "device-serial-number" \
 expect_output "inspect_has_child_properties" "cam|stream" \
   gst-inspect-1.0 pylonsrc
 
+expect_output "inspect_has_max_pending_frames_property" "max-pending-frames" \
+  gst-inspect-1.0 pylonsrc
+
 # Pin system memory. NVMM is first in the pad template, so `pylonsrc ! fakesink`
 # would otherwise pick memory:NVMM and call NvBufSurfaceAllocate (fails under
 # fakeroot / dpkg-buildpackage, and is too heavy for 8 GB Jetson test runs).
@@ -247,6 +250,10 @@ expect_ok "pipeline_with_queue" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=10 \
     ! "$SYS_CAPS" ! queue max-size-buffers=2 ! fakesink
 
+expect_ok "pipeline_with_max_pending_frames" \
+  gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" \
+    max-pending-frames=3 num-buffers=10 ! "$SYS_CAPS" ! fakesink
+
 expect_ok "pipeline_with_videoconvert" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=5 \
     ! "$SYS_CAPS" ! videoconvert ! video/x-raw,format=RGB ! fakesink
@@ -268,6 +275,10 @@ if command -v python3 >/dev/null 2>&1 || [[ -x /usr/bin/python3 ]]; then
       "$PYTHON_GI" "$SCRIPT_DIR/appsink_buffer_count.py" \
         --serial "$EMU_SERIAL_0" --buffers 12
 
+    expect_ok "pending_frames_survive_stall" \
+      "$PYTHON_GI" "$SCRIPT_DIR/pending_frames_continuity.py" \
+        --serial "$EMU_SERIAL_0" --max-pending-frames 6 --stall-frames 4
+
     # Pipe FD / VmRSS sampling uses /proc (Linux). Camemu itself is
     # cross-platform; skip only this check elsewhere.
     if [[ -d /proc/self/fd ]]; then
@@ -286,10 +297,12 @@ if command -v python3 >/dev/null 2>&1 || [[ -x /usr/bin/python3 ]]; then
     fi
   else
     run_skip "appsink_buffer_count (PyGObject not available)"
+    run_skip "pending_frames_survive_stall (PyGObject not available)"
     run_skip "restart_resource_cleanup (PyGObject not available)"
   fi
 else
   run_skip "appsink_buffer_count (python3 not available)"
+  run_skip "pending_frames_survive_stall (python3 not available)"
   run_skip "restart_resource_cleanup (python3 not available)"
 fi
 

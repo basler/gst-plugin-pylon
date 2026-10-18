@@ -166,6 +166,24 @@ As an example, the following pipeline will skip corrupted or partial buffers:
 gst-launch-1.0 pylonsrc capture-error=skip ! videoconvert ! autovideosink
 ```
 
+### Pending frames
+
+`pylonsrc` keeps grabbed frames until its streaming thread takes them.
+The property `max-pending-frames` sets how many.
+
+* **1 (default):** Only the latest frame is kept. A new frame replaces one that was not taken yet. This is like a v4l2 source.
+* **2 or more:** Frames are queued in grab order. When the queue is full, the oldest frame is dropped. A stall in the streaming thread shorter than the queue loses no frames. pylon then grabs with `GrabStrategy_OneByOne` instead of `GrabStrategy_LatestImageOnly`.
+
+Queued frames stay in pylon grab buffers, so no memory is copied or allocated.
+Keep `max-pending-frames` well below `stream::MaxNumBuffer`.
+The pipeline downstream also holds buffers.
+
+As an example, the following pipeline queues up to 3 frames:
+
+```
+gst-launch-1.0 pylonsrc max-pending-frames=3 ! videoconvert ! autovideosink
+```
+
 ### Automatic rounding/correction of property values
 
 The gstreamer model for properties only represents a static range of a property. The pylon feature model has dynamic ranges and increments. These values can change depending on the current values of other properties.

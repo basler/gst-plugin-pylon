@@ -79,7 +79,8 @@ imagehandler_test = executable(
   'generic/imagehandler.cpp',
   '../../ext/pylon/gstpylonimagehandler.cpp',
   include_directories: [configinc, include_directories('../../ext/pylon')],
-  dependencies: [pylon_dep],
+  dependencies: [pylon_dep, dependency('threads')],
   cpp_args: ['-DHAVE_CONFIG_H=1'],
 )
-test('generic_imagehandler', imagehandler_test, timeout: 30)
+test('generic_imagehandler', imagehandler_test, timeout: 30,
+  env: {'PYLON_CAMEMU': '1'})
