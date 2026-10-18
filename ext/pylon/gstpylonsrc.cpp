@@ -333,7 +333,8 @@ static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
           "not taken yet. With a larger value, frames are queued in order and "
           "the oldest one is dropped when the queue is full, so short "
           "streaming stalls do not lose frames. Queued frames hold pylon grab "
-          "buffers, so keep this value well below stream::MaxNumBuffer.",
+          "buffers, so keep this value well below stream::MaxNumBuffer. "
+          "2 is the recommended value for a queue.",
           PROP_MAX_PENDING_FRAMES_MIN, PROP_MAX_PENDING_FRAMES_MAX,
           PROP_MAX_PENDING_FRAMES_DEFAULT,
           static_cast<GParamFlags>(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |

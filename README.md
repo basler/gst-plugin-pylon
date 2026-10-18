@@ -174,14 +174,16 @@ The property `max-pending-frames` sets how many.
 * **1 (default):** Only the latest frame is kept. A new frame replaces one that was not taken yet. This is like a v4l2 source.
 * **2 or more:** Frames are queued in grab order. When the queue is full, the oldest frame is dropped. A stall in the streaming thread shorter than the queue loses no frames. pylon then grabs with `GrabStrategy_OneByOne` instead of `GrabStrategy_LatestImageOnly`.
 
+We recommend 2. It bridges short stalls and ties up only one more grab buffer than the default.
+
 Queued frames stay in pylon grab buffers, so no memory is copied or allocated.
 Keep `max-pending-frames` well below `stream::MaxNumBuffer`.
 The pipeline downstream also holds buffers.
 
-As an example, the following pipeline queues up to 3 frames:
+As an example, the following pipeline queues up to 2 frames:
 
 ```
-gst-launch-1.0 pylonsrc max-pending-frames=3 ! videoconvert ! autovideosink
+gst-launch-1.0 pylonsrc max-pending-frames=2 ! videoconvert ! autovideosink
 ```
 
 ### Automatic rounding/correction of property values
