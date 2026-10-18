@@ -36,6 +36,7 @@
 #include <gst/pylon/gstpylonincludes.h>
 
 #include <condition_variable>
+#include <deque>
 #include <mutex>
 
 enum class GstPylonImageHandlerResult {
@@ -59,13 +60,18 @@ class GstPylonImageHandler : public Pylon::CBaslerUniversalImageEventHandler {
   void InterruptWaitForImage();
   void SignalDisconnect();
   void ClearInterrupt();
+  void SetMaxPendingFrames(size_t max_pending_frames);
+  size_t GetMaxPendingFrames();
 
  private:
   enum class State { Idle, FrameReady, Interrupted, Disconnected };
 
+  void ClearPendingFrames();
+
   std::mutex grab_result_mutex;
   std::condition_variable grab_result_cv;
-  Pylon::CBaslerUniversalGrabResultPtr* ptr_grab_result;
+  std::deque<Pylon::CBaslerUniversalGrabResultPtr*> pending_frames;
+  size_t max_pending_frames;
   State state;
 };
 

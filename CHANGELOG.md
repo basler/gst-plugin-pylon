@@ -16,6 +16,9 @@ All notable changes to this project will be documented in this file.
 - Unlock maps to `GST_FLOW_FLUSHING` (with `unlock_stop` / ClearInterrupt) instead of EOS
 
 ### Added
+- `max-pending-frames` property: queue up to N grabbed frames for the
+  streaming thread instead of keeping only the latest one (default 1, the
+  previous behavior)
 - Camemu test `restart_resource_leak.py` uses 4096×4096 RGB frames and checks
   pipe FD + RSS growth across EOS and abrupt-stop pipeline restart cycles
 - CI installs `python3-gi` so camemu appsink / restart regression tests run

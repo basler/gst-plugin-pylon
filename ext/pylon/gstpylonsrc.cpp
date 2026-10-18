@@ -69,6 +69,7 @@ struct _GstPylonSrc {
   gchar* pfs_location;
   gboolean enable_correction;
   GstPylonCaptureErrorEnum capture_error;
+  guint max_pending_frames;
   GObject* cam;
   GObject* stream;
 
@@ -111,6 +112,7 @@ enum {
   PROP_PFS_LOCATION,
   PROP_ENABLE_CORRECTION,
   PROP_CAPTURE_ERROR,
+  PROP_MAX_PENDING_FRAMES,
   PROP_CAM,
   PROP_STREAM,
 #ifdef NVMM_ENABLED
@@ -130,6 +132,9 @@ enum {
 #define PROP_CAM_DEFAULT NULL
 #define PROP_STREAM_DEFAULT NULL
 #define PROP_CAPTURE_ERROR_DEFAULT ENUM_ABORT
+#define PROP_MAX_PENDING_FRAMES_DEFAULT 1
+#define PROP_MAX_PENDING_FRAMES_MIN 1
+#define PROP_MAX_PENDING_FRAMES_MAX 256
 #ifdef NVMM_ENABLED
 #  define PROP_GPU_ID_MIN 0
 #  define PROP_GPU_ID_MAX G_MAXUINT32
@@ -318,6 +323,22 @@ static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
           GST_TYPE_CAPTURE_ERROR_ENUM, PROP_CAPTURE_ERROR_DEFAULT,
           static_cast<GParamFlags>(G_PARAM_READWRITE |
                                    GST_PARAM_CONTROLLABLE)));
+
+  g_object_class_install_property(
+      gobject_class, PROP_MAX_PENDING_FRAMES,
+      g_param_spec_uint(
+          "max-pending-frames", "Maximum pending frames",
+          "The maximum number of grabbed frames kept until the streaming "
+          "thread takes them. With 1, a new frame replaces a frame that was "
+          "not taken yet. With a larger value, frames are queued in order and "
+          "the oldest one is dropped when the queue is full, so short "
+          "streaming stalls do not lose frames. Queued frames hold pylon grab "
+          "buffers, so keep this value well below stream::MaxNumBuffer. "
+          "2 is the recommended value for a queue.",
+          PROP_MAX_PENDING_FRAMES_MIN, PROP_MAX_PENDING_FRAMES_MAX,
+          PROP_MAX_PENDING_FRAMES_DEFAULT,
+          static_cast<GParamFlags>(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+                                   GST_PARAM_MUTABLE_READY)));
 #ifdef NVMM_ENABLED
   g_object_class_install_property(
       gobject_class, PROP_NVSURFACE_LAYOUT,
@@ -409,6 +430,7 @@ static void gst_pylon_src_init(GstPylonSrc* self) {
   self->pfs_location = PROP_PFS_LOCATION_DEFAULT;
   self->enable_correction = PROP_ENABLE_CORRECTION_DEFAULT;
   self->capture_error = PROP_CAPTURE_ERROR_DEFAULT;
+  self->max_pending_frames = PROP_MAX_PENDING_FRAMES_DEFAULT;
   self->cam = PROP_CAM_DEFAULT;
   self->stream = PROP_STREAM_DEFAULT;
   gst_video_info_init(&self->video_info);
@@ -456,6 +478,9 @@ static void gst_pylon_src_set_property(GObject* object, guint property_id,
       self->capture_error =
           static_cast<GstPylonCaptureErrorEnum>(g_value_get_enum(value));
       break;
+    case PROP_MAX_PENDING_FRAMES:
+      self->max_pending_frames = g_value_get_uint(value);
+      break;
 #ifdef NVMM_ENABLED
     case PROP_NVSURFACE_LAYOUT:
       self->nvsurface_layout =
@@ -502,6 +527,9 @@ static void gst_pylon_src_get_property(GObject* object, guint property_id,
       break;
     case PROP_CAPTURE_ERROR:
       g_value_set_enum(value, self->capture_error);
+      break;
+    case PROP_MAX_PENDING_FRAMES:
+      g_value_set_uint(value, self->max_pending_frames);
       break;
 #ifdef NVMM_ENABLED
     case PROP_NVSURFACE_LAYOUT:
@@ -677,6 +705,7 @@ static gboolean gst_pylon_src_set_caps(GstBaseSrc* src, GstCaps* caps) {
   GError* error = NULL;
   gboolean ret = FALSE;
   const gchar* action = NULL;
+  guint max_pending_frames = PROP_MAX_PENDING_FRAMES_DEFAULT;
 
   GST_INFO_OBJECT(self, "Setting new caps: %" GST_PTR_FORMAT, caps);
 
@@ -698,6 +727,7 @@ static gboolean gst_pylon_src_set_caps(GstBaseSrc* src, GstCaps* caps) {
   } else {
     self->duration = GST_CLOCK_TIME_NONE;
   }
+  max_pending_frames = self->max_pending_frames;
   GST_OBJECT_UNLOCK(self);
   gst_element_post_message(GST_ELEMENT_CAST(self),
                            gst_message_new_latency(GST_OBJECT_CAST(self)));
@@ -713,6 +743,8 @@ static gboolean gst_pylon_src_set_caps(GstBaseSrc* src, GstCaps* caps) {
     action = "configure";
     goto log_error;
   }
+
+  gst_pylon_set_max_pending_frames(self->pylon, max_pending_frames);
 
   ret = gst_pylon_start(self->pylon, &error);
   if (FALSE == ret && error) {

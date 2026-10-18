@@ -449,6 +449,13 @@ void gst_pylon_free(GstPylon* self) {
   delete self;
 }
 
+void gst_pylon_set_max_pending_frames(GstPylon* self,
+                                      guint max_pending_frames) {
+  g_return_if_fail(self);
+
+  self->image_handler.SetMaxPendingFrames(max_pending_frames);
+}
+
 gboolean gst_pylon_start(GstPylon* self, GError** err) {
   gboolean ret = TRUE;
 
@@ -456,7 +463,26 @@ gboolean gst_pylon_start(GstPylon* self, GError** err) {
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
   try {
-    self->camera->StartGrabbing(Pylon::GrabStrategy_LatestImageOnly,
+    /* A frame queue needs every frame from pylon, in order */
+    const size_t max_pending_frames = self->image_handler.GetMaxPendingFrames();
+    const Pylon::EGrabStrategy strategy =
+        max_pending_frames > 1 ? Pylon::GrabStrategy_OneByOne
+                               : Pylon::GrabStrategy_LatestImageOnly;
+
+    /* Pending frames hold pylon grab buffers */
+    if (max_pending_frames > 1 && self->camera->MaxNumBuffer.IsReadable()) {
+      const gint64 max_num_buffer = self->camera->MaxNumBuffer.GetValue();
+      if (static_cast<gint64>(max_pending_frames) >= max_num_buffer) {
+        GST_WARNING_OBJECT(
+            self->gstpylonsrc,
+            "max-pending-frames (%" G_GSIZE_FORMAT
+            ") should be well below stream::MaxNumBuffer (%" G_GINT64_FORMAT
+            ")",
+            static_cast<gsize>(max_pending_frames), max_num_buffer);
+      }
+    }
+
+    self->camera->StartGrabbing(strategy,
                                 Pylon::GrabLoop_ProvidedByInstantCamera);
   } catch (const Pylon::GenericException& e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
