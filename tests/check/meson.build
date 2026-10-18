@@ -80,7 +80,21 @@ imagehandler_test = executable(
   '../../ext/pylon/gstpylonimagehandler.cpp',
   include_directories: [configinc, include_directories('../../ext/pylon')],
   dependencies: [pylon_dep, dependency('threads')],
-  cpp_args: ['-DHAVE_CONFIG_H=1'],
+  cpp_args: [
+    '-DHAVE_CONFIG_H=1',
+    '-DGST_PYLON_IMAGEHANDLER_ENABLE_TEST_HOOKS',
+  ],
 )
 test('generic_imagehandler', imagehandler_test, timeout: 30,
   env: {'PYLON_CAMEMU': '1'})
+
+# NVMM color-kind policy (no DeepStream / Jetson headers required)
+nvmmcolor_test = executable(
+  'generic_nvmmcolor',
+  'generic/nvmmcolor.cpp',
+  '../../ext/pylon/gstpylonnvmmcolor.cpp',
+  include_directories: [configinc, include_directories('../../ext/pylon')],
+  dependencies: [gst_dep, gstvideo_dep],
+  cpp_args: ['-DHAVE_CONFIG_H=1'],
+)
+test('generic_nvmmcolor', nvmmcolor_test, timeout: 30)

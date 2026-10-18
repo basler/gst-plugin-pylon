@@ -76,27 +76,37 @@ void GstPylonImageHandler::OnImageGrabbed(
 GstPylonImageHandlerResult GstPylonImageHandler::WaitForImage(
     Pylon::CBaslerUniversalGrabResultPtr** grab_result) {
   std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
-  this->grab_result_cv.wait(mutex_lock,
-                            [this] { return this->state != State::Idle; });
 
-  if (this->state == State::Interrupted) {
-    *grab_result = NULL;
-    return GstPylonImageHandlerResult::flushing;
+  for (;;) {
+    this->grab_result_cv.wait(mutex_lock,
+                              [this] { return this->state != State::Idle; });
+
+    if (this->state == State::Interrupted) {
+      *grab_result = NULL;
+      return GstPylonImageHandlerResult::flushing;
+    }
+
+    if (this->state == State::Disconnected) {
+      *grab_result = NULL;
+      return GstPylonImageHandlerResult::disconnected;
+    }
+
+    /* FrameReady with an empty queue is an invariant break (e.g. a future
+     * clear path). Recover instead of calling front() on an empty deque. */
+    if (this->pending_frames.empty()) {
+      this->state = State::Idle;
+      continue;
+    }
+
+    *grab_result = this->pending_frames.front();
+    this->pending_frames.pop_front();
+    if (this->pending_frames.empty()) {
+      this->state = State::Idle;
+    }
+    mutex_lock.unlock();
+
+    return GstPylonImageHandlerResult::ok;
   }
-
-  if (this->state == State::Disconnected) {
-    *grab_result = NULL;
-    return GstPylonImageHandlerResult::disconnected;
-  }
-
-  *grab_result = this->pending_frames.front();
-  this->pending_frames.pop_front();
-  if (this->pending_frames.empty()) {
-    this->state = State::Idle;
-  }
-  mutex_lock.unlock();
-
-  return GstPylonImageHandlerResult::ok;
 }
 
 void GstPylonImageHandler::InterruptWaitForImage() {
@@ -140,3 +150,13 @@ size_t GstPylonImageHandler::GetMaxPendingFrames() {
   std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
   return this->max_pending_frames;
 }
+
+#ifdef GST_PYLON_IMAGEHANDLER_ENABLE_TEST_HOOKS
+void GstPylonImageHandler::TestHookForceFrameReadyEmpty() {
+  std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
+  this->ClearPendingFrames();
+  this->state = State::FrameReady;
+  mutex_lock.unlock();
+  this->grab_result_cv.notify_one();
+}
+#endif

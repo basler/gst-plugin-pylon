@@ -15,7 +15,16 @@ All notable changes to this project will be documented in this file.
   in finalize; free grab results on NVMM CUDA copy failure
 - Unlock maps to `GST_FLOW_FLUSHING` (with `unlock_stop` / ClearInterrupt) instead of EOS
 
+### Changed
+- NVMM surface color selection lives in `gst_pylon_nvmm_color_kind()`
+  (unit-tested without Jetson headers)
+- Image handler `WaitForImage` recovers if `FrameReady` has an empty queue
+  instead of calling `front()` on an empty deque
+
 ### Added
+- Tests: `generic_nvmmcolor`, `tools/test_nvmm_color_format_docker.sh`
+  (maps full-range YUY2/UYVY to `*_ER` against real `nvbufsurface.h`),
+  camemu `nvmm_full_range_contract.py`
 - `max-pending-frames` property: queue up to N grabbed frames for the
   streaming thread instead of keeping only the latest one (default 1, the
   previous behavior)

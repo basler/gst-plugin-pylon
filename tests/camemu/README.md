@@ -38,7 +38,16 @@ PYLON_ROOT=/opt/pylon PYLON_CAMEMU=3 ./tests/camemu/run_camemu_tests.sh
 | Pipeline | queue, videoconvert, sequential open/close (system-memory caps so NVMM builds work under fakeroot) |
 | Buffers | PyGObject appsink count when PyGObject is available |
 | Pending frames | `max-pending-frames=3` pipeline; `pending_frames_continuity.py`: consecutive buffer offsets through a 4-frame consumer stall |
+| NVMM full-range | `nvmm_full_range_contract.py`: GStreamer colorimetry defaults that NVMM surface selection relies on. Set `RUN_NVMM_FULL_RANGE=1` on Jetson for a YUY2 `1:4:5:1` NVMM pipeline |
 | Restart cleanup | `restart_resource_leak.py`: 4096x4096 RGB; pipe FD + RSS across EOS and abrupt-stop cycles (Linux `/proc` only; skipped elsewhere) |
+
+Unit tests (no camera): `meson test generic_imagehandler generic_nvmmcolor` — image-handler queue/recover and NVMM color-kind policy.
+
+Against NVIDIA's real `nvbufsurface.h` (container, no GPU):
+
+```bash
+tools/test_nvmm_color_format_docker.sh
+```
 
 See also [MANUAL_TESTS.md](../MANUAL_TESTS.md) for camera/multi-process scenarios.
 

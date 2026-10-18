@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <future>
+#include <thread>
 #include <vector>
 
 static int failures = 0;
@@ -130,6 +131,29 @@ static void TestQueueWithoutCamera() {
     CHECK(
         handler.WaitForImage(&grab) == GstPylonImageHandlerResult::disconnected,
         "disconnect wins over queued frames");
+  }
+
+  {
+    /* FrameReady + empty queue must not call deque::front(); recover to Idle
+     * and accept the next real frame (foundation for #153 hardening). */
+    GstPylonImageHandler handler;
+    GrabResult* grab = nullptr;
+    handler.TestHookForceFrameReadyEmpty();
+    auto wait = std::async(std::launch::async, [&handler, &grab] {
+      return handler.WaitForImage(&grab);
+    });
+    /* Give the waiter time to observe empty FrameReady and block in Idle. */
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    CHECK(wait.wait_for(std::chrono::milliseconds(0)) ==
+              std::future_status::timeout,
+          "empty FrameReady recovers into a blocking wait");
+    handler.OnImageGrabbed(camera, empty);
+    CHECK(wait.wait_for(std::chrono::milliseconds(500)) ==
+              std::future_status::ready,
+          "new frame wakes WaitForImage after empty FrameReady recover");
+    CHECK(wait.get() == GstPylonImageHandlerResult::ok && grab != nullptr,
+          "WaitForImage returns the frame after empty FrameReady recover");
+    delete grab;
   }
 }
 
