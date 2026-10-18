@@ -75,6 +75,18 @@ void GstPylonDsNvmmBufferFactory::SetConfig(const GstCaps *caps) {
   create_params.params.height = video_info.height;
   create_params.params.colorFormat =
       gst_to_nvbuf_format[video_info.finfo->format];
+  /*
+   * The plain YUYV/UYVY surface formats are limited range: every NVMM
+   * conversion downstream clamps their samples to 16..235. Caps with full
+   * range, as pylon's YCbCr formats are, get the extended-range formats.
+   */
+  if (video_info.colorimetry.range == GST_VIDEO_COLOR_RANGE_0_255) {
+    if (create_params.params.colorFormat == NVBUF_COLOR_FORMAT_YUYV) {
+      create_params.params.colorFormat = NVBUF_COLOR_FORMAT_YUYV_ER;
+    } else if (create_params.params.colorFormat == NVBUF_COLOR_FORMAT_UYVY) {
+      create_params.params.colorFormat = NVBUF_COLOR_FORMAT_UYVY_ER;
+    }
+  }
   create_params.params.isContiguous = true;
   create_params.params.layout = this->layout;
   create_params.params.memType = NVBUF_MEM_DEFAULT;
