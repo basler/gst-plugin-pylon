@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- NVMM: YUY2/UYVY caps with full-range colorimetry get the extended-range
+  surface formats (`NVBUF_COLOR_FORMAT_YUYV_ER`/`_UYVY_ER`), so NVMM
+  conversions downstream keep the samples instead of clamping them to 16..235
 - Release pending grab results on flush/disconnect and distinguish unlock from
   disconnect in the image handler (frame buffer leak on pipeline stop)
 - Unref the stream-grabber GObject and destroy the InstantCamera device on

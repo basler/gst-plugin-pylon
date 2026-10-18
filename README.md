@@ -146,6 +146,18 @@ Here's an example of how to use this feature:
 gst-launch-1.0 pylonsrc ! "video/x-raw(memory:NVMM), width=1920, height=1080"  !  nvvidconv  ! "video/x-raw(memory:NVMM), width=1280, height=720" !  fakesink 
 ```
 
+### Full-range YUV in NVMM
+
+Basler cameras send YUV 4:2:2 in full range (BT.601, 0..255).
+Say so in the caps, and `pylonsrc` allocates extended-range NVMM surfaces for YUY2 and UYVY.
+Without it, the surfaces are limited range, and NVMM conversions downstream clamp the samples to 16..235.
+
+```bash
+gst-launch-1.0 pylonsrc ! "video/x-raw(memory:NVMM), format=YUY2, colorimetry=1:4:5:1" ! nvvidconv ! "video/x-raw(memory:NVMM), format=NV12" ! fakesink
+```
+
+The first field of `colorimetry`, 1, is the full range; the second, 4, is the BT.601 matrix.
+
 
 
 ### Handle capture errors
