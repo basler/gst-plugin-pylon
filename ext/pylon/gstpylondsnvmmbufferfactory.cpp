@@ -32,23 +32,15 @@
 
 #include "gstpylondsnvmmbufferfactory.h"
 
+#include "gstpylonnvmmcolor.h"
+
 #if defined(__GNUC__)
-#include <stdlib.h>
-#include <unistd.h>
+#  include <stdlib.h>
+#  include <unistd.h>
 #endif
 
 #include <cuda_runtime.h>
 #include <gst/video/video.h>
-
-#include <map>
-
-static std::map<GstVideoFormat, NvBufSurfaceColorFormat> gst_to_nvbuf_format = {
-    {GST_VIDEO_FORMAT_GRAY8, NVBUF_COLOR_FORMAT_GRAY8},
-    {GST_VIDEO_FORMAT_RGB, NVBUF_COLOR_FORMAT_RGB},
-    {GST_VIDEO_FORMAT_BGR, NVBUF_COLOR_FORMAT_BGR},
-    {GST_VIDEO_FORMAT_UYVY, NVBUF_COLOR_FORMAT_UYVY},
-    {GST_VIDEO_FORMAT_YUY2, NVBUF_COLOR_FORMAT_YUYV},
-};
 
 GstPylonDsNvmmBufferFactory::GstPylonDsNvmmBufferFactory(
     const GstPylonNvsurfaceLayoutEnum nvsurface_layout, const guint gpu_id) {
@@ -65,7 +57,7 @@ GstPylonDsNvmmBufferFactory::GstPylonDsNvmmBufferFactory(
   }
 }
 
-void GstPylonDsNvmmBufferFactory::SetConfig(const GstCaps *caps) {
+void GstPylonDsNvmmBufferFactory::SetConfig(const GstCaps* caps) {
   GstVideoInfo video_info = {};
 
   gst_video_info_from_caps(&video_info, caps);
@@ -73,20 +65,15 @@ void GstPylonDsNvmmBufferFactory::SetConfig(const GstCaps *caps) {
   create_params.params.gpuId = this->gpu_id;
   create_params.params.width = video_info.width;
   create_params.params.height = video_info.height;
-  create_params.params.colorFormat =
-      gst_to_nvbuf_format[video_info.finfo->format];
+
   /*
-   * The plain YUYV/UYVY surface formats are limited range: every NVMM
-   * conversion downstream clamps their samples to 16..235. Caps with full
-   * range, as pylon's YCbCr formats are, get the extended-range formats.
+   * Plain YUYV/UYVY NVMM surfaces are limited range: conversions downstream
+   * clamp to 16..235. Full-range caps (Basler YCbCr is 0..255) get the
+   * extended-range surface formats.
    */
-  if (video_info.colorimetry.range == GST_VIDEO_COLOR_RANGE_0_255) {
-    if (create_params.params.colorFormat == NVBUF_COLOR_FORMAT_YUYV) {
-      create_params.params.colorFormat = NVBUF_COLOR_FORMAT_YUYV_ER;
-    } else if (create_params.params.colorFormat == NVBUF_COLOR_FORMAT_UYVY) {
-      create_params.params.colorFormat = NVBUF_COLOR_FORMAT_UYVY_ER;
-    }
-  }
+  create_params.params.colorFormat = gst_pylon_nvmm_color_format(
+      video_info.finfo->format, video_info.colorimetry.range);
+
   create_params.params.isContiguous = true;
   create_params.params.layout = this->layout;
   create_params.params.memType = NVBUF_MEM_DEFAULT;
@@ -95,16 +82,15 @@ void GstPylonDsNvmmBufferFactory::SetConfig(const GstCaps *caps) {
 }
 
 void GstPylonDsNvmmBufferFactory::AllocateBuffer(size_t buffer_size,
-                                                 void **p_created_buffer,
-                                                 intptr_t &buffer_context) {
-  void *buffer_mem = nullptr;
+                                                 void** p_created_buffer,
+                                                 intptr_t& buffer_context) {
+  void* buffer_mem = nullptr;
 
   const size_t PAGE_SIZE = getpagesize();
   const size_t aligned_buffer_size = RoundUp(buffer_size, PAGE_SIZE);
 
   int ret = posix_memalign(&buffer_mem, PAGE_SIZE, aligned_buffer_size);
-  if (ret)
-    buffer_mem = nullptr;
+  if (ret) buffer_mem = nullptr;
 
   create_params.params.size = aligned_buffer_size;
 
@@ -117,7 +103,7 @@ void GstPylonDsNvmmBufferFactory::AllocateBuffer(size_t buffer_size,
    *  nvsurface one after capture.
    */
   int batch_size = 1;
-  NvBufSurface *surf = nullptr;
+  NvBufSurface* surf = nullptr;
 
   NvBufSurfaceAllocate(&surf, batch_size, &create_params);
   surf->numFilled = 1;
@@ -128,9 +114,9 @@ void GstPylonDsNvmmBufferFactory::AllocateBuffer(size_t buffer_size,
   buffer_context = reinterpret_cast<intptr_t>(surf);
 }
 
-void GstPylonDsNvmmBufferFactory::FreeBuffer(void *p_created_buffer,
+void GstPylonDsNvmmBufferFactory::FreeBuffer(void* p_created_buffer,
                                              intptr_t buffer_context) {
-  NvBufSurface *surf = reinterpret_cast<NvBufSurface *>(buffer_context);
+  NvBufSurface* surf = reinterpret_cast<NvBufSurface*>(buffer_context);
 
   NvBufSurfaceDestroy(surf);
   free(p_created_buffer);

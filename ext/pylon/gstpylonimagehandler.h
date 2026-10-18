@@ -63,6 +63,12 @@ class GstPylonImageHandler : public Pylon::CBaslerUniversalImageEventHandler {
   void SetMaxPendingFrames(size_t max_pending_frames);
   size_t GetMaxPendingFrames();
 
+#ifdef GST_PYLON_IMAGEHANDLER_ENABLE_TEST_HOOKS
+  /* Test only: FrameReady with an empty queue to exercise WaitForImage recover.
+   */
+  void TestHookForceFrameReadyEmpty();
+#endif
+
  private:
   enum class State { Idle, FrameReady, Interrupted, Disconnected };
 

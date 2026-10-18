@@ -54,6 +54,36 @@ EOS). Pipeline must not hang.
 Induce incomplete grabs (undersized GevSCPSPacketSize on GigE) with
 `capture-error=keep`. Downstream buffers must have `GST_BUFFER_FLAG_CORRUPTED`.
 
+## NVMM full-range YUV (Jetson)
+
+Basler YUV is full range. With an explicit capsfilter, pylonsrc must allocate
+extended-range NVMM surfaces (`YUYV_ER` / `UYVY_ER`) so `nvvidconv` does not
+clamp to 16..235:
+
+```bash
+gst-launch-1.0 pylonsrc ! \
+  "video/x-raw(memory:NVMM),format=YUY2,colorimetry=1:4:5:1" ! \
+  nvvidconv ! "video/x-raw(memory:NVMM),format=NV12" ! fakesink
+```
+
+Caps → `NvBufSurfaceColorFormat` mapping (real DeepStream header, no GPU):
+
+```bash
+tools/test_nvmm_color_format_docker.sh
+```
+
+Full-range YUY2/UYVY must select `NVBUF_COLOR_FORMAT_*_ER`.
+
+Optional Jetson pipeline (allocation only; set `RUN_NVMM_FULL_RANGE=1`):
+
+```bash
+RUN_NVMM_FULL_RANGE=1 PYLON_CAMEMU=3 \
+  python3 tests/camemu/nvmm_full_range_contract.py --serial 0815-0000
+```
+
+Confirming no clamping still needs a sample comparison (Y below 16 after
+`nvvidconv`).
+
 ## Multi-process open
 
 Start two processes selecting the same serial. One must fail after retries

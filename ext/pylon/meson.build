@@ -8,6 +8,7 @@ pylon_sources = [
   'gstpylon.cpp',
   'gstpylondisconnecthandler.cpp',
   'gstpylonimagehandler.cpp',
+  'gstpylonnvmmcolor.cpp',
   'gstpylonplugin.cpp',
   'gstpylonsrc.cpp',
   'gstpylonsysmembufferfactory.cpp',
