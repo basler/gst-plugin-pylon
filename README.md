@@ -133,8 +133,9 @@ capabilities.
 
 
 NVMM caps are now supported in the current version of the element. This feature
-is automatically enabled when both the CUDA library and the DeepStream library
-are installed on the system.
+is automatically enabled when CUDA and `libnvbufsurface` are present at build
+time. Headers are taken from DeepStream when installed, otherwise from the
+Jetson Multimedia API (`/usr/src/jetson_multimedia_api/include`).
 
 By using this support, a memory speedup can be achieved as it eliminates the
 need for an additional element to connect the system memory and NVIDIA's GPU

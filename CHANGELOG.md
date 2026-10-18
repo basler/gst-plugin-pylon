@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- Skip optional `OffsetX`/`OffsetY` during caps query on cameras without ROI
+  offsets (line-scan / Racer 2) (#140)
+- Open camera by serial or user-name without full device enumeration (#138)
+- Relax PFS nodemap sanity check for manually edited float values (#136, #141)
+- Honor `AcquisitionFrameRate` from PFS/properties for hardware triggering
+  instead of always overwriting from caps (#147)
+- Jetson NVMM: fall back to Multimedia API `nvbufsurface.h` when DeepStream
+  headers are absent (#152)
 - NVMM: YUY2/UYVY caps with full-range colorimetry get the extended-range
   surface formats (`NVBUF_COLOR_FORMAT_YUYV_ER`/`_UYVY_ER`), so NVMM
   conversions downstream keep the samples instead of clamping them to 16..235
