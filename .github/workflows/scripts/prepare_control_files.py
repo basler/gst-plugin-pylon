@@ -146,6 +146,8 @@ def download_file(source, destination):
             str(destination),
         ],
         check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     if not destination.is_file() or destination.stat().st_size == 0:
         raise ValueError(f"Download did not produce a nonempty file: {destination}")
@@ -164,7 +166,7 @@ def main():
         parse_version(sdk_version, allow_two_segment=True)
 
     result = subprocess.run(
-        ["jf", "rt", "s", "--quiet=true", f"{search_prefix}/*"],
+        ["jf", "rt", "s", f"{search_prefix}/*"],
         check=True,
         capture_output=True,
         text=True,
