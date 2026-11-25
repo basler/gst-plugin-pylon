@@ -1,7 +1,7 @@
 [settings]
-arch=armv8
-build_type=Release
-compiler=apple-clang
-compiler.libcxx=libc++
-compiler.version=13
 os=Macos
+arch=armv8
+compiler=apple-clang
+compiler.version=13
+compiler.libcxx=libc++
+build_type=Release

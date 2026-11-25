@@ -1,22 +1,24 @@
 {
-    "linux-x86_64": {
-        "targets": ["ubuntu-24.04"],
-        "pylon_sdks": ["26.06"],
-        "pylon_sdk_packaging": "26.06"
+    "linux_x86_64": {
+        "deb_arch": "x86_64"
     },
-    "linux-aarch64": {
-        "targets": ["ubuntu-24.04-arm"],
-        "pylon_sdks": ["26.06"],
-        "pylon_sdk_packaging": "26.06"
+    "linux_aarch64": {
+        "deb_arch": "aarch64"
     },
     "windows": {
-        "targets": ["windows-latest"],
-        "pylon_sdks": ["26.06"],
-        "pylon_sdk_packaging": "26.06"
+        "requirements": [
+            "pylon-core"
+        ],
+        "imports": [
+            "pylon-core"
+        ]
     },
     "macos": {
-        "targets": ["macos-latest"],
-        "pylon_sdks": ["26.06"],
-        "pylon_sdk_packaging": "26.06"
+        "requirements": [
+            "pylon-core"
+        ],
+        "imports": [
+            "pylon-core"
+        ]
     }
 }

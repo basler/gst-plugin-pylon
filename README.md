@@ -370,7 +370,7 @@ The pylonsrc plugin can be downloaded for the following revisions of Ubuntu and 
 | Distribution | Versions |
 |--------------|---------------------|
 | Ubuntu       | 24.04, 22.04 |
-| Debian       | 12 (Bookworm) |
+| Debian       | 13 (Trixie), 12 (Bookworm) |
 
 For any other OS you have to currently [build](#building) the plugin yourself.
 
@@ -392,8 +392,8 @@ The supported pylon versions on the different platforms are:
 A from-source meson build does not require C++ SDK 12.2. It still detects
 pylon 7.1+ via CMake and falls back to the 6.x finder on aarch64.
 
-CI builds all four platforms against pylon 26.06. Official Linux debs use a
-date Version (`pylon_26.08.1-deb0_amd64.deb` → `Version: 26.08.1-deb0`).
+CI builds and tests all four platforms against the latest pylon release.
+Official Linux debs use a date Version (`pylon_26.08.1-deb0_amd64.deb` → `Version: 26.08.1-deb0`).
 Each generated gst-plugin-pylon Debian package records that build-time pylon
 version in three places that stay in sync:
 
@@ -494,7 +494,7 @@ package directory (often under `/usr/local/lib/python3/dist-packages` even when
 
 The release packages are built once per architecture on Ubuntu 22.04, the
 oldest supported userspace (glibc and GStreamer 1.20), and install-tested
-unchanged on Ubuntu 22.04, Ubuntu 24.04, and Debian bookworm. Runtime
+unchanged on Ubuntu 22.04, Ubuntu 24.04, Debian bookworm, and Debian trixie. Runtime
 `Depends` pin the build-time pylon dpkg Version exactly
 (`pylon (= <build-time>)`), because pylon builds are not binary-compatible
 across versions. The same version is written into `Pylon-Built-Against`

@@ -44,12 +44,12 @@ def main() -> None:
             "this is not a complete runtime inventory."
         )
     if any(
-        component.get("purl", "").startswith("pkg:conan/pylon-core@")
+        component.get("purl", "").startswith("pkg:deb/basler/pylon@")
         for component in bom.get("components", [])
     ):
         lines.append(
-            "pylon-core is identified by its Conan PURL; advisory coverage for "
-            "this package depends on the vulnerability data sources."
+            "pylon is identified by its vendor Debian PURL; advisory coverage "
+            "for this package depends on the vulnerability data sources."
         )
     if unresolved:
         lines.append(

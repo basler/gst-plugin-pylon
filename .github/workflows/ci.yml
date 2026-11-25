@@ -1,422 +1,362 @@
 name: CI for gstreamer
+
 on:
   push:
+    branches:
+      - '**'
+    tags:
+      - 'v*'
   pull_request:
-    branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
+    branches:
+      - main
   workflow_dispatch:
+    inputs:
+      pylon_sdk_version:
+        description: 'Optional pylon SDK version override (e.g. 26.08 or 26.08.1). Empty = latest release.'
+        required: false
+        default: ''
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') && github.ref != 'refs/heads/main' }}
 
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: jfrog/setup-jfrog-cli@v5
-      env:
-       JF_URL: ${{ secrets.SDK_URL }}
-       JF_ACCESS_TOKEN: ${{ secrets.SDK_TOKEN }}
-      with:
-        disable-auto-build-publish: true
-        disable-job-summary: true
- 
-    - name: Checkout repository
-      uses: actions/checkout@v5
-      with:
-        fetch-depth: 0
-
-    - name: Check for release build and tag
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        TAG_NAME="${GITHUB_REF#refs/tags/}"
-        echo "Build release for $TAG_NAME"
-        echo "RELEASE_BUILD=1" >> $GITHUB_ENV
-        echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
-
-    - name: Authenticate to Artifactory
-      run: |
-        jf c add --url=$JF_URL --access-token=$JF_ACCESS_TOKEN --interactive=false
-
-    - name: Download control files from Artifactory
-      id: get_matrix
-      run: |
-        set +x
-        set -e
-        build_config=$(cat .github/workflows/build_config.json)
-        pylon_default_version="26.06"
-        for os in $(echo $build_config | jq -r 'keys[]'); do
-          if [[ $os == "windows" || $os == "macos" ]]; then
-            targets=$(echo $build_config | jq -c ".\"$os\".targets")
-            echo "${os}_targets=$targets" >> $GITHUB_OUTPUT
-            pylon_sdks=$(echo $build_config | jq -c ".\"$os\".pylon_sdks")
-            echo "${os}_pylon_sdks=$pylon_sdks" >> $GITHUB_OUTPUT
-          elif [[ $os == "linux-x86_64" || $os == "linux-aarch64" ]]; then
-            targets=$(echo $build_config | jq -c ".\"$os\".targets")
-            echo "${os}_targets=$targets" >> $GITHUB_OUTPUT
-            pylon_sdks=$(echo $build_config | jq -c ".\"$os\".pylon_sdks")
-            echo "${os}_pylon_sdks=$pylon_sdks" >> $GITHUB_OUTPUT
-          fi
-          tag=$(echo "${TAG_NAME:-$pylon_default_version}" | sed 's/rc[0-9]*$//')
-          if [[ $os == "linux-x86_64" ]]; then
-            os_search="linux_x86_64"
-          elif [[ $os == "linux-aarch64" ]]; then
-            os_search="linux_aarch64"
-          elif [[ $os == "windows" ]]; then
-            os_search="windows"
-          elif [[ $os == "macos" ]]; then
-            os_search="macos"
-          fi
-          echo "Downloading control files for $os_search using pylon $tag"
-          latest_build=$(jf rt s "pylon-artifacts-generic-*/setup/*/report_${os_search}*.json" | jq -r --arg tag "$tag" '.[] | select(.path | test($tag)) | .path' | sed -E 's|.*/([0-9]{8}\.[0-9]+)/.*|\1|' | sort -V | tail -1)
-          for path in $(jf rt s "pylon-artifacts-generic-*/setup/*/report_${os_search}*.json" | jq -r --arg tag "$tag" --arg build "$latest_build" '.[] | select(.path | test($tag)) | select(.path | test($build)) | .path'); do
-            jf rt dl --flat $path ./${os_search}/report_${os_search}.json
-          done
-          for path in $(jf rt s "pylon-artifacts-generic-*/setup/*/oso_${os_search}*.txt" | jq -r --arg tag "$tag" --arg build "$latest_build" '.[] | select(.path | test($tag)) | select(.path | test($build)) | .path'); do
-            jf rt dl --flat $path ./${os_search}/pylon_Third-Party_Licenses.txt
-          done
-        done
-
-    - name: Upload control files for Linux aarch64
-      uses: actions/upload-artifact@v6
-      with:
-        name: Linux_aarch64_Pylon
-        path: linux_aarch64
-
-    - name: Upload control files for Linux x86_64
-      uses: actions/upload-artifact@v6
-      with:
-        name: Linux_x86_64_Pylon
-        path: linux_x86_64
-
-    - name: Upload control files for Windows
-      uses: actions/upload-artifact@v6
-      with:
-        name: Windows_Pylon
-        path: windows
-
-    - name: Upload control files for macOS
-      uses: actions/upload-artifact@v6
-      with:
-        name: macOS_Pylon
-        path: macos
-
+  prepare:
+    name: Prepare SDK inputs
+    runs-on: ubuntu-24.04
     outputs:
       is_release_build: ${{ env.RELEASE_BUILD == '1' }}
-      linux_x86_64_targets: ${{ steps.get_matrix.outputs.linux-x86_64_targets }}
-      linux_x86_64_pylon_sdks: ${{ steps.get_matrix.outputs.linux-x86_64_pylon_sdks }}
-      linux_aarch64_targets: ${{ steps.get_matrix.outputs.linux-aarch64_targets }}
-      linux_aarch64_pylon_sdks: ${{ steps.get_matrix.outputs.linux-aarch64_pylon_sdks }}
-      windows_targets: ${{ steps.get_matrix.outputs.windows_targets }}
-      windows_pylon_sdks: ${{ steps.get_matrix.outputs.windows_pylon_sdks }}
-      macos_targets: ${{ steps.get_matrix.outputs.macos_targets }}
-      macos_pylon_sdks: ${{ steps.get_matrix.outputs.macos_pylon_sdks }}
+      pylon_version: ${{ steps.get_sdks.outputs.pylon_version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-  download_linux_x86_64:
-    needs: setup
+      - name: Run SDK selector unit tests
+        run: python3 -m unittest discover -s .github/workflows/scripts -p 'test_prepare_control_files.py' -v
+
+      - name: Check for release tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          echo "Build release for $TAG_NAME"
+          echo "RELEASE_BUILD=1" >> "$GITHUB_ENV"
+          echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
+
+      - name: Set up SDK download client
+        uses: jfrog/setup-jfrog-cli@v5
+        env:
+          JF_URL: ${{ secrets.SDK_URL }}
+          JF_ACCESS_TOKEN: ${{ secrets.SDK_TOKEN }}
+        with:
+          disable-auto-build-publish: true
+          disable-job-summary: true
+
+      - name: Authenticate SDK client
+        env:
+          CI: "true"
+          JFROG_CLI_LOG_LEVEL: ERROR
+          JF_URL: ${{ secrets.SDK_URL }}
+          JF_ACCESS_TOKEN: ${{ secrets.SDK_TOKEN }}
+        run: |
+          jf c add sdk-server --url="$JF_URL" --access-token="$JF_ACCESS_TOKEN" --interactive=false --overwrite=true >/dev/null
+
+      - name: Download Linux Debian bundles and desktop SDK metadata
+        id: get_sdks
+        env:
+          CI: "true"
+          JFROG_CLI_LOG_LEVEL: ERROR
+          SDK_SEARCH_PREFIX: ${{ secrets.SDK_SEARCH_PREFIX }}
+          PYLON_SDK_VERSION: ${{ inputs.pylon_sdk_version || vars.PYLON_SDK_VERSION || '' }}
+        run: python3 .github/workflows/scripts/prepare_control_files.py
+
+      - name: Upload Linux x86_64 pylon Debian bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: Linux_x86_64_Pylon_Debs
+          path: linux_x86_64
+          if-no-files-found: error
+
+      - name: Upload Linux aarch64 pylon Debian bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: Linux_aarch64_Pylon_Debs
+          path: linux_aarch64
+          if-no-files-found: error
+
+      - name: Upload Windows SDK metadata
+        uses: actions/upload-artifact@v6
+        with:
+          name: Windows_Pylon_Control
+          path: windows
+          if-no-files-found: error
+
+      - name: Upload macOS SDK metadata
+        uses: actions/upload-artifact@v6
+        with:
+          name: macOS_Pylon_Control
+          path: macos
+          if-no-files-found: error
+
+  download_desktop_sdk:
+    name: Download desktop SDK (${{ matrix.platform }})
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
-        pylon_sdk: ${{ fromJson(needs.setup.outputs.linux_x86_64_pylon_sdks) }}
-    runs-on: ubuntu-latest
+        include:
+          - os: windows-latest
+            platform: windows
+            profile: windows_x64
+            control_artifact: Windows_Pylon_Control
+            sdk_artifact: Windows_Pylon_SDK
+          - os: macos-15
+            platform: macos
+            profile: macos_arm64
+            control_artifact: macOS_Pylon_Control
+            sdk_artifact: macOS_Pylon_SDK
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Install Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
+          python-version: "3.12"
 
-      - name: Install conan v1
-        run: pip install "conan<2"
+      - name: Install package client
+        run: pip install "conan>=2.14"
 
-      - name: Add conan v1 remote and authenticate
+      - name: Detect default host profile
+        run: conan profile detect --force
+
+      - name: Configure SDK package remote
         env:
-          JF_URL: ${{ secrets.SDK_URL }}
-          JF_USER: ${{ secrets.SDK_USER }}
-          JF_ACCESS_TOKEN: ${{ secrets.SDK_TOKEN }}
+          SDK_CONAN_REMOTE_URL: ${{ secrets.SDK_CONAN_REMOTE_URL }}
+          SDK_USER: ${{ secrets.SDK_USER }}
+          SDK_TOKEN: ${{ secrets.SDK_TOKEN }}
+        shell: python
         run: |
+          import base64
+          import json
           import os
           import subprocess
+          import sys
 
-          subprocess.run(["conan", "config", "set", "general.revisions_enabled=1"], check=True)
-          subprocess.run([
-            "conan", "remote", "add", "pylon-conan-prod",
-            f"{os.environ['JF_URL']}/artifactory/api/conan/pylon-conan-prod", "--insert", "0"
-          ], check=True)
-          subprocess.run([
-            "conan", "user", "-p", os.environ["JF_ACCESS_TOKEN"],
-            "-r", "pylon-conan-prod", os.environ["JF_USER"]
-          ], check=True)
-        shell: python
+          def resolve_user(user_env, token):
+              if user_env:
+                  return user_env
+              if token.count(".") == 2:
+                  payload_b64 = token.split(".")[1]
+                  payload_b64 += "=" * (-len(payload_b64) % 4)
+                  sub = json.loads(base64.urlsafe_b64decode(payload_b64)).get("sub", "")
+                  if "/" in sub:
+                      return sub.rsplit("/", 1)[-1]
+              sys.exit("SDK_USER secret is required when SDK_TOKEN is not a JWT access token")
 
-      - name: Download Linux x86_64 control artifacts
+          def run_step(label, cmd):
+              result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+              if result.returncode != 0:
+                  sys.exit(f"{label} failed with exit code {result.returncode}")
+
+          token = os.environ["SDK_TOKEN"].strip()
+          user = resolve_user(os.environ.get("SDK_USER", "").strip(), token)
+          print(f"::add-mask::{user}", flush=True)
+
+          run_step(
+              "remote add",
+              ["conan", "remote", "add", "sdk-remote", os.environ["SDK_CONAN_REMOTE_URL"], "--index", "0", "--force", "-vquiet"],
+          )
+          run_step(
+              "remote login",
+              ["conan", "remote", "login", "-p", token, "sdk-remote", user, "-vquiet"],
+          )
+
+      - name: Download ${{ matrix.platform }} SDK metadata
         uses: actions/download-artifact@v7
         with:
-          pattern: Linux_x86_64*Pylon
-          merge-multiple: true
+          name: ${{ matrix.control_artifact }}
           path: pylon-install-files
 
-      - name: Download needed pylon modules
+      - name: Resolve and deploy ${{ matrix.platform }} SDK
+        shell: python
         run: |
+          import json
           import os
           import subprocess
+          import sys
 
-          subprocess.run([
-            "conan", "install", "--update", "--install-folder", "conan",
-            "-pr", os.path.join(os.environ['GITHUB_WORKSPACE'], ".github", "workflows", "profiles", "linux_x64"),
-            "-o", f"gst-plugin-pylon:control_file={os.path.join(os.environ['GITHUB_WORKSPACE'], 'pylon-install-files', 'report_linux_x86_64.json')}",
-            "-o", f"gst-plugin-pylon:third_party_license_file={os.path.join(os.environ['GITHUB_WORKSPACE'], 'pylon-install-files', 'pylon_Third-Party_Licenses.txt')}",
-            "-c", "tools.system.package_manager:mode=install",
-            "-c", "tools.system.package_manager:sudo=True",
-            os.path.join(os.environ['GITHUB_WORKSPACE'], ".github", "workflows", "conanfile.py")
-          ], check=True)
-        shell: python
+          ws = os.environ["GITHUB_WORKSPACE"]
+          cfg_path = os.path.join(ws, ".github", "workflows", "build_config.json")
+          ctl_path = os.path.join(ws, "pylon-install-files", "control_${{ matrix.platform }}.json")
 
-      - name: Tar pylon SDK files
+          with open(cfg_path, encoding="utf-8") as f:
+              reqs = json.load(f).get("${{ matrix.platform }}", {}).get("requirements", ["pylon-core"])
+          with open(ctl_path, encoding="utf-8") as f:
+              version_map = {pkg["name"]: pkg["version"] for pkg in json.load(f)}
+
+          resolved_refs = {}
+          for req in reqs:
+              base_ver = str(version_map[req]).split("+", 1)[0]
+              query = subprocess.run(
+                  ["conan", "list", f"{req}/{base_ver}*@*", "-r", "sdk-remote", "--format=json"],
+                  capture_output=True,
+                  text=True,
+              )
+              if query.returncode != 0:
+                  sys.exit(f"SDK lookup failed for {req} with exit code {query.returncode}")
+              matches = sorted(json.loads(query.stdout).get("sdk-remote", {}).keys())
+              prefix = f"{req}/{base_ver}"
+              matches = [
+                  m for m in matches
+                  if m == prefix or m.startswith((prefix + "+", prefix + "@"))
+              ]
+              if not matches:
+                  sys.exit(f"No matching SDK package found for {req} {base_ver}")
+              resolved_refs[req] = matches[-1]
+
+          env = os.environ.copy()
+          env["SDK_RESOLVED_REFS"] = json.dumps(resolved_refs)
+          result = subprocess.run(
+              [
+                  "conan", "install", "--update", "--output-folder", "conan",
+                  "-vquiet",
+                  "-pr:h", os.path.join(ws, ".github", "workflows", "profiles", "${{ matrix.profile }}"),
+                  "-pr:b", "default",
+                  "-o", f"gst-plugin-pylon/*:build_config={cfg_path}",
+                  "-o", f"gst-plugin-pylon/*:control_file={ctl_path}",
+                  "-c", "tools.system.package_manager:mode=install",
+                  "-c", "tools.system.package_manager:sudo=True",
+                  os.path.join(ws, ".github", "workflows", "conanfile.py"),
+              ],
+              env=env,
+              stdout=subprocess.DEVNULL,
+              stderr=subprocess.DEVNULL,
+          )
+          if result.returncode != 0:
+              sys.exit(f"SDK install failed with exit code {result.returncode}")
+
+      - name: Archive macOS SDK
+        if: runner.os == 'macOS'
         run: tar -czf pylon_sdk.tar.gz -C conan pylon
 
-      - name: Upload pylon SDK for Linux x86_64 ${{ matrix.pylon_sdk }}
+      - name: Upload ${{ matrix.platform }} SDK
         uses: actions/upload-artifact@v6
         with:
-          name: Linux_x86_64_Pylon_SDK_${{ matrix.pylon_sdk }}
-          path: pylon_sdk.tar.gz
+          name: ${{ matrix.sdk_artifact }}
+          path: ${{ runner.os == 'Windows' && 'conan' || 'pylon_sdk.tar.gz' }}
+          if-no-files-found: error
 
-  download_linux_aarch64:
-    needs: setup
+  build_linux:
+    name: Build & test Linux (${{ matrix.arch }}, ${{ matrix.os }})
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
-        pylon_sdk: ${{ fromJson(needs.setup.outputs.linux_aarch64_pylon_sdks) }}
-    runs-on: ubuntu-latest
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+            gnu_triplet: x86_64-linux-gnu
+            deb_artifact: Linux_x86_64_Pylon_Debs
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+            gnu_triplet: aarch64-linux-gnu
+            deb_artifact: Linux_aarch64_Pylon_Debs
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-      - name: Install Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.10"
-
-      - name: Install conan v1
-        run: pip install "conan<2"
-
-      - name: Add conan v1 remote and authenticate
-        env:
-          JF_URL: ${{ secrets.SDK_URL }}
-          JF_USER: ${{ secrets.SDK_USER }}
-          JF_ACCESS_TOKEN: ${{ secrets.SDK_TOKEN }}
-        run: |
-          import os
-          import subprocess
-
-          subprocess.run(["conan", "config", "set", "general.revisions_enabled=1"], check=True)
-          subprocess.run([
-            "conan", "remote", "add", "pylon-conan-prod",
-            f"{os.environ['JF_URL']}/artifactory/api/conan/pylon-conan-prod", "--insert", "0"
-          ], check=True)
-          subprocess.run([
-            "conan", "user", "-p", os.environ["JF_ACCESS_TOKEN"],
-            "-r", "pylon-conan-prod", os.environ["JF_USER"]
-          ], check=True)
-        shell: python
-
-      - name: Download Linux aarch64 control artifacts
+      - name: Download pylon Debian bundle
         uses: actions/download-artifact@v7
         with:
-          pattern: Linux_aarch64*Pylon
-          merge-multiple: true
-          path: pylon-install-files
+          name: ${{ matrix.deb_artifact }}
+          path: pylon-debs
 
-      - name: Download needed pylon modules
+      - name: Install pylon Debian package
         run: |
-          import os
-          import subprocess
+          chmod +x tools/install_pylon_debs.sh
+          sudo tools/install_pylon_debs.sh pylon-debs
 
-          subprocess.run([
-            "conan", "install", "--update", "--install-folder", "conan",
-            "-pr", os.path.join(os.environ['GITHUB_WORKSPACE'], ".github", "workflows", "profiles", "linux_arm64"),
-            "-o", f"gst-plugin-pylon:control_file={os.path.join(os.environ['GITHUB_WORKSPACE'], 'pylon-install-files', 'report_linux_aarch64.json')}",
-            "-o", f"gst-plugin-pylon:third_party_license_file={os.path.join(os.environ['GITHUB_WORKSPACE'], 'pylon-install-files', 'pylon_Third-Party_Licenses.txt')}",
-            "-c", "tools.system.package_manager:mode=install",
-            "-c", "tools.system.package_manager:sudo=True",
-            os.path.join(os.environ['GITHUB_WORKSPACE'], ".github", "workflows", "conanfile.py")
-          ], check=True)
-        shell: python
+      - name: Install GStreamer and build dependencies
+        run: |
+          sudo apt-get update
+          sudo dpkg-query -W -f='${Status}' libunwind-14-dev 2>/dev/null | grep -q "ok installed" && sudo apt-get remove -y libunwind-14-dev || true
+          sudo apt-get -y install python3 python3-pip python3-dev python3-gi gir1.2-gstreamer-1.0 \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang \
+            gstreamer1.0-tools gstreamer1.0-plugins-base python3-venv
+          python3 -m venv build_python --system-site-packages
+          . build_python/bin/activate
+          pip install --upgrade pip meson ninja
 
-      - name: Tar pylon SDK files
-        run: tar -czf pylon_sdk.tar.gz -C conan pylon
+      - name: Compile and test (GCC)
+        run: |
+          export PYLON_ROOT=/opt/pylon
+          export LD_LIBRARY_PATH="/opt/pylon/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          export CC=gcc
+          export CXX=g++
+          export PYLON_CAMEMU=3
+          . build_python/bin/activate
+          meson setup builddir_gcc --prefix "$PWD/install_gcc" -Dpython-bindings=enabled
+          ninja -C builddir_gcc
+          meson test -C builddir_gcc --print-errorlogs
+          ninja -C builddir_gcc install
 
-      - name: Upload pylon SDK for Linux aarch64 ${{ matrix.pylon_sdk }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: Linux_aarch64_Pylon_SDK_${{ matrix.pylon_sdk }}
-          path: pylon_sdk.tar.gz
+      - name: Compile and test (Clang)
+        run: |
+          export PYLON_ROOT=/opt/pylon
+          export LD_LIBRARY_PATH="/opt/pylon/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          export CC=clang
+          export CXX=clang++
+          export PYLON_CAMEMU=3
+          . build_python/bin/activate
+          meson setup builddir_clang --prefix "$PWD/install_clang" -Dpython-bindings=enabled
+          ninja -C builddir_clang
+          meson test -C builddir_clang --print-errorlogs
+          ninja -C builddir_clang install
 
-  download_windows:
-    needs: setup
-    strategy:
-      fail-fast: false
-      matrix:
-        pylon_sdk: ${{ fromJson(needs.setup.outputs.windows_pylon_sdks) }}
+      - name: Smoke test installed plugin (GCC)
+        run: |
+          export PYLON_ROOT=/opt/pylon
+          export GST_PLUGIN_PATH="$PWD/install_gcc/lib/${{ matrix.gnu_triplet }}/gstreamer-1.0"
+          export LD_LIBRARY_PATH="$PWD/install_gcc/lib/${{ matrix.gnu_triplet }}:/opt/pylon/lib"
+          export PYLON_CAMEMU=1
+          gst-inspect-1.0 pylonsrc
+          gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
+
+      - name: Smoke test installed plugin (Clang)
+        run: |
+          export PYLON_ROOT=/opt/pylon
+          export GST_PLUGIN_PATH="$PWD/install_clang/lib/${{ matrix.gnu_triplet }}/gstreamer-1.0"
+          export LD_LIBRARY_PATH="$PWD/install_clang/lib/${{ matrix.gnu_triplet }}:/opt/pylon/lib"
+          export PYLON_CAMEMU=1
+          gst-inspect-1.0 pylonsrc
+          gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
+
+  build_windows:
+    name: Build & test Windows (x86_64)
+    needs: [prepare, download_desktop_sdk]
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-      - name: Install Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.10"
-
-      - name: Install conan v1
-        run: pip install "conan<2"
-
-      - name: Add conan v1 remote and authenticate
-        env:
-          JF_URL: ${{ secrets.SDK_URL }}
-          JF_USER: ${{ secrets.SDK_USER }}
-          JF_ACCESS_TOKEN: ${{ secrets.SDK_TOKEN }}
-        run: |
-          import os
-          import subprocess
-
-          subprocess.run(["conan", "config", "set", "general.revisions_enabled=1"], check=True)
-          subprocess.run([
-            "conan", "remote", "add", "pylon-conan-prod",
-            f"{os.environ['JF_URL']}/artifactory/api/conan/pylon-conan-prod", "--insert", "0"
-          ], check=True)
-          subprocess.run([
-            "conan", "user", "-p", os.environ["JF_ACCESS_TOKEN"],
-            "-r", "pylon-conan-prod", os.environ["JF_USER"]
-          ], check=True)
-        shell: python
-
-      - name: Download Windows control artifacts
-        uses: actions/download-artifact@v7
-        with:
-          pattern: Windows*Pylon
-          merge-multiple: true
-          path: pylon-install-files
-
-      - name: Download needed pylon modules
-        run: |
-          import os
-          import subprocess
-
-          subprocess.run([
-            "conan", "install", "--update", "--install-folder", "conan",
-            "-pr", os.path.join(os.environ['GITHUB_WORKSPACE'], ".github", "workflows", "profiles", "windows_x64"),
-            "-o", f"gst-plugin-pylon:control_file={os.path.join(os.environ['GITHUB_WORKSPACE'], 'pylon-install-files', 'report_windows.json')}",
-            "-o", f"gst-plugin-pylon:third_party_license_file={os.path.join(os.environ['GITHUB_WORKSPACE'], 'pylon-install-files', 'pylon_Third-Party_Licenses.txt')}",
-            "-c", "tools.system.package_manager:mode=install",
-            "-c", "tools.system.package_manager:sudo=True",
-            os.path.join(os.environ['GITHUB_WORKSPACE'], ".github", "workflows", "conanfile.py")
-          ], check=True)
-        shell: python
-
-      - name: Upload pylon SDK for Windows ${{ matrix.pylon_sdk }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: Windows_Pylon_SDK_${{ matrix.pylon_sdk }}
-          path: conan
-
-  download_macos:
-    needs: setup
-    strategy:
-      fail-fast: false
-      matrix:
-        pylon_sdk: ${{ fromJson(needs.setup.outputs.macos_pylon_sdks) }}
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Install Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.10"
-
-      - name: Install conan v1
-        run: pip install "conan<2"
-
-      - name: Add conan v1 remote and authenticate
-        env:
-          JF_URL: ${{ secrets.SDK_URL }}
-          JF_USER: ${{ secrets.SDK_USER }}
-          JF_ACCESS_TOKEN: ${{ secrets.SDK_TOKEN }}
-        run: |
-          import os
-          import subprocess
-
-          subprocess.run(["conan", "config", "set", "general.revisions_enabled=1"], check=True)
-          subprocess.run([
-            "conan", "remote", "add", "pylon-conan-prod",
-            f"{os.environ['JF_URL']}/artifactory/api/conan/pylon-conan-prod", "--insert", "0"
-          ], check=True)
-          subprocess.run([
-            "conan", "user", "-p", os.environ["JF_ACCESS_TOKEN"],
-            "-r", "pylon-conan-prod", os.environ["JF_USER"]
-          ], check=True)
-        shell: python
-
-      - name: Download macOS control artifacts
-        uses: actions/download-artifact@v7
-        with:
-          pattern: macOS*Pylon
-          merge-multiple: true
-          path: pylon-install-files
-
-      - name: Download needed pylon modules
-        run: |
-          import os
-          import subprocess
-
-          arch = "arm64" if os.uname().machine == "arm64" else "x64"
-          profile = f"macos_{arch}"
-
-          subprocess.run([
-            "conan", "install", "--update", "--install-folder", "conan",
-            "-pr", os.path.join(os.environ['GITHUB_WORKSPACE'], ".github", "workflows", "profiles", profile),
-            "-o", f"gst-plugin-pylon:control_file={os.path.join(os.environ['GITHUB_WORKSPACE'], 'pylon-install-files', 'report_macos.json')}",
-            "-o", f"gst-plugin-pylon:third_party_license_file={os.path.join(os.environ['GITHUB_WORKSPACE'], 'pylon-install-files', 'pylon_Third-Party_Licenses.txt')}",
-            "-c", "tools.system.package_manager:mode=install",
-            "-c", "tools.system.package_manager:sudo=True",
-            os.path.join(os.environ['GITHUB_WORKSPACE'], ".github", "workflows", "conanfile.py")
-          ], check=True)
-        shell: python
-
-      - name: Tar pylon SDK files
-        run: tar -czf pylon_sdk.tar.gz -C conan pylon
-
-      - name: Upload pylon SDK for macOS ${{ matrix.pylon_sdk }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: macOS_Pylon_SDK_${{ matrix.pylon_sdk }}
-          path: pylon_sdk.tar.gz
-
-  build_windows_x86_64:
-    needs: [setup, download_windows]
-    strategy:
-      matrix:
-        os: ${{  fromJson(needs.setup.outputs.windows_targets ) }}
-        pylon_sdk: ${{  fromJson(needs.setup.outputs.windows_pylon_sdks ) }}
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-    name: Build gstreamer for ${{ matrix.pylon_sdk }} on ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v5
       - name: Download pylon SDK
         uses: actions/download-artifact@v7
         with:
-          pattern: Windows_Pylon_SDK_${{ matrix.pylon_sdk }}
-          merge-multiple: true
+          name: Windows_Pylon_SDK
           path: pylon-sdk
+
       - name: Set pylon root
         id: set_pylon_root
         run: |
@@ -424,28 +364,27 @@ jobs:
           echo "PYLON_ROOT=$pylonRoot" >> $env:GITHUB_ENV
           echo "pylon_root=$pylonRoot" >> $env:GITHUB_OUTPUT
 
-      - name: install meson
+      - name: Install Meson and Ninja
+        run: pip install meson ninja
+
+      - name: Download GStreamer runtime
+        uses: suisei-cn/actions-download-file@v1
+        with:
+          url: https://gstreamer.freedesktop.org/data/pkg/windows/1.26.9/msvc/gstreamer-1.0-msvc-x86_64-1.26.9.msi
+          target: ${{ runner.temp }}\
+
+      - name: Download GStreamer devel
+        uses: suisei-cn/actions-download-file@v1
+        with:
+          url: https://gstreamer.freedesktop.org/data/pkg/windows/1.26.9/msvc/gstreamer-1.0-devel-msvc-x86_64-1.26.9.msi
+          target: ${{ runner.temp }}\
+
+      - name: Install GStreamer
         run: |
-          pip install meson ninja
-
-      - name: Download Gstreamer
-        uses: suisei-cn/actions-download-file@v1
-        with:
-          url:    https://gstreamer.freedesktop.org/data/pkg/windows/1.26.9/msvc/gstreamer-1.0-msvc-x86_64-1.26.9.msi
-          target: ${{ runner.temp }}\
-
-      - name: Download Gstreamer dev
-        uses: suisei-cn/actions-download-file@v1
-        with:
-          url:    https://gstreamer.freedesktop.org/data/pkg/windows/1.26.9/msvc/gstreamer-1.0-devel-msvc-x86_64-1.26.9.msi
-          target: ${{ runner.temp }}\
-
-      - name: Install Gstreamer
-        run:  |
-            cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-msvc-x86_64-1.26.9.msi TARGETDIR="C:\" /quiet ADDLOCAL=ALL /L*V gst.log
-            cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-devel-msvc-x86_64-1.26.9.msi TARGETDIR="C:\" /quiet ADDLOCAL=ALL /L*V dev.log
-            cat gst.log
-            cat dev.log
+          cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-msvc-x86_64-1.26.9.msi TARGETDIR="C:\" /quiet ADDLOCAL=ALL /L*V gst.log
+          cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-devel-msvc-x86_64-1.26.9.msi TARGETDIR="C:\" /quiet ADDLOCAL=ALL /L*V dev.log
+          cat gst.log
+          cat dev.log
 
       - name: Resolve GStreamer root
         id: gstreamer_root
@@ -464,7 +403,7 @@ jobs:
         with:
           arch: x64
 
-      - name: compile
+      - name: Compile and test
         env:
           PYLON_ROOT: ${{ steps.set_pylon_root.outputs.pylon_root }}
           PYLON_CAMEMU: "3"
@@ -486,16 +425,15 @@ jobs:
           ninja -C build test
           ninja -C build install
 
-      - name: Print meson log
+      - name: Print Meson log on failure
         if: ${{ failure() }}
-        run: |
-          cat  build/meson-logs/meson-log.txt
+        run: cat build/meson-logs/meson-log.txt
 
-      - name: test
+      - name: Smoke test installed plugin
         env:
           PYLON_ROOT: ${{ steps.set_pylon_root.outputs.pylon_root }}
         run: |
-          $env:PYLON_CAMEMU="1"
+          $env:PYLON_CAMEMU = "1"
           $gstRoot = $env:GSTREAMER_1_0_ROOT_MSVC_X86_64.TrimEnd('\')
           $pylonRoot = $env:PYLON_ROOT
           $env:Path = "$gstRoot\bin;$env:Path"
@@ -505,214 +443,31 @@ jobs:
           gst-inspect-1.0.exe pylonsrc
           gst-launch-1.0.exe pylonsrc num-buffers=10 ! fakesink
 
-  build_linux_aarch64:
-    needs: [setup, download_linux_aarch64]
-    strategy:
-      matrix:
-        os: ${{ fromJson(needs.setup.outputs.linux_aarch64_targets) }}
-        pylon_sdk: ${{ fromJson(needs.setup.outputs.linux_aarch64_pylon_sdks) }}
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-    name: Build pylon ${{ matrix.pylon_sdk }} on ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Download pylon SDK
-        uses: actions/download-artifact@v7
-        with:
-          pattern: Linux_aarch64_Pylon_SDK_${{ matrix.pylon_sdk }}
-          merge-multiple: true
-          path: pylon-sdk
-
-      - name: Unpack pylon SDK to pylon-sdk folder
-        run: |
-          tar -xzf pylon-sdk/pylon_sdk.tar.gz -C pylon-sdk
-          PYLON_ROOT="${{ github.workspace }}/pylon-sdk/pylon"
-          echo "PYLON_ROOT=$PYLON_ROOT" >> $GITHUB_ENV
-          sudo mkdir -p /opt
-          sudo ln -sfn "$PYLON_ROOT" /opt/pylon
-          echo "PYLON_ROOT contents:" && ls -la "$PYLON_ROOT" || true
-          find "$PYLON_ROOT" -name '*Config*.cmake' | head -20 || true
-          sudo apt-get install -y "$PYLON_ROOT"/share/pylon/codemeter_*.deb --fix-broken || echo "Codemeter install failed"
-
-      - name: install required environment
-        run: |
-          sudo apt-get update
-          sudo dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && sudo apt-get remove -y libunwind-14-dev
-          # python3-gi: camemu restart_resource_cleanup / appsink / pygstpylon tests
-          # python3-dev: pygstpylon CPython limited-API module
-          sudo apt-get -y install python3 python3-pip python3-dev python3-gi gir1.2-gstreamer-1.0 \
-            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang \
-            gstreamer1.0-tools gstreamer1.0-plugins-base python3-venv
-          python3 -m venv build_python --system-site-packages
-          . build_python/bin/activate
-          pip install pip --upgrade
-          pip install meson ninja
-
-      - name: compile gcc
-        run: |
-          export PYLON_ROOT="${{ github.workspace }}/pylon-sdk/pylon"
-          export LD_LIBRARY_PATH="$PYLON_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          export CC=gcc
-          export CXX=g++
-          export PYLON_CAMEMU=3
-          . build_python/bin/activate
-          meson setup builddir_gcc --prefix $PWD/install_gcc -Dpython-bindings=enabled
-          ninja -C builddir_gcc
-          meson test -C builddir_gcc --print-errorlogs
-          ninja -C builddir_gcc install
-
-      - name: compile clang
-        run: |
-          export PYLON_ROOT="${{ github.workspace }}/pylon-sdk/pylon"
-          export LD_LIBRARY_PATH="$PYLON_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          export CC=clang
-          export CXX=clang++
-          export PYLON_CAMEMU=3
-          . build_python/bin/activate
-          meson setup builddir_clang --prefix $PWD/install_clang -Dpython-bindings=enabled
-          ninja -C builddir_clang
-          meson test -C builddir_clang --print-errorlogs
-          ninja -C builddir_clang install
-
-      - name: run tests gcc
-        run: |
-          export PYLON_ROOT="${{ github.workspace }}/pylon-sdk/pylon"
-          export GST_PLUGIN_PATH=$PWD/install_gcc/lib/aarch64-linux-gnu/gstreamer-1.0
-          export LD_LIBRARY_PATH=$PWD/install_gcc/lib/aarch64-linux-gnu:$PYLON_ROOT/lib
-          export PYLON_CAMEMU=1
-          gst-inspect-1.0 pylonsrc
-          gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
-
-      - name: run tests clang
-        run: |
-          export PYLON_ROOT="${{ github.workspace }}/pylon-sdk/pylon"
-          export GST_PLUGIN_PATH=$PWD/install_clang/lib/aarch64-linux-gnu/gstreamer-1.0
-          export LD_LIBRARY_PATH=$PWD/install_clang/lib/aarch64-linux-gnu:$PYLON_ROOT/lib
-          export PYLON_CAMEMU=1
-          gst-inspect-1.0 pylonsrc
-          gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
-
-  build_linux_x86_64:
-    needs: [setup, download_linux_x86_64]
-    strategy:
-      matrix:
-        os: ${{ fromJson(needs.setup.outputs.linux_x86_64_targets) }}
-        pylon_sdk: ${{ fromJson(needs.setup.outputs.linux_x86_64_pylon_sdks) }}
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-    name: Build pylon ${{ matrix.pylon_sdk }} on ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Download pylon SDK
-        uses: actions/download-artifact@v7
-        with:
-          pattern: Linux_x86_64_Pylon_SDK_${{ matrix.pylon_sdk }}
-          merge-multiple: true
-          path: pylon-sdk
-
-      - name: Unpack pylon SDK to pylon-sdk folder
-        run: |
-          tar -xzf pylon-sdk/pylon_sdk.tar.gz -C pylon-sdk
-          PYLON_ROOT="${{ github.workspace }}/pylon-sdk/pylon"
-          echo "PYLON_ROOT=$PYLON_ROOT" >> $GITHUB_ENV
-          sudo mkdir -p /opt
-          sudo ln -sfn "$PYLON_ROOT" /opt/pylon
-          echo "PYLON_ROOT contents:" && ls -la "$PYLON_ROOT" || true
-          find "$PYLON_ROOT" -name '*Config*.cmake' | head -20 || true
-          sudo apt-get install -y "$PYLON_ROOT"/share/pylon/codemeter_*.deb --fix-broken || echo "Codemeter install failed"
-
-      - name: install required environment
-        run: |
-          sudo apt-get update
-          sudo dpkg-query -W -f='${Status}' libunwind-14-dev  | grep "ok installed" && sudo apt-get remove -y libunwind-14-dev
-          # python3-gi: camemu restart_resource_cleanup / appsink / pygstpylon tests
-          # python3-dev: pygstpylon CPython limited-API module
-          sudo apt-get -y install python3 python3-pip python3-dev python3-gi gir1.2-gstreamer-1.0 \
-            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev cmake clang \
-            gstreamer1.0-tools gstreamer1.0-plugins-base python3-venv
-          python3 -m venv build_python --system-site-packages
-          . build_python/bin/activate
-          pip install pip --upgrade
-          pip install meson ninja
-
-      - name: compile gcc
-        run: |
-          export PYLON_ROOT="${{ github.workspace }}/pylon-sdk/pylon"
-          export LD_LIBRARY_PATH="$PYLON_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          export CC=gcc
-          export CXX=g++
-          export PYLON_CAMEMU=3
-          . build_python/bin/activate
-          meson setup builddir_gcc --prefix $PWD/install_gcc -Dpython-bindings=enabled
-          ninja -C builddir_gcc
-          meson test -C builddir_gcc --print-errorlogs
-          ninja -C builddir_gcc install
-
-      - name: compile clang
-        run: |
-          export PYLON_ROOT="${{ github.workspace }}/pylon-sdk/pylon"
-          export LD_LIBRARY_PATH="$PYLON_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          export CC=clang
-          export CXX=clang++
-          export PYLON_CAMEMU=3
-          . build_python/bin/activate
-          meson setup builddir_clang --prefix $PWD/install_clang -Dpython-bindings=enabled
-          ninja -C builddir_clang
-          meson test -C builddir_clang --print-errorlogs
-          ninja -C builddir_clang install
-
-      - name: run tests gcc
-        run: |
-          export PYLON_ROOT="${{ github.workspace }}/pylon-sdk/pylon"
-          export GST_PLUGIN_PATH=$PWD/install_gcc/lib/x86_64-linux-gnu/gstreamer-1.0
-          export LD_LIBRARY_PATH=$PWD/install_gcc/lib/x86_64-linux-gnu/:$PYLON_ROOT/lib
-          export PYLON_CAMEMU=1
-          gst-inspect-1.0 pylonsrc
-          gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
-
-      - name: run tests clang
-        run: |
-          export PYLON_ROOT="${{ github.workspace }}/pylon-sdk/pylon"
-          export GST_PLUGIN_PATH=$PWD/install_clang/lib/x86_64-linux-gnu/gstreamer-1.0
-          export LD_LIBRARY_PATH=$PWD/install_clang/lib/x86_64-linux-gnu/:$PYLON_ROOT/lib
-          export PYLON_CAMEMU=1
-          gst-inspect-1.0 pylonsrc
-          gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
-
   build_macos:
-    needs: [setup, download_macos]
-    strategy:
-      matrix:
-        os: ${{ fromJson(needs.setup.outputs.macos_targets) }}
-        pylon_sdk: ${{ fromJson(needs.setup.outputs.macos_pylon_sdks) }}
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
+    name: Build & test macOS (arm64)
+    needs: [prepare, download_desktop_sdk]
+    runs-on: macos-15
     timeout-minutes: 90
-    name: Build pylon ${{ matrix.pylon_sdk }} on ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
       - name: Download pylon SDK
         uses: actions/download-artifact@v7
         with:
-          pattern: macOS_Pylon_SDK_${{ matrix.pylon_sdk }}
-          merge-multiple: true
+          name: macOS_Pylon_SDK
           path: pylon-sdk
 
       - name: Unpack pylon SDK
         run: |
           tar -xzf pylon-sdk/pylon_sdk.tar.gz -C pylon-sdk
           PYLON_ROOT="${{ github.workspace }}/pylon-sdk/pylon"
-          echo "PYLON_ROOT=$PYLON_ROOT" >> $GITHUB_ENV
-          echo "PYLON_ROOT contents:" && ls -la "$PYLON_ROOT" || true
-          find "$PYLON_ROOT" \( -name 'pylon.framework' -o -name '*Config*.cmake' \) | head -40 || true
+          echo "PYLON_ROOT=$PYLON_ROOT" >> "$GITHUB_ENV"
 
-      - name: Install build tools
+      - name: Install build tools and GStreamer
         run: brew install meson ninja cmake pkgconf gstreamer
 
-      - name: compile
+      - name: Compile and test
         env:
           PYLON_CAMEMU: "3"
         run: |
@@ -729,11 +484,11 @@ jobs:
           meson test -C builddir --print-errorlogs
           ninja -C builddir install
 
-      - name: Print meson log
+      - name: Print Meson log on failure
         if: ${{ failure() }}
         run: cat builddir/meson-logs/meson-log.txt
 
-      - name: smoke test
+      - name: Smoke test installed plugin
         run: |
           export PYLON_ROOT="${PYLON_ROOT:-${{ github.workspace }}/pylon-sdk/pylon}"
           for fw in "$PYLON_ROOT/Library/Frameworks" "$PYLON_ROOT/Frameworks"; do
@@ -751,30 +506,343 @@ jobs:
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
 
-  cleanup:
-    if: always()
-    needs: [
-            setup,
-            download_linux_x86_64,
-            download_linux_aarch64,
-            download_windows,
-            download_macos,
-            build_linux_x86_64,
-            build_linux_aarch64,
-            build_windows_x86_64,
-            build_macos
-    ]
-    runs-on: ubuntu-latest
+  build_deb:
+    # Build once per architecture on the oldest supported userspace (Ubuntu 22.04)
+    # against the official Basler pylon Debian package.
+    name: Build Debian packages (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            deb_artifact: Linux_x86_64_Pylon_Debs
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            deb_artifact: Linux_aarch64_Pylon_Debs
     steps:
-    - uses: geekyeggo/delete-artifact@v6
-      continue-on-error: true
-      with:
-        name: |
-          Linux_x86_64_Pylon
-          Linux_x86_64_Pylon_SDK_*
-          Linux_aarch64_Pylon
-          Linux_aarch64_Pylon_SDK_*
-          Windows_Pylon
-          Windows_Pylon_SDK_*
-          macOS_Pylon
-          macOS_Pylon_SDK_*
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Download pylon Debian bundle (${{ matrix.arch }})
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ matrix.deb_artifact }}
+          path: pylon-debs
+
+      - name: Build Debian packages
+        uses: jtdor/build-deb-action@v1
+        env:
+          DEB_BUILD_OPTIONS: noautodbgsym
+        with:
+          setup-hook: |
+            set -e
+            ln -sfn packaging/debian
+            chmod +x packaging/debian/rules tools/patch_deb_changelog.sh tools/install_pylon_debs.sh
+            tools/install_pylon_debs.sh /pylon-debs
+            test -d /opt/pylon
+            tools/patch_deb_changelog.sh
+          docker-image: ubuntu:22.04
+          extra-docker-args: >-
+            -v ${{ github.workspace }}/pylon-debs:/pylon-debs:ro
+            -e PYLON_ROOT=/opt/pylon
+            -e PYLON_CAMEMU=4
+            -e LD_LIBRARY_PATH=/opt/pylon/lib
+            --platform linux/${{ matrix.arch }}
+          buildpackage-opts: --build=binary --no-sign
+
+      - name: Upload Debian package artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: debian-packages-${{ matrix.arch }}
+          path: debian/artifacts/
+          if-no-files-found: error
+
+  test_deb:
+    name: Test Debian packages (${{ matrix.os }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    needs: [prepare, build_deb]
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - debian:bookworm
+          - debian:trixie
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            deb_artifact: Linux_x86_64_Pylon_Debs
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            deb_artifact: Linux_aarch64_Pylon_Debs
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Download built Debian packages (${{ matrix.arch }})
+        uses: actions/download-artifact@v7
+        with:
+          name: debian-packages-${{ matrix.arch }}
+          path: debian-packages
+
+      - name: Download pylon Debian bundle (${{ matrix.arch }})
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ matrix.deb_artifact }}
+          path: pylon-debs
+
+      - name: Install and smoke-test packages in ${{ matrix.os }}
+        run: |
+          chmod +x tools/test_deb_compatibility.sh tools/install_pylon_debs.sh
+          docker run --rm --platform linux/${{ matrix.arch }} \
+            -v "$PWD:/src:ro" \
+            -v "$PWD/debian-packages:/packages:ro" \
+            -v "$PWD/pylon-debs:/pylon-debs:ro" \
+            -e PYLON_CAMEMU=4 \
+            ${{ matrix.os }} \
+            /src/tools/test_deb_compatibility.sh \
+              /packages /pylon-debs
+
+  sbom:
+    name: Build dependency SBOMs & Grype scan (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    needs: build_deb
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            linux_arch: x86_64
+            runner: ubuntu-24.04
+          - arch: arm64
+            linux_arch: aarch64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Download Debian packages (${{ matrix.arch }})
+        uses: actions/download-artifact@v7
+        with:
+          name: debian-packages-${{ matrix.arch }}
+          path: debian-packages
+
+      - name: Generate three build dependency SBOMs
+        run: |
+          set -euo pipefail
+          mkdir -p sbom-work
+          package_dir=debian-packages
+          for package in gst-plugin-pylon gst-plugin-pylon-dev python3-pygstpylon; do
+            mapfile -t debs < <(find "$package_dir" -maxdepth 1 -type f -name "${package}_*.deb" -print)
+            mapfile -t buildinfos < <(find "$package_dir" -maxdepth 1 -type f -name '*.buildinfo' -print)
+            if [[ "${#debs[@]}" -ne 1 || "${#buildinfos[@]}" -ne 1 ]]; then
+              echo "Expected one ${package} package and one buildinfo for ${{ matrix.arch }}" >&2
+              printf 'Packages: %s\nBuildinfo: %s\n' "${debs[*]}" "${buildinfos[*]}" >&2
+              exit 1
+            fi
+            python3 tools/generate_build_sbom.py \
+              "${debs[0]}" \
+              "${buildinfos[0]}" \
+              "sbom-work/${package}.cdx.json" \
+              "${{ matrix.arch }}"
+          done
+
+      - name: Scan plugin SBOM
+        uses: anchore/scan-action@v7
+        with:
+          sbom: sbom-work/gst-plugin-pylon.cdx.json
+          output-format: json
+          output-file: sbom-work/gst-plugin-pylon.grype.json
+          fail-build: false
+
+      - name: Scan plugin-dev SBOM
+        uses: anchore/scan-action@v7
+        with:
+          sbom: sbom-work/gst-plugin-pylon-dev.cdx.json
+          output-format: json
+          output-file: sbom-work/gst-plugin-pylon-dev.grype.json
+          fail-build: false
+
+      - name: Scan Python SBOM
+        uses: anchore/scan-action@v7
+        with:
+          sbom: sbom-work/python3-pygstpylon.cdx.json
+          output-format: json
+          output-file: sbom-work/python3-pygstpylon.grype.json
+          fail-build: false
+
+      - name: Create summaries and name output files
+        run: |
+          set -euo pipefail
+          for package in gst-plugin-pylon gst-plugin-pylon-dev python3-pygstpylon; do
+            mapfile -t debs < <(find debian-packages -maxdepth 1 -type f -name "${package}_*.deb" -print)
+            if [[ "${#debs[@]}" -ne 1 ]]; then
+              echo "Expected exactly one ${package} Debian package" >&2
+              exit 1
+            fi
+            package_version="$(dpkg-deb --field "${debs[0]}" Version)"
+            package_version="${package_version#*:}"
+            output_stem="${package}-${package_version}-linux-${{ matrix.linux_arch }}"
+            python3 tools/summarize_grype_report.py \
+              "sbom-work/${package}.grype.json" \
+              "sbom-work/${package}.cdx.json" \
+              "sbom-work/${package}.grype.txt"
+            mv "sbom-work/${package}.cdx.json" \
+              "sbom-work/${output_stem}.cdx.json"
+            mv "sbom-work/${package}.grype.json" \
+              "sbom-work/${output_stem}.grype.json"
+            mv "sbom-work/${package}.grype.txt" \
+              "sbom-work/${output_stem}.grype.txt"
+          done
+
+      - name: Upload SBOM and vulnerability report
+        uses: actions/upload-artifact@v6
+        with:
+          name: debian-packages-${{ matrix.arch }}-sboms
+          path: |
+            sbom-work/*.cdx.json
+            sbom-work/*.grype.json
+            sbom-work/*.grype.txt
+          if-no-files-found: error
+
+  build_deb_nvidia:
+    # Compile/link against real NVIDIA Jetson SDK files on an ARM CPU runner.
+    # Deliberately not published as release assets (NVMM runtime needs a Jetson).
+    name: Build NVIDIA Debian packages (DS ${{ matrix.deepstream }}, JP ${{ matrix.jetpack }})
+    runs-on: ubuntu-24.04-arm
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - deepstream: "6.4"
+            cuda: "12.2.2"
+            jetpack: "6.0 DP"
+            l4t: "36.2.0"
+          - deepstream: "7.0"
+            cuda: "12.2.2"
+            jetpack: "6.0 GA"
+            l4t: "36.3.0"
+          - deepstream: "7.1"
+            cuda: "12.6.3"
+            jetpack: "6.2"
+            l4t: "36.4.3"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Download pylon Debian bundle (arm64)
+        uses: actions/download-artifact@v7
+        with:
+          name: Linux_aarch64_Pylon_Debs
+          path: pylon-debs
+
+      - name: Download NVIDIA build inputs
+        run: |
+          chmod +x tools/fetch_nvidia_build_sdk.sh
+          tools/fetch_nvidia_build_sdk.sh \
+            ${{ matrix.deepstream }} ${{ matrix.cuda }} ${{ matrix.l4t }} \
+            nvidia-sdk-downloads
+
+      - name: Build NVIDIA Debian package
+        uses: jtdor/build-deb-action@v1
+        env:
+          DEB_BUILD_OPTIONS: nocheck noautodbgsym
+          DEB_BUILD_PROFILES: nvidia
+        with:
+          setup-hook: |
+            set -e
+            ln -sfn packaging/debian
+            chmod +x packaging/debian/rules \
+              tools/patch_deb_changelog.sh \
+              tools/install_pylon_debs.sh \
+              tools/install_nvidia_build_sdk.sh \
+              tools/test_deb_nvidia.sh
+            tools/install_nvidia_build_sdk.sh \
+              ${{ matrix.deepstream }} ${{ matrix.cuda }} ${{ matrix.l4t }} \
+              /nvidia-sdk
+            tools/install_pylon_debs.sh /pylon-debs
+            test -d /opt/pylon
+            test -f /opt/nvidia/deepstream/deepstream/lib/libnvbufsurface.so
+            tools/patch_deb_changelog.sh
+          docker-image: ubuntu:22.04
+          extra-docker-args: >-
+            -v ${{ github.workspace }}/pylon-debs:/pylon-debs:ro
+            -v ${{ github.workspace }}/nvidia-sdk-downloads:/nvidia-sdk:ro
+            -e PYLON_ROOT=/opt/pylon
+            -e DEB_BUILD_PROFILES=nvidia
+            -e LD_LIBRARY_PATH=/opt/pylon/lib:/opt/nvidia/deepstream/deepstream/lib:/usr/lib/aarch64-linux-gnu/nvidia:/usr/local/cuda/lib64
+            --platform linux/arm64
+          buildpackage-opts: --build=binary --no-sign
+
+      - name: Verify NVMM package metadata and link
+        run: |
+          chmod +x tools/test_deb_nvidia.sh
+          tools/test_deb_nvidia.sh debian/artifacts ${{ matrix.deepstream }}
+
+  release:
+    name: Publish GitHub Release assets
+    if: needs.prepare.outputs.is_release_build == 'true'
+    needs:
+      - prepare
+      - build_linux
+      - build_windows
+      - build_macos
+      - build_deb
+      - test_deb
+      - sbom
+      - build_deb_nvidia
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download Debian packages and SBOMs
+        uses: actions/download-artifact@v7
+        with:
+          pattern: debian-packages-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Upload packages and SBOMs to GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            release-assets/*.deb
+            release-assets/*.cdx.json
+            release-assets/*.grype.txt
+
+  cleanup:
+    name: Clean up temporary SDK artifacts
+    if: always()
+    needs:
+      - prepare
+      - download_desktop_sdk
+      - build_linux
+      - build_windows
+      - build_macos
+      - build_deb
+      - test_deb
+      - sbom
+      - build_deb_nvidia
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+    steps:
+      - name: Delete temporary SDK artifacts
+        uses: geekyeggo/delete-artifact@v6
+        continue-on-error: true
+        with:
+          name: |
+            Linux_x86_64_Pylon_Debs
+            Linux_aarch64_Pylon_Debs
+            Windows_Pylon_Control
+            Windows_Pylon_SDK
+            macOS_Pylon_Control
+            macOS_Pylon_SDK

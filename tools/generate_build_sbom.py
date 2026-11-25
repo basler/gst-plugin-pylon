@@ -21,7 +21,7 @@ BUILD_DEPENDENCIES = {
         "libgstreamer1.0-dev": "headers-and-linker",
         "libgstreamer-plugins-base1.0-dev": "headers-and-linker",
         "libstdc++6": "linker",
-        "pylon-core": "headers-and-linker",
+        "pylon": "headers-and-linker",
     },
     "gst-plugin-pylon-dev": {
         "libgstreamer1.0-dev": "headers",
@@ -55,16 +55,16 @@ def deb_field(deb_path: Path, field: str) -> str:
     return result.stdout.strip()
 
 
-def deb_purl(name: str, version: str, architecture: str) -> str:
+def deb_purl(name: str, version: str, architecture: str, namespace: str | None = None) -> str:
+    prefix = f"pkg:deb/{namespace}/" if namespace else "pkg:deb/"
+    distro_suffix = "" if namespace else "&distro=ubuntu-22.04"
     return (
-        f"pkg:deb/{quote(name, safe='+.-')}@{quote(version, safe='.-_~')}"
-        f"?arch={quote(architecture, safe='.-_~')}&distro=ubuntu-22.04"
+        f"{prefix}{quote(name, safe='+.-')}@{quote(version, safe='.-_~')}"
+        f"?arch={quote(architecture, safe='.-_~')}{distro_suffix}"
     )
 
 
 def split_field_list(value: str) -> list[str]:
-    # Buildinfo continuation lines are already folded; package names and Debian
-    # versions do not contain commas in the Installed-Build-Depends field.
     return [entry.strip() for entry in value.split(",") if entry.strip()]
 
 
@@ -117,14 +117,11 @@ def package_component(
     }
 
 
-def pylon_component(version: str) -> dict:
-    purl = (
-        f"pkg:conan/pylon-core@{quote(version, safe='.-_~')}"
-        "?channel=potentially-public&user=release"
-    )
+def pylon_deb_component(version: str, architecture: str, dependency_kind: str) -> dict:
+    purl = deb_purl("pylon", version, architecture, namespace="basler")
     return {
         "type": "library",
-        "name": "pylon-core",
+        "name": "pylon",
         "version": version,
         "purl": purl,
         "bom-ref": purl,
@@ -134,25 +131,19 @@ def pylon_component(version: str) -> dict:
             "url": ["https://www.baslerweb.com"],
         },
         "properties": [
-            {"name": "basler:sbom:dependency-kind", "value": "headers-and-linker"},
-            {
-                "name": "basler:conan:reference",
-                "value": f"pylon-core/{version}@release/potentially-public",
-            },
+            {"name": "basler:sbom:dependency-kind", "value": dependency_kind},
         ],
     }
 
 
 def main() -> None:
-    if len(sys.argv) != 6:
+    if len(sys.argv) != 5:
         raise SystemExit(
             f"usage: {Path(sys.argv[0]).name} <target.deb> <buildinfo> "
-            "<pylon-core-version.txt> <output-sbom> <arch>"
+            "<output-sbom> <arch>"
         )
-    target_path, buildinfo_path, pylon_version_path, output_path = map(
-        Path, sys.argv[1:5]
-    )
-    architecture = sys.argv[5]
+    target_path, buildinfo_path, output_path = map(Path, sys.argv[1:4])
+    architecture = sys.argv[4]
 
     target_name = deb_field(target_path, "Package")
     target_version = deb_field(target_path, "Version")
@@ -167,16 +158,7 @@ def main() -> None:
     dependencies = installed_build_dependencies(buildinfo_path)
     components = []
     for name, dependency_kind in BUILD_DEPENDENCIES[target_name].items():
-        if name == "pylon-core":
-            version = pylon_version_path.read_text(encoding="utf-8").strip()
-            if not version:
-                raise ValueError(f"Resolved pylon-core version is empty: {pylon_version_path}")
-            components.append(pylon_component(version))
-            continue
-
         if name == "gst-plugin-pylon":
-            # The package is built alongside the other binary packages from
-            # the same source build; look it up from the downloaded artifacts.
             package_path = next(
                 target_path.parent.glob(f"gst-plugin-pylon_*_{architecture}.deb"),
                 None,
@@ -209,12 +191,11 @@ def main() -> None:
                 f"{buildinfo_path.name} Installed-Build-Depends"
             )
         version, dependency_architecture = resolved
-        components.append(package_component(
-            name,
-            version,
-            dependency_architecture or architecture,
-            dependency_kind,
-        ))
+        dep_arch = dependency_architecture or architecture
+        if name == "pylon":
+            components.append(pylon_deb_component(version, dep_arch, dependency_kind))
+        else:
+            components.append(package_component(name, version, dep_arch, dependency_kind))
 
     root_purl = deb_purl(target_name, target_version, target_architecture)
     root = {

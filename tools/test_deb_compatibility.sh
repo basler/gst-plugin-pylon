@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PACKAGES_DIR="${1:-/packages}"
-PYLON_SDK_ARCHIVE="${2:-/pylon-sdk/pylon_sdk.tar.gz}"
+PYLON_INPUT="${2:-/pylon-debs/pylon_debs.tar.gz}"
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 export DEBIAN_FRONTEND=noninteractive
@@ -19,7 +19,14 @@ apt-get install -y -qq \
   python3-gi \
   gir1.2-gstreamer-1.0
 
-"$SOURCE_DIR/tools/register_pylon_from_tree.sh" "$PYLON_SDK_ARCHIVE"
+if [[ -d "$PYLON_INPUT" ]] ||
+   [[ "$PYLON_INPUT" == *.deb ]] ||
+   [[ "$PYLON_INPUT" == *deb*.tar.gz ]] ||
+   { [[ -f "$PYLON_INPUT" && "$PYLON_INPUT" == *.tar.gz ]] && tar -tzf "$PYLON_INPUT" | grep '\.deb$' >/dev/null; }; then
+  "$SOURCE_DIR/tools/install_pylon_debs.sh" "$PYLON_INPUT"
+else
+  "$SOURCE_DIR/tools/register_pylon_from_tree.sh" "$PYLON_INPUT"
+fi
 
 shopt -s nullglob
 plugin_debs=("$PACKAGES_DIR"/gst-plugin-pylon_[0-9]*.deb)
