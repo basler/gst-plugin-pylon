@@ -13,7 +13,7 @@ You are welcome to post any questions or issues on [GitHub](https://github.com/b
 
 [![CI](https://github.com/basler/gst-plugin-pylon/actions/workflows/ci.yml/badge.svg)](https://github.com/basler/gst-plugin-pylon/actions/workflows/ci.yml)
 
-The next chapters describe how to [install](#downloads-for-debian-and-ubuntu), [use](#getting-started) and [build](#Building) the *pylonsrc* plugin.
+The next chapters describe how to [install](#downloads-for-debian-and-ubuntu), [use](#getting-started) and [build](#building) the *pylonsrc* plugin.
 
 # Getting started
 
@@ -393,7 +393,7 @@ A from-source meson build does not require C++ SDK 12.2. It still detects
 pylon 7.1+ via CMake and falls back to the 6.x finder on aarch64.
 
 CI builds and tests all four platforms against the latest pylon release.
-Official Linux debs use a date Version (`pylon_26.08.1-deb0_amd64.deb` → `Version: 26.08.1-deb0`).
+Official Linux Debian packages use a `YY.MM[.P]` release version (e.g. `Version: 26.10.1`).
 Each generated gst-plugin-pylon Debian package records that build-time pylon
 version in three places that stay in sync:
 
@@ -410,9 +410,9 @@ dpkg-deb -f gst-plugin-pylon_*.deb Version Depends Pylon-Built-Against
 
 Installing Basler pylon SDK will also install the Basler pylon viewer. You should use this tool to verify, that the cameras work properly in your system and to learn about the their features.
 
-The differences in the build steps for [Linux](#Linux), [Windows](#Windows) and [macos](#macOS) are described in the next sections.
+The differences in the build steps for [Linux](#linux), [Windows](#windows) and [macOS](#macos) are described in the next sections.
 
-Building debian packages locally is described in the sections  [Debian/Ubuntu](#debian-packaging) and [Nvidia Jetson](#debian-nvidia-packaging)
+Building Debian packages locally is described in the sections [Debian/Ubuntu](#debian-packaging) and [NVIDIA Jetson](#debian-nvidia-packaging).
 
 ## Linux
 Make sure the dependencies are properly installed. In Debian-based
@@ -523,8 +523,9 @@ dpkg-deb -f gst-plugin-pylon_*.deb Version Depends Pylon-Built-Against
 runtime Depends use the build-time Version). A tree at `PYLON_ROOT` is not
 enough by itself.
 
-Install the official pylon and CodeMeter Debian packages (they land in
-`/opt/pylon`), **or** register a local SDK archive as a stub package:
+Install the official `pylon` Debian package (installed under `/opt/pylon`, with
+`codemeter` optional unless required by licensed features), **or** register a
+local SDK archive as a stub package:
 
 ```
 # tarball must contain a top-level pylon/ directory (sudo tar -czf ... -C /opt pylon)
@@ -592,8 +593,8 @@ GStreamer 1.16, while this plug-in requires GStreamer 1.20 or newer.
 
 #### Build the package locally on a Jetson
 
-Install the matching JetPack and DeepStream release first. Install the official
-pylon and CodeMeter Debian packages; they place pylon under `/opt/pylon`.
+Install the matching JetPack and DeepStream release first, then install the
+official `pylon` Debian package (placed under `/opt/pylon`).
 
 Install the platform dependencies (match the DeepStream package to your JetPack):
 
@@ -607,11 +608,11 @@ sudo apt-get install cmake meson ninja-build debhelper dh-python fakeroot pkg-co
                      deepstream-7.1   # use deepstream-6.4 or -7.0 on matching JetPack
 ```
 
-Download the source directly from GitHub. Prefer a release tag once one includes
-these NVIDIA packaging changes; use `main` to build the current development code:
+Download the source directly from GitHub (for example the `v1.1.0` release tag,
+or `main` for current development):
 
 ```
-git clone --depth 1 --branch main \
+git clone --depth 1 --branch v1.1.0 \
   https://github.com/basler/gst-plugin-pylon.git
 cd gst-plugin-pylon
 
@@ -716,19 +717,18 @@ GStreamer:
 * use latest version.
 
 Meson:
-* Install the meson build system from github releases https://github.com/mesonbuild/meson/releases
-* Install a current meson from https://github.com/mesonbuild/meson/releases (1.x)
+* Install a current Meson (1.x) from [Meson GitHub Releases](https://github.com/mesonbuild/meson/releases)
 
 Visual Studio:
 * Install Visual Studio (e.g. Community Edition) from Microsoft
 * Select desktop development (C++) package within installer
 
-The following commands should be run from a *Visual Studio command prompt*. The description below doesn't work for powershell.
+The following commands should be run from a *Visual Studio command prompt*. The description below doesn't work for PowerShell.
 
-Specify the path to pkgconfig configuration files for GStreamer and the pkg-config binary ( shipped as part of gstreamer development )
+Specify the path to pkgconfig configuration files for GStreamer and the pkg-config binary (shipped as part of GStreamer development):
 
-```bash
-set PKG_CONFIG_PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%lib\pkgconfig
+```cmd
+set PKG_CONFIG_PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%\lib\pkgconfig
 set PATH=%PATH%;%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin
 ```
 
@@ -782,7 +782,7 @@ gst-inspect-1.0 pylonsrc
 ```
 
 ## macOS
-pylon Software Suite 26.06 supports macOS. Install GStreamer and the build tools with Homebrew, set `PYLON_ROOT` to the pylon prefix, then use meson/ninja:
+pylon Software Suite 26.06 and newer support macOS (`arm64`). Install GStreamer and the build tools with Homebrew, set `PYLON_ROOT` to the pylon prefix, then use meson/ninja:
 
 ```bash
 brew install meson ninja cmake pkgconf gstreamer

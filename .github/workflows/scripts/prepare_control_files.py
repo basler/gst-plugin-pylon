@@ -142,6 +142,8 @@ def download_file(source, destination):
             "--quiet=true",
             "--flat=true",
             "--fail-no-op=true",
+            "--split-count=0",
+            "--threads=1",
             source,
             str(destination),
         ],

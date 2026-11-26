@@ -5,83 +5,53 @@ All notable changes to this project will be documented in this file.
 
 ## [1.1.0] - 2026-11-26
 
-### Fixed
-- NVMM: YUY2/UYVY caps with full-range colorimetry get the extended-range
-  surface formats (`NVBUF_COLOR_FORMAT_YUYV_ER`/`_UYVY_ER`), so NVMM
-  conversions downstream keep the samples instead of clamping them to 16..235
-- Release pending grab results on flush/disconnect and distinguish unlock from
-  disconnect in the image handler (frame buffer leak on pipeline stop)
-- Unref the stream-grabber GObject and destroy the InstantCamera device on
-  free so GenTL pipe FDs are not leaked across NULL→PLAYING→NULL restarts
-- Free `GstPylon` before `PylonTerminate` on start failures; free `pfs-location`
-  in finalize; free grab results on NVMM CUDA copy failure
-- Unlock maps to `GST_FLOW_FLUSHING` (with `unlock_stop` / ClearInterrupt) instead of EOS
-
 ### Added
-- Tests: `generic_nvmmcolor`, `tools/test_nvmm_color_format_docker.sh`
-  (maps full-range YUY2/UYVY to `*_ER` against real `nvbufsurface.h`),
-  camemu `nvmm_full_range_contract.py`
-- `max-pending-frames` property: queue up to N grabbed frames for the
-  streaming thread instead of keeping only the latest one (default 1, the
-  previous behavior)
-- Camemu test `restart_resource_leak.py` uses 4096×4096 RGB frames and checks
-  pipe FD + RSS growth across EOS and abrupt-stop pipeline restart cycles
-- CI installs `python3-gi` so camemu appsink / restart regression tests run
-  under `ninja test` (not skipped for missing PyGObject)
-- `meson test pygstpylon` covers the Python bindings (API, live GstPylonMeta,
-  four parallel camemu streams); Linux CI builds with `-Dpython-bindings=enabled`
-- Release assets include per-package CycloneDX 1.6 build SBOMs (`*.cdx.json`)
-  and Grype vulnerability scan summaries (`*.grype.txt`)
+- `max-pending-frames` property on `pylonsrc` to queue up to *N* grabbed frames
+  using `GrabStrategy_OneByOne` instead of keeping only the latest frame
+  (`1` by default, preserving previous behavior)
+- macOS (`arm64`) build and camera-emulator test support (`pylon` 26.06+)
+- Universal Debian/Ubuntu binary packages built once per architecture (`amd64`,
+  `arm64`) and verified across Ubuntu 22.04, Ubuntu 24.04, Debian 12
+  (bookworm), and Debian 13 (trixie)
+- CPython stable-ABI (`abi3`, Python 3.10+) `python3-pygstpylon` package so a
+  single `.deb` works across distro Python 3.10–3.13+ runtimes
+- NVIDIA Jetson `nvidia` Debian build profile supporting JetPack 6 / DeepStream
+  6.4, 7.0, and 7.1 (with CUDA toolkit fallback when `cuda.pc` is absent)
+- Per-package CycloneDX 1.6 build SBOMs (`*.cdx.json`) and Grype vulnerability
+  scan summaries (`*.grype.txt`) published with GitHub Releases
+- Expanded automated test suite covering NVMM colorimetry, pending-frame stall
+  recovery, `pygstpylon` multi-stream metadata, and 4096×4096 pipeline-restart
+  FD/RSS leak regression checks
 
-### Removed
-- Unused `bindings/packaging/setup.py` (pygstpylon is installed by Meson, not setuptools)
+### Fixed
+- NVMM: YUY2 and UYVY caps with full-range colorimetry (`1:4:5:1`) now allocate
+  extended-range surfaces (`NVBUF_COLOR_FORMAT_YUYV_ER` / `_UYVY_ER`) so
+  downstream `nvvidconv` conversions do not clamp samples to `16..235`
+- Fixed frame-buffer and GenTL pipe file-descriptor leaks across repeated
+  `NULL → PLAYING → NULL` restarts and abrupt pipeline stops (distinguishing
+  flush/unlock from device disconnect, unreffing the stream-grabber object, and
+  destroying the `InstantCamera` device on teardown)
+- Fixed `GstPylon` teardown ordering before `PylonTerminate` on start failures,
+  freed `pfs-location` in `finalize`, and released grab results on NVMM CUDA
+  copy failures
+- Mapped `unlock` to `GST_FLOW_FLUSHING` (with `unlock_stop` clearing the
+  interrupt) instead of prematurely signaling EOS
+- Guarded `WaitForImage` against empty-queue wakeups in the image handler
 
 ### Changed
-- NVMM surface color selection lives in `gst_pylon_nvmm_color_kind()`
-  (unit-tested without Jetson headers)
-- Image handler `WaitForImage` recovers if `FrameReady` has an empty queue
-  instead of calling `front()` on an empty deque
-- `restart_resource_leak.py` budgets RSS growth per restart cycle instead of a
-  fixed total, so retained heap pages no longer look like a leak
-- NVIDIA Debian packaging supports DeepStream 6.4, 7.0, and 7.1; native ARM CI
-  compile-checks each profile against real NVIDIA SDK files without publishing
-  the unqualified artifacts
-- NVIDIA CI also fetches `nvidia-l4t-multimedia-utils` so the plugin can link
-  `libnvbufsurface` (L4T, not shipped in the DeepStream tarball)
-- NVIDIA CI unpacks CUDA `cudart`, `nvcc`, and `cccl` redistributables so
-  `cuda_runtime.h` can include `crt/host_config.h`
-- The nvidia profile requires NVMM (`-Dnvmm=enabled`) and the README documents
-  building and testing a local package directly from the GitHub source
-- CUDA is detected via `cuda.pc` or the JetPack `/usr/local/cuda` toolkit layout
-- Camemu package tests pin system-memory caps so NVMM builds pass under fakeroot
-- Restart leak test downsizes 4096² RGB on hosts with low `MemAvailable`
-- Unified CI builds and tests against the latest pylon release across
-  `ubuntu-24.04`, `ubuntu-24.04-arm`, `windows-latest` (GStreamer 1.26.9), and
-  `macos-15` (Homebrew GStreamer)
-- Meson still accepts pylon 7.1+ and the 6.x aarch64 fallback; C++ SDK 12.2
-  is not a source-level requirement
-- GitLab CI is disabled; GitHub Actions is the build source of truth
-- Camemu meson tests honor `PYLON_ROOT`; Linux CI builds and tests against the
-  official Basler `pylon` Debian package (with `tools/register_pylon_from_tree.sh`
-  kept for local SDK-tree builds)
-- Debian arm64 package jobs run on native `ubuntu-24.04-arm` (no QEMU)
-- Debian packages are built once per architecture on Ubuntu 22.04, then the
-  unchanged artifacts are install-tested on Ubuntu 22.04, Ubuntu 24.04,
-  Debian bookworm, and Debian trixie
-- README documents from-source `PYLON_ROOT` installs versus Debian packaging
-  that still requires a dpkg `pylon` package (official or stub)
-- Debian packages pin runtime `Depends: pylon (= <build-time Version>)`
-  because pylon builds are not binary-compatible across versions, record
-  that Version in `Pylon-Built-Against`, and encode it in the package
-  Version as `+pylon…` (visible in the `.deb` filename). Build-Depends stay
-  unversioned so 7.x stubs can satisfy the build.
-- `pygstpylon` uses CPython's stable ABI (Python 3.10+)
-- Debian package versions use epoch 1 so the universal package upgrades the
-  former distro-suffixed `1.0.0-1~...` packages
-- Camemu restart leak test is serialized, ignores Meson `MALLOC_PERTURB_`,
-  and prints the script output on failure
-- Camemu meson tests run on every platform with bash; only the `/proc` FD/RSS
-  leak check is Linux-only
+- Debian package versions now use epoch `1:` (`1:1.1.0+pylon<ver>`) to cleanly
+  upgrade former distro-suffixed `1.0.0-1~...` packages, record the exact
+  build-time SDK in `Depends: pylon (= <ver>)` and `Pylon-Built-Against`, and
+  encode `+pylon<ver>` in the `.deb` filename
+- Source builds via `PYLON_ROOT` continue to support `pylon` 7.1+ (and 6.x on
+  `aarch64`) without requiring a `pylon` dpkg package
+- Unified GitHub Actions CI builds and tests Linux (`x86_64`, `aarch64`),
+  Windows (`MSVC`, GStreamer 1.26.9), macOS (`arm64`), Debian/Ubuntu packages,
+  and DeepStream 6.4–7.1 against the latest `pylon` release
+
+### Removed
+- Unused `bindings/packaging/setup.py` (`pygstpylon` is built and installed by
+  Meson)
 
 ## [1.0.0] - 2024-08-14
 ## Added
