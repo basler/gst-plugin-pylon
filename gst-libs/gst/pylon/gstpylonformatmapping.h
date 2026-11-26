@@ -33,6 +33,8 @@
 #ifndef _GST_PYLON_FORMAT_MAPPING_
 #define _GST_PYLON_FORMAT_MAPPING_
 
+#include <gst/gstversion.h>
+
 #include <string>
 #include <vector>
 
@@ -44,7 +46,24 @@ typedef struct {
   std::string gst_name;
 } PixelFormatMappingType;
 
+/* Prefer full 16-bit before 12/10-bit when downstream negotiates GRAY16_LE */
 const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
+    {"Mono8", "GRAY8"},
+    {"Mono16", "GRAY16_LE"},
+    {"Mono12", "GRAY16_LE"},
+    {"Mono10", "GRAY16_LE"},
+    {"RGB8Packed", "RGB"},
+    {"BGR8Packed", "BGR"},
+    {"RGB8", "RGB"},
+    {"BGR8", "BGR"},
+    {"YCbCr422_8", "YUY2"},
+    {"YUV422_8_UYVY", "UYVY"},
+    {"YUV422_8", "YUY2"},
+    {"YUV422Packed", "UYVY"},
+    {"YUV422_YUYV_Packed", "YUY2"}};
+
+/* Subset of raw formats directly supported by NvBufSurface NVMM surfaces */
+const std::vector<PixelFormatMappingType> pixel_format_mapping_nvmm_raw = {
     {"Mono8", "GRAY8"},        {"RGB8Packed", "RGB"},
     {"BGR8Packed", "BGR"},     {"RGB8", "RGB"},
     {"BGR8", "BGR"},           {"YCbCr422_8", "YUY2"},
@@ -52,10 +71,17 @@ const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
     {"YUV422Packed", "UYVY"},  {"YUV422_YUYV_Packed", "YUY2"}};
 
 const std::vector<PixelFormatMappingType> pixel_format_mapping_bayer = {
-    {"BayerBG8", "bggr"},
-    {"BayerGR8", "grbg"},
-    {"BayerRG8", "rggb"},
-    {"BayerGB8", "gbrg"}};
+    {"BayerBG8", "bggr"},      {"BayerGR8", "grbg"},
+    {"BayerRG8", "rggb"},      {"BayerGB8", "gbrg"},
+#if GST_CHECK_VERSION(1, 24, 0)
+    {"BayerBG10", "bggr10le"}, {"BayerGR10", "grbg10le"},
+    {"BayerRG10", "rggb10le"}, {"BayerGB10", "gbrg10le"},
+    {"BayerBG12", "bggr12le"}, {"BayerGR12", "grbg12le"},
+    {"BayerRG12", "rggb12le"}, {"BayerGB12", "gbrg12le"},
+    {"BayerBG16", "bggr16le"}, {"BayerGR16", "grbg16le"},
+    {"BayerRG16", "rggb16le"}, {"BayerGB16", "gbrg16le"},
+#endif
+};
 
 inline bool isSupportedPylonFormat(const std::string& format) {
   bool res = false;

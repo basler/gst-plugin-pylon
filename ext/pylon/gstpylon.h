@@ -36,6 +36,8 @@
 #include <glib.h>
 #include <gst/gst.h>
 
+#include <string>
+
 typedef struct _GstPylon GstPylon;
 
 typedef enum {
@@ -71,6 +73,8 @@ gboolean gst_pylon_ensure_configured(GstPylon* self, const gchar* user_set,
 void gst_pylon_free(GstPylon* self);
 
 void gst_pylon_set_max_pending_frames(GstPylon* self, guint max_pending_frames);
+void gst_pylon_set_grab_timeout(GstPylon* self, guint grab_timeout_ms);
+void gst_pylon_set_auto_reconnect(GstPylon* self, gboolean auto_reconnect);
 gboolean gst_pylon_start(GstPylon* self, GError** err);
 gboolean gst_pylon_stop(GstPylon* self, GError** err);
 void gst_pylon_interrupt_capture(GstPylon* self);
@@ -81,6 +85,11 @@ gboolean gst_pylon_capture(GstPylon* self, GstBuffer** buf,
 GstCaps* gst_pylon_query_configuration(GstPylon* self, GError** err);
 gboolean gst_pylon_get_startup_geometry(GstPylon* self, gint* start_width,
                                         gint* start_height);
+gboolean gst_pylon_get_preferred_caps_values(GstPylon* self,
+                                             std::string* preferred_gst_format,
+                                             gdouble* preferred_fps);
+gboolean gst_pylon_execute_command(GstPylon* self, const gchar* command_name,
+                                   GError** err);
 gboolean gst_pylon_set_configuration(GstPylon* self, const GstCaps* conf,
                                      GError** err);
 gchar* gst_pylon_camera_get_string_properties();

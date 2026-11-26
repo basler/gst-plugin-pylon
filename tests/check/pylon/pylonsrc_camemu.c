@@ -169,6 +169,102 @@ GST_START_TEST(test_pylon_device_provider_skip_tl) {
 }
 GST_END_TEST;
 
+GST_START_TEST(test_pylonsrc_execute_command_and_grab_timeout) {
+  GstElement *pipeline;
+  GstElement *src;
+  GstElement *sink;
+  GstBus *bus;
+  GstMessage *msg;
+  gboolean cmd_ok = FALSE;
+
+  require_camemu_devices(1);
+
+  pipeline = gst_pipeline_new("cmd-timeout-pipe");
+  src = make_pylonsrc_with_serial(EMU_SERIAL);
+  sink = gst_element_factory_make("fakesink", NULL);
+  fail_unless(pipeline && src && sink);
+
+  /* Configure software trigger without firing a second trigger so grab-timeout
+   * triggers cleanly, after verifying execute-command works on an open cam. */
+  g_object_set(src, "grab-timeout", 150, NULL);
+  gst_child_proxy_set(GST_CHILD_PROXY(src), "cam::TriggerMode-FrameStart", 1,
+                      "cam::TriggerSource-FrameStart", 0, NULL);
+
+  g_signal_emit_by_name(src, "execute-command", "NonExistentCommandXYZ",
+                        &cmd_ok);
+  fail_if(cmd_ok, "expected unknown command to return FALSE");
+
+  gst_bin_add_many(GST_BIN(pipeline), src, sink, NULL);
+  fail_unless(gst_element_link(src, sink));
+
+  fail_unless(gst_element_set_state(pipeline, GST_STATE_PLAYING) !=
+              GST_STATE_CHANGE_FAILURE);
+
+  /* Fire one software trigger via selector-aware action signal, then let next
+   * frame time out */
+  g_signal_emit_by_name(src, "execute-command", "TriggerSoftware-FrameStart",
+                        &cmd_ok);
+  fail_unless(cmd_ok, "expected TriggerSoftware command to succeed in PLAYING");
+
+  bus = gst_element_get_bus(pipeline);
+  msg = gst_bus_timed_pop_filtered(bus, 3 * GST_SECOND, GST_MESSAGE_ERROR);
+  fail_unless(msg != NULL, "expected grab-timeout error message on bus");
+  gst_message_unref(msg);
+  gst_object_unref(bus);
+
+  gst_element_set_state(pipeline, GST_STATE_NULL);
+  gst_object_unref(pipeline);
+}
+GST_END_TEST;
+
+GST_START_TEST(test_pylonsrc_runtime_framerate_updates_latency) {
+  GstElement *pipeline;
+  GstElement *src;
+  GstElement *capsfilter;
+  GstElement *sink;
+  GstCaps *caps;
+  GstQuery *query;
+  GstClockTime min_lat = 0;
+
+  require_camemu_devices(1);
+
+  pipeline = gst_pipeline_new("fps-latency-pipe");
+  src = make_pylonsrc_with_serial(EMU_SERIAL);
+  capsfilter = gst_element_factory_make("capsfilter", NULL);
+  sink = gst_element_factory_make("fakesink", NULL);
+  caps = gst_caps_from_string(
+      "video/x-raw,format=GRAY8,width=640,height=480,framerate=20/1");
+  g_object_set(capsfilter, "caps", caps, NULL);
+  gst_caps_unref(caps);
+
+  gst_bin_add_many(GST_BIN(pipeline), src, capsfilter, sink, NULL);
+  fail_unless(gst_element_link_many(src, capsfilter, sink, NULL));
+
+  fail_unless(gst_element_set_state(pipeline, GST_STATE_PLAYING) !=
+              GST_STATE_CHANGE_FAILURE);
+  /* Wait for PLAYING negotiation */
+  fail_unless(gst_element_get_state(pipeline, NULL, NULL, 3 * GST_SECOND) ==
+              GST_STATE_CHANGE_SUCCESS);
+
+  gst_child_proxy_set(GST_CHILD_PROXY(src), "cam::AcquisitionFrameRateEnable",
+                      TRUE, "cam::AcquisitionFrameRate", 50.0, NULL);
+
+  query = gst_query_new_latency();
+  fail_unless(gst_element_query(src, query));
+  gst_query_parse_latency(query, NULL, &min_lat, NULL);
+  gst_query_unref(query);
+
+  /* 50 fps -> 20 ms frame duration */
+  fail_unless(
+      min_lat >= 19 * GST_MSECOND && min_lat <= 21 * GST_MSECOND,
+      "expected ~20ms latency after setting 50fps, got %" GST_TIME_FORMAT,
+      GST_TIME_ARGS(min_lat));
+
+  gst_element_set_state(pipeline, GST_STATE_NULL);
+  gst_object_unref(pipeline);
+}
+GST_END_TEST;
+
 static Suite *pylonsrc_camemu_suite(void) {
   Suite *s = suite_create("pylonsrc_camemu");
   TCase *tc = tcase_create("general");
@@ -181,6 +277,8 @@ static Suite *pylonsrc_camemu_suite(void) {
   tcase_add_test(tc, test_pylonsrc_ambiguous_device_fails);
   tcase_add_test(tc, test_pylon_device_provider_probe_and_create);
   tcase_add_test(tc, test_pylon_device_provider_skip_tl);
+  tcase_add_test(tc, test_pylonsrc_execute_command_and_grab_timeout);
+  tcase_add_test(tc, test_pylonsrc_runtime_framerate_updates_latency);
 
   return s;
 }

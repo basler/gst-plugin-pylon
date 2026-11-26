@@ -225,6 +225,10 @@ expect_ok "capture_gray8_fixed_caps" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=8 \
     ! "video/x-raw,format=GRAY8,width=640,height=480" ! fakesink
 
+expect_ok "capture_gray16_le_caps" \
+  gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=5 \
+    ! "video/x-raw,format=GRAY16_LE,width=640,height=480" ! fakesink
+
 expect_ok "capture_bayer_caps" \
   gst_pipeline pylonsrc device-serial-number="$EMU_SERIAL_0" num-buffers=5 \
     ! "video/x-bayer,format=rggb,width=640,height=480" ! fakesink

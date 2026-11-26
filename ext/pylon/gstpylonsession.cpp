@@ -300,6 +300,174 @@ void GstPylon::SetMaxPendingFrames(guint max_pending_frames) {
   image_handler.SetMaxPendingFrames(max_pending_frames);
 }
 
+void GstPylon::SetGrabTimeout(guint timeout_ms) {
+  grab_timeout_ms.store(timeout_ms, std::memory_order_relaxed);
+}
+
+void GstPylon::SetAutoReconnect(gboolean enable) {
+  auto_reconnect.store(enable, std::memory_order_relaxed);
+}
+
+void GstPylon::RefreshDecompressor() {
+  compression_active = false;
+  try {
+    GenApi::INodeMap& nodemap = camera->GetNodeMap();
+    const Pylon::ECompressionMode mode =
+        Pylon::CImageDecompressor::GetCompressionMode(nodemap);
+    if (mode != Pylon::CompressionMode_Off) {
+      decompressor.SetCompressionDescriptor(nodemap);
+      compression_active = true;
+      GST_INFO_OBJECT(gstpylonsrc,
+                      "Initialized Pylon CImageDecompressor (mode=%d)",
+                      static_cast<int>(mode));
+    } else {
+      decompressor.ResetCompressionDescriptor();
+    }
+  } catch (const GenICam::GenericException& e) {
+    /* Cameras without Compression Beyond support or disabled descriptors */
+    GST_DEBUG_OBJECT(gstpylonsrc, "Compression Beyond not active: %s",
+                     e.GetDescription());
+    decompressor.ResetCompressionDescriptor();
+    compression_active = false;
+  }
+}
+
+gboolean GstPylon::TryReconnect(GError** err) {
+  g_return_val_if_fail(err && *err == NULL, FALSE);
+
+  constexpr int RECONNECT_MAX_ATTEMPTS = 15;
+  constexpr int RECONNECT_DELAY_MS = 1000;
+
+  GST_WARNING_OBJECT(gstpylonsrc,
+                     "Camera disconnected; attempting auto-reconnect...");
+
+  if (gstpylonsrc) {
+    GstStructure* s = gst_structure_new("pylonsrc-reconnect", "status",
+                                        G_TYPE_STRING, "reconnecting", NULL);
+    gst_element_post_message(
+        gstpylonsrc, gst_message_new_element(GST_OBJECT(gstpylonsrc), s));
+  }
+
+  try {
+    if (camera->IsGrabbing()) {
+      camera->StopGrabbing();
+    }
+    if (camera->IsOpen()) {
+      camera->Close();
+    }
+    if (camera->IsPylonDeviceAttached()) {
+      camera->DestroyDevice();
+    }
+  } catch (const GenICam::GenericException&) {
+  }
+
+  Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
+  Pylon::CDeviceInfo filter_info;
+  if (!requested_device_user_name.empty()) {
+    filter_info.SetUserDefinedName(requested_device_user_name.c_str());
+  }
+  if (!requested_device_serial_number.empty()) {
+    filter_info.SetSerialNumber(requested_device_serial_number.c_str());
+  }
+
+  std::string last_error = "Camera did not reappear within reconnect window";
+  for (int attempt = 1; attempt <= RECONNECT_MAX_ATTEMPTS; ++attempt) {
+    try {
+      Pylon::DeviceInfoList_t filter(1);
+      filter[0] = filter_info;
+      Pylon::DeviceInfoList_t list;
+      gst_pylon_enumerate_devices(list, &filter);
+      if (!list.empty()) {
+        const size_t idx =
+            (requested_device_index >= 0 &&
+             static_cast<size_t>(requested_device_index) < list.size())
+                ? static_cast<size_t>(requested_device_index)
+                : 0;
+        camera->Attach(factory.CreateDevice(list.at(idx)));
+        camera->Open();
+
+        camera->DeviceFeaturePersistenceEnd.TryExecute();
+        camera->DeviceRegistersStreamingEnd.TryExecute();
+
+        if (!applied_user_set.empty() || camera->UserSetSelector.IsWritable()) {
+          std::string set_to_apply =
+              applied_user_set.empty() ? "Auto" : applied_user_set;
+          if (camera->UserSetSelector.IsWritable()) {
+            gst_pylon_apply_set(this, set_to_apply);
+          }
+        }
+        if (!applied_pfs_location.empty()) {
+          Pylon::CFeaturePersistence::Load(applied_pfs_location.c_str(),
+                                           &camera->GetNodeMap(), false);
+        }
+
+        /* Rebind child GObject nodemap pointers to the reopened device */
+        if (gcamera) {
+          auto* cam_priv = static_cast<GstPylonObjectPrivate*>(
+              gst_pylon_object_get_instance_private(GST_PYLON_OBJECT(gcamera)));
+          cam_priv->nodemap = &camera->GetNodeMap();
+        }
+        if (gstream_grabber) {
+          auto* stream_priv = static_cast<GstPylonObjectPrivate*>(
+              gst_pylon_object_get_instance_private(
+                  GST_PYLON_OBJECT(gstream_grabber)));
+          stream_priv->nodemap = &camera->GetStreamGrabberNodeMap();
+        }
+
+        image_handler.ResetForReconnect();
+
+        if (negotiated_caps) {
+          GError* cfg_err = NULL;
+          if (!SetConfiguration(negotiated_caps, &cfg_err)) {
+            if (cfg_err) {
+              last_error = cfg_err->message;
+              g_error_free(cfg_err);
+            }
+            throw Pylon::GenericException(last_error.c_str(), __FILE__,
+                                          __LINE__);
+          }
+        }
+
+        GError* start_err = NULL;
+        if (!Start(&start_err)) {
+          if (start_err) {
+            last_error = start_err->message;
+            g_error_free(start_err);
+          }
+          throw Pylon::GenericException(last_error.c_str(), __FILE__, __LINE__);
+        }
+
+        if (gstpylonsrc) {
+          GstStructure* s = gst_structure_new(
+              "pylonsrc-reconnect", "status", G_TYPE_STRING, "reconnected",
+              "attempt", G_TYPE_INT, attempt, NULL);
+          gst_element_post_message(
+              gstpylonsrc, gst_message_new_element(GST_OBJECT(gstpylonsrc), s));
+        }
+        GST_INFO_OBJECT(gstpylonsrc,
+                        "Successfully reconnected camera on attempt %d",
+                        attempt);
+        return TRUE;
+      }
+    } catch (const GenICam::GenericException& e) {
+      last_error = e.GetDescription();
+      try {
+        if (camera->IsPylonDeviceAttached()) {
+          camera->DestroyDevice();
+        }
+      } catch (const GenICam::GenericException&) {
+      }
+    }
+
+    g_usleep(RECONNECT_DELAY_MS * 1000);
+  }
+
+  g_set_error(err, GST_RESOURCE_ERROR, GST_RESOURCE_ERROR_NOT_FOUND,
+              "Connection to camera was lost and auto-reconnect failed: %s",
+              last_error.c_str());
+  return FALSE;
+}
+
 gboolean GstPylon::Start(GError** err) {
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
@@ -308,6 +476,8 @@ gboolean GstPylon::Start(GError** err) {
   }
 
   try {
+    RefreshDecompressor();
+
     /* A frame queue needs every frame from pylon, in order */
     const size_t max_pending_frames = image_handler.GetMaxPendingFrames();
     const Pylon::EGrabStrategy strategy =
@@ -413,10 +583,79 @@ gboolean GstPylon::GetStartupGeometry(gint* start_width, gint* start_height) {
   g_return_val_if_fail(start_height, FALSE);
   g_return_val_if_fail(start_width, FALSE);
 
+  /* Honor cached Width/Height set via cam::Width / cam::Height before start */
+  if (gcamera) {
+    auto* cam_priv = static_cast<GstPylonObjectPrivate*>(
+        gst_pylon_object_get_instance_private(GST_PYLON_OBJECT(gcamera)));
+    *start_width = cam_priv->dimension_cache.width >= 0
+                       ? cam_priv->dimension_cache.width
+                       : static_cast<gint>(camera->Width.GetValue());
+    *start_height = cam_priv->dimension_cache.height >= 0
+                        ? cam_priv->dimension_cache.height
+                        : static_cast<gint>(camera->Height.GetValue());
+    return TRUE;
+  }
+
   *start_height = camera->Height.GetValue();
   *start_width = camera->Width.GetValue();
 
   return TRUE;
+}
+
+gboolean GstPylon::GetPreferredCapsValues(std::string* preferred_gst_format,
+                                          gdouble* preferred_fps) {
+  if (!camera || !camera->IsOpen()) {
+    return FALSE;
+  }
+
+  try {
+    GenApi::INodeMap& nodemap = camera->GetNodeMap();
+    /* Prefer PFS/UserSet configured PixelFormat when explicitly configured */
+    if (preferred_gst_format &&
+        (!applied_pfs_location.empty() || !applied_user_set.empty())) {
+      Pylon::CEnumParameter pf(nodemap, "PixelFormat");
+      if (pf.IsReadable()) {
+        const std::string cur_pfnc = pf.GetValue().c_str();
+        for (const auto& st_fmt : gst_structure_formats) {
+          for (const auto& entry : st_fmt.format_map) {
+            if (entry.pfnc_name == cur_pfnc) {
+              *preferred_gst_format = entry.gst_name;
+              break;
+            }
+          }
+          if (!preferred_gst_format->empty()) {
+            break;
+          }
+        }
+      }
+    }
+
+    if (preferred_fps && gcamera &&
+        gst_pylon_object_is_framerate_configured(gcamera)) {
+      Pylon::CFloatParameter fps;
+      if (camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
+        fps.Attach(nodemap, "AcquisitionFrameRate");
+      } else {
+        fps.Attach(nodemap, "AcquisitionFrameRateAbs");
+      }
+      if (fps.IsReadable()) {
+        *preferred_fps = fps.GetValue();
+      }
+    }
+  } catch (const GenICam::GenericException&) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+gboolean GstPylon::ExecuteCommand(const gchar* command_name, GError** err) {
+  if (!gcamera) {
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
+                "Camera child object is not initialized");
+    return FALSE;
+  }
+  return gst_pylon_object_execute_command(gcamera, command_name, err);
 }
 
 void GstPylon::InterruptCapture() { image_handler.InterruptWaitForImage(); }

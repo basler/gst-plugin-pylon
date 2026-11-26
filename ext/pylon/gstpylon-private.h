@@ -41,6 +41,7 @@
 
 #include <gst/pylon/gstpylonincludes.h>
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
@@ -62,7 +63,12 @@ struct _GstPylon {
         gstream_grabber(nullptr),
         mem_type(MEM_SYSMEM),
         requested_device_index(-1),
-        handlers_registered(false) {
+        handlers_registered(false),
+        applied_enable_correction(TRUE),
+        has_applied_config(FALSE),
+        grab_timeout_ms(0),
+        auto_reconnect(FALSE),
+        compression_active(false) {
 #ifdef NVMM_ENABLED
     nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
     gpu_id = PROP_GPU_ID_DEFAULT;
@@ -95,6 +101,11 @@ struct _GstPylon {
                          e.what());
     }
 
+    if (negotiated_caps) {
+      gst_caps_unref(negotiated_caps);
+      negotiated_caps = nullptr;
+    }
+
     if (gcamera) {
       gst_object_unparent(GST_OBJECT(gcamera));
     }
@@ -109,6 +120,9 @@ struct _GstPylon {
             gint device_index, const gchar* user_set, const gchar* pfs_location,
             gboolean enable_correction);
   void SetMaxPendingFrames(guint max_pending_frames);
+  void SetGrabTimeout(guint timeout_ms);
+  void SetAutoReconnect(gboolean enable);
+  gboolean TryReconnect(GError** err);
   gboolean Start(GError** err);
   gboolean Stop(GError** err);
   gboolean ApplyUserConfig(const gchar* user_set, GError** err);
@@ -118,10 +132,14 @@ struct _GstPylon {
   gboolean EnsureConfigured(const gchar* user_set, const gchar* pfs_location,
                             gboolean enable_correction, GError** err);
   gboolean GetStartupGeometry(gint* start_width, gint* start_height);
+  gboolean GetPreferredCapsValues(std::string* preferred_gst_format,
+                                  gdouble* preferred_fps);
+  gboolean ExecuteCommand(const gchar* command_name, GError** err);
   gboolean Capture(GstBuffer** buf, GstPylonCaptureErrorEnum capture_error,
                    GError** err);
   GstCaps* QueryConfiguration(GError** err);
   gboolean SetConfiguration(const GstCaps* conf, GError** err);
+  void RefreshDecompressor();
   void InterruptCapture();
   void ClearCaptureInterrupt();
   void SetEnableCorrection(gboolean enable_correction);
@@ -152,6 +170,13 @@ struct _GstPylon {
   std::string applied_pfs_location;
   gboolean applied_enable_correction;
   gboolean has_applied_config;
+
+  std::atomic<guint> grab_timeout_ms;
+  std::atomic<gboolean> auto_reconnect;
+  GstCaps* negotiated_caps = nullptr;
+
+  Pylon::CImageDecompressor decompressor;
+  bool compression_active;
 
 #ifdef NVMM_ENABLED
   GstPylonNvsurfaceLayoutEnum nvsurface_layout;

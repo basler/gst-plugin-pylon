@@ -131,6 +131,11 @@ static void TestQueueWithoutCamera() {
     CHECK(
         handler.WaitForImage(&grab) == GstPylonImageHandlerResult::disconnected,
         "disconnect wins over queued frames");
+    handler.ResetForReconnect();
+    CHECK(handler.WaitForImage(&grab, 40) ==
+                  GstPylonImageHandlerResult::timeout &&
+              grab == nullptr,
+          "ResetForReconnect clears disconnected state and timeout triggers");
   }
 
   {

@@ -42,4 +42,9 @@ EXT_PYLONSRC_API void gst_buffer_add_pylon_meta(
     GstBuffer *buffer,
     const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr);
 
+EXT_PYLONSRC_API void gst_buffer_add_pylon_meta_with_stride(
+    GstBuffer *buffer,
+    const Pylon::CBaslerUniversalGrabResultPtr &grab_result_ptr,
+    gsize override_stride);
+
 #endif

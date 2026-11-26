@@ -272,6 +272,10 @@ void gst_pylon_object_set_pylon_feature<GGetDouble, Pylon::CFloatParameter>(
   if (!g_strcmp0(name, "AcquisitionFrameRate") ||
       !g_strcmp0(name, "AcquisitionFrameRateAbs")) {
     priv->framerate_configured = TRUE;
+    if (priv->framerate_changed_cb) {
+      priv->framerate_changed_cb(priv->framerate_changed_data,
+                                 param.GetValue());
+    }
   }
 }
 
@@ -583,6 +587,8 @@ GObject* gst_pylon_object_new_for_schema(
   priv->nodemap = &schema.node_map();
   priv->enable_correction = enable_correction;
   priv->framerate_configured = FALSE;
+  priv->framerate_changed_cb = NULL;
+  priv->framerate_changed_data = NULL;
 
   /* setup dimension cache
    * -1 -> not activly set
@@ -590,6 +596,94 @@ GObject* gst_pylon_object_new_for_schema(
   priv->dimension_cache = {-1, -1, -1, -1};
 
   return obj;
+}
+
+void gst_pylon_object_set_framerate_callback(GObject* obj,
+                                             GstPylonFramerateChangedCb cb,
+                                             gpointer user_data) {
+  g_return_if_fail(obj);
+
+  GstPylonObject* self = GST_PYLON_OBJECT(obj);
+  GstPylonObjectPrivate* priv =
+      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  priv->framerate_changed_cb = cb;
+  priv->framerate_changed_data = user_data;
+}
+
+gboolean gst_pylon_object_execute_command(GObject* obj,
+                                          const gchar* command_name,
+                                          GError** err) {
+  g_return_val_if_fail(obj, FALSE);
+  g_return_val_if_fail(command_name && command_name[0] != '\0', FALSE);
+  g_return_val_if_fail(err && *err == NULL, FALSE);
+
+  GstPylonObject* self = GST_PYLON_OBJECT(obj);
+  GstPylonObjectPrivate* priv =
+      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+
+  if (!priv->nodemap) {
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
+                "Node map not initialized for command \"%s\"", command_name);
+    return FALSE;
+  }
+
+  try {
+    std::string feature = command_name;
+    std::string selector_val;
+
+    /* Support "CommandName-SelectorEntry" syntax matching selector properties
+     */
+    const auto dash_pos = feature.find('-');
+    if (dash_pos != std::string::npos) {
+      selector_val = feature.substr(dash_pos + 1);
+      feature = feature.substr(0, dash_pos);
+    }
+
+    GenApi::INode* node = priv->nodemap->GetNode(feature.c_str());
+    if (!node) {
+      g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_SETTINGS,
+                  "Unknown GenICam command \"%s\"", feature.c_str());
+      return FALSE;
+    }
+
+    if (node->GetPrincipalInterfaceType() != GenApi::intfICommand) {
+      g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_SETTINGS,
+                  "Feature \"%s\" is not a GenICam command", feature.c_str());
+      return FALSE;
+    }
+
+    if (!selector_val.empty()) {
+      GenApi::INode* selector_node = NULL;
+      GstPylonFeatureWalker::process_selector_features(node, &selector_node);
+      if (selector_node) {
+        Pylon::CEnumParameter sel_param(selector_node);
+        if (sel_param.CanSetValue(selector_val.c_str())) {
+          sel_param.SetValue(selector_val.c_str());
+        } else {
+          g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_SETTINGS,
+                      "Selector value \"%s\" cannot be set for command \"%s\"",
+                      selector_val.c_str(), feature.c_str());
+          return FALSE;
+        }
+      }
+    }
+
+    Pylon::CCommandParameter cmd(node);
+    if (!cmd.IsWritable()) {
+      g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_SETTINGS,
+                  "GenICam command \"%s\" is not currently executable",
+                  feature.c_str());
+      return FALSE;
+    }
+
+    cmd.Execute();
+    GST_INFO("Executed GenICam Command %s", command_name);
+    return TRUE;
+  } catch (const GenICam::GenericException& e) {
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                e.GetDescription());
+    return FALSE;
+  }
 }
 
 void gst_pylon_object_set_enable_correction(GObject* obj,

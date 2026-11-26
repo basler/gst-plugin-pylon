@@ -115,10 +115,8 @@ const std::unordered_set<std::string> &gen2_tl_always_locked() {
  * a live TLParamsLocked probe. */
 const std::unordered_set<std::string> &gen2_tl_conditionally_locked() {
   static const std::unordered_set<std::string> features = {
-      "TriggerMode",
-      "TriggerSource",
-      "TriggerActivation",
-      "BslDemosaicingMethod",
+      "TriggerMode",          "TriggerSource", "TriggerActivation",
+      "BslDemosaicingMethod", "ReverseX",      "ReverseY",
   };
   return features;
 }

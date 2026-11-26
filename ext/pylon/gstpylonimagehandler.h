@@ -36,6 +36,7 @@
 #include <gst/pylon/gstpylonincludes.h>
 
 #include <condition_variable>
+#include <cstdint>
 #include <deque>
 #include <mutex>
 
@@ -46,6 +47,8 @@ enum class GstPylonImageHandlerResult {
   flushing,
   /* Camera was disconnected */
   disconnected,
+  /* Timed out waiting for a frame */
+  timeout,
 };
 
 class GstPylonImageHandler : public Pylon::CBaslerUniversalImageEventHandler {
@@ -56,9 +59,11 @@ class GstPylonImageHandler : public Pylon::CBaslerUniversalImageEventHandler {
       Pylon::CBaslerUniversalInstantCamera& camera,
       const Pylon::CBaslerUniversalGrabResultPtr& grab_result) override;
   GstPylonImageHandlerResult WaitForImage(
-      Pylon::CBaslerUniversalGrabResultPtr** grab_result);
+      Pylon::CBaslerUniversalGrabResultPtr** grab_result,
+      uint32_t timeout_ms = 0);
   void InterruptWaitForImage();
   void SignalDisconnect();
+  void ResetForReconnect();
   void ClearInterrupt();
   void SetMaxPendingFrames(size_t max_pending_frames);
   size_t GetMaxPendingFrames();

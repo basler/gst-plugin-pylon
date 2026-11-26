@@ -121,6 +121,19 @@ gboolean gst_pylon_get_startup_geometry(GstPylon* self, gint* start_width,
   return self->GetStartupGeometry(start_width, start_height);
 }
 
+gboolean gst_pylon_get_preferred_caps_values(GstPylon* self,
+                                             std::string* preferred_gst_format,
+                                             gdouble* preferred_fps) {
+  g_return_val_if_fail(self, FALSE);
+  return self->GetPreferredCapsValues(preferred_gst_format, preferred_fps);
+}
+
+gboolean gst_pylon_execute_command(GstPylon* self, const gchar* command_name,
+                                   GError** err) {
+  g_return_val_if_fail(self, FALSE);
+  return self->ExecuteCommand(command_name, err);
+}
+
 void gst_pylon_free(GstPylon* self) {
   g_return_if_fail(self);
   delete self;
@@ -130,6 +143,16 @@ void gst_pylon_set_max_pending_frames(GstPylon* self,
                                       guint max_pending_frames) {
   g_return_if_fail(self);
   self->SetMaxPendingFrames(max_pending_frames);
+}
+
+void gst_pylon_set_grab_timeout(GstPylon* self, guint grab_timeout_ms) {
+  g_return_if_fail(self);
+  self->SetGrabTimeout(grab_timeout_ms);
+}
+
+void gst_pylon_set_auto_reconnect(GstPylon* self, gboolean auto_reconnect) {
+  g_return_if_fail(self);
+  self->SetAutoReconnect(auto_reconnect);
 }
 
 gboolean gst_pylon_start(GstPylon* self, GError** err) {

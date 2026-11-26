@@ -31,12 +31,12 @@ Pad Templates:
     Availability: Always
     Capabilities:
       video/x-raw
-                 format: { (string)GRAY8, (string)RGB, (string)BGR, (string)YUY2, (string)UYVY }
+                 format: { (string)GRAY8, (string)GRAY16_LE, (string)RGB, (string)BGR, (string)YUY2, (string)UYVY }
                   width: [ 1, 2147483647 ]
                  height: [ 1, 2147483647 ]
               framerate: [ 0/1, 2147483647/1 ]
       video/x-bayer
-                 format: { (string)rggb, (string)bggr, (string)gbrg, (string)grbg }
+                 format: { (string)rggb, (string)bggr, (string)gbrg, (string)grbg, (string)rggb10le, (string)bggr10le, (string)gbrg10le, (string)grbg10le, (string)rggb12le, (string)bggr12le, (string)gbrg12le, (string)grbg12le, (string)rggb16le, (string)bggr16le, (string)gbrg16le, (string)grbg16le }
                   width: [ 1, 2147483647 ]
                  height: [ 1, 2147483647 ]
               framerate: [ 0/1, 2147483647/1 ]
@@ -49,6 +49,10 @@ Pads:
     Pad Template: 'src'
 
 Element Properties:
+
+  auto-reconnect      : Automatically attempt to re-open, restore configuration, and resume grabbing if the camera connection is lost during streaming.
+                        flags: readable, writable, controllable
+                        Boolean. Default: <bool>
 
   automatic-eos       : Automatically EOS when the segment is done
                         flags: readable, writable
@@ -1366,6 +1370,10 @@ Element Properties:
                         flags: readable, writable, changeable only in NULL or READY state
                         Boolean. Default: <bool>
 
+  grab-timeout        : Maximum time in milliseconds to wait for a camera frame before signalling a read timeout error (0 = wait indefinitely, useful for sparse hardware triggers).
+                        flags: readable, writable, controllable
+                        Unsigned Integer. Range: 0 - 4294967295 Default: <num>
+
   max-pending-frames  : The maximum number of grabbed frames kept until the streaming thread takes them. With 1, a new frame replaces a frame that was not taken yet. With a larger value, frames are queued in order and the oldest one is dropped when the queue is full, so short streaming stalls do not lose frames. Queued frames hold pylon grab buffers, so keep this value well below stream::MaxNumBuffer. 2 is the recommended value for a queue.
                         flags: readable, writable, changeable only in NULL or READY state
                         Unsigned Integer. Range: 1 - 256 Default: <num>
@@ -1494,4 +1502,10 @@ Element Properties:
   user-set            : The user-defined configuration set to use. Leaving this property unset, or using 'Auto' result in selecting the power-on default camera configuration.
                         flags: readable, writable, changeable only in NULL or READY state
                         String. Default: null
+
+Element Actions:
+
+  "execute-command" -> gboolean  :  g_signal_emit_by_name (element, "execute-command",
+                                                           const gchar * arg0,
+                                                           gboolean * p_return_value);
 

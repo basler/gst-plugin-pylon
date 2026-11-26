@@ -124,6 +124,14 @@ static void TestTlLockBehaviorPrior() {
                                          "BslDemosaicingMethod") ==
             GstPylonTlLockBehavior::kUnknown,
         "gen2 BslDemosaicingMethod -> kUnknown (runtime dependent)");
+  CHECK(gst_pylon_prior_tl_lock_behavior(GstPylonDeviceProfile::kBaslerGen2,
+                                         "ReverseX") ==
+            GstPylonTlLockBehavior::kUnknown,
+        "gen2 ReverseX -> kUnknown (model/sensor dependent)");
+  CHECK(gst_pylon_prior_tl_lock_behavior(GstPylonDeviceProfile::kBaslerGen2,
+                                         "ReverseY") ==
+            GstPylonTlLockBehavior::kUnknown,
+        "gen2 ReverseY -> kUnknown (model/sensor dependent)");
 
   /* 2nd-gen unlocked-during-playing features */
   CHECK(gst_pylon_prior_tl_lock_behavior(GstPylonDeviceProfile::kBaslerGen2,

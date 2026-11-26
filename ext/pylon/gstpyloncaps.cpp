@@ -280,20 +280,25 @@ GstCaps* GstPylon::QueryConfiguration(GError** err) {
     GstStructure* st =
         gst_structure_new_empty(gst_structure_format.st_name.c_str());
     try {
+#ifdef NVMM_ENABLED
+      /* Advertise memory:NVMM first (matching static pad template priority)
+       * strictly for the video/x-raw formats supported by NvBufSurface. */
+      if (gst_structure_format.st_name == "video/x-raw") {
+        GstStructure* nvmm_st =
+            gst_structure_new_empty(gst_structure_format.st_name.c_str());
+        if (gst_pylon_query_caps(this, nvmm_st,
+                                 pixel_format_mapping_nvmm_raw)) {
+          gst_caps_append_structure_full(
+              caps, nvmm_st, gst_caps_features_new("memory:NVMM", NULL));
+        } else {
+          gst_structure_free(nvmm_st);
+        }
+      }
+#endif
       if (!gst_pylon_query_caps(this, st, gst_structure_format.format_map)) {
         gst_structure_free(st);
         continue;
       }
-
-#ifdef NVMM_ENABLED
-      /* Advertise memory:NVMM first (matching static pad template priority)
-       * only for video/x-raw formats supported by NvBufSurface. */
-      if (gst_structure_format.st_name == "video/x-raw") {
-        gst_caps_append_structure_full(
-            caps, gst_structure_copy(st),
-            gst_caps_features_new("memory:NVMM", NULL));
-      }
-#endif
       gst_caps_append_structure(caps, st);
 
     } catch (const Pylon::GenericException& e) {
@@ -352,15 +357,33 @@ gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
     }
 
     bool fmt_valid = false;
+    std::string cur_pfnc;
+    if (pixelformat.IsReadable()) {
+      cur_pfnc = pixelformat.GetValue().c_str();
+    }
+
     for (const auto& gst_structure_format : gst_structure_formats) {
       const std::vector<std::string> pfnc_formats =
           gst_pylon_gst_to_pfnc(gst_format, gst_structure_format.format_map);
 
-      /* In case of ambiguous format mapping choose first */
-      for (auto& fmt : pfnc_formats) {
+      /* Honor current camera/PFS/UserSet PixelFormat if it maps to gst_format
+       */
+      if (!cur_pfnc.empty()) {
+        for (const auto& fmt : pfnc_formats) {
+          if (fmt == cur_pfnc && pixelformat.CanSetValue(fmt.c_str())) {
+            fmt_valid = pixelformat.TrySetValue(fmt.c_str());
+            break;
+          }
+        }
+        if (fmt_valid) break;
+      }
+
+      /* Otherwise choose first supported PFNC candidate */
+      for (const auto& fmt : pfnc_formats) {
         fmt_valid = pixelformat.TrySetValue(fmt.c_str());
         if (fmt_valid) break;
       }
+      if (fmt_valid) break;
     }
 
     if (!fmt_valid) {
@@ -487,6 +510,13 @@ gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
 #endif
 
     camera->SetBufferFactory(buffer_factory.get(), Pylon::Cleanup_None);
+
+    if (negotiated_caps != conf) {
+      if (negotiated_caps) {
+        gst_caps_unref(negotiated_caps);
+      }
+      negotiated_caps = gst_caps_copy(conf);
+    }
 
     return TRUE;
   } catch (const Pylon::GenericException& e) {

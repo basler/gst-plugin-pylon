@@ -50,6 +50,7 @@
 
 #include "gst/pylon/gstpylondebug.h"
 #include "gst/pylon/gstpylonmeta.h"
+#include "gst/pylon/gstpylonobject.h"
 #include "gstpylon.h"
 #include "gstpylonsrc.h"
 
@@ -70,6 +71,8 @@ struct _GstPylonSrc {
   gboolean enable_correction;
   GstPylonCaptureErrorEnum capture_error;
   guint max_pending_frames;
+  guint grab_timeout;
+  gboolean auto_reconnect;
 
 #ifdef NVMM_ENABLED
   GstPylonNvsurfaceLayoutEnum nvsurface_layout;
@@ -107,6 +110,9 @@ static void gst_pylon_src_discard_session(GstPylonSrc* self,
 static GObject* gst_pylon_src_ref_child(GstPylonSrc* self, guint property_id);
 static guint gst_pylon_src_child_name_to_property_id(const gchar* name);
 
+static gboolean gst_pylon_src_execute_command_action(GstPylonSrc* self,
+                                                     const gchar* command_name);
+static void gst_pylon_src_on_framerate_changed(gpointer user_data, gdouble fps);
 static void gst_pylon_src_child_proxy_init(GstChildProxyInterface* iface);
 
 enum {
@@ -119,6 +125,8 @@ enum {
   PROP_ENABLE_CORRECTION,
   PROP_CAPTURE_ERROR,
   PROP_MAX_PENDING_FRAMES,
+  PROP_GRAB_TIMEOUT,
+  PROP_AUTO_RECONNECT,
   PROP_CAM,
   PROP_STREAM,
 #ifdef NVMM_ENABLED
@@ -126,6 +134,10 @@ enum {
   PROP_GPU_ID,
 #endif
 };
+
+enum { SIGNAL_EXECUTE_COMMAND, LAST_SIGNAL };
+
+static guint gst_pylon_src_signals[LAST_SIGNAL] = {0};
 
 #define PROP_DEVICE_USER_NAME_DEFAULT NULL
 #define PROP_DEVICE_SERIAL_NUMBER_DEFAULT NULL
@@ -139,6 +151,10 @@ enum {
 #define PROP_MAX_PENDING_FRAMES_DEFAULT 1
 #define PROP_MAX_PENDING_FRAMES_MIN 1
 #define PROP_MAX_PENDING_FRAMES_MAX 256
+#define PROP_GRAB_TIMEOUT_DEFAULT 0
+#define PROP_GRAB_TIMEOUT_MIN 0
+#define PROP_GRAB_TIMEOUT_MAX G_MAXUINT32
+#define PROP_AUTO_RECONNECT_DEFAULT FALSE
 #ifdef NVMM_ENABLED
 #  define PROP_GPU_ID_MIN 0
 #  define PROP_GPU_ID_MAX G_MAXUINT32
@@ -200,6 +216,16 @@ static GType gst_pylon_nvsurface_layout_enum_get_type(void) {
 #  define NVMM_GST_VIDEO_CAPS_PRIORITY
 #endif
 
+#if GST_CHECK_VERSION(1, 24, 0)
+#  define GST_PYLON_SRC_BAYER_FORMATS \
+    "rggb, bggr, gbrg, grbg, " \
+    "rggb10le, bggr10le, gbrg10le, grbg10le, " \
+    "rggb12le, bggr12le, gbrg12le, grbg12le, " \
+    "rggb16le, bggr16le, gbrg16le, grbg16le"
+#else
+#  define GST_PYLON_SRC_BAYER_FORMATS "rggb, bggr, gbrg, grbg"
+#endif
+
 static GstStaticCaps pylon_reference_timestamp_caps =
     GST_STATIC_CAPS("timestamp/x-pylon");
 
@@ -211,12 +237,12 @@ static GstStaticPadTemplate gst_pylon_src_src_template =
             NVMM_GST_VIDEO_CAPS_PRIORITY
 
             /* --- 2. Standard Raw Caps (System Memory) --- */
-            GST_VIDEO_CAPS_MAKE(" {GRAY8, RGB, BGR, YUY2, UYVY} ")
+            GST_VIDEO_CAPS_MAKE(" {GRAY8, GRAY16_LE, RGB, BGR, YUY2, UYVY} ")
             ";"
 
             /* --- 3. Bayer Caps (System Memory) --- */
             "video/x-bayer, "
-            "format = (string) { rggb, bggr, gbrg, grbg }, "
+            "format = (string) { " GST_PYLON_SRC_BAYER_FORMATS " }, "
             "width = " GST_VIDEO_SIZE_RANGE ", "
             "height = " GST_VIDEO_SIZE_RANGE ", "
             "framerate = " GST_VIDEO_FPS_RANGE
@@ -344,6 +370,44 @@ static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
           PROP_MAX_PENDING_FRAMES_DEFAULT,
           static_cast<GParamFlags>(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
                                    GST_PARAM_MUTABLE_READY)));
+
+  g_object_class_install_property(
+      gobject_class, PROP_GRAB_TIMEOUT,
+      g_param_spec_uint(
+          "grab-timeout", "Grab timeout (ms)",
+          "Maximum time in milliseconds to wait for a camera frame before "
+          "signalling a read timeout error (0 = wait indefinitely, useful for "
+          "sparse hardware triggers).",
+          PROP_GRAB_TIMEOUT_MIN, PROP_GRAB_TIMEOUT_MAX,
+          PROP_GRAB_TIMEOUT_DEFAULT,
+          static_cast<GParamFlags>(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+                                   GST_PARAM_CONTROLLABLE)));
+
+  g_object_class_install_property(
+      gobject_class, PROP_AUTO_RECONNECT,
+      g_param_spec_boolean(
+          "auto-reconnect", "Automatic camera reconnect",
+          "Automatically attempt to re-open, restore configuration, and resume "
+          "grabbing if the camera connection is lost during streaming.",
+          PROP_AUTO_RECONNECT_DEFAULT,
+          static_cast<GParamFlags>(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+                                   GST_PARAM_CONTROLLABLE)));
+
+  /**
+   * GstPylonSrc::execute-command:
+   * @pylonsrc: the #GstPylonSrc instance
+   * @command_name: GenICam command name (e.g. "TriggerSoftware",
+   *   "TimestampLatch", or "CommandName-SelectorEntry")
+   *
+   * Action signal to execute a GenICam ICommand feature on the open camera.
+   *
+   * Returns: %TRUE if the command executed without error, %FALSE otherwise.
+   */
+  gst_pylon_src_signals[SIGNAL_EXECUTE_COMMAND] = g_signal_new_class_handler(
+      "execute-command", G_TYPE_FROM_CLASS(klass),
+      static_cast<GSignalFlags>(G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION),
+      G_CALLBACK(gst_pylon_src_execute_command_action), NULL, NULL, NULL,
+      G_TYPE_BOOLEAN, 1, G_TYPE_STRING);
 #ifdef NVMM_ENABLED
   g_object_class_install_property(
       gobject_class, PROP_NVSURFACE_LAYOUT,
@@ -445,6 +509,8 @@ static void gst_pylon_src_init(GstPylonSrc* self) {
   self->enable_correction = PROP_ENABLE_CORRECTION_DEFAULT;
   self->capture_error = PROP_CAPTURE_ERROR_DEFAULT;
   self->max_pending_frames = PROP_MAX_PENDING_FRAMES_DEFAULT;
+  self->grab_timeout = PROP_GRAB_TIMEOUT_DEFAULT;
+  self->auto_reconnect = PROP_AUTO_RECONNECT_DEFAULT;
   gst_video_info_init(&self->video_info);
 #ifdef NVMM_ENABLED
   self->nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
@@ -496,6 +562,18 @@ static void gst_pylon_src_set_property(GObject* object, guint property_id,
     case PROP_MAX_PENDING_FRAMES:
       self->max_pending_frames = g_value_get_uint(value);
       break;
+    case PROP_GRAB_TIMEOUT:
+      self->grab_timeout = g_value_get_uint(value);
+      if (self->pylon) {
+        gst_pylon_set_grab_timeout(self->pylon, self->grab_timeout);
+      }
+      break;
+    case PROP_AUTO_RECONNECT:
+      self->auto_reconnect = g_value_get_boolean(value);
+      if (self->pylon) {
+        gst_pylon_set_auto_reconnect(self->pylon, self->auto_reconnect);
+      }
+      break;
 #ifdef NVMM_ENABLED
     case PROP_NVSURFACE_LAYOUT:
       self->nvsurface_layout =
@@ -546,6 +624,12 @@ static void gst_pylon_src_get_property(GObject* object, guint property_id,
       break;
     case PROP_MAX_PENDING_FRAMES:
       g_value_set_uint(value, self->max_pending_frames);
+      break;
+    case PROP_GRAB_TIMEOUT:
+      g_value_set_uint(value, self->grab_timeout);
+      break;
+    case PROP_AUTO_RECONNECT:
+      g_value_set_boolean(value, self->auto_reconnect);
       break;
 #ifdef NVMM_ENABLED
     case PROP_NVSURFACE_LAYOUT:
@@ -679,15 +763,25 @@ static GstCaps* gst_pylon_src_fixate(GstBaseSrc* src, GstCaps* caps) {
   const GValue* width_field = NULL;
   static const gint width_1080p = 1920;
   static const gint height_1080p = 1080;
-  static const gint preferred_framerate_num = 30;
-  static const gint preferred_framerate_den = 1;
+  gint preferred_framerate_num = 30;
+  gint preferred_framerate_den = 1;
   gint preferred_width_adjusted = 0;
 
   /* get the configured width/height after applying userset and pfs */
   gint preferred_width = width_1080p;
   gint preferred_height = height_1080p;
-  gst_pylon_get_startup_geometry(self->pylon, &preferred_width,
-                                 &preferred_height);
+  std::string preferred_gst_format;
+  gdouble configured_fps = 0.0;
+  if (self->pylon) {
+    gst_pylon_get_startup_geometry(self->pylon, &preferred_width,
+                                   &preferred_height);
+    gst_pylon_get_preferred_caps_values(self->pylon, &preferred_gst_format,
+                                        &configured_fps);
+    if (configured_fps > 0.0) {
+      gst_util_double_to_fraction(configured_fps, &preferred_framerate_num,
+                                  &preferred_framerate_den);
+    }
+  }
 
   GST_DEBUG_OBJECT(self, "Fixating caps %" GST_PTR_FORMAT, (gpointer)caps);
 
@@ -696,15 +790,55 @@ static GstCaps* gst_pylon_src_fixate(GstBaseSrc* src, GstCaps* caps) {
     return caps;
   }
 
+  /* Select the structure containing preferred_gst_format when PFS/UserSet
+   * configured a specific PixelFormat (e.g. Bayer in structure 1 vs raw in 0).
+   */
+  guint chosen_idx = 0;
+  if (!preferred_gst_format.empty()) {
+    const guint n_structs = gst_caps_get_size(caps);
+    for (guint i = 0; i < n_structs; ++i) {
+      const GstStructure* cand = gst_caps_get_structure(caps, i);
+      const GValue* fmt_val = gst_structure_get_value(cand, "format");
+      if (!fmt_val) continue;
+      if (G_VALUE_HOLDS_STRING(fmt_val)) {
+        if (preferred_gst_format == g_value_get_string(fmt_val)) {
+          chosen_idx = i;
+          break;
+        }
+      } else if (GST_VALUE_HOLDS_LIST(fmt_val)) {
+        bool found = false;
+        const guint list_len = gst_value_list_get_size(fmt_val);
+        for (guint j = 0; j < list_len; ++j) {
+          const GValue* item = gst_value_list_get_value(fmt_val, j);
+          if (G_VALUE_HOLDS_STRING(item) &&
+              preferred_gst_format == g_value_get_string(item)) {
+            chosen_idx = i;
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+    }
+  }
+
   outcaps = gst_caps_new_empty();
-  st = gst_structure_copy(gst_caps_get_structure(caps, 0));
-  features = gst_caps_features_copy(gst_caps_get_features(caps, 0));
+  st = gst_structure_copy(gst_caps_get_structure(caps, chosen_idx));
+  features = gst_caps_features_copy(gst_caps_get_features(caps, chosen_idx));
   width_field = gst_structure_get_value(st, "width");
   gst_caps_unref(caps);
 
+  if (!preferred_gst_format.empty()) {
+    gst_structure_fixate_field_string(st, "format",
+                                      preferred_gst_format.c_str());
+  }
+
   if (gst_pylon_src_is_bayer(st) && GST_VALUE_HOLDS_INT_RANGE(width_field)) {
-    preferred_width_adjusted =
-        GST_ROUND_DOWN_4(gst_value_get_int_range_max(width_field));
+    preferred_width_adjusted = GST_ROUND_DOWN_4(preferred_width);
+    if (preferred_width_adjusted < gst_value_get_int_range_min(width_field)) {
+      preferred_width_adjusted =
+          GST_ROUND_DOWN_4(gst_value_get_int_range_max(width_field));
+    }
   } else {
     preferred_width_adjusted = preferred_width;
   }
@@ -889,6 +1023,8 @@ static gboolean gst_pylon_src_create_session(GstPylonSrc* self,
   gchar* pfs_location = NULL;
   gint device_index = PROP_DEVICE_INDEX_DEFAULT;
   gboolean enable_correction = PROP_ENABLE_CORRECTION_DEFAULT;
+  guint grab_timeout = PROP_GRAB_TIMEOUT_DEFAULT;
+  gboolean auto_reconnect = PROP_AUTO_RECONNECT_DEFAULT;
 #ifdef NVMM_ENABLED
   GstPylonNvsurfaceLayoutEnum nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
   guint gpu_id = PROP_GPU_ID_DEFAULT;
@@ -904,6 +1040,8 @@ static gboolean gst_pylon_src_create_session(GstPylonSrc* self,
   pfs_location = self->pfs_location ? g_strdup(self->pfs_location) : NULL;
   device_index = self->device_index;
   enable_correction = self->enable_correction;
+  grab_timeout = self->grab_timeout;
+  auto_reconnect = self->auto_reconnect;
 #ifdef NVMM_ENABLED
   nvsurface_layout = self->nvsurface_layout;
   gpu_id = self->gpu_id;
@@ -926,12 +1064,20 @@ static gboolean gst_pylon_src_create_session(GstPylonSrc* self,
     new_pylon = gst_pylon_new(GST_ELEMENT_CAST(self), device_user_name,
                               device_serial_number, device_index, user_set,
                               pfs_location, enable_correction, error);
-#ifdef NVMM_ENABLED
     if (new_pylon) {
+      gst_pylon_set_grab_timeout(new_pylon, grab_timeout);
+      gst_pylon_set_auto_reconnect(new_pylon, auto_reconnect);
+      GObject* cam_obj = gst_pylon_get_camera(new_pylon);
+      if (cam_obj) {
+        gst_pylon_object_set_framerate_callback(
+            cam_obj, gst_pylon_src_on_framerate_changed, self);
+        g_object_unref(cam_obj);
+      }
+#ifdef NVMM_ENABLED
       gst_pylon_set_nvsurface_layout(new_pylon, nvsurface_layout);
       gst_pylon_set_gpu_id(new_pylon, gpu_id);
-    }
 #endif
+    }
   } catch (const GenICam::GenericException& e) {
     g_set_error(error, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
@@ -1308,6 +1454,53 @@ static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf) {
 
 done:
   return ret;
+}
+
+static void gst_pylon_src_on_framerate_changed(gpointer user_data,
+                                               gdouble fps) {
+  GstPylonSrc* self = GST_PYLON_SRC(user_data);
+  if (!self) {
+    return;
+  }
+
+  gint num = 0;
+  gint den = 1;
+  if (fps > 0.0) {
+    gst_util_double_to_fraction(fps, &num, &den);
+  }
+
+  GST_OBJECT_LOCK(self);
+  if (num > 0) {
+    self->duration = gst_util_uint64_scale(GST_SECOND, den, num);
+  } else {
+    self->duration = GST_CLOCK_TIME_NONE;
+  }
+  GST_OBJECT_UNLOCK(self);
+
+  gst_element_post_message(GST_ELEMENT_CAST(self),
+                           gst_message_new_latency(GST_OBJECT_CAST(self)));
+}
+
+static gboolean gst_pylon_src_execute_command_action(
+    GstPylonSrc* self, const gchar* command_name) {
+  if (!self->pylon) {
+    if (!gst_pylon_src_start(GST_BASE_SRC(self))) {
+      GST_ERROR_OBJECT(
+          self, "Cannot execute command \"%s\": camera is not initialized",
+          command_name ? command_name : "(null)");
+      return FALSE;
+    }
+  }
+
+  GError* error = NULL;
+  const gboolean ok =
+      gst_pylon_execute_command(self->pylon, command_name, &error);
+  if (!ok && error) {
+    GST_WARNING_OBJECT(self, "execute-command \"%s\" failed: %s",
+                       command_name ? command_name : "(null)", error->message);
+    g_error_free(error);
+  }
+  return ok;
 }
 
 static guint gst_pylon_src_child_proxy_get_children_count(

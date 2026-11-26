@@ -185,9 +185,10 @@ static void gst_pylon_meta_fill_result_chunks(
   }
 }
 
-void gst_buffer_add_pylon_meta(
+void gst_buffer_add_pylon_meta_with_stride(
     GstBuffer* buffer,
-    const Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr) {
+    const Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr,
+    gsize override_stride) {
   g_return_if_fail(buffer != NULL);
 
   GST_LOG("Adding Pylon chunk meta to buffer %" GST_PTR_FORMAT,
@@ -203,11 +204,27 @@ void gst_buffer_add_pylon_meta(
   self->offset.offset_x = grab_result_ptr->GetOffsetX();
   self->offset.offset_y = grab_result_ptr->GetOffsetY();
   self->timestamp = grab_result_ptr->GetTimeStamp();
-  grab_result_ptr->GetStride(self->stride);
+  if (override_stride > 0) {
+    self->stride = override_stride;
+  } else {
+    try {
+      if (!grab_result_ptr->GetStride(self->stride)) {
+        self->stride = 0;
+      }
+    } catch (const Pylon::GenericException&) {
+      self->stride = 0;
+    }
+  }
 
   if (grab_result_ptr->IsChunkDataAvailable()) {
     gst_pylon_meta_fill_result_chunks(self, grab_result_ptr);
   }
+}
+
+void gst_buffer_add_pylon_meta(
+    GstBuffer* buffer,
+    const Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr) {
+  gst_buffer_add_pylon_meta_with_stride(buffer, grab_result_ptr, 0);
 }
 
 static gboolean gst_pylon_meta_init(GstMeta* meta, gpointer params,

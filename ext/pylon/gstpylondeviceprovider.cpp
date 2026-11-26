@@ -120,16 +120,24 @@ static void gst_pylon_device_init(GstPylonDevice* self) {
   self->fallback_index = -1;
 }
 
-static GstStaticCaps
-    pylon_device_template_caps = GST_STATIC_CAPS(GST_VIDEO_CAPS_MAKE(
-        "{ GRAY8, RGB, BGR, YUY2, UYVY }") ";"
-                                           "video/x-bayer, format = (string) { "
-                                           "rggb, bggr, gbrg, grbg }, "
-                                           "width = " GST_VIDEO_SIZE_RANGE
-                                           ", "
-                                           "height = " GST_VIDEO_SIZE_RANGE
-                                           ", "
-                                           "framerate = " GST_VIDEO_FPS_RANGE);
+// clang-format off
+#if GST_CHECK_VERSION(1, 24, 0)
+#  define GST_PYLON_BAYER_FORMATS \
+    "rggb, bggr, gbrg, grbg, " \
+    "rggb10le, bggr10le, gbrg10le, grbg10le, " \
+    "rggb12le, bggr12le, gbrg12le, grbg12le, " \
+    "rggb16le, bggr16le, gbrg16le, grbg16le"
+#else
+#  define GST_PYLON_BAYER_FORMATS "rggb, bggr, gbrg, grbg"
+#endif
+
+static GstStaticCaps pylon_device_template_caps = GST_STATIC_CAPS(
+    GST_VIDEO_CAPS_MAKE("{ GRAY8, GRAY16_LE, RGB, BGR, YUY2, UYVY }") ";"
+    "video/x-bayer, format = (string) { " GST_PYLON_BAYER_FORMATS " }, "
+    "width = " GST_VIDEO_SIZE_RANGE ", "
+    "height = " GST_VIDEO_SIZE_RANGE ", "
+    "framerate = " GST_VIDEO_FPS_RANGE);
+// clang-format on
 
 static GstDevice* gst_pylon_device_new_from_info(const Pylon::CDeviceInfo& info,
                                                  gint index) {
