@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import socket
+import ssl
 import sys
 import time
 import urllib.error
@@ -169,16 +170,20 @@ def _describe_transport_error(err):
             return "connection timed out"
         if isinstance(reason, socket.gaierror):
             return "DNS resolution failed"
+        if isinstance(reason, ssl.SSLError):
+            return "TLS handshake failed"
         if isinstance(reason, OSError):
             code = f" errno={reason.errno}" if reason.errno is not None else ""
             return f"{type(reason).__name__}{code}"
         return type(reason).__name__
     if isinstance(err, (TimeoutError, socket.timeout)):
         return "connection timed out"
+    if isinstance(err, ssl.SSLError):
+        return "TLS handshake failed"
     return type(err).__name__
 
 
-def _open_with_retries(url, token, timeout=30, max_attempts=3):
+def _open_with_retries(url, token, timeout=30, max_attempts=4):
     headers = {
         "Authorization": f"Bearer {token}",
         "User-Agent": "gst-plugin-pylon-ci/1.0",
@@ -196,7 +201,7 @@ def _open_with_retries(url, token, timeout=30, max_attempts=3):
             last_err = err
             if attempt == max_attempts:
                 break
-        time.sleep(min(2 * attempt, 6))
+        time.sleep(min(2 * attempt, 10))
     raise SanitizedSDKError(
         f"SDK server request failed after {max_attempts} attempt(s): "
         f"{_describe_transport_error(last_err)}"
@@ -207,7 +212,7 @@ def list_storage_children(api_base, token, repo_path):
     """List immediate children of a repository folder via the Storage API."""
     encoded = urllib.parse.quote(repo_path.strip("/"), safe="/")
     url = f"{api_base}/api/storage/{encoded}"
-    with _open_with_retries(url, token, timeout=30, max_attempts=3) as resp:
+    with _open_with_retries(url, token, timeout=30) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
     children = []
     for entry in payload.get("children", ()):
@@ -294,7 +299,7 @@ def download_file(api_base, token, source, destination):
 
     encoded = urllib.parse.quote(source.strip("/"), safe="/")
     url = f"{api_base}/{encoded}"
-    with _open_with_retries(url, token, timeout=120, max_attempts=3) as resp:
+    with _open_with_retries(url, token, timeout=120) as resp:
         with open(destination, "wb") as out:
             while True:
                 chunk = resp.read(1024 * 1024)
