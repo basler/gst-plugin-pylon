@@ -27,6 +27,22 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  style_check:
+    name: Code formatting check (clang-format)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Verify C/C++ formatting
+        run: |
+          git ls-files '*.c' '*.cpp' '*.h' '*.hpp' | xargs -r clang-format --dry-run --Werror
+
   prepare:
     name: Prepare SDK inputs
     runs-on: ubuntu-24.04-arm
@@ -325,6 +341,21 @@ jobs:
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
 
+      - name: Compile and run unit tests with ASan + UBSan (x86_64)
+        if: matrix.arch == 'x86_64'
+        run: |
+          export PYLON_ROOT=/opt/pylon
+          export LD_LIBRARY_PATH="/opt/pylon/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          export CC=clang
+          export CXX=clang++
+          export PYLON_CAMEMU=3
+          export ASAN_OPTIONS=detect_leaks=0:halt_on_error=1:abort_on_error=1
+          export UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_stacktrace=1
+          . build_python/bin/activate
+          meson setup builddir_asan -Db_sanitize=address,undefined -Db_lundef=false -Dpython-bindings=disabled
+          ninja -C builddir_asan
+          meson test -C builddir_asan generic_meta generic_nvmmcolor generic_featureprior generic_imagehandler --print-errorlogs
+
   build_windows:
     name: Build & test Windows (x86_64)
     needs: [prepare, download_desktop_sdk]
@@ -402,7 +433,7 @@ jobs:
           $env:PKG_CONFIG_PATH = "$gstRoot\lib\pkgconfig"
           $env:PKG_CONFIG = "$gstRoot\bin\pkg-config.exe"
 
-          meson setup build --prefix="$gstRoot"
+          meson setup build --prefix="$gstRoot" -Dpython-bindings=enabled
           ninja -C build
           ninja -C build test
           ninja -C build install
@@ -424,6 +455,28 @@ jobs:
           }
           gst-inspect-1.0.exe pylonsrc
           gst-launch-1.0.exe pylonsrc num-buffers=10 ! fakesink
+
+      - name: Package Windows release binaries (.dll + .pdb + headers)
+        shell: pwsh
+        run: |
+          $stage = Join-Path $PWD "windows-pkg/gst-plugin-pylon-windows-x86_64"
+          New-Item -ItemType Directory -Force -Path "$stage/lib/gstreamer-1.0", "$stage/bin", "$stage/include/gst/pylon", "$stage/python" | Out-Null
+          Get-ChildItem -Path build/ext/pylon -Include *.dll,*.pdb -Recurse | Copy-Item -Destination "$stage/lib/gstreamer-1.0/" -Force
+          Get-ChildItem -Path build/gst-libs/gst/pylon -Include *.dll,*.pdb,*.lib -Recurse | Copy-Item -Destination "$stage/bin/" -Force
+          Get-ChildItem -Path gst-libs/gst/pylon -Filter *.h | Copy-Item -Destination "$stage/include/gst/pylon/" -Force
+          Get-ChildItem -Path build/bindings -Include *.pyd,*.pdb -Recurse -ErrorAction SilentlyContinue | Copy-Item -Destination "$stage/python/" -Force
+          Copy-Item LICENSE "$stage/" -Force
+          Copy-Item README.md "$stage/" -Force
+          $tagVer = if ($env:GITHUB_REF_NAME -match '^v') { $env:GITHUB_REF_NAME } else { "v2.0.0" }
+          New-Item -ItemType Directory -Force -Path windows-artifacts | Out-Null
+          Compress-Archive -Path "$stage/*" -DestinationPath "windows-artifacts/gst-plugin-pylon-$tagVer-windows-x86_64.zip" -Force
+
+      - name: Upload Windows binary archive
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-binaries-x86_64
+          path: windows-artifacts/*.zip
+          if-no-files-found: error
 
   build_macos:
     name: Build & test macOS (arm64)
@@ -447,7 +500,7 @@ jobs:
           echo "PYLON_ROOT=$PYLON_ROOT" >> "$GITHUB_ENV"
 
       - name: Install build tools and GStreamer
-        run: brew install meson ninja cmake pkgconf gstreamer
+        run: brew install meson ninja cmake pkgconf gstreamer pygobject3
 
       - name: Compile and test
         env:
@@ -461,7 +514,7 @@ jobs:
           done
           export CMAKE_PREFIX_PATH="$PYLON_ROOT:$PYLON_ROOT/Frameworks/pylon.framework/Versions/A/Resources:$PYLON_ROOT/Frameworks/pylon.framework/Resources:${CMAKE_PREFIX_PATH:-}"
           export PKG_CONFIG_PATH="$(brew --prefix)/lib/pkgconfig:$(brew --prefix gstreamer)/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
-          meson setup builddir --prefix "$PWD/install"
+          meson setup builddir --prefix "$PWD/install" -Dpython-bindings=enabled
           ninja -C builddir
           meson test -C builddir --print-errorlogs
           ninja -C builddir install
@@ -771,6 +824,7 @@ jobs:
     name: Publish GitHub Release assets
     if: needs.prepare.outputs.is_release_build == 'true'
     needs:
+      - style_check
       - prepare
       - build_linux
       - build_windows
@@ -793,6 +847,12 @@ jobs:
           merge-multiple: true
           path: release-assets
 
+      - name: Download Windows release binaries
+        uses: actions/download-artifact@v7
+        with:
+          name: windows-binaries-x86_64
+          path: release-assets
+
       - name: Upload packages and SBOMs to GitHub Release
         uses: softprops/action-gh-release@v2
         env:
@@ -802,6 +862,7 @@ jobs:
           prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, '-') }}
           files: |
             release-assets/*.deb
+            release-assets/*.zip
             release-assets/*.cdx.json
             release-assets/*.grype.txt
 

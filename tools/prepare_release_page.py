@@ -54,7 +54,7 @@ def collect_local_assets(assets_dir, repo_url, version):
     for path in sorted(Path(assets_dir).iterdir()):
         if not path.is_file():
             continue
-        if path.name.endswith((".deb", ".cdx.json", ".grype.txt")):
+        if path.name.endswith((".deb", ".zip", ".cdx.json", ".grype.txt")):
             files.append({"name": path.name, "url": f"{base_url}/{path.name}"})
     return files
 
@@ -144,9 +144,28 @@ def generate_sbom_section(files):
     return "## CycloneDX Build SBOMs & Vulnerability Summaries\n\n" + "\n".join(sbom_lines) + "\n"
 
 
+def generate_windows_section(files):
+    win_links = [
+        f"- [{item['name']}]({item['url']})"
+        for item in sorted(files, key=lambda x: x["name"])
+        if item["name"].endswith(".zip") and "windows" in item["name"].lower()
+    ]
+    if not win_links:
+        return ""
+    return (
+        "## Windows x86_64 Prebuilt Binaries (MSVC GStreamer 1.26+)\n\n"
+        + "\n".join(win_links)
+        + "\n"
+    )
+
+
 def generate_release_template(files, version, release_notes):
     sections = [f"# Release {version}\n"]
     sections.append(generate_package_table(files))
+
+    win_section = generate_windows_section(files)
+    if win_section:
+        sections.append(win_section)
 
     sbom_section = generate_sbom_section(files)
     if sbom_section:

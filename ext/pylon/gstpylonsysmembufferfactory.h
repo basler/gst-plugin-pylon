@@ -40,7 +40,7 @@
 class GstPylonSysMemBufferFactory : public GstPylonBufferFactory {
  public:
   GstPylonSysMemBufferFactory() = default;
-  virtual void SetConfig(const GstCaps *caps) override{};
+  virtual void SetConfig(const GstCaps *caps) override {};
   virtual void AllocateBuffer(size_t buffer_size, void **p_created_buffer,
                               intptr_t &buffer_context) override;
   virtual void FreeBuffer(void *p_created_buffer,

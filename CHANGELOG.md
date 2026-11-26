@@ -1,21 +1,53 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [2.0.0] - Unreleased
 
 ### Added
 - Modular `GstPylon` session architecture (`gstpylonsession`, `gstpyloncapture`,
-  `gstpyloncaps`, `gstpyloninspect`, `gstpylonschema`) with ADRs 0001 and 0002
+  `gstpyloncaps`, `gstpyloninspect`, `gstpylonschema`) with ADRs 0001, 0002, and
+  0003
+- Lazy `class_init` (`gst_pylon_should_inspect_devices`) so normal pipeline and
+  OpenCV startups skip Pylon runtime initialization and camera enumeration
+  unless running `gst-inspect*` or `GST_PYLON_INSPECT_DEVICES=1`
+- Declarative Basler Gen2 feature priors (`gstpylonfeatureprior`) and cached
+  enum `GParamFlags` to eliminate redundant `TLParamsLocked` and invalidator
+  probing on 2nd-generation cameras (`ace 2`, `dart`, `boost`, `racer 2`)
+- Metadata-only `GstPylonDeviceProvider` (`pylondeviceprovider`) at
+  `GST_RANK_NONE` for safe, non-blocking camera discovery without opening
+  devices or hijacking OpenCV / `autovideosrc`
+- Transport-layer filtering via `PYLONSRC_SKIP_TRANSPORT_LAYERS` /
+  `GST_PYLON_SKIP_TL` (e.g. `gige,cxp`) with RAII `CTlFactory::ReleaseTl`
+- High bit-depth pixel formats: `Mono10`/`Mono12`/`Mono16` → `GRAY16_LE` (with
+  full-range 16-bit scaling for 10/12-bit unpacked mono) and 10/12/16-bit Bayer
+  (`bggr10le`, `bggr12le`, `bggr16le`, etc. on GStreamer ≥ 1.24)
+- Basler Compression Beyond transparent decompression via
+  `Pylon::CImageDecompressor` (#98, #99)
+- GenICam `ICommand` execution via `execute-command` action signal on
+  `pylonsrc` (supporting selector syntax such as `TriggerSoftware-FrameStart`,
+  #58)
+- Capture reliability controls: `grab-timeout` property (#45), structured
+  `pylonsrc-capture-error` / `pylonsrc-reconnect` element bus messages (#17),
+  and opt-in `auto-reconnect` recovery (#7)
+- Dynamic runtime controls: runtime `AcquisitionFrameRate` updates refresh
+  buffer duration and post `GST_MESSAGE_LATENCY` (#85), `ReverseX`/`ReverseY`
+  live probing (#87), and PFS/UserSet-driven caps fixation (#47, #81)
 - Dual cache model (`GstPylonCache` for limits/flags and `GstPylonInspectCache`
   for `gst-inspect` blurbs) and read-only `gst-inspect` by default
   (`GST_PYLON_PROBE_LIMITS=1` opt-in for full dynamic probing)
-- Golden `gst-inspect` compatibility test suite (`tests/compat/`), `generic_meta`,
-  and `pylon_pylonsrc_camemu` regression tests
+- Golden `gst-inspect` compatibility test suite (`tests/compat/`),
+  `generic_featureprior`, `generic_meta`, and `pylon_pylonsrc_camemu` tests
 - Jetson Multimedia API (`nvbufsurface.h`) fallback detection for NVMM builds
   without DeepStream
-- Boolean and string chunk support in CPython `abi3` `pygstpylon`
+- Boolean and string chunk support in CPython `abi3` `pygstpylon`, plus Windows
+  `.pyd` + `.dll`/`.pdb` release zip packaging and CI `clang-format` /
+  ASan+UBSan checks
 
 ### Fixed
+- Eliminated double `UserSetLoad` execution during session startup
+- Made dynamic `GstPylonObject` private offset per-subclass and thread-safe for
+  multi-camera pipelines, and cleaned up sessions opened in `NULL` state on
+  finalize
 - Optional `OffsetX`/`OffsetY` handling for line-scan cameras
 - Direct camera open by serial number or user-defined name without full device
   enumeration
@@ -25,8 +57,9 @@ All notable changes to this project will be documented in this file.
 - `GstPylonMeta.block_id` now stores transport `GetBlockID()` (with `GstBuffer`
   offset falling back to `image_number` when transport reports `UINT64_MAX`)
 - `capture-error=keep` marks delivered buffers with `GST_BUFFER_FLAG_CORRUPTED`
-- Hardened NVMM `NvBufSurfaceAllocate` / `NvBufSurfaceMap` error handling and
-  `NvBufSurfaceUnMap` on free
+- Hardened NVMM `NvBufSurfaceAllocate` / `NvBufSurfaceMap` error handling,
+  `NvBufSurfaceUnMap` on free, and strict `memory:NVMM` format filtering
+- Fixed Hotdoc C++ source globs in `docs/meson.build`
 
 ### Changed
 - Bumped project version to `2.0.0` and set explicit `cpp_std=c++17` in

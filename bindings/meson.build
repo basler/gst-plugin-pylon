@@ -22,10 +22,16 @@ py_install_dir = py3.get_install_dir()
 # imports on Debian bookworm (3.11) and Ubuntu 24.04 (3.12). Meson 0.61 does
 # not have python.extension_module(limited_api:), so name the shared module
 # explicitly with the standard abi3 suffix.
+if host_machine.system() == 'windows'
+  pymeta_suffix = 'pyd'
+else
+  pymeta_suffix = 'abi3.so'
+endif
+
 pymeta = shared_module('pygstpylon',
   pygstpylon_sources,
   name_prefix : '',
-  name_suffix : 'abi3.so',
+  name_suffix : pymeta_suffix,
   install : true,
   install_dir : py_install_dir,
   install_rpath : pylon_rpath,
