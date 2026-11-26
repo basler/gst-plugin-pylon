@@ -42,6 +42,8 @@
 #include <cuda_runtime.h>
 #include <gst/video/video.h>
 
+#include <stdexcept>
+
 GstPylonDsNvmmBufferFactory::GstPylonDsNvmmBufferFactory(
     const GstPylonNvsurfaceLayoutEnum nvsurface_layout, const guint gpu_id) {
   this->gpu_id = gpu_id;
@@ -105,10 +107,22 @@ void GstPylonDsNvmmBufferFactory::AllocateBuffer(size_t buffer_size,
   int batch_size = 1;
   NvBufSurface* surf = nullptr;
 
-  NvBufSurfaceAllocate(&surf, batch_size, &create_params);
+  int alloc_ret = NvBufSurfaceAllocate(&surf, batch_size, &create_params);
+  if (alloc_ret != 0 || surf == nullptr) {
+    free(buffer_mem);
+    *p_created_buffer = nullptr;
+    buffer_context = 0;
+    throw std::runtime_error("NvBufSurfaceAllocate failed");
+  }
   surf->numFilled = 1;
 
-  NvBufSurfaceMap(surf, -1, -1, NVBUF_MAP_READ_WRITE);
+  if (NvBufSurfaceMap(surf, -1, -1, NVBUF_MAP_READ_WRITE) != 0) {
+    NvBufSurfaceDestroy(surf);
+    free(buffer_mem);
+    *p_created_buffer = nullptr;
+    buffer_context = 0;
+    throw std::runtime_error("NvBufSurfaceMap failed");
+  }
 
   *p_created_buffer = buffer_mem;
   buffer_context = reinterpret_cast<intptr_t>(surf);
@@ -118,7 +132,10 @@ void GstPylonDsNvmmBufferFactory::FreeBuffer(void* p_created_buffer,
                                              intptr_t buffer_context) {
   NvBufSurface* surf = reinterpret_cast<NvBufSurface*>(buffer_context);
 
-  NvBufSurfaceDestroy(surf);
+  if (surf) {
+    NvBufSurfaceUnMap(surf, -1, -1);
+    NvBufSurfaceDestroy(surf);
+  }
   free(p_created_buffer);
 }
 

@@ -34,17 +34,18 @@
 
 #include <errno.h>
 #include <glib/gfileutils.h>
+#include <glib/gstdio.h>
 #include <gst/pylon/gstpylonincludes.h>
 
 #define DIRERR -1
 
 /* prototypes */
 static std::string gst_pylon_cache_create_filepath(
-    const std::string &cache_filename);
+    const std::string& cache_filename);
 
 static std::string gst_pylon_cache_create_filepath(
-    const std::string &cache_filename) {
-  gchar *filename_hash =
+    const std::string& cache_filename) {
+  gchar* filename_hash =
       g_compute_checksum_for_string(G_CHECKSUM_SHA256, cache_filename.c_str(),
                                     strlen(cache_filename.c_str()));
   std::string filename_hash_str = filename_hash;
@@ -53,7 +54,7 @@ static std::string gst_pylon_cache_create_filepath(
   std::string dirpath = std::string(g_get_user_cache_dir()) + "/" + "gstpylon";
 
   /* Create gstpylon directory */
-  gint dir_permissions = 0775;
+  gint dir_permissions = 0700;
   gint ret = g_mkdir_with_parents(dirpath.c_str(), dir_permissions);
   std::string filepath = dirpath + "/" + filename_hash_str + ".config";
   if (DIRERR == ret) {
@@ -65,10 +66,12 @@ static std::string gst_pylon_cache_create_filepath(
   return filepath;
 }
 
-GstPylonCache::GstPylonCache(const std::string &name)
+GstPylonCache::GstPylonCache(const std::string& name,
+                             gboolean enable_limit_probe)
     : filepath(gst_pylon_cache_create_filepath(name)),
       feature_cache_dict(g_key_file_new()),
-      is_modified(FALSE) {
+      is_modified(FALSE),
+      enable_limit_probe(enable_limit_probe) {
   /* load initial cache file */
   if (!LoadCacheFile()) {
     GST_LOG("No feature cache file found");
@@ -76,6 +79,20 @@ GstPylonCache::GstPylonCache(const std::string &name)
 }
 
 GstPylonCache::~GstPylonCache() { g_key_file_free(this->feature_cache_dict); }
+
+gboolean GstPylonCache::IsLimitProbeEnabled() const {
+  const gchar* env = g_getenv("GST_PYLON_PROBE_LIMITS");
+  if (env) {
+    if (g_strcmp0(env, "0") == 0 || g_ascii_strcasecmp(env, "false") == 0) {
+      return FALSE;
+    }
+    if (g_strcmp0(env, "1") == 0 || g_ascii_strcasecmp(env, "true") == 0) {
+      return TRUE;
+    }
+  }
+
+  return enable_limit_probe;
+}
 
 gboolean GstPylonCache::LoadCacheFile() {
   gboolean ret = TRUE;
@@ -99,10 +116,10 @@ gboolean GstPylonCache::LoadCacheFile() {
 gboolean GstPylonCache::HasNewSettings() { return is_modified; }
 
 void GstPylonCache::CreateCacheFile() {
-  GError *file_err = NULL;
+  GError* file_err = NULL;
 
 #if defined(GLIB_VERSION_2_66) && GLIB_VERSION_MIN_REQUIRED >= GLIB_VERSION_2_66
-  gchar *contents = NULL;
+  gchar* contents = NULL;
   gsize length = 0;
 
   contents = g_key_file_to_data(this->feature_cache_dict, &length, NULL);
@@ -110,7 +127,7 @@ void GstPylonCache::CreateCacheFile() {
 
   gboolean ret = g_file_set_contents_full(
       this->filepath.c_str(), contents, length,
-      static_cast<GFileSetContentsFlags>(G_FILE_SET_CONTENTS_CONSISTENT), 0666,
+      static_cast<GFileSetContentsFlags>(G_FILE_SET_CONTENTS_CONSISTENT), 0600,
       &file_err);
 
   g_free(contents);
@@ -124,25 +141,30 @@ void GstPylonCache::CreateCacheFile() {
     g_error_free(file_err);
     throw Pylon::GenericException(file_err_str.c_str(), __FILE__, __LINE__);
   }
+
+  if (g_chmod(this->filepath.c_str(), 0600) != 0) {
+    GST_WARNING("Failed to set permissions on cache file %s: %s",
+                this->filepath.c_str(), strerror(errno));
+  }
 }
 
-void GstPylonCache::SetIntegerAttribute(const char *feature,
-                                        const char *attribute,
+void GstPylonCache::SetIntegerAttribute(const char* feature,
+                                        const char* attribute,
                                         const gint64 val) {
   g_key_file_set_int64(this->feature_cache_dict, feature, attribute, val);
   is_modified = true;
 }
 
-void GstPylonCache::SetDoubleAttribute(const char *feature,
-                                       const char *attribute,
+void GstPylonCache::SetDoubleAttribute(const char* feature,
+                                       const char* attribute,
                                        const gdouble val) {
   g_key_file_set_double(this->feature_cache_dict, feature, attribute, val);
   is_modified = true;
 }
 
-bool GstPylonCache::GetIntegerAttribute(const char *feature,
-                                        const char *attribute, gint64 &val) {
-  GError *err = NULL;
+bool GstPylonCache::GetIntegerAttribute(const char* feature,
+                                        const char* attribute, gint64& val) {
+  GError* err = NULL;
 
   gint64 value =
       g_key_file_get_int64(this->feature_cache_dict, feature, attribute, &err);
@@ -156,9 +178,9 @@ bool GstPylonCache::GetIntegerAttribute(const char *feature,
   return true;
 }
 
-bool GstPylonCache::GetDoubleAttribute(const char *feature,
-                                       const char *attribute, gdouble &val) {
-  GError *err = NULL;
+bool GstPylonCache::GetDoubleAttribute(const char* feature,
+                                       const char* attribute, gdouble& val) {
+  GError* err = NULL;
 
   gdouble value =
       g_key_file_get_double(this->feature_cache_dict, feature, attribute, &err);
@@ -172,33 +194,45 @@ bool GstPylonCache::GetDoubleAttribute(const char *feature,
   return true;
 }
 
-void GstPylonCache::SetIntProps(const gchar *feature_name, const gint64 min,
+void GstPylonCache::SetIntProps(const gchar* feature_name, const gint64 min,
                                 const gint64 max, const GParamFlags flags) {
   SetIntegerAttribute(feature_name, "min", min);
   SetIntegerAttribute(feature_name, "max", max);
   SetIntegerAttribute(feature_name, "flags", static_cast<gint64>(flags));
 }
-void GstPylonCache::SetDoubleProps(const gchar *feature_name, const gdouble min,
+void GstPylonCache::SetDoubleProps(const gchar* feature_name, const gdouble min,
                                    const gdouble max, const GParamFlags flags) {
   SetDoubleAttribute(feature_name, "min", min);
   SetDoubleAttribute(feature_name, "max", max);
   SetIntegerAttribute(feature_name, "flags", static_cast<gint64>(flags));
 }
 
-bool GstPylonCache::GetIntProps(const gchar *feature_name, gint64 &min,
-                                gint64 &max, GParamFlags &flags) {
+bool GstPylonCache::GetIntProps(const gchar* feature_name, gint64& min,
+                                gint64& max, GParamFlags& flags) {
   if (!GetIntegerAttribute(feature_name, "min", min)) return false;
   if (!GetIntegerAttribute(feature_name, "max", max)) return false;
   gint64 flag_val = 0;
   if (!GetIntegerAttribute(feature_name, "flags", flag_val)) return false;
+
+  static constexpr gint64 kMaxSaneDimension = 32768;
+  if ((g_str_has_suffix(feature_name, "Width") ||
+       g_str_has_suffix(feature_name, "Height") ||
+       g_strcmp0(feature_name, "Width") == 0 ||
+       g_strcmp0(feature_name, "Height") == 0) &&
+      (max > kMaxSaneDimension || min < 0 || min > max)) {
+    GST_WARNING("Ignoring invalid cache entry for %s (min=%" G_GINT64_FORMAT
+                " max=%" G_GINT64_FORMAT ")",
+                feature_name, min, max);
+    return false;
+  }
 
   flags = static_cast<GParamFlags>(flag_val);
 
   return true;
 }
 
-bool GstPylonCache::GetDoubleProps(const char *feature_name, gdouble &min,
-                                   gdouble &max, GParamFlags &flags) {
+bool GstPylonCache::GetDoubleProps(const char* feature_name, gdouble& min,
+                                   gdouble& max, GParamFlags& flags) {
   if (!GetDoubleAttribute(feature_name, "min", min)) return false;
   if (!GetDoubleAttribute(feature_name, "max", max)) return false;
 
@@ -208,4 +242,16 @@ bool GstPylonCache::GetDoubleProps(const char *feature_name, gdouble &min,
   flags = static_cast<GParamFlags>(flag_val);
 
   return true;
+}
+
+bool GstPylonCache::GetFlags(const gchar* feature_name, GParamFlags& flags) {
+  gint64 flag_val = 0;
+  if (!GetIntegerAttribute(feature_name, "flags", flag_val)) return false;
+  flags = static_cast<GParamFlags>(flag_val);
+  return true;
+}
+
+void GstPylonCache::SetFlags(const gchar* feature_name,
+                             const GParamFlags flags) {
+  SetIntegerAttribute(feature_name, "flags", static_cast<gint64>(flags));
 }

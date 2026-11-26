@@ -36,7 +36,7 @@
 #include <string>
 #include <vector>
 
-bool isSupportedPylonFormat(const std::string &format);
+bool isSupportedPylonFormat(const std::string& format);
 
 /* Pixel format definitions */
 typedef struct {
@@ -57,16 +57,16 @@ const std::vector<PixelFormatMappingType> pixel_format_mapping_bayer = {
     {"BayerRG8", "rggb"},
     {"BayerGB8", "gbrg"}};
 
-bool isSupportedPylonFormat(const std::string &format) {
+inline bool isSupportedPylonFormat(const std::string& format) {
   bool res = false;
-  for (const auto &fd : pixel_format_mapping_raw) {
+  for (const auto& fd : pixel_format_mapping_raw) {
     if (fd.pfnc_name == format) {
       res = true;
       break;
     }
   }
   if (!res) {
-    for (const auto &fd : pixel_format_mapping_bayer) {
+    for (const auto& fd : pixel_format_mapping_bayer) {
       if (fd.pfnc_name == format) {
         res = true;
         break;

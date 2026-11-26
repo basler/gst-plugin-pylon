@@ -34,6 +34,11 @@
 #define _GST_PYLON_OBJECT_H_
 
 #include <gst/gst.h>
+#ifdef HAVE_CONFIG_H
+#  include "config.h"
+#endif
+
+#include <gst/pylon/gstpylon-prelude.h>
 #include <gst/pylon/gstpyloncache.h>
 #include <gst/pylon/gstpylonincludes.h>
 
@@ -55,22 +60,34 @@ typedef struct {
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera;
   GenApi::INodeMap* nodemap;
   gboolean enable_correction;
+  gboolean framerate_configured;
   dimension_t dimension_cache;
 } GstPylonObjectPrivate;
 
 typedef struct {
-  const std::string& device_name;
-  GstPylonCache& feature_cache;
-  GenApi::INodeMap& nodemap;
-} GstPylonObjectDeviceMembers;
+  std::string device_full_name;
+  std::string schema_cache_key;
+  GstPylonCache* feature_cache;
+  GenApi::INodeMap* nodemap;
 
-EXT_PYLONSRC_API GType gst_pylon_object_register(const std::string& device_name,
-                                                 GstPylonCache& feature_cache,
-                                                 GenApi::INodeMap& nodemap);
-EXT_PYLONSRC_API GObject* gst_pylon_object_new(
+  GstPylonCache& cache() const { return *feature_cache; }
+  GenApi::INodeMap& node_map() const { return *nodemap; }
+} GstPylonObjectSchema;
+
+typedef struct {
+  GstPylonObjectSchema schema;
+} GstPylonObjectClassData;
+
+EXT_PYLONSRC_API GType
+gst_pylon_object_register_schema(const GstPylonObjectSchema& schema);
+EXT_PYLONSRC_API GObject* gst_pylon_object_new_for_schema(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const std::string& device_name, GenApi::INodeMap* nodemap,
-    gboolean enable_correction);
+    const GstPylonObjectSchema& schema, gboolean enable_correction);
+EXT_PYLONSRC_API void gst_pylon_object_set_enable_correction(
+    GObject* obj, gboolean enable_correction);
+EXT_PYLONSRC_API gboolean
+gst_pylon_object_is_framerate_configured(GObject* obj);
+EXT_PYLONSRC_API void gst_pylon_object_mark_framerate_configured(GObject* obj);
 
 EXT_PYLONSRC_API void gst_pylon_object_set_pylon_selector(
     GenApi::INodeMap& nodemap, const gchar* selector_name,

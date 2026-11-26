@@ -50,13 +50,13 @@
 
 typedef struct _Context Context;
 struct _Context {
-  GMainLoop *loop;
-  GstElement *pylonsrc;
-  GstElement *overlay;
+  GMainLoop* loop;
+  GstElement* pylonsrc;
+  GstElement* overlay;
 };
 
 #ifdef G_OS_UNIX
-static gboolean sig_handler(Context *ctx) {
+static gboolean sig_handler(Context* ctx) {
   g_return_val_if_fail(ctx, FALSE);
   g_return_val_if_fail(ctx->loop, FALSE);
 
@@ -67,8 +67,8 @@ static gboolean sig_handler(Context *ctx) {
 }
 #endif
 
-static void print_error(GstMessage *msg, GError *error, gchar *dbg,
-                        const gchar *tag) {
+static void print_error(GstMessage* msg, GError* error, gchar* dbg,
+                        const gchar* tag) {
   g_return_if_fail(msg);
   g_return_if_fail(error);
   g_return_if_fail(tag);
@@ -80,10 +80,11 @@ static void print_error(GstMessage *msg, GError *error, gchar *dbg,
   g_free(dbg);
 }
 
-static gboolean bus_callback(GstBus *bus, GstMessage *msg, Context *ctx) {
-  GError *err = NULL;
-  gchar *dbg_info = NULL;
+static gboolean bus_callback(GstBus* bus, GstMessage* msg, Context* ctx) {
+  GError* err = NULL;
+  gchar* dbg_info = NULL;
 
+  (void)bus;
   g_return_val_if_fail(ctx, FALSE);
   g_return_val_if_fail(ctx->loop, FALSE);
 
@@ -110,11 +111,11 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, Context *ctx) {
   return TRUE;
 }
 
-static void try_enable_all_chunks(Context *ctx) {
-  GParamSpec **property_specs = NULL;
-  GObject *cam = NULL;
+static void try_enable_all_chunks(Context* ctx) {
+  GParamSpec** property_specs = NULL;
+  GObject* cam = NULL;
   guint num_properties = 0;
-  GstChildProxy *cp = NULL;
+  GstChildProxy* cp = NULL;
   gboolean has_chunks = FALSE;
 
   g_return_if_fail(ctx);
@@ -130,7 +131,7 @@ static void try_enable_all_chunks(Context *ctx) {
 
   /* FIXME: how to check if a property is available?? */
   for (size_t i = 0; i < num_properties; i++) {
-    const gchar *prop_name = g_param_spec_get_name(property_specs[i]);
+    const gchar* prop_name = g_param_spec_get_name(property_specs[i]);
     if (g_str_has_prefix(prop_name, "ChunkModeActive")) {
       g_print("try enable chunk mode\n");
       g_object_set(cam, prop_name, TRUE, NULL);
@@ -142,7 +143,7 @@ static void try_enable_all_chunks(Context *ctx) {
   if (has_chunks) {
     g_print("-> success\n");
     for (size_t i = 0; i < num_properties; i++) {
-      const gchar *prop_name = g_param_spec_get_name(property_specs[i]);
+      const gchar* prop_name = g_param_spec_get_name(property_specs[i]);
       if (g_str_has_prefix(prop_name, "ChunkEnable")) {
         g_print("enable %s\n", prop_name);
         g_object_set(cam, prop_name, TRUE, NULL);
@@ -151,20 +152,21 @@ static void try_enable_all_chunks(Context *ctx) {
   }
 }
 
-static GstPadProbeReturn cb_have_data(GstPad *pad, GstPadProbeInfo *info,
+static GstPadProbeReturn cb_have_data(GstPad* pad, GstPadProbeInfo* info,
                                       gpointer user_data) {
-  GstBuffer *buffer;
-  GstPylonMeta *meta = NULL;
-  Context *ctx = (Context *)user_data;
-  gchar *meta_str = NULL;
-  gchar *tmp_str = NULL;
+  GstBuffer* buffer;
+  GstPylonMeta* meta = NULL;
+  Context* ctx = (Context*)user_data;
+  gchar* meta_str = NULL;
+  gchar* tmp_str = NULL;
   gint64 int_chunk;
   gdouble double_chunk;
+  (void)pad;
 
   g_return_val_if_fail(ctx, GST_PAD_PROBE_DROP);
 
   buffer = GST_PAD_PROBE_INFO_BUFFER(info);
-  meta = (GstPylonMeta *)gst_buffer_get_meta(buffer, GST_PYLON_META_API_TYPE);
+  meta = (GstPylonMeta*)gst_buffer_get_meta(buffer, GST_PYLON_META_API_TYPE);
 
   meta_str = g_strdup_printf(
       "ID/img_num/skipped_num %lu/%lu/%lu\noffset %lu/%lu\npylon_timestamp "
@@ -174,7 +176,7 @@ static GstPadProbeReturn cb_have_data(GstPad *pad, GstPadProbeInfo *info,
 
   /* show chunks embedded in the stream */
   for (int idx = 0; idx < gst_structure_n_fields(meta->chunks); idx++) {
-    const gchar *chunk_name = gst_structure_nth_field_name(meta->chunks, idx);
+    const gchar* chunk_name = gst_structure_nth_field_name(meta->chunks, idx);
     GType chunk_type = gst_structure_get_field_type(meta->chunks, chunk_name);
     /* display double and int types */
     switch (chunk_type) {
@@ -204,16 +206,16 @@ static GstPadProbeReturn cb_have_data(GstPad *pad, GstPadProbeInfo *info,
   return GST_PAD_PROBE_OK;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   Context ctx = {0};
-  GstElement *pipe = NULL;
-  GstBus *bus = NULL;
+  GstElement* pipe = NULL;
+  GstBus* bus = NULL;
   guint bus_watch = 0;
-  GError *error = NULL;
+  GError* error = NULL;
   gint ret = EXIT_FAILURE;
   gulong padid = -1;
-  GstPad *pad;
-  const gchar *desc =
+  GstPad* pad;
+  const gchar* desc =
       "pylonsrc capture-error=skip cam::ExposureAuto=Continuous "
       "name=" PYLONSRC_NAME
       " ! textoverlay font-desc='monospace' line-alignment=left "

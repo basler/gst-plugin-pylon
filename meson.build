@@ -1,8 +1,9 @@
 project('gst-plugin-pylon', 'c', 'cpp',
-  version : '1.1.0',
+  version : '2.0.0',
   meson_version : '>= 0.61',
   default_options : [ 'warning_level=1',
-                      'buildtype=debugoptimized' ])
+                      'buildtype=debugoptimized',
+                      'cpp_std=c++17' ])
 
 glib_req = '>= 2.56.0'
 
@@ -288,21 +289,18 @@ if fs.is_dir(join_paths(root,'.git/hooks'))
   message('install git commit hooks')
   hook_file_src = root / 'hooks' / 'pre-commit.hook'
   hook_file_dst = root / '.git' / 'hooks' / 'pre-commit'
-  run_command(python3, '-c', 'import shutil; shutil.copy("@0@", "@1@")'.format(hook_file_src, hook_file_dst), check : true)
+  run_command(python3, '-c',
+    'import shutil\ntry:\n shutil.copy("@0@", "@1@")\nexcept OSError:\n pass\n'.format(hook_file_src, hook_file_dst),
+    check : false)
 endif
 
 
-if meson.version().version_compare('>= 0.54')
-  plugin_names = []
-  foreach plugin: plugins
-    # FIXME: Use str.subtring() when we can depend on Meson 0.56
-    split = plugin.name().split('gst')
-    if split.length() == 2
-      plugin_names += [split[1]]
-    else
-      warning('Need substring API in meson >= 0.56 to properly parse plugin name: ' + plugin.name())
-      plugin_names += [plugin.name()]
-    endif
-  endforeach
-  summary({'Plugins':plugin_names}, list_sep: ', ')
-endif
+plugin_names = []
+foreach plugin: plugins
+  if plugin.name().startswith('gst')
+    plugin_names += [plugin.name().substring(3)]
+  else
+    plugin_names += [plugin.name()]
+  endif
+endforeach
+summary({'Plugins': plugin_names}, list_sep: ', ')

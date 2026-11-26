@@ -59,6 +59,14 @@ GstPylon* gst_pylon_new(GstElement* gstpylonsrc, const gchar* device_user_name,
                         gboolean enable_correction, GError** err);
 gboolean gst_pylon_set_user_config(GstPylon* self, const gchar* user_set,
                                    GError** err);
+gboolean gst_pylon_set_pfs_config(GstPylon* self, const gchar* pfs_location,
+                                  GError** err);
+gboolean gst_pylon_apply_session_config(GstPylon* self, const gchar* user_set,
+                                        const gchar* pfs_location,
+                                        GError** err);
+gboolean gst_pylon_ensure_configured(GstPylon* self, const gchar* user_set,
+                                     const gchar* pfs_location,
+                                     gboolean enable_correction, GError** err);
 void gst_pylon_free(GstPylon* self);
 
 void gst_pylon_set_max_pending_frames(GstPylon* self, guint max_pending_frames);
@@ -74,8 +82,6 @@ gboolean gst_pylon_get_startup_geometry(GstPylon* self, gint* start_width,
                                         gint* start_height);
 gboolean gst_pylon_set_configuration(GstPylon* self, const GstCaps* conf,
                                      GError** err);
-gboolean gst_pylon_set_pfs_config(GstPylon* self, const gchar* pfs_location,
-                                  GError** err);
 gchar* gst_pylon_camera_get_string_properties();
 gchar* gst_pylon_stream_grabber_get_string_properties();
 
@@ -85,6 +91,11 @@ GObject* gst_pylon_get_stream_grabber(GstPylon* self);
 gboolean gst_pylon_is_same_device(GstPylon* self, const gint device_index,
                                   const gchar* device_user_name,
                                   const gchar* device_serial_number);
+gboolean gst_pylon_is_config_applied(GstPylon* self, const gchar* user_set,
+                                     const gchar* pfs_location,
+                                     gboolean enable_correction);
+void gst_pylon_set_enable_correction(GstPylon* self,
+                                     gboolean enable_correction);
 
 #ifdef NVMM_ENABLED
 void gst_pylon_set_nvsurface_layout(

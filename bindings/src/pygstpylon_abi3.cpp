@@ -97,6 +97,16 @@ static PyObject *get_chunks(PyObject *object, void *) {
       if (gst_structure_get_double(meta->chunks, name, &chunk)) {
         value = PyFloat_FromDouble(chunk);
       }
+    } else if (type == G_TYPE_BOOLEAN) {
+      gboolean chunk = FALSE;
+      if (gst_structure_get_boolean(meta->chunks, name, &chunk)) {
+        value = PyBool_FromLong(chunk ? 1 : 0);
+      }
+    } else if (type == G_TYPE_STRING) {
+      const gchar *chunk = gst_structure_get_string(meta->chunks, name);
+      if (chunk != nullptr) {
+        value = PyUnicode_FromString(chunk);
+      }
     }
 
     if (value != nullptr) {

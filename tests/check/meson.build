@@ -3,9 +3,11 @@ if valgrind_dep.found()
   cdata.set('HAVE_VALGRIND', 1)
 endif
 
-# name, condition when to skip the test and extra dependencies
+# name, condition when to skip the test, extra deps, extra sources, env overrides
 pylon_tests = [
   [ 'generic/states' ],
+  [ 'generic/meta', false, [gstpylon_dep] ],
+  [ 'pylon/pylonsrc_camemu', false, [], [], { 'PYLON_CAMEMU': '3', 'CK_DEFAULT_TIMEOUT': '30' } ],
 ]
 
 test_defines = [
@@ -17,6 +19,8 @@ test_defines = [
 ]
 
 pluginsdirs = []
+pylon_plugin_dir = meson.global_build_root() / 'ext' / 'pylon'
+pylon_lib_dir = meson.global_build_root() / 'gst-libs' / 'gst' / 'pylon'
 if gst_dep.type_name() == 'pkgconfig'
   pbase = dependency('gstreamer-plugins-base-' + api_version, required: true)
   pluginsdirs = [gst_dep.get_variable(pkgconfig : 'pluginsdir'),
@@ -40,10 +44,15 @@ endif
 gst_plugin_scanner_path = join_paths(gst_plugin_scanner_dir, 'gst-plugin-scanner')
 
 state_ignore_elements = '''
+pylonsrc
 '''
 
 test_deps = [gst_dep, gstbase_dep, gstcheck_dep, gstvideo_dep,
   gstpbutils_dep, valgrind_dep] + glib_deps
+
+check_pylon_root = run_command(python3, '-c',
+  'import os; print(os.environ.get("PYLON_ROOT", "/opt/pylon"))',
+  check: false).stdout().strip()
 
 # FIXME: add valgrind suppression common/gst.supp gst-plugins-good.supp
 foreach t : pylon_tests
@@ -52,15 +61,19 @@ foreach t : pylon_tests
   extra_sources = t.get(3, [ ])
   extra_deps = t.get(2, [ ])
   skip_test = t.get(1, false)
+  env_overrides = t.get(4, {})
   if not skip_test
     env = environment()
     env.set('GST_PLUGIN_SYSTEM_PATH_1_0', '')
     env.set('GST_STATE_IGNORE_ELEMENTS', state_ignore_elements)
-    env.set('CK_DEFAULT_TIMEOUT', '20')
+    env.set('CK_DEFAULT_TIMEOUT', env_overrides.get('CK_DEFAULT_TIMEOUT', '20'))
     env.set('GST_PLUGIN_LOADING_WHITELIST', 'gstreamer', 'gst-plugins-base',
         'gst-plugin-pylon@' + meson.global_build_root())
-    env.set('GST_PLUGIN_PATH_1_0', [meson.global_build_root()] + pluginsdirs)
+    env.set('GST_PLUGIN_PATH_1_0', [pylon_plugin_dir, meson.global_build_root()] + pluginsdirs)
+    env.prepend('LD_LIBRARY_PATH', pylon_lib_dir)
     env.set('GSETTINGS_BACKEND', 'memory')
+    env.set('PYLON_CAMEMU', env_overrides.get('PYLON_CAMEMU', '1'))
+    env.set('PYLON_ROOT', check_pylon_root)
 
     env.set('GST_REGISTRY', join_paths(meson.current_build_dir(), '@0@.registry'.format(test_name)))
     env.set('GST_PLUGIN_SCANNER_1_0', gst_plugin_scanner_path)
@@ -69,7 +82,7 @@ foreach t : pylon_tests
       c_args : ['-DHAVE_CONFIG_H=1' ] + test_defines,
       dependencies : test_deps + extra_deps,
     )
-    test(test_name, exe, env: env, timeout: 3 * 60)
+    test(test_name, exe, env: env, timeout: env_overrides.get('timeout', 3 * 60))
   endif
 endforeach
 

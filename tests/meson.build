@@ -3,6 +3,7 @@ if not get_option('tests').disabled() and gstcheck_dep.found()
 endif
 
 if not get_option('tests').disabled()
+  subdir('compat')
   subdir('camemu')
 endif
 

@@ -36,6 +36,7 @@
 
 #include "gstpylondebug.h"
 #include "gstpylonfeaturewalker.h"
+#include "gstpylonobject.h"
 #include "gstpylonparamfactory.h"
 
 #include <string.h>
@@ -49,9 +50,6 @@
 std::vector<std::string> gst_pylon_get_enum_entries(
     GenApi::IEnumeration* enum_node);
 std::vector<std::string> gst_pylon_get_int_entries(GenApi::IInteger* int_node);
-std::vector<GParamSpec*> gst_pylon_camera_handle_node(
-    GenApi::INode* node, GenApi::INodeMap& nodemap,
-    const std::string& device_fullname, GstPylonCache& feature_cache);
 void gst_pylon_camera_install_specs(const std::vector<GParamSpec*>& specs_list,
                                     GObjectClass* oclass, gint& nprop);
 std::vector<GParamSpec*> gst_pylon_camera_handle_node(
@@ -61,9 +59,6 @@ static const std::unordered_set<std::string> propfilter_set = {
     "Width",
     "Height",
     "PixelFormat",
-    "AcquisitionFrameRateEnable",
-    "AcquisitionFrameRate",
-    "AcquisitionFrameRateAbs",
     "AcquisitionStart",
     "AcquisitionStop",
     "UserSetLoad",
@@ -83,8 +78,9 @@ static const std::unordered_set<std::string> categoryfilter_set = {
                             events/msgs */
     "SequenceControl",   /* sequencer control relies on cmd feature */
     "SequencerControl",  /* sequencer control relies on cmd feature */
-    "MultipleROI",       /* workaround skip to avoid issues with ace2/dart2
-                           FIXME: this has to be fixed in feature walker */
+    "MultipleROI",       /* FIXME: workaround skip because feature walker
+                            currently supports only one selector per node;
+                            MultipleROI features typically have more. */
 };
 
 /* filter for selector nodes */
@@ -302,8 +298,7 @@ void gst_pylon_camera_install_specs(const std::vector<GParamSpec*>& specs_list,
 }
 
 void GstPylonFeatureWalker::install_properties(
-    GObjectClass* oclass, GenApi::INodeMap& nodemap,
-    const std::string& device_fullname, GstPylonCache& feature_cache) {
+    GObjectClass* oclass, const GstPylonObjectSchema& schema) {
   g_return_if_fail(oclass);
 
   /* handle filter for debugging */
@@ -313,11 +308,12 @@ void GstPylonFeatureWalker::install_properties(
     single_feature = env_p;
   }
 
-  auto param_factory =
-      GstPylonParamFactory(nodemap, device_fullname, feature_cache);
+  const std::string& device_fullname = schema.device_full_name;
+  GstPylonCache& feature_cache = schema.cache();
+  auto param_factory = GstPylonParamFactory(schema);
 
   gint nprop = 1;
-  GenApi::INode* root_node = nodemap.GetNode("Root");
+  GenApi::INode* root_node = schema.node_map().GetNode("Root");
   auto worklist = std::queue<GenApi::INode*>();
 
   worklist.push(root_node);

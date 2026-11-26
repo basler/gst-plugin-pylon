@@ -36,13 +36,12 @@
 #include <gst/gst.h>
 #include <gst/pylon/gstpyloncache.h>
 #include <gst/pylon/gstpylonincludes.h>
+#include <gst/pylon/gstpylonobject.h>
 
 class GstPylonFeatureWalker {
  public:
   static void install_properties(GObjectClass* oclass,
-                                 GenApi::INodeMap& nodemap,
-                                 const std::string& device_fullname,
-                                 GstPylonCache& feature_cache);
+                                 const GstPylonObjectSchema& schema);
   static std::vector<std::string> process_selector_features(
       GenApi::INode* node, GenApi::INode** selector_node);
 };

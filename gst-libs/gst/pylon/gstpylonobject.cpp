@@ -46,24 +46,44 @@
  ***********************************************************/
 
 static void gst_pylon_object_init(GstPylonObject* self);
-static void gst_pylon_object_class_init(
-    GstPylonObjectClass* klass, GstPylonObjectDeviceMembers* device_members);
+static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
+                                        GstPylonObjectClassData* class_data);
+static std::string gst_pylon_object_get_schema_type_name(
+    const GstPylonObjectSchema& schema);
+static GType gst_pylon_object_find_schema_type(
+    const GstPylonObjectSchema& schema);
+static GType gst_pylon_object_ensure_schema_type(
+    const GstPylonObjectSchema& schema);
 static gpointer gst_pylon_object_parent_class = NULL;
 static gint GstPylonObject_private_offset;
 
 static void gst_pylon_object_class_intern_init(
-    gpointer klass, GstPylonObjectDeviceMembers* device_members) {
+    gpointer klass, GstPylonObjectClassData* class_data) {
   gst_pylon_object_parent_class = g_type_class_peek_parent(klass);
   if (GstPylonObject_private_offset != 0)
     g_type_class_adjust_private_offset(klass, &GstPylonObject_private_offset);
-  gst_pylon_object_class_init((GstPylonObjectClass*)klass, device_members);
+  gst_pylon_object_class_init((GstPylonObjectClass*)klass, class_data);
 }
 
-GType gst_pylon_object_register(const std::string& device_name,
-                                GstPylonCache& feature_cache,
-                                GenApi::INodeMap& exemplar) {
-  GstPylonObjectDeviceMembers* device_members =
-      new GstPylonObjectDeviceMembers({device_name, feature_cache, exemplar});
+GType gst_pylon_object_register_schema(const GstPylonObjectSchema& schema) {
+  return gst_pylon_object_ensure_schema_type(schema);
+}
+
+static GType gst_pylon_object_find_schema_type(
+    const GstPylonObjectSchema& schema) {
+  std::string type_name = gst_pylon_object_get_schema_type_name(schema);
+  return g_type_from_name(type_name.c_str());
+}
+
+static GType gst_pylon_object_ensure_schema_type(
+    const GstPylonObjectSchema& schema) {
+  GType type = gst_pylon_object_find_schema_type(schema);
+  if (type) {
+    return type;
+  }
+
+  GstPylonObjectClassData* class_data = new GstPylonObjectClassData({schema});
+  std::string type_name = gst_pylon_object_get_schema_type_name(schema);
 
   GTypeInfo typeinfo = {
       sizeof(GstPylonObjectClass),
@@ -71,22 +91,14 @@ GType gst_pylon_object_register(const std::string& device_name,
       NULL,
       (GClassInitFunc)gst_pylon_object_class_intern_init,
       NULL,
-      device_members,
+      class_data,
       sizeof(GstPylonObject),
       0,
       (GInstanceInitFunc)gst_pylon_object_init,
   };
 
-  /* Convert camera name to a valid string */
-  std::string type_name =
-      gst_pylon_param_spec_sanitize_name(device_name.c_str());
-
-  GType type = g_type_from_name(type_name.c_str());
-  if (!type) {
-    type = g_type_register_static(GST_TYPE_OBJECT, type_name.c_str(), &typeinfo,
-                                  static_cast<GTypeFlags>(0));
-  }
-
+  type = g_type_register_static(GST_TYPE_OBJECT, type_name.c_str(), &typeinfo,
+                                static_cast<GTypeFlags>(0));
   GstPylonObject_private_offset =
       g_type_add_instance_private(type, sizeof(GstPylonObjectPrivate));
 
@@ -102,10 +114,19 @@ gpointer gst_pylon_object_get_instance_private(GstPylonObject* self) {
 }
 
 /* prototypes */
-static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
-                                                GenApi::INodeMap& nodemap,
-                                                const std::string& device_name,
-                                                GstPylonCache& feature_cache);
+static void gst_pylon_object_install_properties(
+    GstPylonObjectClass* klass, const GstPylonObjectSchema& schema);
+
+static std::string gst_pylon_object_get_schema_type_name(
+    const GstPylonObjectSchema& schema) {
+  gchar* schema_hash = g_compute_checksum_for_string(
+      G_CHECKSUM_SHA256, schema.schema_cache_key.c_str(),
+      schema.schema_cache_key.size());
+  std::string type_name = gst_pylon_param_spec_sanitize_name(
+      (schema.device_full_name + "_" + schema_hash).c_str());
+  g_free(schema_hash);
+  return type_name;
+}
 
 /* Set a pylon feature from a gstreamer gst property */
 template <typename F, typename P>
@@ -157,31 +178,26 @@ typedef void (*GSetEnum)(GValue*, gint);
 
 /* implementations */
 
-static void gst_pylon_object_install_properties(GstPylonObjectClass* klass,
-                                                GenApi::INodeMap& nodemap,
-                                                const std::string& device_name,
-                                                GstPylonCache& feature_cache) {
+static void gst_pylon_object_install_properties(
+    GstPylonObjectClass* klass, const GstPylonObjectSchema& schema) {
   g_return_if_fail(klass);
 
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
-  GstPylonFeatureWalker::install_properties(oclass, nodemap, device_name,
-                                            feature_cache);
+  GstPylonFeatureWalker::install_properties(oclass, schema);
 }
 
-static void gst_pylon_object_class_init(
-    GstPylonObjectClass* klass, GstPylonObjectDeviceMembers* device_members) {
+static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
+                                        GstPylonObjectClassData* class_data) {
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
   oclass->set_property = gst_pylon_object_set_property;
   oclass->get_property = gst_pylon_object_get_property;
   oclass->finalize = gst_pylon_object_finalize;
 
-  gst_pylon_object_install_properties(klass, device_members->nodemap,
-                                      device_members->device_name,
-                                      device_members->feature_cache);
+  gst_pylon_object_install_properties(klass, class_data->schema);
 
-  delete (device_members);
+  delete (class_data);
 }
 
 static void gst_pylon_object_init(GstPylonObject* self) {}
@@ -242,6 +258,10 @@ void gst_pylon_object_set_pylon_feature<GGetDouble, Pylon::CFloatParameter>(
 
   GST_INFO("Set Feature %s: %s%s", name, param.ToString().c_str(),
            value_corrected ? " [corrected]" : "");
+  if (!g_strcmp0(name, "AcquisitionFrameRate") ||
+      !g_strcmp0(name, "AcquisitionFrameRateAbs")) {
+    priv->framerate_configured = TRUE;
+  }
 }
 
 template <>
@@ -436,9 +456,20 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
         throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
     }
   } catch (const Pylon::GenericException& e) {
-    GST_ERROR("Unable to set pylon property \"%s\" on \"%s\": %s", pspec->name,
-              priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
-              e.GetDescription());
+    GstObject* parent = GST_OBJECT_PARENT(object);
+    if (parent && GST_IS_ELEMENT(parent)) {
+      GST_ELEMENT_ERROR(
+          GST_ELEMENT(parent), LIBRARY, SETTINGS,
+          ("Failed to set camera feature \"%s\".", pspec->name),
+          ("Device \"%s\": %s",
+           priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
+           e.GetDescription()));
+    } else {
+      GST_ERROR("Unable to set pylon property \"%s\" on \"%s\": %s",
+                pspec->name,
+                priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
+                e.GetDescription());
+    }
   }
 }
 
@@ -521,23 +552,15 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
   }
 }
 
-GObject* gst_pylon_object_new(
+GObject* gst_pylon_object_new_for_schema(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const std::string& device_name, GenApi::INodeMap* nodemap,
-    gboolean enable_correction) {
-  std::string type_name =
-      gst_pylon_param_spec_sanitize_name(device_name.c_str());
+    const GstPylonObjectSchema& schema, gboolean enable_correction) {
+  std::string type_name = gst_pylon_object_get_schema_type_name(schema);
 
-  GType type = g_type_from_name(type_name.c_str());
-
-  std::unique_ptr<GstPylonCache> feature_cache;
+  GType type = gst_pylon_object_find_schema_type(schema);
 
   if (!type) {
-    std::string cache_filename =
-        std::string(camera->GetDeviceInfo().GetModelName() + "_" +
-                    Pylon::GetPylonVersionString() + "_" + VERSION);
-    feature_cache = std::make_unique<GstPylonCache>(cache_filename);
-    type = gst_pylon_object_register(device_name, *feature_cache, *nodemap);
+    type = gst_pylon_object_ensure_schema_type(schema);
   }
 
   GObject* obj = G_OBJECT(g_object_new(type, "name", type_name.c_str(), NULL));
@@ -546,8 +569,9 @@ GObject* gst_pylon_object_new(
       (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
 
   priv->camera = std::move(camera);
-  priv->nodemap = nodemap;
+  priv->nodemap = &schema.node_map();
   priv->enable_correction = enable_correction;
+  priv->framerate_configured = FALSE;
 
   /* setup dimension cache
    * -1 -> not activly set
@@ -555,6 +579,34 @@ GObject* gst_pylon_object_new(
   priv->dimension_cache = {-1, -1, -1, -1};
 
   return obj;
+}
+
+void gst_pylon_object_set_enable_correction(GObject* obj,
+                                            gboolean enable_correction) {
+  g_return_if_fail(obj);
+
+  GstPylonObject* self = GST_PYLON_OBJECT(obj);
+  GstPylonObjectPrivate* priv =
+      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  priv->enable_correction = enable_correction;
+}
+
+gboolean gst_pylon_object_is_framerate_configured(GObject* obj) {
+  g_return_val_if_fail(obj, FALSE);
+
+  GstPylonObject* self = GST_PYLON_OBJECT(obj);
+  GstPylonObjectPrivate* priv =
+      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  return priv->framerate_configured;
+}
+
+void gst_pylon_object_mark_framerate_configured(GObject* obj) {
+  g_return_if_fail(obj);
+
+  GstPylonObject* self = GST_PYLON_OBJECT(obj);
+  GstPylonObjectPrivate* priv =
+      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  priv->framerate_configured = TRUE;
 }
 
 static void gst_pylon_object_finalize(GObject* object) {

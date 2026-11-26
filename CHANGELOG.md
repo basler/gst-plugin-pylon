@@ -3,6 +3,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Modular `GstPylon` session architecture (`gstpylonsession`, `gstpyloncapture`,
+  `gstpyloncaps`, `gstpyloninspect`, `gstpylonschema`) with ADRs 0001 and 0002
+- Dual cache model (`GstPylonCache` for limits/flags and `GstPylonInspectCache`
+  for `gst-inspect` blurbs) and read-only `gst-inspect` by default
+  (`GST_PYLON_PROBE_LIMITS=1` opt-in for full dynamic probing)
+- Golden `gst-inspect` compatibility test suite (`tests/compat/`), `generic_meta`,
+  and `pylon_pylonsrc_camemu` regression tests
+- Jetson Multimedia API (`nvbufsurface.h`) fallback detection for NVMM builds
+  without DeepStream
+- Boolean and string chunk support in CPython `abi3` `pygstpylon`
+
+### Fixed
+- Optional `OffsetX`/`OffsetY` handling for line-scan cameras
+- Direct camera open by serial number or user-defined name without full device
+  enumeration
+- Relaxed PFS nodemap float verification on load
+- Preserved `AcquisitionFrameRate` set via child property or PFS for hardware
+  triggering
+- `GstPylonMeta.block_id` now stores transport `GetBlockID()` (with `GstBuffer`
+  offset falling back to `image_number` when transport reports `UINT64_MAX`)
+- `capture-error=keep` marks delivered buffers with `GST_BUFFER_FLAG_CORRUPTED`
+- Hardened NVMM `NvBufSurfaceAllocate` / `NvBufSurfaceMap` error handling and
+  `NvBufSurfaceUnMap` on free
+
+### Changed
+- Bumped project version to `2.0.0` and set explicit `cpp_std=c++17` in
+  `meson.build`
+
 ## [1.1.0] - 2026-11-26
 
 ### Added

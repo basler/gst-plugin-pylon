@@ -37,19 +37,27 @@
 #include <gst/pylon/gstpyloncache.h>
 #include <gst/pylon/gstpylonincludes.h>
 
-GParamFlags gst_pylon_query_access(GenApi::INodeMap &nodemap,
-                                   GenApi::INode *node);
+GParamFlags gst_pylon_query_access(GenApi::INodeMap& nodemap,
+                                   GenApi::INode* node);
 
 void gst_pylon_query_feature_properties_double(
-    GenApi::INodeMap &nodemap, GenApi::INode *node,
-    GstPylonCache &feature_cache, GParamFlags &flags,
-    gdouble &minimum_under_all_settings, gdouble &maximum_under_all_settings,
-    GenApi::INode *selector = NULL, gint64 selector_value = 0);
+    GenApi::INodeMap& nodemap, GenApi::INode* node,
+    GstPylonCache& feature_cache, GParamFlags& flags,
+    gdouble& minimum_under_all_settings, gdouble& maximum_under_all_settings,
+    GenApi::INode* selector = NULL, gint64 selector_value = 0);
 
 void gst_pylon_query_feature_properties_integer(
-    GenApi::INodeMap &nodemap, GenApi::INode *node,
-    GstPylonCache &feature_cache, GParamFlags &flags,
-    gint64 &minimum_under_all_settings, gint64 &maximum_under_all_settings,
-    GenApi::INode *selector = NULL, gint64 selector_value = 0);
+    GenApi::INodeMap& nodemap, GenApi::INode* node,
+    GstPylonCache& feature_cache, GParamFlags& flags,
+    gint64& minimum_under_all_settings, gint64& maximum_under_all_settings,
+    GenApi::INode* selector = NULL, gint64 selector_value = 0);
+
+/* For bool/string: cache flags only (no min/max) */
+void gst_pylon_query_feature_properties_flags(GenApi::INodeMap& nodemap,
+                                              GenApi::INode* node,
+                                              GstPylonCache& feature_cache,
+                                              GParamFlags& flags,
+                                              GenApi::INode* selector = NULL,
+                                              gint64 selector_value = 0);
 
 #endif

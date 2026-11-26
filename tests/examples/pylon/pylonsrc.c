@@ -45,13 +45,13 @@
 
 typedef struct _Context Context;
 struct _Context {
-  GMainLoop *loop;
-  GstElement *pylonsrc;
-  GstElement *overlay;
+  GMainLoop* loop;
+  GstElement* pylonsrc;
+  GstElement* overlay;
 };
 
 #ifdef G_OS_UNIX
-static gboolean sig_handler(Context *ctx) {
+static gboolean sig_handler(Context* ctx) {
   g_return_val_if_fail(ctx, FALSE);
   g_return_val_if_fail(ctx->loop, FALSE);
 
@@ -62,11 +62,11 @@ static gboolean sig_handler(Context *ctx) {
 }
 #endif
 
-static gboolean toggle_pattern(Context *ctx) {
+static gboolean toggle_pattern(Context* ctx) {
   gint pattern = 0;
-  const gchar *name_list[] = {"Off", "Testimage1", "Testimage2"};
-  const gchar *name = NULL;
-  GstChildProxy *cp = NULL;
+  const gchar* name_list[] = {"Off", "Testimage1", "Testimage2"};
+  const gchar* name = NULL;
+  GstChildProxy* cp = NULL;
 
   g_return_val_if_fail(ctx, FALSE);
   g_return_val_if_fail(ctx->pylonsrc, FALSE);
@@ -86,8 +86,8 @@ static gboolean toggle_pattern(Context *ctx) {
   return TRUE;
 }
 
-static void print_error(GstMessage *msg, GError *error, gchar *dbg,
-                        const gchar *tag) {
+static void print_error(GstMessage* msg, GError* error, gchar* dbg,
+                        const gchar* tag) {
   g_return_if_fail(msg);
   g_return_if_fail(error);
   g_return_if_fail(tag);
@@ -99,10 +99,11 @@ static void print_error(GstMessage *msg, GError *error, gchar *dbg,
   g_free(dbg);
 }
 
-static gboolean bus_callback(GstBus *bus, GstMessage *msg, Context *ctx) {
-  GError *err = NULL;
-  gchar *dbg_info = NULL;
+static gboolean bus_callback(GstBus* bus, GstMessage* msg, Context* ctx) {
+  GError* err = NULL;
+  gchar* dbg_info = NULL;
 
+  (void)bus;
   g_return_val_if_fail(ctx, FALSE);
   g_return_val_if_fail(ctx->loop, FALSE);
 
@@ -124,14 +125,14 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, Context *ctx) {
   return TRUE;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   Context ctx = {0};
-  GstElement *pipe = NULL;
-  GstBus *bus = NULL;
+  GstElement* pipe = NULL;
+  GstBus* bus = NULL;
   guint bus_watch = 0;
-  GError *error = NULL;
+  GError* error = NULL;
   gint ret = EXIT_FAILURE;
-  const gchar *desc =
+  const gchar* desc =
       "pylonsrc device-serial-number=0815-0000 name=" PYLONSRC_NAME
       " ! textoverlay auto-resize=true text=Testimage2 name=" OVERLAY_NAME
       " ! queue ! videoconvert ! autovideosink";

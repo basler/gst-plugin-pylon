@@ -6,20 +6,34 @@ plugin_rpath = pylon_rpath
 pylon_sources = [
   'gstchildinspector.cpp',
   'gstpylon.cpp',
+  'gstpyloncaps.cpp',
+  'gstpyloncapture.cpp',
   'gstpylondisconnecthandler.cpp',
   'gstpylonimagehandler.cpp',
+  'gstpyloninspect.cpp',
   'gstpylonnvmmcolor.cpp',
   'gstpylonplugin.cpp',
+  'gstpylonschema.cpp',
+  'gstpylonsession.cpp',
   'gstpylonsrc.cpp',
   'gstpylonsysmembufferfactory.cpp',
 ]
 
 # DeepStream installs a versioned tree plus a `deepstream` symlink.
+# On Jetson without DeepStream, nvbufsurface.h is provided by jetson_multimedia_api.
+fs_nvmm = import('fs')
 nvds_libdir = [
   '/opt/nvidia/deepstream/deepstream/lib',
   '/usr/lib/aarch64-linux-gnu/nvidia',
+  '/usr/lib/aarch64-linux-gnu/tegra',
 ]
-nvds_incdir = '/opt/nvidia/deepstream/deepstream/sources/includes'
+if fs_nvmm.exists('/opt/nvidia/deepstream/deepstream/sources/includes/nvbufsurface.h')
+  nvds_incdir = '/opt/nvidia/deepstream/deepstream/sources/includes'
+elif fs_nvmm.exists('/usr/src/jetson_multimedia_api/include/nvbufsurface.h')
+  nvds_incdir = '/usr/src/jetson_multimedia_api/include'
+else
+  nvds_incdir = '/opt/nvidia/deepstream/deepstream/sources/includes'
+endif
 cuda_libdirs = [
   '/usr/local/cuda/lib64',
   '/usr/local/cuda/targets/aarch64-linux/lib',
@@ -33,7 +47,6 @@ if not nvmm_opt.disabled()
   cuda_dep = dependency('cuda', version : '>=11', required: false)
   if not cuda_dep.found()
     # JetPack often has no cuda.pc; fall back to the toolkit layout.
-    fs_nvmm = import('fs')
     cuda_lib = cc.find_library('cudart', dirs: cuda_libdirs, required: false)
     if cuda_lib.found() and fs_nvmm.exists(cuda_incdir / 'cuda_runtime.h')
       cuda_dep = declare_dependency(
@@ -43,7 +56,7 @@ if not nvmm_opt.disabled()
     endif
   endif
 
-  if nvds_dep.found() and cuda_dep.found()
+  if nvds_dep.found() and cuda_dep.found() and fs_nvmm.exists(nvds_incdir / 'nvbufsurface.h')
     pylon_sources += ['gstpylondsnvmmbufferfactory.cpp']
     dependencies += [nvds_dep, cuda_dep]
     plugin_inc += [include_directories(nvds_incdir)]
@@ -54,11 +67,11 @@ if not nvmm_opt.disabled()
     else
       plugin_rpath = nvds_rpath
     endif
-    message('NVMM support enabled (DeepStream + CUDA)')
+    message('NVMM support enabled (' + nvds_incdir + ' + CUDA)')
   elif nvmm_opt.enabled()
-    error('NVMM was enabled (-Dnvmm=enabled) but DeepStream nvbufsurface or CUDA was not found')
+    error('NVMM was enabled (-Dnvmm=enabled) but nvbufsurface (DeepStream/MMAPI) or CUDA was not found')
   else
-    message('DeepStream or CUDA not found, skipping NVMM support')
+    message('DeepStream/MMAPI or CUDA not found, skipping NVMM support')
   endif
 endif
 
