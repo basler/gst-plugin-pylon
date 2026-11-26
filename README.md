@@ -400,7 +400,7 @@ version in three places that stay in sync:
 - runtime `Depends: pylon (= <build-time>)`
 - control field `Pylon-Built-Against`
 - Debian package `Version` suffix `+pylon<build-time>` (visible in the `.deb`
-  filename, e.g. `gst-plugin-pylon_1.0.0+pylon7.4.0_arm64.deb`)
+  filename, e.g. `gst-plugin-pylon_1.1.0+pylon26.10.1_arm64.deb`)
 
 Inspect them with:
 
@@ -507,7 +507,7 @@ A from-source meson build can still use older suites from the table above.
 Example, after registering a 7.4.0 stub:
 
 ```
-# → gst-plugin-pylon_1.0.0+pylon7.4.0_arm64.deb
+# → gst-plugin-pylon_1.1.0+pylon7.4.0_arm64.deb
 #   Depends: pylon (= 7.4.0)
 #   Pylon-Built-Against: 7.4.0
 PYLON_PKG_VERSION=7.4.0 sudo tools/register_pylon_from_tree.sh /path/to/pylon_sdk.tar.gz
@@ -631,7 +631,7 @@ DEB_BUILD_PROFILES=nvidia PYLON_ROOT=/opt/pylon dpkg-buildpackage -us -uc -rfake
 ```
 
 On pylon 7.4.0 that yields a name like
-`gst-plugin-pylon_1.0.0+pylon7.4.0-1~<L4T>_arm64.deb` with
+`gst-plugin-pylon_1.1.0+pylon7.4.0-1~<L4T>_arm64.deb` with
 `Depends: pylon (= 7.4.0)`.
 
 The `.deb` files are written to the parent directory. Install them with:

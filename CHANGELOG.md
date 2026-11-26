@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-26
+
 ### Fixed
 - NVMM: YUY2/UYVY caps with full-range colorimetry get the extended-range
   surface formats (`NVBUF_COLOR_FORMAT_YUYV_ER`/`_UYVY_ER`), so NVMM
@@ -14,12 +16,6 @@ All notable changes to this project will be documented in this file.
 - Free `GstPylon` before `PylonTerminate` on start failures; free `pfs-location`
   in finalize; free grab results on NVMM CUDA copy failure
 - Unlock maps to `GST_FLOW_FLUSHING` (with `unlock_stop` / ClearInterrupt) instead of EOS
-
-### Changed
-- NVMM surface color selection lives in `gst_pylon_nvmm_color_kind()`
-  (unit-tested without Jetson headers)
-- Image handler `WaitForImage` recovers if `FrameReady` has an empty queue
-  instead of calling `front()` on an empty deque
 
 ### Added
 - Tests: `generic_nvmmcolor`, `tools/test_nvmm_color_format_docker.sh`
@@ -34,11 +30,17 @@ All notable changes to this project will be documented in this file.
   under `ninja test` (not skipped for missing PyGObject)
 - `meson test pygstpylon` covers the Python bindings (API, live GstPylonMeta,
   four parallel camemu streams); Linux CI builds with `-Dpython-bindings=enabled`
+- Release assets include per-package CycloneDX 1.6 build SBOMs (`*.cdx.json`)
+  and Grype vulnerability scan summaries (`*.grype.txt`)
 
 ### Removed
 - Unused `bindings/packaging/setup.py` (pygstpylon is installed by Meson, not setuptools)
 
 ### Changed
+- NVMM surface color selection lives in `gst_pylon_nvmm_color_kind()`
+  (unit-tested without Jetson headers)
+- Image handler `WaitForImage` recovers if `FrameReady` has an empty queue
+  instead of calling `front()` on an empty deque
 - `restart_resource_leak.py` budgets RSS growth per restart cycle instead of a
   fixed total, so retained heap pages no longer look like a leak
 - NVIDIA Debian packaging supports DeepStream 6.4, 7.0, and 7.1; native ARM CI
@@ -53,18 +55,19 @@ All notable changes to this project will be documented in this file.
 - CUDA is detected via `cuda.pc` or the JetPack `/usr/local/cuda` toolkit layout
 - Camemu package tests pin system-memory caps so NVMM builds pass under fakeroot
 - Restart leak test downsizes 4096² RGB on hosts with low `MemAvailable`
-- CI targets pylon Software Suite 26.06 via Conan, GitHub runners
-  ubuntu-24.04 / ubuntu-24.04-arm / windows-latest / macos-latest, and
-  GStreamer 1.26.9 on Windows (Linux uses distro GStreamer >= 1.20)
+- Unified CI builds and tests against the latest pylon release across
+  `ubuntu-24.04`, `ubuntu-24.04-arm`, `windows-latest` (GStreamer 1.26.9), and
+  `macos-15` (Homebrew GStreamer)
 - Meson still accepts pylon 7.1+ and the 6.x aarch64 fallback; C++ SDK 12.2
   is not a source-level requirement
 - GitLab CI is disabled; GitHub Actions is the build source of truth
-- Camemu meson tests honor `PYLON_ROOT`; Debian CI registers a stub `pylon`
-  package from the Conan SDK tree so `dpkg-buildpackage` can satisfy Depends
-- CI compiles on macOS (`macos-latest`) with Homebrew GStreamer
+- Camemu meson tests honor `PYLON_ROOT`; Linux CI builds and tests against the
+  official Basler `pylon` Debian package (with `tools/register_pylon_from_tree.sh`
+  kept for local SDK-tree builds)
 - Debian arm64 package jobs run on native `ubuntu-24.04-arm` (no QEMU)
 - Debian packages are built once per architecture on Ubuntu 22.04, then the
-  unchanged artifacts are install-tested on 22.04, 24.04, and bookworm
+  unchanged artifacts are install-tested on Ubuntu 22.04, Ubuntu 24.04,
+  Debian bookworm, and Debian trixie
 - README documents from-source `PYLON_ROOT` installs versus Debian packaging
   that still requires a dpkg `pylon` package (official or stub)
 - Debian packages pin runtime `Depends: pylon (= <build-time Version>)`

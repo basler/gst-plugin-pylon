@@ -801,6 +801,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
       - name: Download Debian packages and SBOMs
         uses: actions/download-artifact@v7
         with:
@@ -813,10 +816,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          name: ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, '-') }}
           files: |
             release-assets/*.deb
             release-assets/*.cdx.json
             release-assets/*.grype.txt
+
+      - name: Generate release page body from uploaded assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 tools/prepare_release_page.py "${{ github.ref_name }}" \
+            --output release_template.md
+
+      - name: Update GitHub Release body
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          name: ${{ github.ref_name }}
+          body_path: release_template.md
+          prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, '-') }}
 
   cleanup:
     name: Clean up temporary SDK artifacts
