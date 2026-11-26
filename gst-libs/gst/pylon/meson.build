@@ -68,6 +68,7 @@ endif
 gstpylon_sources = [ 
   'gstpyloncache.cpp',
   'gstpylondebug.cpp',
+  'gstpylonfeatureprior.cpp',
   'gstpylonfeaturewalker.cpp',
   'gstpyloninspectcache.cpp',
   'gstpylonintrospection.cpp',
@@ -75,6 +76,7 @@ gstpylon_sources = [
   'gstpylonobject.cpp',
   'gstpylonparamspecs.cpp',
   'gstpylonparamfactory.cpp',
+  'gstpylontlenumerate.cpp',
 ]
 
 gstpylon_headers = [

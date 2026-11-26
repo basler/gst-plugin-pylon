@@ -36,15 +36,37 @@
 
 #include "gst/pylon/gstpyloninspectcache.h"
 #include "gst/pylon/gstpylonobject.h"
+#include "gst/pylon/gstpylontlenumerate.h"
 #include "gstchildinspector.h"
 #include "gstpyloninspect.h"
 #include "gstpylonschema.h"
 
 #include <gst/pylon/gstpylonincludes.h>
 
+#include <mutex>
 #include <string>
 
 static constexpr gint DEFAULT_ALIGNMENT = 35;
+
+static gboolean gst_pylon_should_inspect_devices() {
+  const gchar* env = g_getenv("GST_PYLON_INSPECT_DEVICES");
+  if (env) {
+    if (g_strcmp0(env, "0") == 0 || g_ascii_strcasecmp(env, "false") == 0) {
+      return FALSE;
+    }
+    if (g_strcmp0(env, "1") == 0 || g_ascii_strcasecmp(env, "true") == 0) {
+      return TRUE;
+    }
+  }
+
+  const gchar* prgname = g_get_prgname();
+  if (!prgname) {
+    return FALSE;
+  }
+
+  return g_str_has_prefix(prgname, "gst-inspect") ||
+         g_str_has_prefix(prgname, "gst-plugins-doc-cache-generator");
+}
 
 static void gst_pylon_append_properties(
     Pylon::CBaslerUniversalInstantCamera* camera,
@@ -142,16 +164,20 @@ static void gst_pylon_append_cached_properties_block(
 
 static void gst_pylon_get_introspection_strings_impl(gchar** cam_out,
                                                      gchar** stream_out) {
+  if (!gst_pylon_should_inspect_devices()) {
+    *cam_out = g_strdup("");
+    *stream_out = g_strdup("");
+    return;
+  }
+
+  Pylon::PylonAutoInitTerm init_pylon;
   gchar* camera_properties = NULL;
   gchar* stream_properties = NULL;
 
   Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
   Pylon::DeviceInfoList_t device_list;
-  factory.EnumerateDevices(device_list);
+  gst_pylon_enumerate_devices(device_list);
 
-  /* One block per device (old behavior). Blocks have device-specific content
-   * (e.g. GType enum names), so we build each; introspection cache only helps
-   * when a single device is present. */
   for (const auto& device : device_list) {
     try {
       Pylon::CBaslerUniversalInstantCamera camera(factory.CreateDevice(device),
@@ -161,15 +187,16 @@ static void gst_pylon_get_introspection_strings_impl(gchar** cam_out,
       camera.DeviceFeaturePersistenceEnd.TryExecute();
       camera.DeviceRegistersStreamingEnd.TryExecute();
 
+      /* Include device full name in per-device inspect cache key so
+       * multi-camera setups also hit GstPylonInspectCache cleanly. */
       const std::string camera_key = gst_pylon_camera_schema_cache_key(camera);
       const std::string stream_key = gst_pylon_stream_schema_cache_key(camera);
-      const gboolean use_cache = device_list.size() == 1;
 
       gst_pylon_append_cached_properties_block(
-          &camera_properties, &camera, camera_key, use_cache,
+          &camera_properties, &camera, camera_key, TRUE,
           gst_pylon_get_camera_properties_block);
       gst_pylon_append_cached_properties_block(
-          &stream_properties, &camera, stream_key, use_cache,
+          &stream_properties, &camera, stream_key, TRUE,
           gst_pylon_get_stream_properties_block);
 
       camera.Close();
@@ -184,9 +211,11 @@ static void gst_pylon_get_introspection_strings_impl(gchar** cam_out,
 
 static void gst_pylon_get_introspection_strings(gchar** cam_out,
                                                 gchar** stream_out) {
+  static std::mutex inspect_cache_mutex;
   static gchar* cached_cam = NULL;
   static gchar* cached_stream = NULL;
 
+  std::lock_guard<std::mutex> lock(inspect_cache_mutex);
   if (cached_cam == NULL) {
     gst_pylon_get_introspection_strings_impl(&cached_cam, &cached_stream);
   }

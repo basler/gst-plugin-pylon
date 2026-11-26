@@ -60,6 +60,7 @@
 
 GstPylon* gst_pylon_new(GstElement* gstpylonsrc, const gchar* device_user_name,
                         const gchar* device_serial_number, gint device_index,
+                        const gchar* user_set, const gchar* pfs_location,
                         gboolean enable_correction, GError** err) {
   GstPylon* self = new GstPylon(gstpylonsrc);
 
@@ -67,8 +68,8 @@ GstPylon* gst_pylon_new(GstElement* gstpylonsrc, const gchar* device_user_name,
   g_return_val_if_fail(err && *err == NULL, NULL);
 
   try {
-    self->Open(device_user_name, device_serial_number, device_index,
-               enable_correction);
+    self->Open(device_user_name, device_serial_number, device_index, user_set,
+               pfs_location, enable_correction);
   } catch (const GenICam::GenericException& e) {
     GST_ERROR_OBJECT(gstpylonsrc, "gst_pylon_new failed opening camera: %s",
                      e.GetDescription());

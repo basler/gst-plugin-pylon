@@ -45,6 +45,7 @@
 #include "gst/pylon/gstpylonincludes.h"
 #include "gst/pylon/gstpylonmetaprivate.h"
 #include "gst/pylon/gstpylonobject.h"
+#include "gst/pylon/gstpylontlenumerate.h"
 #include "gstpylon-private.h"
 #include "gstpylon.h"
 #include "gstpylondisconnecthandler.h"
@@ -111,6 +112,7 @@ static void gst_pylon_apply_set(GstPylon* self, std::string& set) {
 
 void GstPylon::Open(const gchar* device_user_name,
                     const gchar* device_serial_number, gint device_index,
+                    const gchar* user_set, const gchar* pfs_location,
                     gboolean enable_correction) {
   requested_device_index = device_index;
   requested_device_user_name = device_user_name ? device_user_name : "";
@@ -144,7 +146,7 @@ void GstPylon::Open(const gchar* device_user_name,
     GST_INFO_OBJECT(gstpylonsrc,
                     "Opening device directly by filter without enumeration");
   } else {
-    factory.EnumerateDevices(device_list, filter);
+    gst_pylon_enumerate_devices(device_list, &filter);
     GST_INFO_OBJECT(gstpylonsrc, "Enumerated %d matching devices",
                     static_cast<gint>(device_list.size()));
 
@@ -234,11 +236,32 @@ void GstPylon::Open(const gchar* device_user_name,
   camera->DeviceRegistersStreamingEnd.TryExecute();
   GST_INFO_OBJECT(gstpylonsrc, "Camera reset to sane state");
 
+  /* Apply initial user-set and/or PFS once at open time instead of loading
+   * "Auto" here and immediately reloading in ApplySessionConfig(). */
   if (camera->UserSetSelector.IsWritable()) {
-    std::string default_set = "Auto";
-    gst_pylon_apply_set(this, default_set);
-    GST_INFO_OBJECT(gstpylonsrc, "Applied default user set %s",
-                    default_set.c_str());
+    std::string initial_set = user_set ? user_set : "Auto";
+    gst_pylon_apply_set(this, initial_set);
+    GST_INFO_OBJECT(gstpylonsrc, "Applied initial user set %s",
+                    initial_set.c_str());
+  }
+  applied_user_set = user_set ? user_set : "";
+  applied_pfs_location = "";
+  has_applied_config = TRUE;
+
+  bool pfs_loaded = false;
+  if (pfs_location) {
+    static const bool check_nodemap_sanity = false;
+    try {
+      Pylon::CFeaturePersistence::Load(pfs_location, &camera->GetNodeMap(),
+                                       check_nodemap_sanity);
+      applied_pfs_location = pfs_location;
+      pfs_loaded = true;
+      GST_INFO_OBJECT(gstpylonsrc, "Loaded initial PFS file %s", pfs_location);
+    } catch (const Pylon::GenericException& e) {
+      std::string msg = "PFS file error: ";
+      msg += e.GetDescription();
+      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+    }
   }
 
   GstPylonCache camera_feature_cache(
@@ -247,6 +270,9 @@ void GstPylon::Open(const gchar* device_user_name,
       gst_pylon_make_camera_schema(*camera, camera_feature_cache);
   gcamera =
       gst_pylon_object_new_for_schema(camera, camera_schema, enable_correction);
+  if (pfs_loaded) {
+    gst_pylon_object_mark_framerate_configured(gcamera);
+  }
   gst_object_set_parent(GST_OBJECT(gcamera), GST_OBJECT(gstpylonsrc));
   g_object_ref(gcamera);
   GST_INFO_OBJECT(gstpylonsrc, "Created camera child object");

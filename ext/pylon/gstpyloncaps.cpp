@@ -100,11 +100,11 @@ static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
 
 typedef void (*GstPylonQuery)(GstPylon*, GValue*);
 
-static void gst_pylon_query_format(
+static gboolean gst_pylon_query_format(
     GstPylon* self, GValue* outvalue,
     const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
-  g_return_if_fail(self);
-  g_return_if_fail(outvalue);
+  g_return_val_if_fail(self, FALSE);
+  g_return_val_if_fail(outvalue, FALSE);
 
   GenApi::INodeMap& nodemap = self->camera->GetNodeMap();
   Pylon::CEnumParameter pixelformat(nodemap, "PixelFormat");
@@ -115,6 +115,9 @@ static void gst_pylon_query_format(
   /* Convert GenApi formats to Gst formats */
   std::vector<std::string> gst_formats =
       gst_pylon_pfnc_list_to_gst(genapi_formats, pixel_format_mapping);
+  if (gst_formats.empty()) {
+    return FALSE;
+  }
 
   /* Fill format field */
   g_value_init(outvalue, GST_TYPE_LIST);
@@ -122,12 +125,17 @@ static void gst_pylon_query_format(
   GValue value = G_VALUE_INIT;
   g_value_init(&value, G_TYPE_STRING);
 
+  std::set<std::string> seen;
   for (const auto& fmt : gst_formats) {
+    if (!seen.insert(fmt).second) {
+      continue;
+    }
     g_value_set_string(&value, fmt.c_str());
     gst_value_list_append_value(outvalue, &value);
   }
 
   g_value_unset(&value);
+  return TRUE;
 }
 
 static void gst_pylon_query_integer(GstPylon* self, GValue* outvalue,
@@ -200,13 +208,21 @@ static void gst_pylon_query_framerate(GstPylon* self, GValue* outvalue) {
   }
 }
 
-static void gst_pylon_query_caps(
+static gboolean gst_pylon_query_caps(
     GstPylon* self, GstStructure* st,
     const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
-  g_return_if_fail(self);
-  g_return_if_fail(st);
+  g_return_val_if_fail(self, FALSE);
+  g_return_val_if_fail(st, FALSE);
 
   GValue value = G_VALUE_INIT;
+
+  /* Pixel format is queried first; skip structure if camera supports none of
+   * these formats. */
+  if (!gst_pylon_query_format(self, &value, pixel_format_mapping)) {
+    return FALSE;
+  }
+  gst_structure_set_value(st, "format", &value);
+  g_value_unset(&value);
 
   /* Save offset to later reset values after querying */
   gint64 orig_offset_x = 0;
@@ -227,18 +243,12 @@ static void gst_pylon_query_caps(
       {gst_pylon_query_framerate, "framerate"}};
 
   /* Offsets are set to 0 to get the true image geometry */
-  if (has_offset_x) {
+  if (has_offset_x && orig_offset_x != 0) {
     self->camera->OffsetX.TrySetToMinimum();
   }
-  if (has_offset_y) {
+  if (has_offset_y && orig_offset_y != 0) {
     self->camera->OffsetY.TrySetToMinimum();
   }
-
-  /* Pixel format is queried separately to support querying different pixel
-   * format mappings */
-  gst_pylon_query_format(self, &value, pixel_format_mapping);
-  gst_structure_set_value(st, "format", &value);
-  g_value_unset(&value);
 
   for (const auto& query : queries) {
     GstPylonQuery func = query.first;
@@ -250,12 +260,14 @@ static void gst_pylon_query_caps(
   }
 
   /* Reset offset after querying */
-  if (has_offset_x) {
+  if (has_offset_x && orig_offset_x != 0) {
     self->camera->OffsetX.TrySetValue(orig_offset_x);
   }
-  if (has_offset_y) {
+  if (has_offset_y && orig_offset_y != 0) {
     self->camera->OffsetY.TrySetValue(orig_offset_y);
   }
+
+  return TRUE;
 }
 
 GstCaps* GstPylon::QueryConfiguration(GError** err) {
@@ -268,16 +280,21 @@ GstCaps* GstPylon::QueryConfiguration(GError** err) {
     GstStructure* st =
         gst_structure_new_empty(gst_structure_format.st_name.c_str());
     try {
-      gst_pylon_query_caps(this, st, gst_structure_format.format_map);
-      gst_caps_append_structure(caps, st);
+      if (!gst_pylon_query_caps(this, st, gst_structure_format.format_map)) {
+        gst_structure_free(st);
+        continue;
+      }
 
 #ifdef NVMM_ENABLED
-      /* We need the copy since the append has taken ownership of the "old" st
-       */
-      gst_caps_append_structure_full(
-          caps, gst_structure_copy(st),
-          gst_caps_features_new("memory:NVMM", NULL));
+      /* Advertise memory:NVMM first (matching static pad template priority)
+       * only for video/x-raw formats supported by NvBufSurface. */
+      if (gst_structure_format.st_name == "video/x-raw") {
+        gst_caps_append_structure_full(
+            caps, gst_structure_copy(st),
+            gst_caps_features_new("memory:NVMM", NULL));
+      }
 #endif
+      gst_caps_append_structure(caps, st);
 
     } catch (const Pylon::GenericException& e) {
       gst_structure_free(st);

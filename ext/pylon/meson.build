@@ -8,6 +8,7 @@ pylon_sources = [
   'gstpylon.cpp',
   'gstpyloncaps.cpp',
   'gstpyloncapture.cpp',
+  'gstpylondeviceprovider.cpp',
   'gstpylondisconnecthandler.cpp',
   'gstpylonimagehandler.cpp',
   'gstpyloninspect.cpp',

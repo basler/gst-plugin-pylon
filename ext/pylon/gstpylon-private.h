@@ -106,7 +106,8 @@ struct _GstPylon {
   }
 
   void Open(const gchar* device_user_name, const gchar* device_serial_number,
-            gint device_index, gboolean enable_correction);
+            gint device_index, const gchar* user_set, const gchar* pfs_location,
+            gboolean enable_correction);
   void SetMaxPendingFrames(guint max_pending_frames);
   gboolean Start(GError** err);
   gboolean Stop(GError** err);

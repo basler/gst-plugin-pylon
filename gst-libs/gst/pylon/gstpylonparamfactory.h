@@ -34,13 +34,15 @@
 #define GSTPYLONPARAMFACTORY_H
 
 #include <gst/pylon/gstpyloncache.h>
+#include <gst/pylon/gstpylonfeatureprior.h>
 #include <gst/pylon/gstpylonincludes.h>
 #include <gst/pylon/gstpylonobject.h>
 
 class GstPylonParamFactory {
  public:
   explicit GstPylonParamFactory(const GstPylonObjectSchema& schema)
-      : schema(schema){};
+      : schema(schema),
+        device_profile(gst_pylon_detect_device_profile(schema.node_map())){};
 
   GParamSpec* make_param(GenApi::INode* node, GenApi::INode* selector,
                          guint64 selector_value);
@@ -70,6 +72,7 @@ class GstPylonParamFactory {
 
  private:
   const GstPylonObjectSchema& schema;
+  GstPylonDeviceProfile device_profile;
 };
 
 #endif  // GSTPYLONPARAMFACTORY_H

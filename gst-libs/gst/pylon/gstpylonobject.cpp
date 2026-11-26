@@ -39,6 +39,7 @@
 #include "gstpylonobject.h"
 #include "gstpylonparamspecs.h"
 
+#include <mutex>
 #include <utility>
 
 /************************************************************
@@ -54,15 +55,16 @@ static GType gst_pylon_object_find_schema_type(
     const GstPylonObjectSchema& schema);
 static GType gst_pylon_object_ensure_schema_type(
     const GstPylonObjectSchema& schema);
-static gpointer gst_pylon_object_parent_class = NULL;
-static gint GstPylonObject_private_offset;
+static std::mutex schema_type_registry_mutex;
 
 static void gst_pylon_object_class_intern_init(
     gpointer klass, GstPylonObjectClassData* class_data) {
-  gst_pylon_object_parent_class = g_type_class_peek_parent(klass);
-  if (GstPylonObject_private_offset != 0)
-    g_type_class_adjust_private_offset(klass, &GstPylonObject_private_offset);
-  gst_pylon_object_class_init((GstPylonObjectClass*)klass, class_data);
+  auto* pylon_klass = static_cast<GstPylonObjectClass*>(klass);
+  if (class_data->private_offset != 0) {
+    g_type_class_adjust_private_offset(klass, &class_data->private_offset);
+  }
+  pylon_klass->private_offset = class_data->private_offset;
+  gst_pylon_object_class_init(pylon_klass, class_data);
 }
 
 GType gst_pylon_object_register_schema(const GstPylonObjectSchema& schema) {
@@ -77,12 +79,15 @@ static GType gst_pylon_object_find_schema_type(
 
 static GType gst_pylon_object_ensure_schema_type(
     const GstPylonObjectSchema& schema) {
+  std::lock_guard<std::mutex> lock(schema_type_registry_mutex);
+
   GType type = gst_pylon_object_find_schema_type(schema);
   if (type) {
     return type;
   }
 
-  GstPylonObjectClassData* class_data = new GstPylonObjectClassData({schema});
+  GstPylonObjectClassData* class_data =
+      new GstPylonObjectClassData({schema, 0});
   std::string type_name = gst_pylon_object_get_schema_type_name(schema);
 
   GTypeInfo typeinfo = {
@@ -99,7 +104,7 @@ static GType gst_pylon_object_ensure_schema_type(
 
   type = g_type_register_static(GST_TYPE_OBJECT, type_name.c_str(), &typeinfo,
                                 static_cast<GTypeFlags>(0));
-  GstPylonObject_private_offset =
+  class_data->private_offset =
       g_type_add_instance_private(type, sizeof(GstPylonObjectPrivate));
 
   return type;
@@ -110,7 +115,9 @@ static GType gst_pylon_object_ensure_schema_type(
  ***********************************************************/
 
 gpointer gst_pylon_object_get_instance_private(GstPylonObject* self) {
-  return (G_STRUCT_MEMBER_P(self, GstPylonObject_private_offset));
+  auto* klass = reinterpret_cast<GstPylonObjectClass*>(
+      G_OBJECT_GET_CLASS(reinterpret_cast<GObject*>(self)));
+  return G_STRUCT_MEMBER_P(self, klass->private_offset);
 }
 
 /* prototypes */
@@ -200,7 +207,11 @@ static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
   delete (class_data);
 }
 
-static void gst_pylon_object_init(GstPylonObject* self) {}
+static void gst_pylon_object_init(GstPylonObject* self) {
+  GstPylonObjectPrivate* priv =
+      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  new (&priv->camera) std::shared_ptr<Pylon::CBaslerUniversalInstantCamera>();
+}
 
 /* Set pylon feature from gst property */
 template <class F, typename P>
@@ -614,7 +625,9 @@ static void gst_pylon_object_finalize(GObject* object) {
   GstPylonObjectPrivate* priv =
       (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
 
-  priv->camera = NULL;
+  priv->camera.~shared_ptr();
+  new (&priv->camera) std::shared_ptr<Pylon::CBaslerUniversalInstantCamera>();
 
-  G_OBJECT_CLASS(gst_pylon_object_parent_class)->finalize(object);
+  gpointer parent_class = g_type_class_peek_parent(G_OBJECT_GET_CLASS(object));
+  G_OBJECT_CLASS(parent_class)->finalize(object);
 }

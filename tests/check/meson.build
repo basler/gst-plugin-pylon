@@ -111,3 +111,15 @@ nvmmcolor_test = executable(
   cpp_args: ['-DHAVE_CONFIG_H=1'],
 )
 test('generic_nvmmcolor', nvmmcolor_test, timeout: 30)
+
+# Declarative Gen2 feature prior unit test (no camera required)
+featureprior_test = executable(
+  'generic_featureprior',
+  'generic/featureprior.cpp',
+  '../../gst-libs/gst/pylon/gstpylonfeatureprior.cpp',
+  '../../gst-libs/gst/pylon/gstpylondebug.cpp',
+  include_directories: [configinc, include_directories('../../gst-libs')],
+  dependencies: [gst_dep, pylon_dep],
+  cpp_args: ['-DHAVE_CONFIG_H=1'],
+)
+test('generic_featureprior', featureprior_test, timeout: 30)

@@ -47,6 +47,7 @@ G_DECLARE_DERIVABLE_TYPE(GstPylonObject, gst_pylon_object, GST, PYLON_OBJECT,
 
 struct _GstPylonObjectClass {
   GstObjectClass parent_class;
+  gint private_offset;
 };
 
 typedef struct {
@@ -76,6 +77,7 @@ typedef struct {
 
 typedef struct {
   GstPylonObjectSchema schema;
+  gint private_offset;
 } GstPylonObjectClassData;
 
 EXT_PYLONSRC_API GType

@@ -45,6 +45,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <memory>
 #include <numeric>
 #include <set>
 #include <unordered_map>
@@ -90,13 +91,13 @@ T gst_pylon_check_for_feature_invalidators(
 template <class P, class T>
 T gst_pylon_query_feature_limits(GenApi::INode* feature_node,
                                  const std::string& limit);
-std::vector<std::vector<GstPylonActions*>> gst_pylon_create_set_value_actions(
+std::vector<std::vector<std::unique_ptr<GstPylonActions>>>
+gst_pylon_create_set_value_actions(
     const std::vector<GenApi::INode*>& node_list);
 template <class P, class T>
-void gst_pylon_find_limits(GenApi::INode* node,
-                           double& minimum_under_all_settings,
-                           double& maximum_under_all_settings,
-                           std::vector<GenApi::INode*>& invalidators_result);
+void gst_pylon_find_limits(GenApi::INode* node, T& minimum_under_all_settings,
+                           T& maximum_under_all_settings,
+                           GstPylonDeviceProfile device_profile);
 template <class T>
 std::string gst_pylon_build_cache_value_string(GParamFlags flags,
                                                T minimum_under_all_settings,
@@ -104,7 +105,8 @@ std::string gst_pylon_build_cache_value_string(GParamFlags flags,
 
 gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode* node);
 
-std::vector<GstPylonActions*> gst_pylon_create_reset_value_actions(
+std::vector<std::unique_ptr<GstPylonActions>>
+gst_pylon_create_reset_value_actions(
     const std::vector<GenApi::INode*>& node_list);
 
 gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode* node) {
@@ -125,7 +127,8 @@ gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode* node) {
 }
 
 GParamFlags gst_pylon_query_access(GenApi::INodeMap& nodemap,
-                                   GenApi::INode* node) {
+                                   GenApi::INode* node,
+                                   GstPylonDeviceProfile device_profile) {
   gint flags = 0;
 
   g_return_val_if_fail(node, static_cast<GParamFlags>(flags));
@@ -149,20 +152,29 @@ GParamFlags gst_pylon_query_access(GenApi::INodeMap& nodemap,
 
   /* Check if feature is writable in PLAYING state */
   if (is_read_write || is_write_only) {
-    Pylon::CIntegerParameter tl_params_locked(nodemap, "TLParamsLocked");
-    if (tl_params_locked.IsValid()) {
-      /* Check if feature is writable at runtime by checking if it is still
-       * writable after setting TLParamsLocked to 1. */
-      tl_params_locked.SetValue(1);
-      if (is_writable && param.IsWritable()) {
-        flags |= GST_PARAM_MUTABLE_PLAYING;
+    const GstPylonTlLockBehavior lock_behavior =
+        gst_pylon_prior_tl_lock_behavior(device_profile,
+                                         node->GetName().c_str());
+    if (lock_behavior == GstPylonTlLockBehavior::kUnlockedPlaying) {
+      flags |=
+          is_writable ? GST_PARAM_MUTABLE_PLAYING : GST_PARAM_MUTABLE_READY;
+    } else if (lock_behavior == GstPylonTlLockBehavior::kLockedPlaying) {
+      flags |= GST_PARAM_MUTABLE_READY;
+    } else {
+      Pylon::CIntegerParameter tl_params_locked(nodemap, "TLParamsLocked");
+      if (tl_params_locked.IsValid()) {
+        /* Check if feature is writable at runtime by checking if it is still
+         * writable after setting TLParamsLocked to 1. */
+        tl_params_locked.SetValue(1);
+        if (is_writable && param.IsWritable()) {
+          flags |= GST_PARAM_MUTABLE_PLAYING;
+        } else {
+          flags |= GST_PARAM_MUTABLE_READY;
+        }
+        tl_params_locked.SetValue(0);
       } else {
         flags |= GST_PARAM_MUTABLE_READY;
       }
-      tl_params_locked.SetValue(0);
-
-    } else {
-      flags |= GST_PARAM_MUTABLE_READY;
     }
   }
 
@@ -292,8 +304,7 @@ static std::vector<GenApi::INode*> gst_pylon_filter_gev_ctrl(
   std::vector<GenApi::INode*> valid_features;
   /* feature to filter */
   const std::vector<std::string> gst_feature_list(
-      {"GevSCPSPacketSize", "GevSCPD", "GevSCFTD", "GevSCBWR",
-       "GevSCBWRA"
+      {"GevSCPSPacketSize", "GevSCPD", "GevSCFTD", "GevSCBWR", "GevSCBWRA",
        "GevGVSPExtendedIDMode"});
   /* filter out gev control features from feature_list */
   for (const auto& feature : feature_list) {
@@ -359,41 +370,44 @@ T gst_pylon_check_for_feature_invalidators(
   return limit_under_all_settings;
 }
 
-std::vector<std::vector<GstPylonActions*>> gst_pylon_create_set_value_actions(
+std::vector<std::vector<std::unique_ptr<GstPylonActions>>>
+gst_pylon_create_set_value_actions(
     const std::vector<GenApi::INode*>& node_list) {
-  std::vector<std::vector<GstPylonActions*>> actions_list;
+  std::vector<std::vector<std::unique_ptr<GstPylonActions>>> actions_list;
 
   for (const auto& node : node_list) {
-    std::vector<GstPylonActions*> values;
+    std::vector<std::unique_ptr<GstPylonActions>> values;
     switch (node->GetPrincipalInterfaceType()) {
       case GenApi::intfIBoolean: {
         Pylon::CBooleanParameter param(node);
         values.push_back(
-            new GstPylonTypeAction<Pylon::CBooleanParameter, gboolean>(param,
-                                                                       TRUE));
+            std::make_unique<
+                GstPylonTypeAction<Pylon::CBooleanParameter, gboolean>>(param,
+                                                                        TRUE));
         values.push_back(
-            new GstPylonTypeAction<Pylon::CBooleanParameter, gboolean>(param,
-                                                                       FALSE));
+            std::make_unique<
+                GstPylonTypeAction<Pylon::CBooleanParameter, gboolean>>(param,
+                                                                        FALSE));
         break;
       }
       case GenApi::intfIFloat: {
         Pylon::CFloatParameter param(node);
-        values.push_back(
-            new GstPylonTypeAction<Pylon::CFloatParameter, gdouble>(
-                param, param.GetMin()));
-        values.push_back(
-            new GstPylonTypeAction<Pylon::CFloatParameter, gdouble>(
-                param, param.GetMax()));
+        values.push_back(std::make_unique<
+                         GstPylonTypeAction<Pylon::CFloatParameter, gdouble>>(
+            param, param.GetMin()));
+        values.push_back(std::make_unique<
+                         GstPylonTypeAction<Pylon::CFloatParameter, gdouble>>(
+            param, param.GetMax()));
         break;
       }
       case GenApi::intfIInteger: {
         Pylon::CIntegerParameter param(node);
-        values.push_back(
-            new GstPylonTypeAction<Pylon::CIntegerParameter, gint64>(
-                param, param.GetMin()));
-        values.push_back(
-            new GstPylonTypeAction<Pylon::CIntegerParameter, gint64>(
-                param, param.GetMax()));
+        values.push_back(std::make_unique<
+                         GstPylonTypeAction<Pylon::CIntegerParameter, gint64>>(
+            param, param.GetMin()));
+        values.push_back(std::make_unique<
+                         GstPylonTypeAction<Pylon::CIntegerParameter, gint64>>(
+            param, param.GetMax()));
         break;
       }
       case GenApi::intfIEnumeration: {
@@ -407,7 +421,8 @@ std::vector<std::vector<GstPylonActions*>> gst_pylon_create_set_value_actions(
             continue;
           }
           values.push_back(
-              new GstPylonTypeAction<Pylon::CEnumParameter, Pylon::String_t>(
+              std::make_unique<
+                  GstPylonTypeAction<Pylon::CEnumParameter, Pylon::String_t>>(
                   param, value));
         }
         break;
@@ -422,44 +437,50 @@ std::vector<std::vector<GstPylonActions*>> gst_pylon_create_set_value_actions(
         GST_DEBUG("%s", msg.c_str());
         continue;
     }
-    actions_list.push_back(values);
+    if (!values.empty()) {
+      actions_list.push_back(std::move(values));
+    }
   }
 
   return actions_list;
 }
 
-std::vector<GstPylonActions*> gst_pylon_create_reset_value_actions(
+std::vector<std::unique_ptr<GstPylonActions>>
+gst_pylon_create_reset_value_actions(
     const std::vector<GenApi::INode*>& node_list) {
-  std::vector<GstPylonActions*> actions_list;
+  std::vector<std::unique_ptr<GstPylonActions>> actions_list;
 
   for (const auto& node : node_list) {
-    std::vector<GstPylonActions*> values;
     switch (node->GetPrincipalInterfaceType()) {
       case GenApi::intfIBoolean: {
         Pylon::CBooleanParameter param(node);
         actions_list.push_back(
-            new GstPylonTypeAction<Pylon::CBooleanParameter, gboolean>(
+            std::make_unique<
+                GstPylonTypeAction<Pylon::CBooleanParameter, gboolean>>(
                 param, param.GetValue()));
         break;
       }
       case GenApi::intfIFloat: {
         Pylon::CFloatParameter param(node);
         actions_list.push_back(
-            new GstPylonTypeAction<Pylon::CFloatParameter, gdouble>(
+            std::make_unique<
+                GstPylonTypeAction<Pylon::CFloatParameter, gdouble>>(
                 param, param.GetValue()));
         break;
       }
       case GenApi::intfIInteger: {
         Pylon::CIntegerParameter param(node);
         actions_list.push_back(
-            new GstPylonTypeAction<Pylon::CIntegerParameter, gint64>(
+            std::make_unique<
+                GstPylonTypeAction<Pylon::CIntegerParameter, gint64>>(
                 param, param.GetValue()));
         break;
       }
       case GenApi::intfIEnumeration: {
         Pylon::CEnumParameter param(node);
         actions_list.push_back(
-            new GstPylonTypeAction<Pylon::CEnumParameter, Pylon::String_t>(
+            std::make_unique<
+                GstPylonTypeAction<Pylon::CEnumParameter, Pylon::String_t>>(
                 param, param.GetValue()));
         break;
       }
@@ -501,15 +522,43 @@ class TimeLogger {
   std::vector<std::string> info_list;
 };
 
+static gboolean gst_pylon_try_prior_limits(GstPylonDeviceProfile device_profile,
+                                           GenApi::INode* node,
+                                           gint64& minimum_under_all_settings,
+                                           gint64& maximum_under_all_settings) {
+  return gst_pylon_prior_resolve_int_limits(device_profile, node,
+                                            minimum_under_all_settings,
+                                            maximum_under_all_settings);
+}
+
+static gboolean gst_pylon_try_prior_limits(
+    GstPylonDeviceProfile device_profile, GenApi::INode* node,
+    gdouble& minimum_under_all_settings, gdouble& maximum_under_all_settings) {
+  return gst_pylon_prior_resolve_double_limits(device_profile, node,
+                                               minimum_under_all_settings,
+                                               maximum_under_all_settings);
+}
+
 template <class P, class T>
 void gst_pylon_find_limits(GenApi::INode* node, T& minimum_under_all_settings,
-                           T& maximum_under_all_settings) {
+                           T& maximum_under_all_settings,
+                           GstPylonDeviceProfile device_profile) {
   std::unordered_map<std::string, GenApi::INode*> invalidators;
   maximum_under_all_settings = 0;
   minimum_under_all_settings = 0;
   g_return_if_fail(node);
 
   auto tl = TimeLogger(node->GetName().c_str());
+
+  /* For profiled second-generation Basler cameras (ace 2, dart 2, boost,
+   * racer 2 / 2S), apply prior knowledge directly before walking GenApi
+   * invalidators. */
+  if (device_profile == GstPylonDeviceProfile::kBaslerGen2 &&
+      gst_pylon_try_prior_limits(device_profile, node,
+                                 minimum_under_all_settings,
+                                 maximum_under_all_settings)) {
+    return;
+  }
 
   /* Find the maximum value of a feature under the influence of other elements
    * of the nodemap */
@@ -528,6 +577,15 @@ void gst_pylon_find_limits(GenApi::INode* node, T& minimum_under_all_settings,
     return;
   }
 
+  /* Apply generic workarounds for non-profiled cameras with high invalidator
+   * fanout before resorting to Cartesian permutation probing. */
+  if (device_profile != GstPylonDeviceProfile::kBaslerGen2 &&
+      gst_pylon_try_prior_limits(device_profile, node,
+                                 minimum_under_all_settings,
+                                 maximum_under_all_settings)) {
+    return;
+  }
+
   /* Find all features that control the node and
    * store results in a set to remove duplicates*/
   std::set<GenApi::INode*> parent_invalidators;
@@ -543,125 +601,6 @@ void gst_pylon_find_limits(GenApi::INode* node, T& minimum_under_all_settings,
   std::vector<GenApi::INode*> available_parent_inv =
       gst_pylon_get_available_features(parent_invalidators);
 
-  /* workarounds for ace2/dart2/boost features high
-   * dependency count
-   * FIXME: refactor this into a filter class
-   */
-  if (node->GetName() == "ExposureTime") {
-    GST_DEBUG("Apply ExposureTime feature workaround");
-    minimum_under_all_settings = 1.0;
-    maximum_under_all_settings = 1e+07;
-    return;
-  } else if (node->GetName() == "BlackLevel") {
-    GST_DEBUG("Apply BlackLevel 12bit feature workaround");
-    minimum_under_all_settings = 0;
-    maximum_under_all_settings = 4095;
-    return;
-  } else if (node->GetName() == "OffsetX") {
-    GST_DEBUG("Apply OffsetX feature workaround");
-    Pylon::CIntegerParameter sensor_width(
-        node->GetNodeMap()->GetNode("SensorWidth"));
-    Pylon::CIntegerParameter width(node->GetNodeMap()->GetNode("Width"));
-    /* try to shortcut if sensor width is available */
-    if (sensor_width.IsValid() && width.IsValid()) {
-      minimum_under_all_settings = 0;
-      maximum_under_all_settings = sensor_width.GetValue() - width.GetInc();
-      return;
-    }
-  } else if (node->GetName() == "OffsetY") {
-    GST_DEBUG("Apply OffsetY feature workaround");
-    Pylon::CIntegerParameter sensor_height(
-        node->GetNodeMap()->GetNode("SensorHeight"));
-    Pylon::CIntegerParameter height(node->GetNodeMap()->GetNode("Height"));
-    /* try to shortcut if sensor height is available */
-    if (sensor_height.IsValid() && height.IsValid()) {
-      minimum_under_all_settings = 0;
-      maximum_under_all_settings = sensor_height.GetValue() - height.GetInc();
-      return;
-    }
-  } else if (node->GetName() == "AutoFunctionROIOffsetX" ||
-             node->GetName() == "AutoFunctionAOIOffsetX") {
-    GST_DEBUG("Apply AutoFunctionROIOffsetX feature workaround");
-    Pylon::CIntegerParameter sensor_width(
-        node->GetNodeMap()->GetNode("SensorWidth"));
-    Pylon::CIntegerParameter width(node->GetNodeMap()->GetNode("Width"));
-    /* try to shortcut if sensor width is available */
-    if (sensor_width.IsValid() && width.IsValid()) {
-      minimum_under_all_settings = 0;
-      maximum_under_all_settings = sensor_width.GetValue() - width.GetInc();
-      return;
-    }
-  } else if (node->GetName() == "AutoFunctionROIOffsetY" ||
-             node->GetName() == "AutoFunctionAOIOffsetY") {
-    GST_DEBUG("Apply AutoFunctionROIOffsetY feature workaround");
-    Pylon::CIntegerParameter sensor_height(
-        node->GetNodeMap()->GetNode("SensorHeight"));
-    Pylon::CIntegerParameter height(node->GetNodeMap()->GetNode("Height"));
-    /* try to shortcut if sensor height is available */
-    if (sensor_height.IsValid() && height.IsValid()) {
-      minimum_under_all_settings = 0;
-      maximum_under_all_settings = sensor_height.GetValue() - height.GetInc();
-      return;
-    }
-  } else if (node->GetName() == "AutoFunctionROIWidth" ||
-             node->GetName() == "AutoFunctionAOIWidth") {
-    GST_DEBUG("Apply AutoFunctionROIWidth feature workaround");
-    Pylon::CIntegerParameter sensor_width(
-        node->GetNodeMap()->GetNode("SensorWidth"));
-    /* try to shortcut if sensor width is available */
-    if (sensor_width.IsValid()) {
-      minimum_under_all_settings = 0;
-      maximum_under_all_settings = sensor_width.GetValue();
-      return;
-    }
-  } else if (node->GetName() == "AutoFunctionROIHeight" ||
-             node->GetName() == "AutoFunctionAOIHeight") {
-    GST_DEBUG("Apply AutoFunctionROIHeight feature workaround");
-    Pylon::CIntegerParameter sensor_height(
-        node->GetNodeMap()->GetNode("SensorHeight"));
-    /* try to shortcut if sensor height is available */
-    if (sensor_height.IsValid()) {
-      minimum_under_all_settings = 0;
-      maximum_under_all_settings = sensor_height.GetValue();
-      return;
-    }
-  } else if (node->GetName() == "AcquisitionBurstFrameCount") {
-    minimum_under_all_settings = 1;
-    maximum_under_all_settings = 1023;
-    GST_DEBUG("Apply AcquisitionBurstFrameCount feature workaround");
-    return;
-  } else if (node->GetName() == "BslColorAdjustmentHue") {
-    minimum_under_all_settings = -1;
-    maximum_under_all_settings = 1;
-    GST_DEBUG("Apply BslColorAdjustmentHue feature workaround");
-    return;
-  } else if (node->GetName() == "BslColorAdjustmentSaturation") {
-    minimum_under_all_settings = 0;
-    maximum_under_all_settings = 2;
-    GST_DEBUG("Apply BslColorAdjustmentSaturation feature workaround");
-    return;
-  } else if (node->GetName() == "GevSCBWR") {
-    minimum_under_all_settings = 0;
-    maximum_under_all_settings = 100;
-    GST_DEBUG("Apply GevSCBWR feature workaround");
-    return;
-  } else if (node->GetName() == "GevSCBWRA") {
-    minimum_under_all_settings = 1;
-    maximum_under_all_settings = 512;
-    GST_DEBUG("Apply GevSCBWRA feature workaround");
-    return;
-  } else if (node->GetName() == "GevSCPD") {
-    minimum_under_all_settings = 0;
-    maximum_under_all_settings = 50000000;
-    GST_DEBUG("Apply GevSCPD feature workaround");
-    return;
-  } else if (node->GetName() == "GevSCFTD") {
-    minimum_under_all_settings = 0;
-    maximum_under_all_settings = 50000000;
-    GST_DEBUG("Apply GevSCFTD feature workaround");
-    return;
-  };
-
   /* remove any feature from the list that belongs to an unsupported
    * category */
   available_parent_inv = gst_pylon_get_valid_categories(available_parent_inv);
@@ -670,17 +609,26 @@ void gst_pylon_find_limits(GenApi::INode* node, T& minimum_under_all_settings,
    * the gige setup parameters */
   available_parent_inv = gst_pylon_filter_gev_ctrl(available_parent_inv);
 
-  for (auto& node : available_parent_inv) {
-    tl.add_info(node->GetName().c_str());
+  for (auto& inv_node : available_parent_inv) {
+    tl.add_info(inv_node->GetName().c_str());
   }
 
-  /* Save current set of values */
-  std::vector<GstPylonActions*> reset_list =
-      gst_pylon_create_reset_value_actions(available_parent_inv);
+  /* Save current set of values (RAII) */
+  auto reset_list = gst_pylon_create_reset_value_actions(available_parent_inv);
 
-  /* Create list of extreme value settings per invalidator */
-  std::vector<std::vector<GstPylonActions*>> actions_list =
-      gst_pylon_create_set_value_actions(available_parent_inv);
+  /* Create list of extreme value settings per invalidator (RAII) */
+  auto actions_list = gst_pylon_create_set_value_actions(available_parent_inv);
+
+  std::vector<std::vector<GstPylonActions*>> raw_actions_list;
+  raw_actions_list.reserve(actions_list.size());
+  for (const auto& group : actions_list) {
+    std::vector<GstPylonActions*> ptrs;
+    ptrs.reserve(group.size());
+    for (const auto& act : group) {
+      ptrs.push_back(act.get());
+    }
+    raw_actions_list.push_back(std::move(ptrs));
+  }
 
   /* try to get support for optimized bulk feature settings */
   auto reg_streaming_start = Pylon::CCommandParameter(
@@ -689,7 +637,7 @@ void gst_pylon_find_limits(GenApi::INode* node, T& minimum_under_all_settings,
       node->GetNodeMap()->GetNode("DeviceRegistersStreamingEnd"));
 
   /* Create list of all possible setting permutations and execute them all */
-  auto action_list_permutations = gst_pylon_cartesian_product(actions_list);
+  auto action_list_permutations = gst_pylon_cartesian_product(raw_actions_list);
   std::vector<T> min_values;
   std::vector<T> max_values;
   for (const auto& actions : action_list_permutations) {
@@ -698,7 +646,7 @@ void gst_pylon_find_limits(GenApi::INode* node, T& minimum_under_all_settings,
       /* Some states might not be valid, so just skip them */
       try {
         action->set_value();
-      } catch (const GenICam::GenericException& e) {
+      } catch (const GenICam::GenericException&) {
         GST_DEBUG("failed to set action");
         continue;
       }
@@ -711,11 +659,17 @@ void gst_pylon_find_limits(GenApi::INode* node, T& minimum_under_all_settings,
     max_values.push_back(gst_pylon_query_feature_limits<P, T>(node, "max"));
   }
 
-  /* Get the max and min values under all settings executed*/
-  minimum_under_all_settings =
-      *std::min_element(min_values.begin(), min_values.end());
-  maximum_under_all_settings =
-      *std::max_element(max_values.begin(), max_values.end());
+  if (!min_values.empty() && !max_values.empty()) {
+    minimum_under_all_settings =
+        *std::min_element(min_values.begin(), min_values.end());
+    maximum_under_all_settings =
+        *std::max_element(max_values.begin(), max_values.end());
+  } else {
+    minimum_under_all_settings =
+        gst_pylon_query_feature_limits<P, T>(node, "min");
+    maximum_under_all_settings =
+        gst_pylon_query_feature_limits<P, T>(node, "max");
+  }
 
   /* Reset to old values */
   for (const auto& action : reset_list) {
@@ -725,23 +679,14 @@ void gst_pylon_find_limits(GenApi::INode* node, T& minimum_under_all_settings,
       continue;
     }
   }
-
-  /* Clean up */
-  for (const auto& actions : actions_list) {
-    for (const auto& action : actions) {
-      delete action;
-    }
-  }
-  for (const auto& action : reset_list) {
-    delete action;
-  }
 }
 
 void gst_pylon_query_feature_properties_double(
     GenApi::INodeMap& nodemap, GenApi::INode* node,
     GstPylonCache& feature_cache, GParamFlags& flags,
     gdouble& minimum_under_all_settings, gdouble& maximum_under_all_settings,
-    GenApi::INode* selector, gint64 selector_value) {
+    GenApi::INode* selector, gint64 selector_value,
+    GstPylonDeviceProfile device_profile) {
   g_return_if_fail(node);
 
   gchar* feature_cache_name = NULL;
@@ -761,11 +706,14 @@ void gst_pylon_query_feature_properties_double(
   if (!feature_cache.GetDoubleProps(feature_cache_name,
                                     minimum_under_all_settings,
                                     maximum_under_all_settings, flags)) {
-    flags = gst_pylon_query_access(nodemap, node);
+    flags = gst_pylon_query_access(nodemap, node, device_profile);
     if (feature_cache.IsLimitProbeEnabled()) {
       gst_pylon_find_limits<Pylon::CFloatParameter, gdouble>(
-          node, minimum_under_all_settings, maximum_under_all_settings);
-    } else {
+          node, minimum_under_all_settings, maximum_under_all_settings,
+          device_profile);
+    } else if (!gst_pylon_try_prior_limits(device_profile, node,
+                                           minimum_under_all_settings,
+                                           maximum_under_all_settings)) {
       minimum_under_all_settings =
           gst_pylon_query_feature_limits<Pylon::CFloatParameter, gdouble>(
               node, "min");
@@ -781,12 +729,10 @@ void gst_pylon_query_feature_properties_double(
   g_free(feature_cache_name);
 }
 
-void gst_pylon_query_feature_properties_flags(GenApi::INodeMap& nodemap,
-                                              GenApi::INode* node,
-                                              GstPylonCache& feature_cache,
-                                              GParamFlags& flags,
-                                              GenApi::INode* selector,
-                                              gint64 selector_value) {
+void gst_pylon_query_feature_properties_flags(
+    GenApi::INodeMap& nodemap, GenApi::INode* node,
+    GstPylonCache& feature_cache, GParamFlags& flags, GenApi::INode* selector,
+    gint64 selector_value, GstPylonDeviceProfile device_profile) {
   g_return_if_fail(node);
 
   gchar* feature_cache_name = NULL;
@@ -801,7 +747,7 @@ void gst_pylon_query_feature_properties_flags(GenApi::INodeMap& nodemap,
   }
 
   if (!feature_cache.GetFlags(feature_cache_name, flags)) {
-    flags = gst_pylon_query_access(nodemap, node);
+    flags = gst_pylon_query_access(nodemap, node, device_profile);
     feature_cache.SetFlags(feature_cache_name, flags);
   }
 
@@ -812,7 +758,8 @@ void gst_pylon_query_feature_properties_integer(
     GenApi::INodeMap& nodemap, GenApi::INode* node,
     GstPylonCache& feature_cache, GParamFlags& flags,
     gint64& minimum_under_all_settings, gint64& maximum_under_all_settings,
-    GenApi::INode* selector, gint64 selector_value) {
+    GenApi::INode* selector, gint64 selector_value,
+    GstPylonDeviceProfile device_profile) {
   g_return_if_fail(node);
 
   gchar* feature_cache_name = NULL;
@@ -832,11 +779,14 @@ void gst_pylon_query_feature_properties_integer(
   /* If access to a feature cache entry fails, create new props dynamically */
   if (!feature_cache.GetIntProps(feature_cache_name, minimum_under_all_settings,
                                  maximum_under_all_settings, flags)) {
-    flags = gst_pylon_query_access(nodemap, node);
+    flags = gst_pylon_query_access(nodemap, node, device_profile);
     if (feature_cache.IsLimitProbeEnabled()) {
       gst_pylon_find_limits<Pylon::CIntegerParameter, gint64>(
-          node, minimum_under_all_settings, maximum_under_all_settings);
-    } else {
+          node, minimum_under_all_settings, maximum_under_all_settings,
+          device_profile);
+    } else if (!gst_pylon_try_prior_limits(device_profile, node,
+                                           minimum_under_all_settings,
+                                           maximum_under_all_settings)) {
       minimum_under_all_settings =
           gst_pylon_query_feature_limits<Pylon::CIntegerParameter, gint64>(
               node, "min");

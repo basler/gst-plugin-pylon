@@ -102,8 +102,6 @@ static gboolean gst_pylon_src_teardown_session(GstPylonSrc* self,
                                                gboolean terminate_runtime,
                                                GError** error);
 static gboolean gst_pylon_src_create_session(GstPylonSrc* self, GError** error);
-static gboolean gst_pylon_src_apply_session_config(GstPylonSrc* self,
-                                                   GError** error);
 static void gst_pylon_src_discard_session(GstPylonSrc* self,
                                           gboolean terminate_runtime);
 static GObject* gst_pylon_src_ref_child(GstPylonSrc* self, guint property_id);
@@ -202,6 +200,9 @@ static GType gst_pylon_nvsurface_layout_enum_get_type(void) {
 #  define NVMM_GST_VIDEO_CAPS_PRIORITY
 #endif
 
+static GstStaticCaps pylon_reference_timestamp_caps =
+    GST_STATIC_CAPS("timestamp/x-pylon");
+
 static GstStaticPadTemplate gst_pylon_src_src_template =
     GST_STATIC_PAD_TEMPLATE(
         "src", GST_PAD_SRC, GST_PAD_ALWAYS,
@@ -239,8 +240,6 @@ static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
   gchar* stream_blurb = NULL;
   const gchar* cam_prolog = NULL;
   const gchar* stream_prolog = NULL;
-
-  Pylon::PylonAutoInitTerm init_pylon;
 
   /* Setting up pads and setting metadata should be moved to
      base_class_init if you intend to subclass this class. */
@@ -327,7 +326,7 @@ static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
           "capture-error", "Capture error strategy",
           "The strategy to use in case of a camera capture error.",
           GST_TYPE_CAPTURE_ERROR_ENUM, PROP_CAPTURE_ERROR_DEFAULT,
-          static_cast<GParamFlags>(G_PARAM_READWRITE |
+          static_cast<GParamFlags>(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
                                    GST_PARAM_CONTROLLABLE)));
 
   g_object_class_install_property(
@@ -348,14 +347,14 @@ static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
 #ifdef NVMM_ENABLED
   g_object_class_install_property(
       gobject_class, PROP_NVSURFACE_LAYOUT,
-      g_param_spec_enum("nvsurface-layout", "Surface layout",
-                        "Surface layout. May be block-linear or pitch-linear. "
-                        "For a dGPU, only pitch-linear is valid. Applied when "
-                        "the device is created.",
-                        GST_TYPE_NVSURFACE_LAYOUT_ENUM,
-                        PROP_NVSURFACE_LAYOUT_DEFAULT,
-                        static_cast<GParamFlags>(G_PARAM_READWRITE |
-                                                 GST_PARAM_MUTABLE_READY)));
+      g_param_spec_enum(
+          "nvsurface-layout", "Surface layout",
+          "Surface layout. May be block-linear or pitch-linear. "
+          "For a dGPU, only pitch-linear is valid. Applied when "
+          "the device is created.",
+          GST_TYPE_NVSURFACE_LAYOUT_ENUM, PROP_NVSURFACE_LAYOUT_DEFAULT,
+          static_cast<GParamFlags>(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+                                   GST_PARAM_MUTABLE_READY)));
 
   g_object_class_install_property(
       gobject_class, PROP_GPU_ID,
@@ -370,9 +369,11 @@ static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
   cam_params = gst_pylon_camera_get_string_properties();
   stream_params = gst_pylon_stream_grabber_get_string_properties();
 
-  if (NULL == cam_params) {
+  if (NULL == cam_params || cam_params[0] == '\0') {
     cam_prolog = "No valid cameras where found connected to the system.";
     stream_prolog = cam_prolog;
+    g_free(cam_params);
+    g_free(stream_params);
     cam_params = g_strdup("");
     stream_params = g_strdup("");
   } else {
@@ -392,8 +393,10 @@ static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
 
   g_object_class_install_property(
       gobject_class, PROP_CAM,
-      g_param_spec_object("cam", "Camera", cam_blurb, G_TYPE_OBJECT,
-                          G_PARAM_READABLE));
+      g_param_spec_object(
+          "cam", "Camera", cam_blurb, G_TYPE_OBJECT,
+          static_cast<GParamFlags>(G_PARAM_READABLE | G_PARAM_STATIC_NAME |
+                                   G_PARAM_STATIC_NICK)));
 
   stream_blurb = g_strdup_printf(
       "The stream grabber to use.\n"
@@ -406,9 +409,13 @@ static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
 
   g_object_class_install_property(
       gobject_class, PROP_STREAM,
-      g_param_spec_object("stream", "Stream Grabber", stream_blurb,
-                          G_TYPE_OBJECT, G_PARAM_READABLE));
+      g_param_spec_object(
+          "stream", "Stream Grabber", stream_blurb, G_TYPE_OBJECT,
+          static_cast<GParamFlags>(G_PARAM_READABLE | G_PARAM_STATIC_NAME |
+                                   G_PARAM_STATIC_NICK)));
 
+  g_free(cam_blurb);
+  g_free(stream_blurb);
   g_free(cam_params);
   g_free(stream_params);
 
@@ -568,6 +575,12 @@ static void gst_pylon_src_finalize(GObject* object) {
   GstPylonSrc* self = GST_PYLON_SRC(object);
 
   GST_LOG_OBJECT(self, "finalize");
+
+  /* Clean up any session opened early via GstChildProxy in NULL state if the
+   * element was unreffed without ever transitioning READY -> NULL (stop). */
+  if (self->pylon) {
+    gst_pylon_src_discard_session(self, TRUE);
+  }
 
   g_free(self->device_user_name);
   self->device_user_name = NULL;
@@ -911,8 +924,8 @@ static gboolean gst_pylon_src_create_session(GstPylonSrc* self,
         pfs_location, ((enable_correction) ? "True" : "False"));
 
     new_pylon = gst_pylon_new(GST_ELEMENT_CAST(self), device_user_name,
-                              device_serial_number, device_index,
-                              enable_correction, error);
+                              device_serial_number, device_index, user_set,
+                              pfs_location, enable_correction, error);
 #ifdef NVMM_ENABLED
     if (new_pylon) {
       gst_pylon_set_nvsurface_layout(new_pylon, nvsurface_layout);
@@ -949,21 +962,6 @@ out:
   }
 
   return TRUE;
-}
-
-static gboolean gst_pylon_src_apply_session_config(GstPylonSrc* self,
-                                                   GError** error) {
-  gboolean ret = FALSE;
-
-  g_return_val_if_fail(self, FALSE);
-  g_return_val_if_fail(error && *error == NULL, FALSE);
-
-  GST_OBJECT_LOCK(self);
-  ret = gst_pylon_apply_session_config(self->pylon, self->user_set,
-                                       self->pfs_location, error);
-  GST_OBJECT_UNLOCK(self);
-
-  return ret && *error == NULL;
 }
 
 static void gst_pylon_src_discard_session(GstPylonSrc* self,
@@ -1074,11 +1072,6 @@ static gboolean gst_pylon_src_start(GstBaseSrc* src) {
     }
 
     if (!gst_pylon_src_create_session(self, &error)) {
-      ret = FALSE;
-      goto log_gst_error;
-    }
-
-    if (!gst_pylon_src_apply_session_config(self, &error)) {
       ret = FALSE;
       goto log_gst_error;
     }
@@ -1252,7 +1245,7 @@ static void gst_plyon_src_add_metadata(GstPylonSrc* self, GstBuffer* buf) {
   GST_BUFFER_OFFSET_END(buf) = offset + 1;
 
   /* add pylon timestamp as reference timestamp meta */
-  ref = gst_caps_from_string("timestamp/x-pylon");
+  ref = gst_static_caps_get(&pylon_reference_timestamp_caps);
   gst_buffer_add_reference_timestamp_meta(buf, ref, pylon_meta->timestamp,
                                           GST_CLOCK_TIME_NONE);
   gst_caps_unref(ref);

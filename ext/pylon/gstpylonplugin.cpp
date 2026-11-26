@@ -34,19 +34,25 @@
 #  include "config.h"
 #endif
 
+#include "gstpylondeviceprovider.h"
+#include "gstpylonsrc.h"
 #include "version.h"
 
-#include "gstpylonsrc.h"
 #include <pylon/PylonVersionNumber.h>
 
 static gboolean plugin_init(GstPlugin* plugin) {
-  return gst_element_register(plugin, "pylonsrc", GST_RANK_NONE,
+  gboolean ret = TRUE;
+  ret &= gst_element_register(plugin, "pylonsrc", GST_RANK_NONE,
                               GST_TYPE_PYLON_SRC);
+  ret &=
+      gst_device_provider_register(plugin, "pylondeviceprovider", GST_RANK_NONE,
+                                   GST_TYPE_PYLON_DEVICE_PROVIDER);
+  return ret;
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR,
-    pylon,
-    "Basler/Pylon plugin for pylon SDK " PYLON_VERSIONSTRING_MAJOR "."
-    PYLON_VERSIONSTRING_MINOR "." PYLON_VERSIONSTRING_SUBMINOR "("
-    PYLON_VERSIONSTRING_BUILD ")", plugin_init, GIT_VERSION,
-    GST_PACKAGE_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)
+GST_PLUGIN_DEFINE(GST_VERSION_MAJOR, GST_VERSION_MINOR, pylon,
+                  "Basler/Pylon plugin for pylon SDK " PYLON_VERSIONSTRING_MAJOR
+                  "." PYLON_VERSIONSTRING_MINOR "." PYLON_VERSIONSTRING_SUBMINOR
+                  "(" PYLON_VERSIONSTRING_BUILD ")",
+                  plugin_init, GIT_VERSION, GST_PACKAGE_LICENSE,
+                  GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

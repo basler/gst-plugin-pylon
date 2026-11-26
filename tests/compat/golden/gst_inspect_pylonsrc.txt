@@ -84,7 +84,7 @@ Element Properties:
                                                                            (2): Continuous         - The gain is adjusted continuously while images are being acquired.
                                    BlackLevel                         : Black level value to be applied to the currently selected sensor tap.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Double. Range: 0 - 1e+03 Default: <num>
+                                                                        Double. Range: 0 - 4.1e+03 Default: <num>
                                    Gamma                              : Gamma correction to be applied.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
                                                                         Double. Range: 0 - 4 Default: <num>
@@ -127,10 +127,10 @@ Element Properties:
                                                                         Integer64. Range: 1040 - 32768 Default: <num>
                                    OffsetX                            : Sets the X offset (left offset) of the area of interest in pixels.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 0 - 3072 Default: <num>
+                                                                        Integer64. Range: 0 - 4095 Default: <num>
                                    OffsetY                            : Sets the Y offset (top offset) for the area of interest in pixels.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 0 - 3056 Default: <num>
+                                                                        Integer64. Range: 0 - 4095 Default: <num>
                                    PixelSize                          : Indicates the depth of the pixel values in the image in bits per pixel.
                                                                         flags: readable
                                                                         Enum "_Emulation__0815_0000__PixelSize" Default: <enum>
@@ -689,16 +689,16 @@ Element Properties:
                                                                         Integer64. Range: 220 - 9014 Default: <num>
                                    GevSCPD                            : Delay between the transmission of each packet on the selected stream channel.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 0 - 787456 Default: <num>
+                                                                        Integer64. Range: 0 - 50000000 Default: <num>
                                    GevSCFTD                           : Frame transmission delay on the selected stream channel.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 0 - 4194303 Default: <num>
+                                                                        Integer64. Range: 0 - 50000000 Default: <num>
                                    GevSCBWR                           : Percentage of the Ethernet bandwidth assigned to the camera to be held in reserve.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 1 - 50 Default: <num>
+                                                                        Integer64. Range: 0 - 100 Default: <num>
                                    GevSCBWRA                          : Multiplier for the Bandwidth Reserve parameter.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 1 - 20 Default: <num>
+                                                                        Integer64. Range: 1 - 512 Default: <num>
        Basler Emulation (0815-0001) Camera:
 
                                    name                               : The name of the object
@@ -721,7 +721,7 @@ Element Properties:
                                                                            (2): Continuous         - The gain is adjusted continuously while images are being acquired.
                                    BlackLevel                         : Black level value to be applied to the currently selected sensor tap.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Double. Range: 0 - 1e+03 Default: <num>
+                                                                        Double. Range: 0 - 4.1e+03 Default: <num>
                                    Gamma                              : Gamma correction to be applied.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
                                                                         Double. Range: 0 - 4 Default: <num>
@@ -764,10 +764,10 @@ Element Properties:
                                                                         Integer64. Range: 1040 - 32768 Default: <num>
                                    OffsetX                            : Sets the X offset (left offset) of the area of interest in pixels.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 0 - 3072 Default: <num>
+                                                                        Integer64. Range: 0 - 4095 Default: <num>
                                    OffsetY                            : Sets the Y offset (top offset) for the area of interest in pixels.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 0 - 3056 Default: <num>
+                                                                        Integer64. Range: 0 - 4095 Default: <num>
                                    PixelSize                          : Indicates the depth of the pixel values in the image in bits per pixel.
                                                                         flags: readable
                                                                         Enum "_Emulation__0815_0001__PixelSize" Default: <enum>
@@ -1326,16 +1326,16 @@ Element Properties:
                                                                         Integer64. Range: 220 - 9014 Default: <num>
                                    GevSCPD                            : Delay between the transmission of each packet on the selected stream channel.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 0 - 787456 Default: <num>
+                                                                        Integer64. Range: 0 - 50000000 Default: <num>
                                    GevSCFTD                           : Frame transmission delay on the selected stream channel.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 0 - 4194303 Default: <num>
+                                                                        Integer64. Range: 0 - 50000000 Default: <num>
                                    GevSCBWR                           : Percentage of the Ethernet bandwidth assigned to the camera to be held in reserve.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 1 - 50 Default: <num>
+                                                                        Integer64. Range: 0 - 100 Default: <num>
                                    GevSCBWRA                          : Multiplier for the Bandwidth Reserve parameter.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 1 - 20 Default: <num>
+                                                                        Integer64. Range: 1 - 512 Default: <num>
                         flags: readable
                         Object of type "GObject"
 
