@@ -148,24 +148,57 @@ class PrepareControlFilesTestSuite(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             destination = Path(directory) / "control.json"
             destination.write_text("stale", encoding="utf-8")
-            with patch("prepare_control_files.subprocess.run"):
-                with self.assertRaisesRegex(ValueError, "nonempty file"):
-                    download_file("source", destination)
             with patch(
-                "prepare_control_files.subprocess.run",
-                side_effect=lambda *args, **kwargs: destination.touch(),
+                "prepare_control_files._open_with_retries",
+                return_value=io.BytesIO(b""),
             ):
                 with self.assertRaisesRegex(ValueError, "nonempty file"):
-                    download_file("source", destination)
+                    download_file("https://example.invalid/artifactory", "tok", "source", destination)
+
+    def test_discover_candidate_paths_walks_only_latest_folders(self):
+        from prepare_control_files import discover_candidate_paths
+
+        tree = {
+            SYNTHETIC_PREFIX: [("25.06.0", True), ("26.10.1", True), ("README.txt", False)],
+            f"{SYNTHETIC_PREFIX}/26.10.1": [("20261101.1", True), ("20261102.1", True)],
+            f"{SYNTHETIC_PREFIX}/26.10.1/20261102.1": [
+                ("report_linux_x86_64.json", False),
+                ("pylon_linux-x86_64_26101.deb", False),
+                ("report_windows_AMD64.json", False),
+            ],
+        }
+        visited = []
+
+        def fake_list(path):
+            visited.append(path)
+            return tree[path]
+
+        paths = discover_candidate_paths(
+            fake_list,
+            {"linux_x86_64": {"deb_arch": "x86_64"}, "windows": {}},
+            search_prefix=SYNTHETIC_PREFIX,
+        )
+        # Never descended into older version 25.06.0 or older build 20261101.1
+        self.assertEqual(
+            visited,
+            [
+                SYNTHETIC_PREFIX,
+                f"{SYNTHETIC_PREFIX}/26.10.1",
+                f"{SYNTHETIC_PREFIX}/26.10.1/20261102.1",
+            ],
+        )
+        self.assertIn(f"{SYNTHETIC_PREFIX}/26.10.1/20261102.1/pylon_linux-x86_64_26101.deb", paths)
 
     def test_main_ignores_semver_git_tag_and_downloads_expected_files(self):
-        paths = (
-            artifact_bundle("26.10.0", "20261101.2", "linux_x86_64", "x86_64")
-            + artifact_bundle("26.10.0", "20261101.2", "windows_AMD64", None)
-        )
-        jf_out = subprocess.CompletedProcess(
-            [], 0, json.dumps([{"path": p} for p in paths]), ""
-        )
+        tree = {
+            SYNTHETIC_PREFIX: [("26.10.0", True)],
+            f"{SYNTHETIC_PREFIX}/26.10.0": [("20261101.2", True)],
+            f"{SYNTHETIC_PREFIX}/26.10.0/20261101.2": [
+                ("report_linux_x86_64.json", False),
+                ("pylon-26.10.0_linux-x86_64_debs.tar.gz", False),
+                ("report_windows_AMD64.json", False),
+            ],
+        }
 
         with tempfile.TemporaryDirectory() as tmpdir:
             cwd = os.getcwd()
@@ -183,7 +216,7 @@ class PrepareControlFilesTestSuite(unittest.TestCase):
                     encoding="utf-8",
                 )
 
-                def fake_download(source, destination):
+                def fake_download(api_base, token, source, destination):
                     destination = Path(destination)
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     destination.write_bytes(b"ok")
@@ -193,13 +226,18 @@ class PrepareControlFilesTestSuite(unittest.TestCase):
                     os.environ,
                     {
                         "TAG_NAME": "v1.1.0",
+                        "SDK_URL": "https://sdk.example.invalid",
+                        "SDK_TOKEN": "synthetic-secret-token",
                         "SDK_SEARCH_PREFIX": SYNTHETIC_PREFIX,
                         "PYLON_SDK_VERSION": "",
                         "GITHUB_OUTPUT": str(gh_out),
                     },
                     clear=False,
                 ):
-                    with patch("prepare_control_files.subprocess.run", return_value=jf_out):
+                    with patch(
+                        "prepare_control_files.list_storage_children",
+                        side_effect=lambda api_base, token, path: tree[path],
+                    ):
                         with patch(
                             "prepare_control_files.download_file",
                             side_effect=fake_download,
@@ -215,8 +253,10 @@ class PrepareControlFilesTestSuite(unittest.TestCase):
             finally:
                 os.chdir(cwd)
 
-    def test_cli_failure_does_not_leak_command_arguments(self):
-        secret_path = f"{SYNTHETIC_PREFIX}/26.10.0/20261101.2/secret_internal_file.tar.gz"
+    def test_network_failure_does_not_leak_url_token_or_prefix(self):
+        secret_host = "internal-secret-host.invalid"
+        secret_token = "super-secret-token-value"
+        secret_path = f"{SYNTHETIC_PREFIX}/secret-repo"
         script = Path(__file__).resolve().parent / "prepare_control_files.py"
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg_dir = Path(tmpdir) / ".github" / "workflows"
@@ -225,14 +265,9 @@ class PrepareControlFilesTestSuite(unittest.TestCase):
                 json.dumps({"linux_x86_64": {"deb_arch": "x86_64"}}),
                 encoding="utf-8",
             )
-            fake_bin = Path(tmpdir) / "bin"
-            fake_bin.mkdir()
-            fake_jf = fake_bin / "jf"
-            fake_jf.write_text("#!/bin/sh\nexit 2\n", encoding="utf-8")
-            fake_jf.chmod(0o755)
-
             env = os.environ.copy()
-            env["PATH"] = f"{fake_bin}:{env.get('PATH', '')}"
+            env["SDK_URL"] = f"https://{secret_host}"
+            env["SDK_TOKEN"] = secret_token
             env["SDK_SEARCH_PREFIX"] = secret_path
             proc = subprocess.run(
                 ["python3", str(script)],
@@ -242,9 +277,10 @@ class PrepareControlFilesTestSuite(unittest.TestCase):
                 text=True,
             )
             self.assertNotEqual(proc.returncode, 0)
-            self.assertNotIn(SYNTHETIC_PREFIX, proc.stdout)
-            self.assertNotIn(SYNTHETIC_PREFIX, proc.stderr)
-            self.assertIn("jf exited with status 2", proc.stderr)
+            for secret in (secret_host, secret_token, SYNTHETIC_PREFIX):
+                self.assertNotIn(secret, proc.stdout)
+                self.assertNotIn(secret, proc.stderr)
+            self.assertIn("SDK server request failed", proc.stderr)
 
 
 if __name__ == "__main__":
