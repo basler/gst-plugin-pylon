@@ -71,6 +71,34 @@ element posts an error. With `auto-reconnect=true` it posts a warning plus
 attempt number) and retries every second for up to 15 attempts. The wait is
 interruptible so a state change to `NULL` never blocks on it.
 
+## Start and device open
+
+- Restarting on the same device reuses the session and skips configuration
+  when nothing changed.
+- Otherwise the old session is torn down (the runtime guard stays held), a new
+  one is created and the configuration is applied.
+- A failed start discards the session and releases its runtime guard.
+- A serial number or user-defined name without an index opens the device
+  directly, without full enumeration. Index selection enumerates and keeps the
+  collision retry loop.
+
+## Caches
+
+- `GstPylonCache` stores feature limits and flags per device, with private file
+  permissions. Width and height entries are only reused for exact matches.
+  Unavailable features are negative-cached, so warm starts do no
+  re-introspection.
+- `GstPylonInspectCache` stores full property blurbs, validated by a magic
+  header and content length.
+- `gst-inspect-1.0 pylonsrc` reads limits from the caches and does not probe
+  the camera by default. `GST_PYLON_PROBE_LIMITS=1` restores full probing.
+
+## Capture states
+
+The image handler moves between `Idle`, `FrameReady`, `Interrupted` and
+`Disconnected`. `Capture()` returns `ok`, `flushing` or `disconnected`. Unlock
+clears the flush before resuming, and a disconnect is never reported as a flush.
+
 ## Where to look
 
 | Question                                  | File                                    |

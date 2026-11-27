@@ -110,8 +110,14 @@ All notable changes to this project will be documented in this file.
   error; the reconnect wait no longer delays a state change to `NULL`
 - Replaced the C `gstpylon.h` facade with the `GstPylonSession` class and hid
   `GstPylonObjectPrivate`; limit probing moved to `gstpylonlimitprobe`
-- The plugin version is the Meson project version (`VERSION`); the git-describe
-  `version.h` generation was removed
+- The plugin version is the Meson project version (`VERSION`). Each build also
+  reports its identity from `tools/build_id.py`: `<version>+g<commit>` for an
+  untagged commit, `.dirty` for uncommitted tracked changes, and `+unknown`
+  without git metadata. Debian packages use the same identity;
+  `GST_PYLON_STRICT_VERSION=1` makes packaging refuse `+unknown` and `.dirty`
+  builds. The git-describe `version.h` generation was removed
+- Restarting `pylonsrc` on the same device reuses the session and skips
+  configuration when nothing changed
 
 ## [1.1.0] - 2026-11-26
 
