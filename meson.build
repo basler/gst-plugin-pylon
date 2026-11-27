@@ -26,6 +26,19 @@ else
 endif
 gst_version_is_dev = gst_version_minor % 2 == 1 and gst_version_micro < 90
 
+# Build identity (plugin version string). Re-evaluated on every build, so an
+# untagged commit or a dirty tree is reflected without reconfiguring.
+build_id_template = files('build_id.h.in')
+build_id_h = vcs_tag(
+  command : [python3, meson.project_source_root() / 'tools' / 'build_id.py',
+             meson.project_source_root(),
+             meson.project_version()],
+  input : build_id_template,
+  output : 'build_id.h',
+  replace_string : '@GST_PYLON_BUILD_ID@',
+  fallback : meson.project_version() + '+unknown',
+)
+
 api_version = '1.0'
 
 plugins_install_dir = join_paths(get_option('libdir'), 'gstreamer-1.0')

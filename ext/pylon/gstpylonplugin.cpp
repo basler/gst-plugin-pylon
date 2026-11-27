@@ -34,6 +34,7 @@
 #  include "config.h"
 #endif
 
+#include "build_id.h"
 #include "gstpylondeviceprovider.h"
 #include "gstpylonsrc.h"
 
@@ -53,5 +54,5 @@ GST_PLUGIN_DEFINE(GST_VERSION_MAJOR, GST_VERSION_MINOR, pylon,
                   "Basler/Pylon plugin for pylon SDK " PYLON_VERSIONSTRING_MAJOR
                   "." PYLON_VERSIONSTRING_MINOR "." PYLON_VERSIONSTRING_SUBMINOR
                   "(" PYLON_VERSIONSTRING_BUILD ")",
-                  plugin_init, VERSION, GST_PACKAGE_LICENSE, GST_PACKAGE_NAME,
-                  GST_PACKAGE_ORIGIN)
+                  plugin_init, GST_PYLON_BUILD_ID, GST_PACKAGE_LICENSE,
+                  GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)
