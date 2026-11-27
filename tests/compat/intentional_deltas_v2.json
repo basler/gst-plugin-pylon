@@ -1,0 +1,60 @@
+{
+  "baseline_ref": "v1.1.0",
+  "target_version": "2.0.0",
+  "description": "Machine-checked ledger of every intentional additive change and bugfix between v1.1.0 and v2.0.0. Any A/B differential mismatch not listed here fails compatibility verification.",
+  "additive_element_properties": {
+    "grab-timeout": "Added configurable per-frame grab timeout in milliseconds (default 0 = infinite, preserving v1.1.0 behavior, #45).",
+    "auto-reconnect": "Added opt-in automatic camera reconnection on disconnect (default false, preserving v1.1.0 behavior, #7)."
+  },
+  "additive_element_signals": {
+    "execute-command": "Added GenICam ICommand action signal supporting selector syntax (#58)."
+  },
+  "additive_plugin_features": {
+    "pylondeviceprovider": "Added metadata-only GstPylonDeviceProvider registered at GST_RANK_NONE so it does not hijack autovideosrc or OpenCV."
+  },
+  "additive_pad_template_formats": {
+    "video/x-raw": [
+      "GRAY16_LE"
+    ],
+    "video/x-bayer": [
+      "rggb10le",
+      "bggr10le",
+      "grbg10le",
+      "gbrg10le",
+      "rggb12le",
+      "bggr12le",
+      "grbg12le",
+      "gbrg12le",
+      "rggb16le",
+      "bggr16le",
+      "grbg16le",
+      "gbrg16le"
+    ]
+  },
+  "additive_pygstpylon_chunk_types": [
+    "bool",
+    "str"
+  ],
+  "intentional_behavioral_bugfixes": {
+    "meta_block_id_uses_transport_block_id": {
+      "enabled": true,
+      "rationale": "v1.1.0 erroneously assigned grab_result_ptr->GetImageNumber() to GstPylonMeta.block_id; v2.0.0 assigns grab_result_ptr->GetBlockID() and falls back to image_number when transport reports UINT64_MAX (e.g. CamEmu)."
+    },
+    "capture_error_keep_sets_corrupted_flag": {
+      "enabled": true,
+      "rationale": "v2.0.0 marks buffers delivered under capture-error=keep with GST_BUFFER_FLAG_CORRUPTED."
+    },
+    "gst_inspect_readonly_default": {
+      "enabled": true,
+      "rationale": "v2.0.0 gst-inspect-1.0 is read-only by default (full dynamic limit probing is opt-in via GST_PYLON_PROBE_LIMITS=1), so min/max bounds reported in gst-inspect may differ from probed extremes when GST_PYLON_PROBE_LIMITS is unset."
+    },
+    "child_enum_additive_entries": {
+      "enabled": true,
+      "rationale": "v2.0.0 registers all implemented GenApi::IEnumeration entries in GEnumClass to avoid GLib critical assertions on real cameras; existing v1.1.0 enum entries must remain present with identical integer values and nicks."
+    },
+    "lazy_class_init_deferred_introspection": {
+      "enabled": true,
+      "rationale": "v2.0.0 skips Pylon runtime init and camera enumeration in class_init during normal pipeline startup; GstChildProxy and cam::/stream:: properties on an instance still resolve transparently."
+    }
+  }
+}

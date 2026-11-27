@@ -274,6 +274,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Download pylon Debian bundle
         uses: actions/download-artifact@v7
@@ -331,6 +333,15 @@ jobs:
           export PYLON_CAMEMU=1
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
+
+      - name: A/B backwards-compatibility proof vs v1.1.0 (x86_64)
+        if: matrix.arch == 'x86_64'
+        run: |
+          export PYLON_ROOT=/opt/pylon
+          export LD_LIBRARY_PATH="/opt/pylon/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          . build_python/bin/activate
+          python3 tests/compat/run_ab_compat.py --baseline-ref v1.1.0 --v2-build builddir_gcc --report ab_compat_report.md
+          cat ab_compat_report.md
 
       - name: Smoke test installed plugin (Clang)
         run: |
