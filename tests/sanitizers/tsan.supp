@@ -15,4 +15,7 @@ race:libglib-2.0
 race:libgobject-2.0
 race:libgio-2.0
 race:libgstreamer-1.0
+# libdirect (DirectFB) is pulled in by the uninstrumented gstdirectfb plugin
+# during the registry scan and its mutex wrappers confuse TSan.
 mutex:direct_mutex_lock
+mutex:direct_mutex_unlock

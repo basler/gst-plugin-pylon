@@ -383,7 +383,13 @@ jobs:
           . build_python/bin/activate
           meson setup builddir_asan -Db_sanitize=address,undefined -Db_lundef=false -Dcpp_args=-fno-sanitize=vptr -Dpython-bindings=disabled -Dtest-hooks=true
           ninja -C builddir_asan
-          meson test -C builddir_asan --print-errorlogs
+          # In-process tests: our code only, memory errors, UB and leaks.
+          meson test -C builddir_asan --no-suite shell --print-errorlogs
+          # Script-driven tests drive the uninstrumented system gst-launch /
+          # gst-inspect / python3. The runtime is preloaded into those only
+          # and leak checking is off (it would report GStreamer core leaks);
+          # errors and UB in the plugin still fail the job.
+          tests/sanitizers/run_shell_tests_asan.sh builddir_asan
 
       - name: Compile and run concurrency tests with TSan (x86_64)
         if: matrix.arch == 'x86_64'
@@ -403,6 +409,9 @@ jobs:
           . build_python/bin/activate
           meson setup builddir_tsan -Db_sanitize=thread -Db_lundef=false -Dpython-bindings=disabled -Dtest-hooks=true
           ninja -C builddir_tsan
+          # TSan needs a low-entropy ASLR layout on newer kernels
+          # ("unexpected memory mapping" otherwise).
+          sudo sysctl -w vm.mmap_rnd_bits=28 || true
           meson test -C builddir_tsan generic_imagehandler pylon_pylonsrc_concurrency --print-errorlogs
 
   build_windows:

@@ -268,8 +268,10 @@ expect_ok "pipeline_with_videoconvert" \
 if command -v python3 >/dev/null 2>&1 || [[ -x /usr/bin/python3 ]]; then
   # Prefer a Python that has PyGObject (system packages). A Meson/CI venv
   # often shadows python3 without gi bindings.
+  # PYLONSRC_TEST_PYTHON lets the sanitizer job substitute a wrapper that
+  # preloads the ASan runtime (see tests/sanitizers/run_shell_tests_asan.sh).
   PYTHON_GI=""
-  for py in /usr/bin/python3 python3; do
+  for py in ${PYLONSRC_TEST_PYTHON:+"$PYLONSRC_TEST_PYTHON"} /usr/bin/python3 python3; do
     if command -v "$py" >/dev/null 2>&1 || [[ -x "$py" ]]; then
       if "$py" -c "import gi; gi.require_version('Gst','1.0'); from gi.repository import Gst" 2>/dev/null; then
         PYTHON_GI="$py"

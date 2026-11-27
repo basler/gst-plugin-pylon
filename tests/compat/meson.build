@@ -29,5 +29,7 @@ else
     },
     timeout: 90,
     workdir: source_root,
+    # Drives the system gst-launch/gst-inspect binaries; see the sanitizer CI job.
+    suite: ['shell'],
   )
 endif
