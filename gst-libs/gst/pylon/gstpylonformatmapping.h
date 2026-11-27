@@ -60,13 +60,18 @@ struct PixelFormatMappingView {
   constexpr const PixelFormatMappingType* end() const { return data + size; }
 };
 
-/* Prefer full 16-bit before 12/10-bit when downstream negotiates GRAY16_LE */
-inline constexpr std::array<PixelFormatMappingType, 13>
+/* GRAY16_LE candidates in preference order: Mono16, then unpacked Mono12/10
+ * (passed through zero-copy, LSB-aligned, i.e. values span 0..4095/0..1023),
+ * then packed Mono12p/Mono12Packed/Mono10p (unpacked to Mono16 on capture). */
+inline constexpr std::array<PixelFormatMappingType, 16>
     pixel_format_mapping_raw = {{
         {"Mono8", "GRAY8"},
         {"Mono16", "GRAY16_LE"},
         {"Mono12", "GRAY16_LE"},
         {"Mono10", "GRAY16_LE"},
+        {"Mono12p", "GRAY16_LE"},
+        {"Mono12Packed", "GRAY16_LE"},
+        {"Mono10p", "GRAY16_LE"},
         {"RGB8Packed", "RGB"},
         {"BGR8Packed", "BGR"},
         {"RGB8", "RGB"},

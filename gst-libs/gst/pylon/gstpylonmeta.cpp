@@ -46,6 +46,9 @@
 static gboolean gst_pylon_meta_init(GstMeta* meta, gpointer params,
                                     GstBuffer* buffer);
 static void gst_pylon_meta_free(GstMeta* meta, GstBuffer* buffer);
+static gboolean gst_pylon_meta_transform(GstBuffer* dest, GstMeta* meta,
+                                         GstBuffer* buffer, GQuark type,
+                                         gpointer data);
 static void gst_pylon_meta_add_chunk_as_meta(GstStructure* st,
                                              GenApi::INode* node,
                                              GenApi::INode* selector_node,
@@ -71,7 +74,7 @@ const GstMetaInfo* gst_pylon_meta_get_info(void) {
   if (g_once_init_enter(&info)) {
     const GstMetaInfo* meta = gst_meta_register(
         GST_PYLON_META_API_TYPE, "GstPylonMeta", sizeof(GstPylonMeta),
-        gst_pylon_meta_init, gst_pylon_meta_free, NULL);
+        gst_pylon_meta_init, gst_pylon_meta_free, gst_pylon_meta_transform);
     g_once_init_leave(&info, meta);
   }
   return info;
@@ -281,6 +284,41 @@ static void gst_pylon_meta_free(GstMeta* meta, GstBuffer* buffer) {
 
   (void)buffer;
   gst_structure_free(pylon_meta->chunks);
+}
+
+/* Whole-buffer copies keep the pylon meta (e.g. buffer copies for pool
+ * starvation fallbacks or downstream elements copying with
+ * GST_BUFFER_COPY_META). Partial copies (sub-buffers) cannot carry the
+ * per-frame values faithfully. */
+static gboolean gst_pylon_meta_transform(GstBuffer* dest, GstMeta* meta,
+                                         GstBuffer* buffer, GQuark type,
+                                         gpointer data) {
+  (void)buffer;
+
+  if (!GST_META_TRANSFORM_IS_COPY(type)) {
+    return FALSE;
+  }
+  const auto* copy = static_cast<GstMetaTransformCopy*>(data);
+  if (copy && copy->region) {
+    return FALSE;
+  }
+
+  const auto* src = reinterpret_cast<GstPylonMeta*>(meta);
+  auto* dst = reinterpret_cast<GstPylonMeta*>(
+      gst_buffer_add_meta(dest, GST_PYLON_META_INFO, NULL));
+  if (!dst) {
+    return FALSE;
+  }
+
+  dst->block_id = src->block_id;
+  dst->image_number = src->image_number;
+  dst->skipped_images = src->skipped_images;
+  dst->offset = src->offset;
+  dst->timestamp = src->timestamp;
+  dst->stride = src->stride;
+  gst_structure_free(dst->chunks);
+  dst->chunks = gst_structure_copy(src->chunks);
+  return TRUE;
 }
 
 GstPylonMeta* gst_buffer_get_pylon_meta(GstBuffer* buffer) {

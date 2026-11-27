@@ -92,6 +92,13 @@ class ScopedGstBufferMap {
 
 }  // namespace
 
+GstPylonBufferRef* GstPylonSession::NewBufferRef(
+    Pylon::CBaslerUniversalGrabResultPtr&& grab) {
+  in_flight->fetch_add(1, std::memory_order_relaxed);
+  return new GstPylonBufferRef{runtime, buffer_factory, in_flight,
+                               std::move(grab)};
+}
+
 void GstPylonSession::AddResultMeta(
     GstBuffer* buf, Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr,
     gsize override_stride) {
@@ -104,6 +111,9 @@ static void free_ptr_grab_result(gpointer data) {
   g_return_if_fail(data);
 
   auto* ref = static_cast<GstPylonBufferRef*>(data);
+  if (ref->in_flight) {
+    ref->in_flight->fetch_sub(1, std::memory_order_relaxed);
+  }
   delete ref;
 }
 
@@ -121,27 +131,51 @@ static void gst_pylon_post_capture_error_message(
   gst_element_post_message(elem, gst_message_new_element(GST_OBJECT(elem), s));
 }
 
-/* Scale 10-bit or 12-bit unpacked little-endian monochrome samples into full
- * 16-bit GRAY16_LE range [0..65535] so GStreamer videoconvert/displays render
- * expected brightness instead of near-black. */
-static void gst_pylon_scale_mono_sub16_to_gray16(const uint16_t* src,
-                                                 size_t src_stride_bytes,
-                                                 uint16_t* dst, uint32_t width,
-                                                 uint32_t height,
-                                                 unsigned int bit_depth) {
-  const unsigned int shift_up = 16U - bit_depth;
-  const unsigned int shift_down = 2U * bit_depth - 16U;
-  const uint16_t mask = static_cast<uint16_t>((1U << bit_depth) - 1U);
+/* Packed (bit-stream) monochrome formats cannot be exposed as raw GStreamer
+ * video. Unpacked Mono10/Mono12 are passed through zero-copy as LSB-aligned
+ * GRAY16_LE. */
+static bool gst_pylon_is_packed_mono(Pylon::EPixelType px_type) {
+  return px_type == Pylon::PixelType_Mono10p ||
+         px_type == Pylon::PixelType_Mono12p ||
+         px_type == Pylon::PixelType_Mono12packed;
+}
 
-  for (uint32_t y = 0; y < height; ++y) {
-    const auto* src_row = reinterpret_cast<const uint16_t*>(
-        reinterpret_cast<const uint8_t*>(src) + y * src_stride_bytes);
-    uint16_t* dst_row = dst + static_cast<size_t>(y) * width;
-    for (uint32_t x = 0; x < width; ++x) {
-      const uint16_t v = src_row[x] & mask;
-      dst_row[x] = static_cast<uint16_t>((v << shift_up) | (v >> shift_down));
-    }
+gboolean GstPylonSession::UnpackPackedMono(const void* src, size_t src_size,
+                                           Pylon::EPixelType px_type,
+                                           uint32_t width, uint32_t height,
+                                           size_t src_stride, GstBuffer** out,
+                                           GError** err) {
+  const size_t packed_row_bytes =
+      (static_cast<size_t>(width) * Pylon::BitPerPixel(px_type) + 7) / 8;
+  const size_t padding_x =
+      src_stride > packed_row_bytes ? src_stride - packed_row_bytes : 0;
+  const gsize dst_size = static_cast<gsize>(width) * height * 2;
+
+  ScopedGstBuffer out_buf(gst_buffer_new_allocate(NULL, dst_size, NULL),
+                          gst_buffer_unref);
+  ScopedGstBufferMap map(out_buf.get(), GST_MAP_WRITE);
+  if (!map.IsMapped()) {
+    g_set_error(err, GST_RESOURCE_ERROR, GST_RESOURCE_ERROR_NO_SPACE_LEFT,
+                "Failed to allocate or map output buffer for packed mono "
+                "frame");
+    return FALSE;
   }
+
+  try {
+    mono_unpacker.OutputPixelFormat = Pylon::PixelType_Mono16;
+    mono_unpacker.OutputBitAlignment = Pylon::OutputBitAlignment_LsbAligned;
+    mono_unpacker.OutputPaddingX = 0;
+    mono_unpacker.Convert(map.Info().data, map.Info().size, src, src_size,
+                          px_type, width, height, padding_x,
+                          Pylon::ImageOrientation_TopDown);
+  } catch (const GenICam::GenericException& e) {
+    g_set_error(err, GST_STREAM_ERROR, GST_STREAM_ERROR_DECODE,
+                "Failed to unpack packed mono frame: %s", e.GetDescription());
+    return FALSE;
+  }
+  map.Unmap();
+  *out = out_buf.release();
+  return TRUE;
 }
 
 gboolean GstPylonSession::CaptureCompressed(
@@ -164,8 +198,7 @@ gboolean GstPylonSession::CaptureCompressed(
     }
 
     const Pylon::EPixelType px_type = comp_info.pixelType;
-    const bool is_sub16_mono = (px_type == Pylon::PixelType_Mono10 ||
-                                px_type == Pylon::PixelType_Mono12);
+    const bool is_packed_mono = gst_pylon_is_packed_mono(px_type);
 
 #ifdef NVMM_ENABLED
     if (MEM_NVMM == mem_type) {
@@ -201,8 +234,7 @@ gboolean GstPylonSession::CaptureCompressed(
       NvBufSurfaceSyncForDevice(surf, 0, 0);
 
       effective_stride = decomp_stride;
-      auto* buffer_ref = new GstPylonBufferRef{runtime, buffer_factory,
-                                               std::move(grab_result)};
+      auto* buffer_ref = NewBufferRef(std::move(grab_result));
       *buf = gst_buffer_new_wrapped_full(
           GST_MEMORY_FLAG_READONLY, surf, sizeof(*surf), 0, sizeof(*surf),
           buffer_ref, static_cast<GDestroyNotify>(free_ptr_grab_result));
@@ -220,7 +252,7 @@ gboolean GstPylonSession::CaptureCompressed(
     }
 #endif
 
-    if (is_sub16_mono) {
+    if (is_packed_mono) {
       decomp_scratch_buf.resize(comp_info.decompressedImageSize);
       size_t out_sz = decomp_scratch_buf.size();
       decompressor.DecompressImage(decomp_scratch_buf.data(), &out_sz,
@@ -231,27 +263,13 @@ gboolean GstPylonSession::CaptureCompressed(
                            static_cast<uint32_t>(comp_info.width),
                            comp_info.paddingX);
 
-      const gsize dst_size =
-          static_cast<gsize>(comp_info.width) * comp_info.height * 2;
-      ScopedGstBuffer out_buf(gst_buffer_new_allocate(NULL, dst_size, NULL),
-                              gst_buffer_unref);
-      ScopedGstBufferMap map(out_buf.get(), GST_MAP_WRITE);
-      if (!map.IsMapped()) {
-        g_set_error(err, GST_RESOURCE_ERROR, GST_RESOURCE_ERROR_NO_SPACE_LEFT,
-                    "Failed to allocate or map output buffer for compressed "
-                    "sub-16-bit frame");
+      if (!UnpackPackedMono(decomp_scratch_buf.data(), out_sz, px_type,
+                            static_cast<uint32_t>(comp_info.width),
+                            static_cast<uint32_t>(comp_info.height),
+                            decomp_stride, buf, err)) {
         return FALSE;
       }
-      gst_pylon_scale_mono_sub16_to_gray16(
-          reinterpret_cast<const uint16_t*>(decomp_scratch_buf.data()),
-          decomp_stride, reinterpret_cast<uint16_t*>(map.Info().data),
-          static_cast<uint32_t>(comp_info.width),
-          static_cast<uint32_t>(comp_info.height),
-          px_type == Pylon::PixelType_Mono10 ? 10U : 12U);
-      map.Unmap();
-
       effective_stride = static_cast<gsize>(comp_info.width) * 2;
-      *buf = out_buf.release();
     } else {
       const gsize dst_size = comp_info.decompressedImageSize;
       ScopedGstBuffer out_buf(gst_buffer_new_allocate(NULL, dst_size, NULL),
@@ -467,40 +485,21 @@ gboolean GstPylonSession::Capture(GstBuffer** buf,
     NvBufSurfaceSyncForDevice(surf, 0, 0);
 
     effective_stride = src_stride;
-    wrapped_ref = new GstPylonBufferRef{runtime, buffer_factory,
-                                        std::move(pending_frame.grab)};
+    wrapped_ref = NewBufferRef(std::move(pending_frame.grab));
     *buf = gst_buffer_new_wrapped_full(
         GST_MEMORY_FLAG_READONLY, surf, sizeof(*surf), 0, sizeof(*surf),
         wrapped_ref, static_cast<GDestroyNotify>(free_ptr_grab_result));
   } else {
 #endif
     const Pylon::EPixelType px_type = resolved.pixel_type;
-    if (!keep_failed_grab && (px_type == Pylon::PixelType_Mono10 ||
-                              px_type == Pylon::PixelType_Mono12)) {
+    if (!keep_failed_grab && gst_pylon_is_packed_mono(px_type)) {
       const uint32_t width = resolved.width;
       const uint32_t height = resolved.height;
-      const size_t src_stride = resolved.stride > 0
-                                    ? resolved.stride
-                                    : static_cast<size_t>(width) * 2;
-
-      const gsize dst_size = static_cast<gsize>(width) * height * 2;
-      ScopedGstBuffer out_buf(gst_buffer_new_allocate(NULL, dst_size, NULL),
-                              gst_buffer_unref);
-      ScopedGstBufferMap map(out_buf.get(), GST_MAP_WRITE);
-      if (!map.IsMapped()) {
-        g_set_error(err, GST_RESOURCE_ERROR, GST_RESOURCE_ERROR_NO_SPACE_LEFT,
-                    "Failed to allocate or map output buffer for sub-16-bit "
-                    "frame");
+      if (!UnpackPackedMono(resolved.data, resolved.size, px_type, width,
+                            height, resolved.stride, buf, err)) {
         return FALSE;
       }
-      gst_pylon_scale_mono_sub16_to_gray16(
-          static_cast<const uint16_t*>(resolved.data), src_stride,
-          reinterpret_cast<uint16_t*>(map.Info().data), width, height,
-          px_type == Pylon::PixelType_Mono10 ? 10U : 12U);
-      map.Unmap();
-
       effective_stride = static_cast<gsize>(width) * 2;
-      *buf = out_buf.release();
 
       try {
         AddResultMeta(*buf, pending_frame.grab, effective_stride);
@@ -519,8 +518,41 @@ gboolean GstPylonSession::Capture(GstBuffer** buf,
       effective_stride = resolved.stride;
     }
     gsize buffer_size = resolved.size;
-    wrapped_ref = new GstPylonBufferRef{runtime, buffer_factory,
-                                        std::move(pending_frame.grab)};
+
+    /* Pool starvation guard: when downstream holds nearly all pylon buffers,
+     * copy this frame and hand the pylon buffer straight back. */
+    if (in_flight->load(std::memory_order_relaxed) >=
+        max_in_flight.load(std::memory_order_relaxed)) {
+      GST_WARNING_OBJECT(gstpylonsrc,
+                         "Downstream holds %d pylon buffers (limit %d); "
+                         "copying frame to avoid starving the camera",
+                         in_flight->load(), max_in_flight.load());
+      GstBuffer* copy = gst_buffer_new_allocate(NULL, buffer_size, NULL);
+      if (!copy ||
+          gst_buffer_fill(copy, 0, resolved.data, buffer_size) != buffer_size) {
+        if (copy) {
+          gst_buffer_unref(copy);
+        }
+        g_set_error(err, GST_RESOURCE_ERROR, GST_RESOURCE_ERROR_NO_SPACE_LEFT,
+                    "Failed to allocate copy buffer for frame");
+        return FALSE;
+      }
+      if (keep_failed_grab) {
+        GST_BUFFER_FLAG_SET(copy, GST_BUFFER_FLAG_CORRUPTED);
+      }
+      try {
+        AddResultMeta(copy, pending_frame.grab, effective_stride);
+      } catch (const Pylon::GenericException& e) {
+        g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
+                    "Failed to attach Pylon meta: %s", e.GetDescription());
+        gst_buffer_unref(copy);
+        return FALSE;
+      }
+      *buf = copy;
+      return TRUE;
+    }
+
+    wrapped_ref = NewBufferRef(std::move(pending_frame.grab));
     *buf = gst_buffer_new_wrapped_full(
         static_cast<GstMemoryFlags>(0), resolved.data, buffer_size, 0,
         buffer_size, wrapped_ref,

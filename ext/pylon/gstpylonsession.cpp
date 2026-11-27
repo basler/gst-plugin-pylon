@@ -53,6 +53,7 @@
 #include "gstpylonsession.h"
 #include "gstpylonsysmembufferfactory.h"
 
+#include <algorithm>
 #include <exception>
 #include <map>
 #include <set>
@@ -684,6 +685,14 @@ gboolean GstPylonSession::Start(GError** err) {
             static_cast<gsize>(max_pending_frames), max_num_buffer);
       }
     }
+
+    /* Keep two pylon buffers in reserve for the grab engine */
+    int limit = INT_MAX;
+    if (camera->MaxNumBuffer.IsReadable()) {
+      limit = static_cast<int>(
+          std::max<gint64>(1, camera->MaxNumBuffer.GetValue() - 2));
+    }
+    max_in_flight.store(limit, std::memory_order_relaxed);
 
     camera->StartGrabbing(strategy, Pylon::GrabLoop_ProvidedByInstantCamera);
   } catch (const Pylon::GenericException& e) {

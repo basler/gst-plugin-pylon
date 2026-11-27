@@ -54,6 +54,40 @@ GST_START_TEST(test_pylon_meta_attach_initializes_chunks) {
 }
 GST_END_TEST;
 
+GST_START_TEST(test_pylon_meta_survives_buffer_copy) {
+  GstBuffer *src, *copy;
+  GstPylonMeta *meta, *copied;
+
+  src = gst_buffer_new_allocate(NULL, 16, NULL);
+  meta = (GstPylonMeta *)gst_buffer_add_meta(src, GST_PYLON_META_INFO, NULL);
+  meta->block_id = 42;
+  meta->image_number = 7;
+  meta->skipped_images = 3;
+  meta->offset.offset_x = 16;
+  meta->offset.offset_y = 8;
+  meta->timestamp = 1234;
+  meta->stride = 640;
+  gst_structure_set(meta->chunks, "ExposureTime", G_TYPE_DOUBLE, 1000.0, NULL);
+
+  copy = gst_buffer_copy(src);
+  copied = gst_buffer_get_pylon_meta(copy);
+  fail_unless(copied != NULL);
+  fail_unless(copied != meta);
+  fail_unless_equals_uint64(copied->block_id, 42);
+  fail_unless_equals_uint64(copied->image_number, 7);
+  fail_unless_equals_uint64(copied->skipped_images, 3);
+  fail_unless_equals_uint64(copied->offset.offset_x, 16);
+  fail_unless_equals_uint64(copied->offset.offset_y, 8);
+  fail_unless_equals_uint64(copied->timestamp, 1234);
+  fail_unless_equals_uint64(copied->stride, 640);
+  fail_unless(copied->chunks != meta->chunks);
+  fail_unless(gst_structure_has_field(copied->chunks, "ExposureTime"));
+
+  gst_buffer_unref(copy);
+  gst_buffer_unref(src);
+}
+GST_END_TEST;
+
 static Suite *pylon_meta_suite(void) {
   Suite *s = suite_create("pylon_meta");
   TCase *tc = tcase_create("general");
@@ -62,6 +96,7 @@ static Suite *pylon_meta_suite(void) {
   tcase_add_test(tc, test_pylon_meta_api_registration);
   tcase_add_test(tc, test_pylon_meta_absent_on_new_buffer);
   tcase_add_test(tc, test_pylon_meta_attach_initializes_chunks);
+  tcase_add_test(tc, test_pylon_meta_survives_buffer_copy);
 
   return s;
 }

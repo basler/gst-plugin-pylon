@@ -8,6 +8,7 @@
 #  include "config.h"
 #endif
 
+#include <glib/gstdio.h>
 #include <gst/check/gstcheck.h>
 #include <gst/pylon/gstpylonmeta.h>
 
@@ -725,6 +726,158 @@ GST_START_TEST(test_pylonsrc_caps_query_no_side_effects) {
 }
 GST_END_TEST;
 
+/* Pull a few GRAY16_LE frames with the camera set to `pfnc`. Unpacked
+ * Mono10/12 must pass through raw (LSB aligned, no rescale), packed formats
+ * must be unpacked to the same 16-bit layout. Skips if the emulator does not
+ * offer the format. */
+static void check_gray16_mono_format(const gchar *pfnc, guint max_value) {
+  GstElement *pipeline, *src, *capsfilter, *sink;
+  GstCaps *caps;
+  GstStateChangeReturn ret;
+  guint16 peak = 0;
+  gchar *pfs_contents, *pfs_path;
+
+  require_camemu_devices(1);
+
+  pipeline = gst_pipeline_new("mono-pipe");
+  src = make_pylonsrc_with_serial(EMU_SERIAL);
+  capsfilter = gst_element_factory_make("capsfilter", NULL);
+  sink = gst_element_factory_make("appsink", NULL);
+  fail_unless(pipeline && src && capsfilter && sink);
+
+  /* PixelFormat is negotiated via caps; seed the camera through a PFS file so
+   * the session honors the packed/unpacked flavour for GRAY16_LE. */
+  pfs_contents = g_strdup_printf(
+      "# {05D8C294-F295-4dfb-9D01-096BD04049F4}\n"
+      "# GenApi persistence file (version 3.1.0)\n"
+      "PixelFormat\t%s\n",
+      pfnc);
+  pfs_path = g_build_filename(g_get_tmp_dir(), "pylonsrc-mono-test.pfs", NULL);
+  fail_unless(g_file_set_contents(pfs_path, pfs_contents, -1, NULL));
+  g_object_set(src, "pfs-location", pfs_path, NULL);
+
+  g_object_set(sink, "sync", FALSE, "max-buffers", 2, NULL);
+  caps =
+      gst_caps_from_string("video/x-raw,format=GRAY16_LE,width=640,height=480");
+  g_object_set(capsfilter, "caps", caps, NULL);
+  gst_caps_unref(caps);
+
+  gst_bin_add_many(GST_BIN(pipeline), src, capsfilter, sink, NULL);
+  fail_unless(gst_element_link_many(src, capsfilter, sink, NULL));
+
+  ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
+  if (ret != GST_STATE_CHANGE_FAILURE) {
+    ret = gst_element_get_state(pipeline, NULL, NULL, 5 * GST_SECOND);
+  }
+  if (ret == GST_STATE_CHANGE_FAILURE) {
+    GST_INFO("emulator does not offer %s, skipping", pfnc);
+    gst_element_set_state(pipeline, GST_STATE_NULL);
+    gst_object_unref(pipeline);
+    g_remove(pfs_path);
+    g_free(pfs_path);
+    g_free(pfs_contents);
+    return;
+  }
+
+  for (int i = 0; i < 3; i++) {
+    GstSample *sample = NULL;
+    GstBuffer *buf;
+    GstMapInfo map;
+    GstPylonMeta *meta;
+
+    g_signal_emit_by_name(sink, "pull-sample", &sample);
+    fail_unless(sample != NULL);
+    buf = gst_sample_get_buffer(sample);
+    fail_unless(gst_buffer_map(buf, &map, GST_MAP_READ));
+    fail_unless_equals_int(map.size, 640 * 480 * 2);
+    for (gsize k = 0; k < map.size / 2; k++) {
+      guint16 v = ((const guint16 *)map.data)[k];
+      if (v > peak) {
+        peak = v;
+      }
+    }
+    gst_buffer_unmap(buf, &map);
+    meta = gst_buffer_get_pylon_meta(buf);
+    fail_unless(meta != NULL);
+    gst_sample_unref(sample);
+  }
+  fail_unless(peak <= max_value, "%s: peak %u exceeds %u (rescaled?)", pfnc,
+              peak, max_value);
+
+  gst_element_set_state(pipeline, GST_STATE_NULL);
+  gst_object_unref(pipeline);
+  g_remove(pfs_path);
+  g_free(pfs_path);
+  g_free(pfs_contents);
+}
+
+GST_START_TEST(test_pylonsrc_mono12_raw_zero_copy) {
+  check_gray16_mono_format("Mono12", 4095);
+}
+GST_END_TEST;
+
+GST_START_TEST(test_pylonsrc_mono10_raw_zero_copy) {
+  check_gray16_mono_format("Mono10", 1023);
+}
+GST_END_TEST;
+
+GST_START_TEST(test_pylonsrc_mono12p_unpacked) {
+  check_gray16_mono_format("Mono12p", 4095);
+}
+GST_END_TEST;
+
+GST_START_TEST(test_pylonsrc_mono12packed_unpacked) {
+  check_gray16_mono_format("Mono12Packed", 4095);
+}
+GST_END_TEST;
+
+GST_START_TEST(test_pylonsrc_mono10p_unpacked) {
+  check_gray16_mono_format("Mono10p", 1023);
+}
+GST_END_TEST;
+
+/* Holding more frames than stream::MaxNumBuffer must not starve the camera:
+ * the source falls back to copying when downstream pins nearly all pylon
+ * buffers. */
+GST_START_TEST(test_pylonsrc_pool_starvation_copy_fallback) {
+  GstElement *pipeline, *src, *capsfilter, *sink;
+  GstCaps *caps;
+  GstSample *held[12] = {NULL};
+
+  require_camemu_devices(1);
+
+  pipeline = gst_pipeline_new("starvation-pipe");
+  src = make_pylonsrc_with_serial(EMU_SERIAL);
+  capsfilter = gst_element_factory_make("capsfilter", NULL);
+  sink = gst_element_factory_make("appsink", NULL);
+  fail_unless(pipeline && src && capsfilter && sink);
+
+  gst_child_proxy_set(GST_CHILD_PROXY(src), "stream::MaxNumBuffer", (gint64)5,
+                      NULL);
+  g_object_set(sink, "sync", FALSE, "max-buffers", 32, NULL);
+  caps = gst_caps_from_string(
+      "video/x-raw,format=GRAY8,width=640,height=480,framerate=20/1");
+  g_object_set(capsfilter, "caps", caps, NULL);
+  gst_caps_unref(caps);
+
+  gst_bin_add_many(GST_BIN(pipeline), src, capsfilter, sink, NULL);
+  fail_unless(gst_element_link_many(src, capsfilter, sink, NULL));
+  fail_unless(gst_element_set_state(pipeline, GST_STATE_PLAYING) !=
+              GST_STATE_CHANGE_FAILURE);
+
+  for (guint i = 0; i < G_N_ELEMENTS(held); i++) {
+    g_signal_emit_by_name(sink, "try-pull-sample", 3 * GST_SECOND, &held[i]);
+    fail_unless(held[i] != NULL, "camera starved after %u held frames", i);
+  }
+
+  for (guint i = 0; i < G_N_ELEMENTS(held); i++) {
+    gst_sample_unref(held[i]);
+  }
+  gst_element_set_state(pipeline, GST_STATE_NULL);
+  gst_object_unref(pipeline);
+}
+GST_END_TEST;
+
 static Suite *pylonsrc_camemu_suite(void) {
   Suite *s = suite_create("pylonsrc_camemu");
   TCase *tc = tcase_create("general");
@@ -741,6 +894,12 @@ static Suite *pylonsrc_camemu_suite(void) {
   tcase_add_test(tc, test_pylonsrc_runtime_framerate_updates_latency);
   tcase_add_test(tc, test_pylonsrc_queued_frame_arrival_timestamps);
   tcase_add_test(tc, test_pylonsrc_caps_query_no_side_effects);
+  tcase_add_test(tc, test_pylonsrc_pool_starvation_copy_fallback);
+  tcase_add_test(tc, test_pylonsrc_mono12_raw_zero_copy);
+  tcase_add_test(tc, test_pylonsrc_mono10_raw_zero_copy);
+  tcase_add_test(tc, test_pylonsrc_mono12p_unpacked);
+  tcase_add_test(tc, test_pylonsrc_mono12packed_unpacked);
+  tcase_add_test(tc, test_pylonsrc_mono10p_unpacked);
 #ifdef GST_PYLON_ENABLE_TEST_HOOKS
   tcase_add_test(tc, test_pylonsrc_runtime_init_balance);
   tcase_add_test(tc, test_pylonsrc_buffers_outlive_session);

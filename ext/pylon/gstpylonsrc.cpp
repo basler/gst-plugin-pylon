@@ -62,6 +62,8 @@
 #include <gst/pylon/gstpylonincludes.h>
 #include <gst/video/video.h>
 
+#include <algorithm>
+#include <cstring>
 #include <memory>
 #include <new>
 
@@ -71,6 +73,9 @@ struct _GstPylonSrc {
   std::unique_ptr<GstPylonSession> session;
   GstClockTime duration;
   GstVideoInfo video_info;
+  /* Downstream advertised GstVideoMeta support in the allocation query. If it
+   * did not, padded frames are repacked to the tight stride. */
+  gboolean downstream_video_meta;
 
   gchar* device_user_name;
   gchar* device_serial_number;
@@ -1046,8 +1051,11 @@ static gboolean gst_pylon_src_decide_allocation(GstBaseSrc* src,
                                                 GstQuery* query) {
   GstPylonSrc* self = GST_PYLON_SRC(src);
 
-  (void)query;
-  GST_LOG_OBJECT(self, "decide_allocation");
+  self->downstream_video_meta =
+      query &&
+      gst_query_find_allocation_meta(query, GST_VIDEO_META_API_TYPE, NULL);
+  GST_LOG_OBJECT(self, "decide_allocation (downstream video meta: %s)",
+                 self->downstream_video_meta ? "yes" : "no");
 
   return TRUE;
 }
@@ -1510,6 +1518,62 @@ static void gst_pylon_src_add_metadata(GstPylonSrc* self, GstBuffer* buf,
   }
 }
 
+/* Without GstVideoMeta downstream assumes the tight stride of the negotiated
+ * format. If the camera pads rows, repack into a tightly packed buffer. */
+static GstBuffer* gst_pylon_src_repack_padded(GstPylonSrc* self,
+                                              GstBuffer* buf) {
+  const GstVideoInfo* vi = &self->video_info;
+  GstPylonMeta* meta = gst_buffer_get_pylon_meta(buf);
+
+  if (self->downstream_video_meta || !meta || meta->stride == 0 ||
+      GST_VIDEO_INFO_FORMAT(vi) == GST_VIDEO_FORMAT_UNKNOWN ||
+      GST_VIDEO_INFO_N_PLANES(vi) != 1) {
+    return buf;
+  }
+
+  const gsize tight = static_cast<gsize>(GST_VIDEO_INFO_PLANE_STRIDE(vi, 0));
+  if (meta->stride == tight) {
+    return buf;
+  }
+
+  const guint height = GST_VIDEO_INFO_HEIGHT(vi);
+  const gsize row = std::min<gsize>(tight, meta->stride);
+  GstBuffer* out = gst_buffer_new_allocate(NULL, tight * height, NULL);
+  GstMapInfo in_map, out_map;
+
+  if (!gst_buffer_map(buf, &in_map, GST_MAP_READ)) {
+    gst_buffer_unref(out);
+    return buf;
+  }
+  if (in_map.size < meta->stride * (height - 1) + row ||
+      !gst_buffer_map(out, &out_map, GST_MAP_WRITE)) {
+    gst_buffer_unmap(buf, &in_map);
+    gst_buffer_unref(out);
+    return buf;
+  }
+
+  for (guint y = 0; y < height; ++y) {
+    memcpy(out_map.data + y * tight, in_map.data + y * meta->stride, row);
+  }
+  gst_buffer_unmap(out, &out_map);
+  gst_buffer_unmap(buf, &in_map);
+
+  gst_buffer_copy_into(out, buf,
+                       static_cast<GstBufferCopyFlags>(GST_BUFFER_COPY_FLAGS |
+                                                       GST_BUFFER_COPY_META),
+                       0, -1);
+  GstPylonMeta* new_meta = gst_buffer_get_pylon_meta(out);
+  if (new_meta) {
+    new_meta->stride = tight;
+  }
+  gst_buffer_unref(buf);
+  GST_LOG_OBJECT(self,
+                 "Repacked padded frame (stride %" G_GSIZE_FORMAT
+                 " -> %" G_GSIZE_FORMAT ")",
+                 meta->stride, tight);
+  return out;
+}
+
 /* ask the subclass to create a buffer with offset and size, the default
  * implementation will call alloc and fill. */
 static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf) {
@@ -1542,6 +1606,7 @@ static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf) {
       goto done;
     }
 
+    *buf = gst_pylon_src_repack_padded(self, *buf);
     gst_pylon_src_add_metadata(self, *buf, arrival_pts);
 
     GST_LOG_OBJECT(self, "Created buffer %" GST_PTR_FORMAT, (gpointer)*buf);

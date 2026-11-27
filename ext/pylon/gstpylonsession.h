@@ -45,11 +45,14 @@
 
 #include <array>
 #include <atomic>
+#include <climits>
 #include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
+
+struct GstPylonBufferRef;
 
 class GstPylonSession {
  public:
@@ -124,6 +127,10 @@ class GstPylonSession {
   gboolean CaptureCompressed(Pylon::CBaslerUniversalGrabResultPtr& grab_result,
                              const Pylon::CompressionInfo_t& comp_info,
                              GstBuffer** buf, GError** err);
+  gboolean UnpackPackedMono(const void* src, size_t src_size,
+                            Pylon::EPixelType px_type, uint32_t width,
+                            uint32_t height, size_t src_stride, GstBuffer** out,
+                            GError** err);
   void AddResultMeta(GstBuffer* buf,
                      Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr,
                      gsize override_stride);
@@ -171,7 +178,17 @@ class GstPylonSession {
   GstCaps* negotiated_caps = nullptr;
   GstCaps* cached_caps = nullptr;
 
+  /* Zero-copy buffers held downstream. When it approaches the stream
+   * grabber's MaxNumBuffer the camera would run out of buffers, so frames are
+   * copied instead (see Capture). */
+  std::shared_ptr<std::atomic<int>> in_flight =
+      std::make_shared<std::atomic<int>>(0);
+  std::atomic<int> max_in_flight{INT_MAX};
+
+  GstPylonBufferRef* NewBufferRef(Pylon::CBaslerUniversalGrabResultPtr&& grab);
+
   Pylon::CImageDecompressor decompressor;
+  Pylon::CImageFormatConverter mono_unpacker;
   bool compression_active = false;
   std::vector<uint8_t> decomp_scratch_buf;
 
@@ -186,6 +203,9 @@ class GstPylonSession {
 struct GstPylonBufferRef {
   std::shared_ptr<GstPylonRuntime> runtime;
   std::shared_ptr<GstPylonBufferFactory> buffer_factory;
+  /* Counts zero-copy buffers currently held downstream; decremented when the
+   * GstBuffer is released. */
+  std::shared_ptr<std::atomic<int>> in_flight;
   Pylon::CBaslerUniversalGrabResultPtr grab_result;
 };
 
