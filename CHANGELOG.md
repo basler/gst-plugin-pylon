@@ -121,16 +121,17 @@ All notable changes to this project will be documented in this file.
 
 ### Acknowledgements
 - `max-pending-frames` (PR [#153](https://github.com/basler/gst-plugin-pylon/pull/153)) and
-  the NVMM full-range YUV follow-ups (PR [#154](https://github.com/basler/gst-plugin-pylon/pull/154))
+  the NVMM full-range YUV caps (PR [#154](https://github.com/basler/gst-plugin-pylon/pull/154))
   were contributed by @poeggi. This release builds on both.
-- Hardware-trigger `AcquisitionFrameRate` (PR [#147](https://github.com/basler/gst-plugin-pylon/pull/147))
-  and the Jetson Multimedia API `nvbufsurface.h` fallback (PR [#152](https://github.com/basler/gst-plugin-pylon/pull/152))
-  are carried over from the 1.x hotfix line.
-- Fixes for the linescan, PFS, and runtime open issues
-  ([#136](https://github.com/basler/gst-plugin-pylon/issues/136),
-  [#138](https://github.com/basler/gst-plugin-pylon/issues/138),
-  [#140](https://github.com/basler/gst-plugin-pylon/issues/140),
-  [#141](https://github.com/basler/gst-plugin-pylon/issues/141)) are included.
+- Independent `AcquisitionFrameRate` configuration for hardware triggering
+  (PR [#147](https://github.com/basler/gst-plugin-pylon/pull/147), by @michaelarusso) and the
+  Jetson Multimedia API `nvbufsurface.h` fallback (PR [#152](https://github.com/basler/gst-plugin-pylon/pull/152),
+  by @gfrankliu) are carried over from the 1.x hotfix line.
+- Fixes for issues reported by @kostastsing
+  ([#136](https://github.com/basler/gst-plugin-pylon/issues/136)), @ocharles
+  ([#138](https://github.com/basler/gst-plugin-pylon/issues/138)), @PranglB
+  ([#140](https://github.com/basler/gst-plugin-pylon/issues/140)) and @PixBitz
+  ([#141](https://github.com/basler/gst-plugin-pylon/issues/141)).
 
 ## [1.1.0] - 2026-11-26
 
