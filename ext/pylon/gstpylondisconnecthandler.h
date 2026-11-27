@@ -38,19 +38,20 @@
 #include <gst/gst.h>
 #include <gst/pylon/gstpylonincludes.h>
 
-#include <condition_variable>
-#include <mutex>
+#include <atomic>
 
 class GstPylonDisconnectHandler
     : public Pylon::CBaslerUniversalConfigurationEventHandler {
  public:
-  void SetData(GstElement *gstpylnsrc, GstPylonImageHandler *image_handler);
+  void SetData(GstElement *gstpylnsrc, GstPylonImageHandler *image_handler,
+               const std::atomic<gboolean> *auto_reconnect = nullptr);
   void OnCameraDeviceRemoved(
       Pylon::CBaslerUniversalInstantCamera &camera) override;
 
  private:
-  GstElement *gstpylnsrc;
-  GstPylonImageHandler *image_handler;
+  GstElement *gstpylnsrc = nullptr;
+  GstPylonImageHandler *image_handler = nullptr;
+  const std::atomic<gboolean> *auto_reconnect = nullptr;
 };
 
 #endif

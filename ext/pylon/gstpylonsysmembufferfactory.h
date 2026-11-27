@@ -40,12 +40,17 @@
 class GstPylonSysMemBufferFactory : public GstPylonBufferFactory {
  public:
   GstPylonSysMemBufferFactory() = default;
-  virtual void SetConfig(const GstCaps *caps) override {};
+  virtual void SetConfig(const GstCaps *caps) override { (void)caps; }
   virtual void AllocateBuffer(size_t buffer_size, void **p_created_buffer,
                               intptr_t &buffer_context) override;
   virtual void FreeBuffer(void *p_created_buffer,
                           intptr_t buffer_context) override;
   virtual void DestroyBufferFactory() override;
+
+#ifdef GST_PYLON_ENABLE_TEST_HOOKS
+  /* Fail the Nth AllocateBuffer call (1-based) with std::bad_alloc; 0 = off. */
+  static void TestSetFailOnAlloc(int nth);
+#endif
 
  private:
   size_t RoundUp(size_t N, size_t S) { return ((((N) + (S)-1) / (S)) * (S)); }

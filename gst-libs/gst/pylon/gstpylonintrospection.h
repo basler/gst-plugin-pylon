@@ -34,9 +34,13 @@
 #define _GST_PYLON_INTROSPECTION_H_
 
 #include <gst/gst.h>
+#include <gst/pylon/gstpylon-prelude.h>
 #include <gst/pylon/gstpyloncache.h>
 #include <gst/pylon/gstpylonfeatureprior.h>
 #include <gst/pylon/gstpylonincludes.h>
+
+EXT_PYLONSRC_API gboolean
+gst_pylon_can_feature_later_be_writable(GenApi::INode* node);
 
 GParamFlags gst_pylon_query_access(
     GenApi::INodeMap& nodemap, GenApi::INode* node,

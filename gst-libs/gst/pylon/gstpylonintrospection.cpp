@@ -103,27 +103,27 @@ std::string gst_pylon_build_cache_value_string(GParamFlags flags,
                                                T minimum_under_all_settings,
                                                T maximum_under_all_settings);
 
-gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode* node);
-
 std::vector<std::unique_ptr<GstPylonActions>>
 gst_pylon_create_reset_value_actions(
     const std::vector<GenApi::INode*>& node_list);
 
 gboolean gst_pylon_can_feature_later_be_writable(GenApi::INode* node) {
+  if (!node) {
+    return FALSE;
+  }
   GenICam::gcstring value;
   GenICam::gcstring attribute;
   if (node->GetProperty("pIsLocked", value, attribute)) {
-    return true;
-  } else {
-    GenApi::NodeList_t node_children;
-    node->GetChildren(node_children);
-    if (!node_children.empty()) {
-      for (auto& node_child : node_children) {
-        return gst_pylon_can_feature_later_be_writable(node_child);
-      }
-    }
-    return FALSE;
+    return TRUE;
   }
+  GenApi::NodeList_t node_children;
+  node->GetChildren(node_children);
+  for (auto& node_child : node_children) {
+    if (gst_pylon_can_feature_later_be_writable(node_child)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
 }
 
 GParamFlags gst_pylon_query_access(GenApi::INodeMap& nodemap,

@@ -17,6 +17,7 @@ pylon_sources = [
   'gstpyloninspect.cpp',
   'gstpylonnvmmcolor.cpp',
   'gstpylonplugin.cpp',
+  'gstpylonruntime.cpp',
   'gstpylonschema.cpp',
   'gstpylonsession.cpp',
   'gstpylonsrc.cpp',

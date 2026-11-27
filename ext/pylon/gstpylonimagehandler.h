@@ -33,11 +33,13 @@
 #ifndef _GST_PYLON_IMAGE_HANDLER_H_
 #define _GST_PYLON_IMAGE_HANDLER_H_
 
+#include <gst/gstclock.h>
 #include <gst/pylon/gstpylonincludes.h>
 
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <mutex>
 
 enum class GstPylonImageHandlerResult {
@@ -51,16 +53,32 @@ enum class GstPylonImageHandlerResult {
   timeout,
 };
 
+struct GstPylonPendingFrame {
+  Pylon::CBaslerUniversalGrabResultPtr grab;
+  GstClockTime arrival_time = GST_CLOCK_TIME_NONE;
+};
+
 class GstPylonImageHandler : public Pylon::CBaslerUniversalImageEventHandler {
  public:
+  using ClockCallback = std::function<GstClockTime()>;
+
   GstPylonImageHandler();
   ~GstPylonImageHandler() override;
   void OnImageGrabbed(
       Pylon::CBaslerUniversalInstantCamera& camera,
       const Pylon::CBaslerUniversalGrabResultPtr& grab_result) override;
+
+  GstPylonImageHandlerResult WaitForImage(GstPylonPendingFrame& out_frame,
+                                          uint32_t timeout_ms = 0);
   GstPylonImageHandlerResult WaitForImage(
       Pylon::CBaslerUniversalGrabResultPtr** grab_result,
       uint32_t timeout_ms = 0);
+
+  /* Waits up to timeout_ms, returning false immediately if interrupted. */
+  bool WaitInterruptible(uint32_t timeout_ms);
+  bool IsInterrupted() const;
+
+  void SetClockCallback(ClockCallback cb);
   void InterruptWaitForImage();
   void SignalDisconnect();
   void ResetForReconnect();
@@ -79,9 +97,10 @@ class GstPylonImageHandler : public Pylon::CBaslerUniversalImageEventHandler {
 
   void ClearPendingFrames();
 
-  std::mutex grab_result_mutex;
+  mutable std::mutex grab_result_mutex;
   std::condition_variable grab_result_cv;
-  std::deque<Pylon::CBaslerUniversalGrabResultPtr*> pending_frames;
+  std::deque<GstPylonPendingFrame> pending_frames;
+  ClockCallback clock_cb;
   size_t max_pending_frames;
   State state;
 };

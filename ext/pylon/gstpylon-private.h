@@ -33,16 +33,19 @@
 #pragma once
 
 #include "gst/pylon/gstpylonformatmapping.h"
+#include "gst/pylon/gstpylonobject.h"
 #include "gstpylon.h"
 #include "gstpylonbufferfactory.h"
 #include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
+#include "gstpylonruntime.h"
 
 #include <gst/pylon/gstpylonincludes.h>
 
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -57,37 +60,53 @@ typedef enum {
 } GstPylonMemoryTypeEnum;
 
 struct _GstPylon {
-  explicit _GstPylon(GstElement* element) : gstpylonsrc(element) {}
+  explicit _GstPylon(GstElement* element)
+      : runtime(GstPylonRuntime::Acquire()), gstpylonsrc(element) {}
 
   ~_GstPylon() {
     image_handler.InterruptWaitForImage();
+    image_handler.SetClockCallback(nullptr);
 
-    try {
-      if (handlers_registered) {
-        camera->DeregisterImageEventHandler(&image_handler);
-        camera->DeregisterConfiguration(&disconnect_handler);
-      }
+    if (gcamera) {
+      gst_pylon_object_rebind_nodemap(gcamera, nullptr);
+    }
+    if (gstream_grabber) {
+      gst_pylon_object_rebind_nodemap(gstream_grabber, nullptr);
+    }
 
-      if (camera->IsGrabbing()) {
-        camera->StopGrabbing();
+    {
+      std::lock_guard<std::recursive_mutex> lock(*camera_mutex);
+      try {
+        if (handlers_registered) {
+          camera->DeregisterImageEventHandler(&image_handler);
+          camera->DeregisterConfiguration(&disconnect_handler);
+        }
+        if (camera->IsGrabbing()) {
+          camera->StopGrabbing();
+        }
+        if (camera->IsOpen()) {
+          camera->Close();
+        }
+        if (camera->IsPylonDeviceAttached()) {
+          camera->DestroyDevice();
+        }
+      } catch (const GenICam::GenericException& e) {
+        GST_WARNING_OBJECT(gstpylonsrc,
+                           "Ignoring exception during teardown: %s",
+                           e.GetDescription());
+      } catch (const std::exception& e) {
+        GST_WARNING_OBJECT(gstpylonsrc,
+                           "Ignoring exception during teardown: %s", e.what());
       }
-      if (camera->IsOpen()) {
-        camera->Close();
-      }
-      if (camera->IsPylonDeviceAttached()) {
-        camera->DestroyDevice();
-      }
-    } catch (const GenICam::GenericException& e) {
-      GST_WARNING_OBJECT(gstpylonsrc, "Ignoring exception during teardown: %s",
-                         e.GetDescription());
-    } catch (const std::exception& e) {
-      GST_WARNING_OBJECT(gstpylonsrc, "Ignoring exception during teardown: %s",
-                         e.what());
     }
 
     if (negotiated_caps) {
       gst_caps_unref(negotiated_caps);
       negotiated_caps = nullptr;
+    }
+    if (cached_caps) {
+      gst_caps_unref(cached_caps);
+      cached_caps = nullptr;
     }
 
     if (gcamera) {
@@ -120,12 +139,13 @@ struct _GstPylon {
                                   gdouble* preferred_fps);
   gboolean ExecuteCommand(const gchar* command_name, GError** err);
   gboolean Capture(GstBuffer** buf, GstPylonCaptureErrorEnum capture_error,
-                   GError** err);
-  gboolean CaptureCompressed(
-      std::unique_ptr<Pylon::CBaslerUniversalGrabResultPtr>& grab_result_ptr,
-      const Pylon::CompressionInfo_t& comp_info, GstBuffer** buf, GError** err);
+                   GstClockTime* arrival_pts, GError** err);
+  gboolean CaptureCompressed(Pylon::CBaslerUniversalGrabResultPtr& grab_result,
+                             const Pylon::CompressionInfo_t& comp_info,
+                             GstBuffer** buf, GError** err);
   GstCaps* QueryConfiguration(GError** err);
   gboolean SetConfiguration(const GstCaps* conf, GError** err);
+  void InvalidateCapsCache();
   void RefreshDecompressor();
   void InterruptCapture();
   void ClearCaptureInterrupt();
@@ -137,6 +157,15 @@ struct _GstPylon {
                                   const gchar* device_serial_number) const;
   gboolean IsConfigApplied(const gchar* user_set, const gchar* pfs_location,
                            gboolean enable_correction) const;
+#ifdef GST_PYLON_ENABLE_TEST_HOOKS
+  void TestTriggerDisconnect();
+#endif
+
+  /* Destroyed last so PylonTerminate() runs after camera, buffers and handlers
+   * are released. */
+  std::shared_ptr<GstPylonRuntime> runtime;
+  std::shared_ptr<std::recursive_mutex> camera_mutex =
+      std::make_shared<std::recursive_mutex>();
 
   GstElement* gstpylonsrc = nullptr;
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera =
@@ -161,6 +190,7 @@ struct _GstPylon {
   std::atomic<guint> grab_timeout_ms{0};
   std::atomic<gboolean> auto_reconnect{FALSE};
   GstCaps* negotiated_caps = nullptr;
+  GstCaps* cached_caps = nullptr;
 
   Pylon::CImageDecompressor decompressor;
   bool compression_active = false;
@@ -172,7 +202,12 @@ struct _GstPylon {
 #endif
 };
 
-using GrabResultPair = std::pair<std::shared_ptr<GstPylonBufferFactory>,
-                                 Pylon::CBaslerUniversalGrabResultPtr*>;
+/* Member order is load-bearing: grab_result is destroyed first, then
+ * buffer_factory, then runtime (PylonTerminate). */
+struct GstPylonBufferRef {
+  std::shared_ptr<GstPylonRuntime> runtime;
+  std::shared_ptr<GstPylonBufferFactory> buffer_factory;
+  Pylon::CBaslerUniversalGrabResultPtr grab_result;
+};
 
 extern const std::vector<GstStPixelFormats> gst_structure_formats;

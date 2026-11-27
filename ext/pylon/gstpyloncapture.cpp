@@ -106,12 +106,8 @@ static void gst_pylon_add_result_meta(
 static void free_ptr_grab_result(gpointer data) {
   g_return_if_fail(data);
 
-  auto wrapped_data = static_cast<GrabResultPair*>(data);
-
-  Pylon::CBaslerUniversalGrabResultPtr* ptr_grab_result = wrapped_data->second;
-  delete ptr_grab_result;
-
-  delete wrapped_data;
+  auto* ref = static_cast<GstPylonBufferRef*>(data);
+  delete ref;
 }
 
 static void gst_pylon_post_capture_error_message(
@@ -152,7 +148,7 @@ static void gst_pylon_scale_mono_sub16_to_gray16(const uint16_t* src,
 }
 
 gboolean GstPylon::CaptureCompressed(
-    std::unique_ptr<Pylon::CBaslerUniversalGrabResultPtr>& grab_result_ptr,
+    Pylon::CBaslerUniversalGrabResultPtr& grab_result,
     const Pylon::CompressionInfo_t& comp_info, GstBuffer** buf, GError** err) {
   if (comp_info.compressionStatus != Pylon::CompressionStatus_Ok) {
     g_set_error(err, GST_STREAM_ERROR, GST_STREAM_ERROR_DECODE,
@@ -176,13 +172,13 @@ gboolean GstPylon::CaptureCompressed(
 
 #ifdef NVMM_ENABLED
     if (MEM_NVMM == mem_type) {
-      NvBufSurface* surf = reinterpret_cast<NvBufSurface*>(
-          (*grab_result_ptr)->GetBufferContext());
+      NvBufSurface* surf =
+          reinterpret_cast<NvBufSurface*>(grab_result->GetBufferContext());
 
       decomp_scratch_buf.resize(comp_info.decompressedImageSize);
       size_t out_sz = decomp_scratch_buf.size();
       decompressor.DecompressImage(decomp_scratch_buf.data(), &out_sz,
-                                   *grab_result_ptr);
+                                   grab_result);
 
       size_t decomp_stride = 0;
       if (!Pylon::ComputeStride(decomp_stride, px_type,
@@ -205,17 +201,18 @@ gboolean GstPylon::CaptureCompressed(
                     "Error copying decompressed memory to device");
         return FALSE;
       }
+      NvBufSurfaceSyncForDevice(surf, 0, 0);
 
       effective_stride = decomp_stride;
-      Pylon::CBaslerUniversalGrabResultPtr* raw_grab = grab_result_ptr.get();
-      auto buffer_ref =
-          new GrabResultPair(buffer_factory, grab_result_ptr.release());
+      auto* buffer_ref = new GstPylonBufferRef{runtime, buffer_factory,
+                                               std::move(grab_result)};
       *buf = gst_buffer_new_wrapped_full(
           GST_MEMORY_FLAG_READONLY, surf, sizeof(*surf), 0, sizeof(*surf),
           buffer_ref, static_cast<GDestroyNotify>(free_ptr_grab_result));
 
       try {
-        gst_pylon_add_result_meta(this, *buf, *raw_grab, effective_stride);
+        gst_pylon_add_result_meta(this, *buf, buffer_ref->grab_result,
+                                  effective_stride);
       } catch (const Pylon::GenericException& e) {
         g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                     "Failed to attach Pylon meta: %s", e.GetDescription());
@@ -231,7 +228,7 @@ gboolean GstPylon::CaptureCompressed(
       decomp_scratch_buf.resize(comp_info.decompressedImageSize);
       size_t out_sz = decomp_scratch_buf.size();
       decompressor.DecompressImage(decomp_scratch_buf.data(), &out_sz,
-                                   *grab_result_ptr);
+                                   grab_result);
 
       size_t decomp_stride = 0;
       Pylon::ComputeStride(decomp_stride, px_type,
@@ -271,7 +268,7 @@ gboolean GstPylon::CaptureCompressed(
         return FALSE;
       }
       size_t out_sz = map.Info().size;
-      decompressor.DecompressImage(map.Info().data, &out_sz, *grab_result_ptr);
+      decompressor.DecompressImage(map.Info().data, &out_sz, grab_result);
       map.Unmap();
 
       size_t decomp_stride = 0;
@@ -290,7 +287,7 @@ gboolean GstPylon::CaptureCompressed(
   }
 
   try {
-    gst_pylon_add_result_meta(this, *buf, *grab_result_ptr, effective_stride);
+    gst_pylon_add_result_meta(this, *buf, grab_result, effective_stride);
   } catch (const Pylon::GenericException& e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                 "Failed to attach Pylon meta: %s", e.GetDescription());
@@ -306,7 +303,7 @@ gboolean GstPylon::CaptureCompressed(
 
 gboolean GstPylon::Capture(GstBuffer** buf,
                            GstPylonCaptureErrorEnum capture_error,
-                           GError** err) {
+                           GstClockTime* arrival_pts, GError** err) {
   g_return_val_if_fail(buf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
@@ -315,15 +312,13 @@ gboolean GstPylon::Capture(GstBuffer** buf,
   bool keep_failed_grab = false;
   gint retry_frame_counter = 0;
   static const gint max_frames_to_skip = 100;
-  std::unique_ptr<Pylon::CBaslerUniversalGrabResultPtr> grab_result_ptr;
+  GstPylonPendingFrame pending_frame;
 
   const uint32_t timeout_ms = grab_timeout_ms.load(std::memory_order_relaxed);
 
   while (retry_grab) {
-    Pylon::CBaslerUniversalGrabResultPtr* waited = NULL;
     GstPylonImageHandlerResult wait_result =
-        image_handler.WaitForImage(&waited, timeout_ms);
-    grab_result_ptr.reset(waited);
+        image_handler.WaitForImage(pending_frame, timeout_ms);
 
     if (wait_result == GstPylonImageHandlerResult::flushing) {
       return FALSE;
@@ -345,13 +340,13 @@ gboolean GstPylon::Capture(GstBuffer** buf,
       return FALSE;
     }
 
-    if ((*grab_result_ptr)->GrabSucceeded()) {
+    if (pending_frame.grab->GrabSucceeded()) {
       break;
     }
 
     std::string error_message =
-        std::string((*grab_result_ptr)->GetErrorDescription());
-    const uint32_t error_code = (*grab_result_ptr)->GetErrorCode();
+        std::string(pending_frame.grab->GetErrorDescription());
+    const uint32_t error_code = pending_frame.grab->GetErrorCode();
     switch (capture_error) {
       case ENUM_KEEP:
         /* Deliver the buffer into pipeline even if pylon reports an error */
@@ -390,7 +385,7 @@ gboolean GstPylon::Capture(GstBuffer** buf,
           gst_pylon_post_capture_error_message(gstpylonsrc, "skipped",
                                                retry_frame_counter, error_code,
                                                error_message);
-          grab_result_ptr.reset();
+          pending_frame.grab.Release();
           retry_grab = true;
         }
         break;
@@ -409,16 +404,20 @@ gboolean GstPylon::Capture(GstBuffer** buf,
     }
   }
 
+  if (arrival_pts) {
+    *arrival_pts = pending_frame.arrival_time;
+  }
+
   /* Check for Basler Compression Beyond compressed payloads before accessing
    * GetImageSize() / GetStride(), which throw on compressed grab results. */
   Pylon::CompressionInfo_t comp_info;
   bool is_compressed = false;
-  if ((*grab_result_ptr)->GrabSucceeded()) {
+  if (pending_frame.grab->GrabSucceeded()) {
     try {
       if (compression_active ||
-          (*grab_result_ptr)->GetPayloadType() != Pylon::PayloadType_Image) {
+          pending_frame.grab->GetPayloadType() != Pylon::PayloadType_Image) {
         if (Pylon::CImageDecompressor::GetCompressionInfo(comp_info,
-                                                          *grab_result_ptr) &&
+                                                          pending_frame.grab) &&
             comp_info.hasCompressedImage) {
           is_compressed = true;
         }
@@ -432,7 +431,7 @@ gboolean GstPylon::Capture(GstBuffer** buf,
   }
 
   if (is_compressed) {
-    return CaptureCompressed(grab_result_ptr, comp_info, buf, err);
+    return CaptureCompressed(pending_frame.grab, comp_info, buf, err);
   }
 
   gsize effective_stride = 0;
@@ -440,18 +439,17 @@ gboolean GstPylon::Capture(GstBuffer** buf,
   /* Resolve image payload from either standard Image/Chunk payloads or GenDC
    * containers (GeV 3.0 GenDC-only and USB3 optional GenDC). */
   GstPylonResolvedPayload resolved;
-  if (!gst_pylon_resolve_grab_payload(*grab_result_ptr, keep_failed_grab,
+  if (!gst_pylon_resolve_grab_payload(pending_frame.grab, keep_failed_grab,
                                       resolved, err)) {
     return FALSE;
   }
 
-  Pylon::CBaslerUniversalGrabResultPtr* raw_grab_for_meta =
-      grab_result_ptr.get();
+  GstPylonBufferRef* wrapped_ref = nullptr;
 
 #ifdef NVMM_ENABLED
   if (MEM_NVMM == mem_type) {
     NvBufSurface* surf =
-        reinterpret_cast<NvBufSurface*>((*grab_result_ptr)->GetBufferContext());
+        reinterpret_cast<NvBufSurface*>(pending_frame.grab->GetBufferContext());
 
     /* calc src width in byte from pixel type info */
     const auto src_width_pix = resolved.width;
@@ -470,13 +468,14 @@ gboolean GstPylon::Capture(GstBuffer** buf,
                   "Error copying memory to device");
       return FALSE;
     }
+    NvBufSurfaceSyncForDevice(surf, 0, 0);
 
     effective_stride = src_stride;
-    auto buffer_ref =
-        new GrabResultPair(buffer_factory, grab_result_ptr.release());
+    wrapped_ref = new GstPylonBufferRef{runtime, buffer_factory,
+                                        std::move(pending_frame.grab)};
     *buf = gst_buffer_new_wrapped_full(
         GST_MEMORY_FLAG_READONLY, surf, sizeof(*surf), 0, sizeof(*surf),
-        buffer_ref, static_cast<GDestroyNotify>(free_ptr_grab_result));
+        wrapped_ref, static_cast<GDestroyNotify>(free_ptr_grab_result));
   } else {
 #endif
     const Pylon::EPixelType px_type = resolved.pixel_type;
@@ -508,7 +507,7 @@ gboolean GstPylon::Capture(GstBuffer** buf,
       *buf = out_buf.release();
 
       try {
-        gst_pylon_add_result_meta(this, *buf, *grab_result_ptr,
+        gst_pylon_add_result_meta(this, *buf, pending_frame.grab,
                                   effective_stride);
       } catch (const Pylon::GenericException& e) {
         g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
@@ -525,11 +524,11 @@ gboolean GstPylon::Capture(GstBuffer** buf,
       effective_stride = resolved.stride;
     }
     gsize buffer_size = resolved.size;
-    auto buffer_ref =
-        new GrabResultPair(buffer_factory, grab_result_ptr.release());
+    wrapped_ref = new GstPylonBufferRef{runtime, buffer_factory,
+                                        std::move(pending_frame.grab)};
     *buf = gst_buffer_new_wrapped_full(
         static_cast<GstMemoryFlags>(0), resolved.data, buffer_size, 0,
-        buffer_size, buffer_ref,
+        buffer_size, wrapped_ref,
         static_cast<GDestroyNotify>(free_ptr_grab_result));
 #ifdef NVMM_ENABLED
   }
@@ -540,7 +539,8 @@ gboolean GstPylon::Capture(GstBuffer** buf,
   }
 
   try {
-    gst_pylon_add_result_meta(this, *buf, *raw_grab_for_meta, effective_stride);
+    gst_pylon_add_result_meta(this, *buf, wrapped_ref->grab_result,
+                              effective_stride);
   } catch (const Pylon::GenericException& e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                 "Failed to attach Pylon meta: %s", e.GetDescription());

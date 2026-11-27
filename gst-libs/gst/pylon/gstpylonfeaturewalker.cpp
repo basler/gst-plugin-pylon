@@ -149,13 +149,22 @@ std::vector<std::string> gst_pylon_get_int_entries(GenApi::IInteger* int_node) {
 
   g_return_val_if_fail(int_node, entry_names);
 
-  for (gint i = int_node->GetMin(); i <= int_node->GetMax();
-       i += int_node->GetInc()) {
-    /* Limit integer based selectors to MAX_INT_SELECTOR_ENTRIES */
-    if (i > MAX_INT_SELECTOR_ENTRIES) {
+  const int64_t min_val = int_node->GetMin();
+  const int64_t max_val = int_node->GetMax();
+  const int64_t inc_val = int_node->GetInc();
+  if (inc_val <= 0 || min_val > max_val) {
+    return entry_names;
+  }
+
+  for (int64_t i = min_val; i <= max_val; i += inc_val) {
+    /* Limit integer based selectors to MAX_INT_SELECTOR_ENTRIES entries */
+    if (entry_names.size() >= static_cast<size_t>(MAX_INT_SELECTOR_ENTRIES)) {
       break;
     }
     entry_names.push_back(std::to_string(i));
+    if (i > max_val - inc_val) {
+      break;
+    }
   }
 
   return entry_names;
@@ -327,9 +336,20 @@ std::vector<GParamSpec*> gst_pylon_camera_handle_node(
             selector_value =
                 param.GetEntryByName(enum_value.c_str())->GetValue();
             break;
-          case GenApi::intfIInteger:
-            selector_value = std::stoi(enum_value);
+          case GenApi::intfIInteger: {
+            gint64 parsed = 0;
+            GError* parse_err = NULL;
+            if (!g_ascii_string_to_signed(enum_value.c_str(), 10, G_MININT64,
+                                          G_MAXINT64, &parsed, &parse_err)) {
+              std::string msg =
+                  "Invalid integer selector entry '" + enum_value +
+                  "': " + (parse_err ? parse_err->message : "parse error");
+              g_clear_error(&parse_err);
+              throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+            }
+            selector_value = parsed;
             break;
+          }
           default:; /* do nothing */
         }
       }

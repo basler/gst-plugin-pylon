@@ -39,8 +39,41 @@
 #include "gstpylonobject.h"
 #include "gstpylonparamspecs.h"
 
+#include <atomic>
+#include <exception>
 #include <mutex>
+#include <new>
+#include <stdexcept>
 #include <utility>
+
+namespace {
+
+class OptionalCameraLock {
+ public:
+  explicit OptionalCameraLock(
+      const std::shared_ptr<std::recursive_mutex>& mutex)
+      : mutex_(mutex) {
+    if (mutex_) {
+      mutex_->lock();
+    }
+  }
+  ~OptionalCameraLock() {
+    if (mutex_) {
+      mutex_->unlock();
+    }
+  }
+  OptionalCameraLock(const OptionalCameraLock&) = delete;
+  OptionalCameraLock& operator=(const OptionalCameraLock&) = delete;
+
+ private:
+  std::shared_ptr<std::recursive_mutex> mutex_;
+};
+
+#ifdef GST_PYLON_ENABLE_TEST_HOOKS
+std::atomic<bool> g_test_inject_std_exception{false};
+#endif
+
+}  // namespace
 
 /************************************************************
  * Start of GObject definition
@@ -100,6 +133,7 @@ static GType gst_pylon_object_ensure_schema_type(
       sizeof(GstPylonObject),
       0,
       reinterpret_cast<GInstanceInitFunc>(gst_pylon_object_init),
+      NULL,
   };
 
   type = g_type_register_static(GST_TYPE_OBJECT, type_name.c_str(), &typeinfo,
@@ -211,6 +245,7 @@ static void gst_pylon_object_init(GstPylonObject* self) {
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
       gst_pylon_object_get_instance_private(self));
   new (&priv->camera) std::shared_ptr<Pylon::CBaslerUniversalInstantCamera>();
+  new (&priv->camera_mutex) std::shared_ptr<std::recursive_mutex>();
 }
 
 /* Set pylon feature from gst property */
@@ -319,8 +354,16 @@ void gst_pylon_object_get_pylon_feature<GSetString, Pylon::CStringParameter>(
 void gst_pylon_object_set_pylon_selector(GenApi::INodeMap& nodemap,
                                          const gchar* selector_name,
                                          gint64& selector_value) {
-  gint selector_type =
-      nodemap.GetNode(selector_name)->GetPrincipalInterfaceType();
+  if (!selector_name || selector_name[0] == '\0') {
+    throw Pylon::GenericException("Selector name is empty", __FILE__, __LINE__);
+  }
+  GenApi::INode* node = nodemap.GetNode(selector_name);
+  if (!node) {
+    std::string msg =
+        "Unknown selector node \"" + std::string(selector_name) + "\"";
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+  }
+  gint selector_type = node->GetPrincipalInterfaceType();
   switch (selector_type) {
     case GenApi::intfIEnumeration:
       Pylon::CEnumParameter(nodemap, selector_name).SetIntValue(selector_value);
@@ -401,9 +444,11 @@ static void gst_pylon_object_feature_get_value(
 static void gst_pylon_object_set_property(GObject* object, guint property_id,
                                           const GValue* value,
                                           GParamSpec* pspec) {
+  (void)property_id;
   GstPylonObject* self = reinterpret_cast<GstPylonObject*>(object);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
       gst_pylon_object_get_instance_private(self));
+  OptionalCameraLock cam_lock(priv->camera_mutex);
   GType value_type = g_type_fundamental(G_VALUE_TYPE(value));
   GstPylonParamSpecSelectorData* selector_data = NULL;
 
@@ -414,7 +459,7 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
   /* check if property is from dimension list
    * and set before streaming
    */
-  if (!priv->camera->IsGrabbing()) {
+  if (priv->camera && !priv->camera->IsGrabbing()) {
     bool is_cached = false;
     if (std::string(pspec->name) == "OffsetX") {
       priv->dimension_cache.offsetx = g_value_get_int64(value);
@@ -442,6 +487,15 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
   }
 
   try {
+#ifdef GST_PYLON_ENABLE_TEST_HOOKS
+    if (g_test_inject_std_exception.load(std::memory_order_relaxed)) {
+      throw std::bad_alloc();
+    }
+#endif
+    if (!priv->nodemap) {
+      throw Pylon::GenericException("Camera nodemap is not bound", __FILE__,
+                                    __LINE__);
+    }
     switch (value_type) {
       case G_TYPE_INT64:
         gst_pylon_object_feature_set_value<GGetInt64, Pylon::CIntegerParameter>(
@@ -477,22 +531,45 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
           GST_ELEMENT(parent), LIBRARY, SETTINGS,
           ("Failed to set camera feature \"%s\".", pspec->name),
           ("Device \"%s\": %s",
-           priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
+           priv->camera
+               ? priv->camera->GetDeviceInfo().GetFriendlyName().c_str()
+               : "(unknown)",
            e.GetDescription()));
     } else {
-      GST_ERROR("Unable to set pylon property \"%s\" on \"%s\": %s",
-                pspec->name,
-                priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
-                e.GetDescription());
+      GST_ERROR(
+          "Unable to set pylon property \"%s\" on \"%s\": %s", pspec->name,
+          priv->camera ? priv->camera->GetDeviceInfo().GetFriendlyName().c_str()
+                       : "(unknown)",
+          e.GetDescription());
+    }
+  } catch (const std::exception& e) {
+    GstObject* parent = GST_OBJECT_PARENT(object);
+    if (parent && GST_IS_ELEMENT(parent)) {
+      GST_ELEMENT_ERROR(
+          GST_ELEMENT(parent), LIBRARY, SETTINGS,
+          ("Failed to set camera feature \"%s\".", pspec->name),
+          ("Device \"%s\": %s",
+           priv->camera
+               ? priv->camera->GetDeviceInfo().GetFriendlyName().c_str()
+               : "(unknown)",
+           e.what()));
+    } else {
+      GST_ERROR(
+          "Unable to set pylon property \"%s\" on \"%s\": %s", pspec->name,
+          priv->camera ? priv->camera->GetDeviceInfo().GetFriendlyName().c_str()
+                       : "(unknown)",
+          e.what());
     }
   }
 }
 
 static void gst_pylon_object_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec) {
+  (void)property_id;
   GstPylonObject* self = reinterpret_cast<GstPylonObject*>(object);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
       gst_pylon_object_get_instance_private(self));
+  OptionalCameraLock cam_lock(priv->camera_mutex);
   GstPylonParamSpecSelectorData* selector_data = NULL;
 
   if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
@@ -502,7 +579,7 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
   /* check if property is from dimension list
    * and get from cache if not streaming
    */
-  if (!priv->camera->IsGrabbing()) {
+  if (priv->camera && !priv->camera->IsGrabbing()) {
     bool is_cached = false;
     if (std::string(pspec->name) == "OffsetX" &&
         priv->dimension_cache.offsetx >= 0) {
@@ -533,6 +610,10 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
   }
 
   try {
+    if (!priv->nodemap) {
+      throw Pylon::GenericException("Camera nodemap is not bound", __FILE__,
+                                    __LINE__);
+    }
     switch (g_type_fundamental(pspec->value_type)) {
       case G_TYPE_INT64:
         gst_pylon_object_feature_get_value<GSetInt64, Pylon::CIntegerParameter>(
@@ -562,21 +643,25 @@ static void gst_pylon_object_get_property(GObject* object, guint property_id,
     }
   } catch (const Pylon::GenericException& e) {
     GST_ERROR("Unable to get pylon property \"%s\" on \"%s\": %s", pspec->name,
-              priv->camera->GetDeviceInfo().GetFriendlyName().c_str(),
+              priv->camera
+                  ? priv->camera->GetDeviceInfo().GetFriendlyName().c_str()
+                  : "(unknown)",
               e.GetDescription());
+  } catch (const std::exception& e) {
+    GST_ERROR("Unable to get pylon property \"%s\" on \"%s\": %s", pspec->name,
+              priv->camera
+                  ? priv->camera->GetDeviceInfo().GetFriendlyName().c_str()
+                  : "(unknown)",
+              e.what());
   }
 }
 
 GObject* gst_pylon_object_new_for_schema(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const GstPylonObjectSchema& schema, gboolean enable_correction) {
+    const GstPylonObjectSchema& schema, gboolean enable_correction,
+    std::shared_ptr<std::recursive_mutex> camera_mutex) {
   std::string type_name = gst_pylon_object_get_schema_type_name(schema);
-
-  GType type = gst_pylon_object_find_schema_type(schema);
-
-  if (!type) {
-    type = gst_pylon_object_ensure_schema_type(schema);
-  }
+  GType type = gst_pylon_object_ensure_schema_type(schema);
 
   GObject* obj = G_OBJECT(g_object_new(type, "name", type_name.c_str(), NULL));
   GstPylonObject* self = reinterpret_cast<GstPylonObject*>(obj);
@@ -584,6 +669,7 @@ GObject* gst_pylon_object_new_for_schema(
       gst_pylon_object_get_instance_private(self));
 
   priv->camera = std::move(camera);
+  priv->camera_mutex = std::move(camera_mutex);
   priv->nodemap = &schema.node_map();
   priv->enable_correction = enable_correction;
   priv->framerate_configured = FALSE;
@@ -596,6 +682,16 @@ GObject* gst_pylon_object_new_for_schema(
   priv->dimension_cache = {-1, -1, -1, -1};
 
   return obj;
+}
+
+void gst_pylon_object_rebind_nodemap(GObject* obj, GenApi::INodeMap* nodemap) {
+  g_return_if_fail(obj);
+
+  GstPylonObject* self = GST_PYLON_OBJECT(obj);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
+  OptionalCameraLock cam_lock(priv->camera_mutex);
+  priv->nodemap = nodemap;
 }
 
 void gst_pylon_object_set_framerate_callback(GObject* obj,
@@ -620,6 +716,7 @@ gboolean gst_pylon_object_execute_command(GObject* obj,
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
       gst_pylon_object_get_instance_private(self));
+  OptionalCameraLock cam_lock(priv->camera_mutex);
 
   if (!priv->nodemap) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
@@ -683,6 +780,10 @@ gboolean gst_pylon_object_execute_command(GObject* obj,
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
                 e.GetDescription());
     return FALSE;
+  } catch (const std::exception& e) {
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                e.what());
+    return FALSE;
   }
 }
 
@@ -721,7 +822,15 @@ static void gst_pylon_object_finalize(GObject* object) {
 
   priv->camera.~shared_ptr();
   new (&priv->camera) std::shared_ptr<Pylon::CBaslerUniversalInstantCamera>();
+  priv->camera_mutex.~shared_ptr();
+  new (&priv->camera_mutex) std::shared_ptr<std::recursive_mutex>();
 
   gpointer parent_class = g_type_class_peek_parent(G_OBJECT_GET_CLASS(object));
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
+
+#ifdef GST_PYLON_ENABLE_TEST_HOOKS
+void gst_pylon_object_test_set_inject_std_exception(gboolean enable) {
+  g_test_inject_std_exception.store(enable != FALSE, std::memory_order_relaxed);
+}
+#endif

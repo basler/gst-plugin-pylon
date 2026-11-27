@@ -33,6 +33,7 @@
 #include "gstpylonimagehandler.h"
 
 #include <chrono>
+#include <utility>
 
 GstPylonImageHandler::GstPylonImageHandler()
     : max_pending_frames(1), state(State::Idle) {}
@@ -45,16 +46,32 @@ GstPylonImageHandler::~GstPylonImageHandler() {
 
 /* Caller must hold grab_result_mutex */
 void GstPylonImageHandler::ClearPendingFrames() {
-  for (auto ptr_grab_result : this->pending_frames) {
-    delete ptr_grab_result;
-  }
   this->pending_frames.clear();
+}
+
+void GstPylonImageHandler::SetClockCallback(ClockCallback cb) {
+  std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
+  this->clock_cb = std::move(cb);
 }
 
 void GstPylonImageHandler::OnImageGrabbed(
     Pylon::CBaslerUniversalInstantCamera& camera,
     const Pylon::CBaslerUniversalGrabResultPtr& grab_result) {
   (void)camera;
+
+  ClockCallback cb_copy;
+  {
+    std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
+    if (this->state == State::Interrupted ||
+        this->state == State::Disconnected) {
+      return;
+    }
+    cb_copy = this->clock_cb;
+  }
+
+  /* Sample pipeline clock at frame arrival, outside grab_result_mutex. */
+  const GstClockTime arrival = cb_copy ? cb_copy() : GST_CLOCK_TIME_NONE;
+
   std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
 
   /* Drop frames while flushing or after disconnect */
@@ -65,19 +82,17 @@ void GstPylonImageHandler::OnImageGrabbed(
   /* Queue full: drop the oldest unconsumed frame. With the default of one
    * pending frame this replaces it (LatestImageOnly). */
   while (this->pending_frames.size() >= this->max_pending_frames) {
-    delete this->pending_frames.front();
     this->pending_frames.pop_front();
   }
 
-  this->pending_frames.push_back(
-      new Pylon::CBaslerUniversalGrabResultPtr(grab_result));
+  this->pending_frames.push_back(GstPylonPendingFrame{grab_result, arrival});
   this->state = State::FrameReady;
   mutex_lock.unlock();
   this->grab_result_cv.notify_one();
 }
 
 GstPylonImageHandlerResult GstPylonImageHandler::WaitForImage(
-    Pylon::CBaslerUniversalGrabResultPtr** grab_result, uint32_t timeout_ms) {
+    GstPylonPendingFrame& out_frame, uint32_t timeout_ms) {
   std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
 
   for (;;) {
@@ -86,7 +101,7 @@ GstPylonImageHandlerResult GstPylonImageHandler::WaitForImage(
           mutex_lock, std::chrono::milliseconds(timeout_ms),
           [this] { return this->state != State::Idle; });
       if (!ready) {
-        *grab_result = NULL;
+        out_frame = GstPylonPendingFrame{};
         return GstPylonImageHandlerResult::timeout;
       }
     } else {
@@ -95,12 +110,12 @@ GstPylonImageHandlerResult GstPylonImageHandler::WaitForImage(
     }
 
     if (this->state == State::Interrupted) {
-      *grab_result = NULL;
+      out_frame = GstPylonPendingFrame{};
       return GstPylonImageHandlerResult::flushing;
     }
 
     if (this->state == State::Disconnected) {
-      *grab_result = NULL;
+      out_frame = GstPylonPendingFrame{};
       return GstPylonImageHandlerResult::disconnected;
     }
 
@@ -111,7 +126,7 @@ GstPylonImageHandlerResult GstPylonImageHandler::WaitForImage(
       continue;
     }
 
-    *grab_result = this->pending_frames.front();
+    out_frame = std::move(this->pending_frames.front());
     this->pending_frames.pop_front();
     if (this->pending_frames.empty()) {
       this->state = State::Idle;
@@ -122,25 +137,52 @@ GstPylonImageHandlerResult GstPylonImageHandler::WaitForImage(
   }
 }
 
+GstPylonImageHandlerResult GstPylonImageHandler::WaitForImage(
+    Pylon::CBaslerUniversalGrabResultPtr** grab_result, uint32_t timeout_ms) {
+  GstPylonPendingFrame frame;
+  const GstPylonImageHandlerResult res = WaitForImage(frame, timeout_ms);
+  if (res == GstPylonImageHandlerResult::ok) {
+    *grab_result =
+        new Pylon::CBaslerUniversalGrabResultPtr(std::move(frame.grab));
+  } else {
+    *grab_result = NULL;
+  }
+  return res;
+}
+
+bool GstPylonImageHandler::WaitInterruptible(uint32_t timeout_ms) {
+  std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
+  const bool interrupted = this->grab_result_cv.wait_for(
+      mutex_lock, std::chrono::milliseconds(timeout_ms),
+      [this] { return this->state == State::Interrupted; });
+  return !interrupted;
+}
+
+bool GstPylonImageHandler::IsInterrupted() const {
+  std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
+  return this->state == State::Interrupted;
+}
+
 void GstPylonImageHandler::InterruptWaitForImage() {
   std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
   this->ClearPendingFrames();
-  /* Do not override a terminal disconnect with a flush interrupt */
-  if (this->state != State::Disconnected) {
-    this->state = State::Interrupted;
-  }
+  /* Always transition to Interrupted so an active reconnect wait wakes
+   * immediately when the pipeline transitions to NULL/flushing. */
+  this->state = State::Interrupted;
   mutex_lock.unlock();
 
-  this->grab_result_cv.notify_one();
+  this->grab_result_cv.notify_all();
 }
 
 void GstPylonImageHandler::SignalDisconnect() {
   std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
   this->ClearPendingFrames();
-  this->state = State::Disconnected;
+  if (this->state != State::Interrupted) {
+    this->state = State::Disconnected;
+  }
   mutex_lock.unlock();
 
-  this->grab_result_cv.notify_one();
+  this->grab_result_cv.notify_all();
 }
 
 void GstPylonImageHandler::ResetForReconnect() {
@@ -162,7 +204,6 @@ void GstPylonImageHandler::SetMaxPendingFrames(size_t max_pending_frames) {
   std::unique_lock<std::mutex> mutex_lock(this->grab_result_mutex);
   this->max_pending_frames = max_pending_frames < 1 ? 1 : max_pending_frames;
   while (this->pending_frames.size() > this->max_pending_frames) {
-    delete this->pending_frames.front();
     this->pending_frames.pop_front();
   }
 }

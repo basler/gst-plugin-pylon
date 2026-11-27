@@ -43,6 +43,7 @@
 #include <gst/pylon/gstpylonincludes.h>
 
 #include <memory>
+#include <mutex>
 #include <string>
 
 G_DECLARE_DERIVABLE_TYPE(GstPylonObject, gst_pylon_object, GST, PYLON_OBJECT,
@@ -64,6 +65,7 @@ typedef void (*GstPylonFramerateChangedCb)(gpointer user_data, gdouble fps);
 
 typedef struct {
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera;
+  std::shared_ptr<std::recursive_mutex> camera_mutex;
   GenApi::INodeMap* nodemap;
   gboolean enable_correction;
   gboolean framerate_configured;
@@ -72,7 +74,7 @@ typedef struct {
   gpointer framerate_changed_data;
 } GstPylonObjectPrivate;
 
-typedef struct {
+struct GstPylonObjectSchema {
   std::string device_full_name;
   std::string schema_cache_key;
   GstPylonCache* feature_cache;
@@ -80,18 +82,21 @@ typedef struct {
 
   GstPylonCache& cache() const { return *feature_cache; }
   GenApi::INodeMap& node_map() const { return *nodemap; }
-} GstPylonObjectSchema;
+};
 
-typedef struct {
+struct GstPylonObjectClassData {
   GstPylonObjectSchema schema;
   gint private_offset;
-} GstPylonObjectClassData;
+};
 
 EXT_PYLONSRC_API GType
 gst_pylon_object_register_schema(const GstPylonObjectSchema& schema);
 EXT_PYLONSRC_API GObject* gst_pylon_object_new_for_schema(
     std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera,
-    const GstPylonObjectSchema& schema, gboolean enable_correction);
+    const GstPylonObjectSchema& schema, gboolean enable_correction,
+    std::shared_ptr<std::recursive_mutex> camera_mutex = nullptr);
+EXT_PYLONSRC_API void gst_pylon_object_rebind_nodemap(
+    GObject* obj, GenApi::INodeMap* nodemap);
 EXT_PYLONSRC_API void gst_pylon_object_set_enable_correction(
     GObject* obj, gboolean enable_correction);
 EXT_PYLONSRC_API gboolean
@@ -108,5 +113,10 @@ EXT_PYLONSRC_API void gst_pylon_object_set_pylon_selector(
 
 EXT_PYLONSRC_API gpointer
 gst_pylon_object_get_instance_private(GstPylonObject* self);
+
+#ifdef GST_PYLON_ENABLE_TEST_HOOKS
+EXT_PYLONSRC_API void gst_pylon_object_test_set_inject_std_exception(
+    gboolean enable);
+#endif
 
 #endif

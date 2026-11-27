@@ -37,3 +37,5 @@ cannot exercise.
 | 3.1 | `RUN_NVMM_FULL_RANGE=1 python3 tests/camemu/nvmm_full_range_contract.py` | PASS; YUY2/UYVY full-range colorimetry (`1:4:5:1`) preserved through `nvvidconv` | [ ] |
 | 3.2 | `pylonsrc ! video/x-raw(memory:NVMM),format=YUY2 ! nvvidconv ! fakesink` | Same caps, zero CUDA/NvBufSurface errors, zero FD/surface leaks across 10 restarts | [ ] |
 | 3.3 | `.deb` in-place upgrade (`1:1.1.0+pylon*` -> `1:2.0.0+pylon*`) | `dpkg -i` upgrades cleanly; existing user C/Python apps run without recompiling | [ ] |
+| 3.4 | NVMM CPU-copy paths (compressed/unpacked formats into `memory:NVMM`) | `NvBufSurfaceSyncForDevice` flushes CPU writes before downstream VIC/GPU reads; no stale/corrupt frames | [ ] |
+| 3.5 | NVMM buffer factory allocation failure (exhaustion / invalid params) | `AllocateBuffer` frees partially allocated `NvBufSurface` and throws `std::bad_alloc`; element posts error cleanly with zero FD/surface leaks | [ ] |

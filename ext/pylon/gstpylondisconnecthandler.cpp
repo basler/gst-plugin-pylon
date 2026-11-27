@@ -37,16 +37,33 @@
 #include "gst/pylon/gstpylondebug.h"
 #include "gstpylondisconnecthandler.h"
 
-void GstPylonDisconnectHandler::SetData(GstElement* gstpylnsrc,
-                                        GstPylonImageHandler* image_handler) {
+void GstPylonDisconnectHandler::SetData(
+    GstElement* gstpylnsrc, GstPylonImageHandler* image_handler,
+    const std::atomic<gboolean>* auto_reconnect) {
   this->gstpylnsrc = gstpylnsrc;
   this->image_handler = image_handler;
+  this->auto_reconnect = auto_reconnect;
 }
 
 void GstPylonDisconnectHandler::OnCameraDeviceRemoved(
     Pylon::CBaslerUniversalInstantCamera& camera) {
-  GST_ELEMENT_ERROR(this->gstpylnsrc, LIBRARY, FAILED,
-                    ("Connection to camera was lost."),
-                    ("The camera has been removed from the computer."));
-  this->image_handler->SignalDisconnect();
+  (void)camera;
+  const bool will_reconnect =
+      this->auto_reconnect != nullptr &&
+      this->auto_reconnect->load(std::memory_order_relaxed) != FALSE;
+
+  if (will_reconnect) {
+    GST_ELEMENT_WARNING(
+        this->gstpylnsrc, LIBRARY, FAILED,
+        ("Connection to camera was lost; attempting auto-reconnect."),
+        ("The camera has been removed from the computer."));
+  } else {
+    GST_ELEMENT_ERROR(this->gstpylnsrc, LIBRARY, FAILED,
+                      ("Connection to camera was lost."),
+                      ("The camera has been removed from the computer."));
+  }
+
+  if (this->image_handler) {
+    this->image_handler->SignalDisconnect();
+  }
 }

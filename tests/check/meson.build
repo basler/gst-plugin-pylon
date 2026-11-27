@@ -7,8 +7,8 @@ endif
 pylon_tests = [
   [ 'generic/states' ],
   [ 'generic/meta', false, [gstpylon_dep] ],
-  [ 'pylon/pylonsrc_camemu', false, [], [], { 'PYLON_CAMEMU': '3', 'CK_DEFAULT_TIMEOUT': '30' } ],
-  [ 'pylon/pylonsrc_concurrency', false, [], [], { 'PYLON_CAMEMU': '2', 'CK_DEFAULT_TIMEOUT': '60' } ],
+  [ 'pylon/pylonsrc_camemu', false, [gstpylon_dep], [], { 'PYLON_CAMEMU': '3', 'CK_DEFAULT_TIMEOUT': '30' } ],
+  [ 'pylon/pylonsrc_concurrency', false, [gstpylon_dep], [], { 'PYLON_CAMEMU': '2', 'CK_DEFAULT_TIMEOUT': '60' } ],
 ]
 
 test_defines = [
@@ -97,7 +97,7 @@ imagehandler_test = executable(
   'generic/imagehandler.cpp',
   '../../ext/pylon/gstpylonimagehandler.cpp',
   include_directories: [configinc, include_directories('../../ext/pylon')],
-  dependencies: [pylon_dep, dependency('threads')],
+  dependencies: [gst_dep, pylon_dep, dependency('threads')],
   cpp_args: [
     '-DHAVE_CONFIG_H=1',
     '-DGST_PYLON_IMAGEHANDLER_ENABLE_TEST_HOOKS',

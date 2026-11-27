@@ -81,7 +81,10 @@ void gst_pylon_interrupt_capture(GstPylon* self);
 void gst_pylon_clear_capture_interrupt(GstPylon* self);
 gboolean gst_pylon_capture(GstPylon* self, GstBuffer** buf,
                            GstPylonCaptureErrorEnum capture_error,
-                           GError** err);
+                           GstClockTime* arrival_pts, GError** err);
+#ifdef GST_PYLON_ENABLE_TEST_HOOKS
+void gst_pylon_test_trigger_disconnect(GstPylon* self);
+#endif
 GstCaps* gst_pylon_query_configuration(GstPylon* self, GError** err);
 gboolean gst_pylon_get_startup_geometry(GstPylon* self, gint* start_width,
                                         gint* start_height);

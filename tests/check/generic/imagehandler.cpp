@@ -160,6 +160,41 @@ static void TestQueueWithoutCamera() {
           "WaitForImage returns the frame after empty FrameReady recover");
     delete grab;
   }
+  {
+    /* WaitInterruptible returns early when interrupted from another thread. */
+    GstPylonImageHandler handler;
+    auto start = std::chrono::steady_clock::now();
+    std::thread interrupter([&handler] {
+      std::this_thread::sleep_for(std::chrono::milliseconds(40));
+      handler.InterruptWaitForImage();
+    });
+    bool elapsed = handler.WaitInterruptible(5000);
+    auto dur_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                      std::chrono::steady_clock::now() - start)
+                      .count();
+    interrupter.join();
+    CHECK(!elapsed && dur_ms < 500,
+          "WaitInterruptible returns false early on interrupt");
+    CHECK(handler.IsInterrupted(), "IsInterrupted reflects interrupted state");
+  }
+
+  {
+    /* Disconnect -> ResetForReconnect -> frame flows with arrival timestamp. */
+    GstPylonImageHandler handler;
+    GstClockTime fake_now = 123456789;
+    handler.SetClockCallback([&fake_now]() { return fake_now; });
+    handler.SignalDisconnect();
+    GstPylonPendingFrame pending;
+    CHECK(handler.WaitForImage(pending) ==
+              GstPylonImageHandlerResult::disconnected,
+          "WaitForImage(PendingFrame) reports disconnected");
+    handler.ResetForReconnect();
+    handler.OnImageGrabbed(camera, empty);
+    CHECK(handler.WaitForImage(pending, 500) == GstPylonImageHandlerResult::ok,
+          "frames flow again after ResetForReconnect");
+    CHECK(pending.arrival_time == fake_now,
+          "OnImageGrabbed captures arrival timestamp via clock callback");
+  }
 }
 
 static void TestQueueOrderWithEmulator() {

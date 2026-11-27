@@ -39,6 +39,7 @@
 #include "gst/pylon/gstpylontlenumerate.h"
 #include "gstchildinspector.h"
 #include "gstpyloninspect.h"
+#include "gstpylonruntime.h"
 #include "gstpylonschema.h"
 
 #include <gst/pylon/gstpylonincludes.h>
@@ -170,7 +171,7 @@ static void gst_pylon_get_introspection_strings_impl(gchar** cam_out,
     return;
   }
 
-  Pylon::PylonAutoInitTerm init_pylon;
+  auto pylon_runtime = GstPylonRuntime::Acquire();
   gchar* camera_properties = NULL;
   gchar* stream_properties = NULL;
 

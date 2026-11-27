@@ -208,6 +208,55 @@ static void gst_pylon_query_framerate(GstPylon* self, GValue* outvalue) {
   }
 }
 
+namespace {
+
+class ScopedOffsetReset {
+ public:
+  explicit ScopedOffsetReset(Pylon::CBaslerUniversalInstantCamera& cam)
+      : cam_(cam) {
+    has_x_ = cam_.OffsetX.IsReadable();
+    has_y_ = cam_.OffsetY.IsReadable();
+    if (has_x_) {
+      orig_x_ = cam_.OffsetX.GetValue();
+      if (orig_x_ != 0) {
+        cam_.OffsetX.TrySetToMinimum();
+      }
+    }
+    if (has_y_) {
+      orig_y_ = cam_.OffsetY.GetValue();
+      if (orig_y_ != 0) {
+        cam_.OffsetY.TrySetToMinimum();
+      }
+    }
+  }
+
+  ~ScopedOffsetReset() {
+    try {
+      if (has_x_ && orig_x_ != 0) {
+        cam_.OffsetX.TrySetValue(orig_x_);
+      }
+      if (has_y_ && orig_y_ != 0) {
+        cam_.OffsetY.TrySetValue(orig_y_);
+      }
+    } catch (const GenICam::GenericException& e) {
+      GST_WARNING("Failed to restore OffsetX/OffsetY after caps query: %s",
+                  e.GetDescription());
+    }
+  }
+
+  ScopedOffsetReset(const ScopedOffsetReset&) = delete;
+  ScopedOffsetReset& operator=(const ScopedOffsetReset&) = delete;
+
+ private:
+  Pylon::CBaslerUniversalInstantCamera& cam_;
+  bool has_x_ = false;
+  bool has_y_ = false;
+  gint64 orig_x_ = 0;
+  gint64 orig_y_ = 0;
+};
+
+}  // namespace
+
 static gboolean gst_pylon_query_caps(
     GstPylon* self, GstStructure* st,
     const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
@@ -224,31 +273,14 @@ static gboolean gst_pylon_query_caps(
   gst_structure_set_value(st, "format", &value);
   g_value_unset(&value);
 
-  /* Save offset to later reset values after querying */
-  gint64 orig_offset_x = 0;
-  gint64 orig_offset_y = 0;
-  const bool has_offset_x = self->camera->OffsetX.IsReadable();
-  const bool has_offset_y = self->camera->OffsetY.IsReadable();
-
-  if (has_offset_x) {
-    orig_offset_x = self->camera->OffsetX.GetValue();
-  }
-  if (has_offset_y) {
-    orig_offset_y = self->camera->OffsetY.GetValue();
-  }
+  /* Temporarily reset offsets to 0 to query true image geometry; RAII guard
+   * guarantees restoration even if a GenICam query throws. */
+  ScopedOffsetReset offset_guard(*self->camera);
 
   const std::vector<std::pair<GstPylonQuery, const std::string>> queries = {
       {gst_pylon_query_width, "width"},
       {gst_pylon_query_height, "height"},
       {gst_pylon_query_framerate, "framerate"}};
-
-  /* Offsets are set to 0 to get the true image geometry */
-  if (has_offset_x && orig_offset_x != 0) {
-    self->camera->OffsetX.TrySetToMinimum();
-  }
-  if (has_offset_y && orig_offset_y != 0) {
-    self->camera->OffsetY.TrySetToMinimum();
-  }
 
   for (const auto& query : queries) {
     GstPylonQuery func = query.first;
@@ -259,19 +291,23 @@ static gboolean gst_pylon_query_caps(
     g_value_unset(&value);
   }
 
-  /* Reset offset after querying */
-  if (has_offset_x && orig_offset_x != 0) {
-    self->camera->OffsetX.TrySetValue(orig_offset_x);
-  }
-  if (has_offset_y && orig_offset_y != 0) {
-    self->camera->OffsetY.TrySetValue(orig_offset_y);
-  }
-
   return TRUE;
 }
 
 GstCaps* GstPylon::QueryConfiguration(GError** err) {
   g_return_val_if_fail(err && *err == NULL, NULL);
+  std::lock_guard<std::recursive_mutex> lock(*camera_mutex);
+
+  /* Never mutate OffsetX/OffsetY while grabbing; return cached/negotiated caps
+   * instead. */
+  if (camera->IsGrabbing()) {
+    if (cached_caps) {
+      return gst_caps_copy(cached_caps);
+    }
+    if (negotiated_caps) {
+      return gst_caps_copy(negotiated_caps);
+    }
+  }
 
   /* Build gst caps */
   GstCaps* caps = gst_caps_new_empty();
@@ -311,6 +347,9 @@ GstCaps* GstPylon::QueryConfiguration(GError** err) {
     }
   }
 
+  InvalidateCapsCache();
+  cached_caps = gst_caps_copy(caps);
+
   return caps;
 }
 
@@ -322,6 +361,7 @@ GstCaps* gst_pylon_query_configuration(GstPylon* self, GError** err) {
 gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
   g_return_val_if_fail(conf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
+  std::lock_guard<std::recursive_mutex> lock(*camera_mutex);
 
   GstStructure* st = gst_caps_get_structure(conf, 0);
 
@@ -329,11 +369,12 @@ gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
   Pylon::CEnumParameter pixelformat(nodemap, "PixelFormat");
 
   try {
-    const std::string gst_format = gst_structure_get_string(st, "format");
-    if (gst_format.empty()) {
+    const gchar* format_str = gst_structure_get_string(st, "format");
+    if (!format_str || format_str[0] == '\0') {
       throw Pylon::GenericException(
           "Unable to find the format in the configuration", __FILE__, __LINE__);
     }
+    const std::string gst_format(format_str);
 
     gint gst_width = 0;
     if (!gst_structure_get_int(st, "width", &gst_width)) {

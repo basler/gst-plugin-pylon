@@ -37,6 +37,7 @@
 #include "gst/pylon/gstpylondebug.h"
 #include "gst/pylon/gstpylontlenumerate.h"
 #include "gstpylondeviceprovider.h"
+#include "gstpylonruntime.h"
 #include "gstpylonsrc.h"
 
 #include <gst/pylon/gstpylonincludes.h>
@@ -203,7 +204,7 @@ static GList* gst_pylon_device_provider_probe(GstDeviceProvider* provider) {
   GList* devices = NULL;
 
   try {
-    Pylon::PylonAutoInitTerm init_pylon;
+    auto pylon_runtime = GstPylonRuntime::Acquire();
     Pylon::DeviceInfoList_t device_list;
     gst_pylon_enumerate_devices(device_list);
 

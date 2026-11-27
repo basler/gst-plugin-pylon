@@ -39,6 +39,9 @@ static const char* kSyntheticXml = R"XML(<?xml version="1.0" encoding="utf-8"?>
   <Category Name="Root">
     <pFeature>TestSelector</pFeature>
     <pFeature>TestValue</pFeature>
+    <pFeature>MultiChildParent</pFeature>
+    <pFeature>WideIntSelector</pFeature>
+    <pFeature>WideSelectedVal</pFeature>
   </Category>
 
   <Enumeration Name="TestSelector">
@@ -63,6 +66,45 @@ static const char* kSyntheticXml = R"XML(<?xml version="1.0" encoding="utf-8"?>
     <Min>0</Min>
     <Max>100</Max>
   </Integer>
+
+  <Integer Name="LockFlag">
+    <Value>1</Value>
+    <Min>0</Min>
+    <Max>1</Max>
+  </Integer>
+
+  <Integer Name="UnlockedChild">
+    <Value>10</Value>
+    <Min>0</Min>
+    <Max>100</Max>
+  </Integer>
+
+  <Integer Name="LockedChild">
+    <pIsLocked>LockFlag</pIsLocked>
+    <Value>20</Value>
+    <Min>0</Min>
+    <Max>100</Max>
+  </Integer>
+
+  <Integer Name="MultiChildParent">
+    <pValue>UnlockedChild</pValue>
+    <Min>0</Min>
+    <pMax>LockedChild</pMax>
+  </Integer>
+
+  <Integer Name="WideIntSelector">
+    <Value>1</Value>
+    <Min>1</Min>
+    <Max>999999999999</Max>
+    <Inc>1</Inc>
+    <pSelected>WideSelectedVal</pSelected>
+  </Integer>
+
+  <Integer Name="WideSelectedVal">
+    <Value>5</Value>
+    <Min>0</Min>
+    <Max>10</Max>
+  </Integer>
 </RegisterDescription>
 )XML";
 
@@ -81,10 +123,66 @@ static void TestLoadAndValidSelector() {
         "gst_pylon_object_set_pylon_selector selects EntryB");
 }
 
+static void TestUnknownSelectorThrowsCleanly() {
+  GenApi::CNodeMapRef nodemap;
+  nodemap._LoadXMLFromString(kSyntheticXml);
+
+  bool caught = false;
+  try {
+    gint64 val = 0;
+    gst_pylon_object_set_pylon_selector(*nodemap._Ptr, "NonExistentSelector",
+                                        val);
+  } catch (const GenICam::GenericException&) {
+    caught = true;
+  }
+  CHECK(caught,
+        "gst_pylon_object_set_pylon_selector throws GenericException for "
+        "unknown selector without null deref");
+}
+
+static void TestSecondChildWritableScan() {
+  GenApi::CNodeMapRef nodemap;
+  nodemap._LoadXMLFromString(kSyntheticXml);
+
+  GenApi::INode* parent = nodemap._GetNode("MultiChildParent");
+  CHECK(parent != nullptr, "synthetic XML loads MultiChildParent");
+  CHECK(gst_pylon_can_feature_later_be_writable(parent) == TRUE,
+        "can_feature_later_be_writable scans beyond first child");
+}
+
+static void TestWideIntegerSelectorRegistration() {
+  GenApi::CNodeMapRef nodemap;
+  nodemap._LoadXMLFromString(kSyntheticXml);
+
+  /* Registering a GstPylonObject schema against a nodemap with an int64-range
+   * integer selector must not overflow 32-bit int or throw std::out_of_range.
+   */
+  GstPylonCache cache("SyntheticWideIntSelCam");
+  GstPylonObjectSchema schema;
+  schema.device_full_name = "SyntheticWideIntSelCam";
+  schema.schema_cache_key = "SyntheticWideIntSelCam";
+  schema.feature_cache = &cache;
+  schema.nodemap = nodemap._Ptr;
+
+  GType t = gst_pylon_object_register_schema(schema);
+  CHECK(t != G_TYPE_INVALID,
+        "gst_pylon_object_register_schema succeeds with 64-bit range integer "
+        "selector");
+}
+
 int main(int argc, char** argv) {
   gst_init(&argc, &argv);
 
-  TestLoadAndValidSelector();
+  try {
+    TestLoadAndValidSelector();
+    TestUnknownSelectorThrowsCleanly();
+    TestSecondChildWritableScan();
+    TestWideIntegerSelectorRegistration();
+  } catch (const GenICam::GenericException& e) {
+    std::fprintf(stderr, "Uncaught GenICam exception: %s\n",
+                 e.GetDescription());
+    return EXIT_FAILURE;
+  }
 
   if (failures > 0) {
     std::fprintf(stderr, "%d failure(s)\n", failures);

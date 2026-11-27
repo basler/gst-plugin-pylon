@@ -62,10 +62,9 @@ GstPylon* gst_pylon_new(GstElement* gstpylonsrc, const gchar* device_user_name,
                         const gchar* device_serial_number, gint device_index,
                         const gchar* user_set, const gchar* pfs_location,
                         gboolean enable_correction, GError** err) {
-  GstPylon* self = new GstPylon(gstpylonsrc);
-
-  g_return_val_if_fail(self, NULL);
   g_return_val_if_fail(err && *err == NULL, NULL);
+
+  GstPylon* self = new GstPylon(gstpylonsrc);
 
   try {
     self->Open(device_user_name, device_serial_number, device_index, user_set,
@@ -177,10 +176,17 @@ void gst_pylon_clear_capture_interrupt(GstPylon* self) {
 
 gboolean gst_pylon_capture(GstPylon* self, GstBuffer** buf,
                            GstPylonCaptureErrorEnum capture_error,
-                           GError** err) {
+                           GstClockTime* arrival_pts, GError** err) {
   g_return_val_if_fail(self, FALSE);
-  return self->Capture(buf, capture_error, err);
+  return self->Capture(buf, capture_error, arrival_pts, err);
 }
+
+#ifdef GST_PYLON_ENABLE_TEST_HOOKS
+void gst_pylon_test_trigger_disconnect(GstPylon* self) {
+  g_return_if_fail(self);
+  self->TestTriggerDisconnect();
+}
+#endif
 
 gboolean gst_pylon_set_configuration(GstPylon* self, const GstCaps* conf,
                                      GError** err) {

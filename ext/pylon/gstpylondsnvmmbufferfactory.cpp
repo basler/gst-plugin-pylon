@@ -94,7 +94,11 @@ void GstPylonDsNvmmBufferFactory::AllocateBuffer(size_t buffer_size,
   const size_t aligned_buffer_size = RoundUp(buffer_size, PAGE_SIZE);
 
   int ret = posix_memalign(&buffer_mem, PAGE_SIZE, aligned_buffer_size);
-  if (ret) buffer_mem = nullptr;
+  if (ret != 0 || buffer_mem == nullptr) {
+    *p_created_buffer = nullptr;
+    buffer_context = 0;
+    throw std::bad_alloc();
+  }
 
   create_params.params.size = aligned_buffer_size;
 
@@ -141,4 +145,7 @@ void GstPylonDsNvmmBufferFactory::FreeBuffer(void* p_created_buffer,
   free(p_created_buffer);
 }
 
-void GstPylonDsNvmmBufferFactory::DestroyBufferFactory() { delete this; }
+void GstPylonDsNvmmBufferFactory::DestroyBufferFactory() {
+  /* Owned by std::shared_ptr via Pylon::Cleanup_None; must not self-delete. */
+  g_assert_not_reached();
+}
