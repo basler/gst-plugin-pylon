@@ -45,12 +45,11 @@
 #include "gst/pylon/gstpylonincludes.h"
 #include "gst/pylon/gstpylonmetaprivate.h"
 #include "gst/pylon/gstpylonobject.h"
-#include "gstpylon-private.h"
-#include "gstpylon.h"
 #include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
 #include "gstpyloninspect.h"
 #include "gstpylonschema.h"
+#include "gstpylonsession.h"
 #include "gstpylonsysmembufferfactory.h"
 
 #include <exception>
@@ -59,24 +58,23 @@
 #include <vector>
 
 static std::vector<std::string> gst_pylon_gst_to_pfnc(
-    const std::string& gst_format,
-    const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
+    std::string_view gst_format, PixelFormatMappingView pixel_format_mapping) {
   std::vector<std::string> out_formats;
-  for (auto& entry : pixel_format_mapping) {
+  for (const auto& entry : pixel_format_mapping) {
     if (entry.gst_name == gst_format) {
-      out_formats.push_back(entry.pfnc_name);
+      out_formats.emplace_back(entry.pfnc_name);
     }
   }
   return out_formats;
 }
 
 static std::vector<std::string> gst_pylon_pfnc_to_gst(
-    const std::string& genapi_format,
-    const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
+    std::string_view genapi_format,
+    PixelFormatMappingView pixel_format_mapping) {
   std::vector<std::string> out_formats;
-  for (auto& entry : pixel_format_mapping) {
+  for (const auto& entry : pixel_format_mapping) {
     if (entry.pfnc_name == genapi_format) {
-      out_formats.push_back(entry.gst_name);
+      out_formats.emplace_back(entry.gst_name);
     }
   }
   return out_formats;
@@ -84,12 +82,12 @@ static std::vector<std::string> gst_pylon_pfnc_to_gst(
 
 static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
     const GenApi::StringList_t& genapi_formats,
-    const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
+    PixelFormatMappingView pixel_format_mapping) {
   std::vector<std::string> formats_list;
 
   for (const auto& genapi_fmt : genapi_formats) {
     std::vector<std::string> gst_fmts =
-        gst_pylon_pfnc_to_gst(std::string(genapi_fmt), pixel_format_mapping);
+        gst_pylon_pfnc_to_gst(genapi_fmt.c_str(), pixel_format_mapping);
 
     /* Insert every matching gst format */
     formats_list.insert(formats_list.end(), gst_fmts.begin(), gst_fmts.end());
@@ -98,15 +96,11 @@ static std::vector<std::string> gst_pylon_pfnc_list_to_gst(
   return formats_list;
 }
 
-typedef void (*GstPylonQuery)(GstPylon*, GValue*);
-
-static gboolean gst_pylon_query_format(
-    GstPylon* self, GValue* outvalue,
-    const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
-  g_return_val_if_fail(self, FALSE);
+gboolean GstPylonSession::QueryFormat(
+    GValue* outvalue, PixelFormatMappingView pixel_format_mapping) {
   g_return_val_if_fail(outvalue, FALSE);
 
-  GenApi::INodeMap& nodemap = self->camera->GetNodeMap();
+  GenApi::INodeMap& nodemap = camera->GetNodeMap();
   Pylon::CEnumParameter pixelformat(nodemap, "PixelFormat");
 
   GenApi::StringList_t genapi_formats;
@@ -138,12 +132,10 @@ static gboolean gst_pylon_query_format(
   return TRUE;
 }
 
-static void gst_pylon_query_integer(GstPylon* self, GValue* outvalue,
-                                    const std::string& name) {
-  g_return_if_fail(self);
+void GstPylonSession::QueryInteger(GValue* outvalue, const std::string& name) {
   g_return_if_fail(outvalue);
 
-  GenApi::INodeMap& nodemap = self->camera->GetNodeMap();
+  GenApi::INodeMap& nodemap = camera->GetNodeMap();
   Pylon::CIntegerParameter param(nodemap, name.c_str());
 
   gint min = param.GetMin();
@@ -153,31 +145,26 @@ static void gst_pylon_query_integer(GstPylon* self, GValue* outvalue,
   gst_value_set_int_range(outvalue, min, max);
 }
 
-static void gst_pylon_query_width(GstPylon* self, GValue* outvalue) {
-  g_return_if_fail(self);
+void GstPylonSession::QueryWidth(GValue* outvalue) {
   g_return_if_fail(outvalue);
-
-  gst_pylon_query_integer(self, outvalue, "Width");
+  QueryInteger(outvalue, "Width");
 }
 
-static void gst_pylon_query_height(GstPylon* self, GValue* outvalue) {
-  g_return_if_fail(self);
+void GstPylonSession::QueryHeight(GValue* outvalue) {
   g_return_if_fail(outvalue);
-
-  gst_pylon_query_integer(self, outvalue, "Height");
+  QueryInteger(outvalue, "Height");
 }
 
-static void gst_pylon_query_framerate(GstPylon* self, GValue* outvalue) {
-  g_return_if_fail(self);
+void GstPylonSession::QueryFramerate(GValue* outvalue) {
   g_return_if_fail(outvalue);
 
   gdouble min_fps = 1;
   gdouble max_fps = 1;
   Pylon::CFloatParameter framerate;
 
-  GenApi::INodeMap& nodemap = self->camera->GetNodeMap();
+  GenApi::INodeMap& nodemap = camera->GetNodeMap();
 
-  if (self->camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
+  if (camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
     framerate.Attach(nodemap, "AcquisitionFrameRate");
   } else {
     framerate.Attach(nodemap, "AcquisitionFrameRateAbs");
@@ -257,17 +244,15 @@ class ScopedOffsetReset {
 
 }  // namespace
 
-static gboolean gst_pylon_query_caps(
-    GstPylon* self, GstStructure* st,
-    const std::vector<PixelFormatMappingType>& pixel_format_mapping) {
-  g_return_val_if_fail(self, FALSE);
+gboolean GstPylonSession::QueryCaps(
+    GstStructure* st, PixelFormatMappingView pixel_format_mapping) {
   g_return_val_if_fail(st, FALSE);
 
   GValue value = G_VALUE_INIT;
 
   /* Pixel format is queried first; skip structure if camera supports none of
    * these formats. */
-  if (!gst_pylon_query_format(self, &value, pixel_format_mapping)) {
+  if (!QueryFormat(&value, pixel_format_mapping)) {
     return FALSE;
   }
   gst_structure_set_value(st, "format", &value);
@@ -275,18 +260,20 @@ static gboolean gst_pylon_query_caps(
 
   /* Temporarily reset offsets to 0 to query true image geometry; RAII guard
    * guarantees restoration even if a GenICam query throws. */
-  ScopedOffsetReset offset_guard(*self->camera);
+  ScopedOffsetReset offset_guard(*camera);
 
-  const std::vector<std::pair<GstPylonQuery, const std::string>> queries = {
-      {gst_pylon_query_width, "width"},
-      {gst_pylon_query_height, "height"},
-      {gst_pylon_query_framerate, "framerate"}};
+  using QueryFn = void (GstPylonSession::*)(GValue*);
+  const std::array<std::pair<QueryFn, const char*>, 3> queries = {{
+      {&GstPylonSession::QueryWidth, "width"},
+      {&GstPylonSession::QueryHeight, "height"},
+      {&GstPylonSession::QueryFramerate, "framerate"},
+  }};
 
   for (const auto& query : queries) {
-    GstPylonQuery func = query.first;
-    const gchar* name = query.second.c_str();
+    QueryFn func = query.first;
+    const gchar* name = query.second;
 
-    func(self, &value);
+    (this->*func)(&value);
     gst_structure_set_value(st, name, &value);
     g_value_unset(&value);
   }
@@ -294,7 +281,7 @@ static gboolean gst_pylon_query_caps(
   return TRUE;
 }
 
-GstCaps* GstPylon::QueryConfiguration(GError** err) {
+GstCaps* GstPylonSession::QueryConfiguration(GError** err) {
   g_return_val_if_fail(err && *err == NULL, NULL);
   std::lock_guard<std::recursive_mutex> lock(*camera_mutex);
 
@@ -313,17 +300,15 @@ GstCaps* GstPylon::QueryConfiguration(GError** err) {
   GstCaps* caps = gst_caps_new_empty();
 
   for (const auto& gst_structure_format : gst_structure_formats) {
-    GstStructure* st =
-        gst_structure_new_empty(gst_structure_format.st_name.c_str());
+    const std::string st_name(gst_structure_format.st_name);
+    GstStructure* st = gst_structure_new_empty(st_name.c_str());
     try {
 #ifdef NVMM_ENABLED
       /* Advertise memory:NVMM first (matching static pad template priority)
        * strictly for the video/x-raw formats supported by NvBufSurface. */
       if (gst_structure_format.st_name == "video/x-raw") {
-        GstStructure* nvmm_st =
-            gst_structure_new_empty(gst_structure_format.st_name.c_str());
-        if (gst_pylon_query_caps(this, nvmm_st,
-                                 pixel_format_mapping_nvmm_raw)) {
+        GstStructure* nvmm_st = gst_structure_new_empty(st_name.c_str());
+        if (QueryCaps(nvmm_st, pixel_format_mapping_nvmm_raw)) {
           gst_caps_append_structure_full(
               caps, nvmm_st, gst_caps_features_new("memory:NVMM", NULL));
         } else {
@@ -331,7 +316,7 @@ GstCaps* GstPylon::QueryConfiguration(GError** err) {
         }
       }
 #endif
-      if (!gst_pylon_query_caps(this, st, gst_structure_format.format_map)) {
+      if (!QueryCaps(st, gst_structure_format.format_map)) {
         gst_structure_free(st);
         continue;
       }
@@ -353,12 +338,7 @@ GstCaps* GstPylon::QueryConfiguration(GError** err) {
   return caps;
 }
 
-GstCaps* gst_pylon_query_configuration(GstPylon* self, GError** err) {
-  g_return_val_if_fail(self, NULL);
-  return self->QueryConfiguration(err);
-}
-
-gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
+gboolean GstPylonSession::SetConfiguration(const GstCaps* conf, GError** err) {
   g_return_val_if_fail(conf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
   std::lock_guard<std::recursive_mutex> lock(*camera_mutex);
@@ -452,13 +432,11 @@ gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
      * -> offset will be adjusted to keep dimensions
      */
 
-    GstPylonObjectPrivate* cam_properties = static_cast<GstPylonObjectPrivate*>(
-        gst_pylon_object_get_instance_private(
-            reinterpret_cast<GstPylonObject*>(gcamera)));
-
-    auto& offsetx_cache = cam_properties->dimension_cache.offsetx;
-    auto& offsety_cache = cam_properties->dimension_cache.offsety;
-    auto enable_correction = cam_properties->enable_correction;
+    gint offsetx_cache = -1;
+    gint offsety_cache = -1;
+    gst_pylon_object_take_offset_cache(gcamera, &offsetx_cache, &offsety_cache);
+    const gboolean enable_correction =
+        gst_pylon_object_get_enable_correction(gcamera);
 
     bool value_corrected = false;
     if (offsetx_cache >= 0) {

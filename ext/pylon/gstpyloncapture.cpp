@@ -45,13 +45,12 @@
 #include "gst/pylon/gstpylonincludes.h"
 #include "gst/pylon/gstpylonmetaprivate.h"
 #include "gst/pylon/gstpylonobject.h"
-#include "gstpylon-private.h"
-#include "gstpylon.h"
 #include "gstpylondisconnecthandler.h"
 #include "gstpylongendc.h"
 #include "gstpylonimagehandler.h"
 #include "gstpyloninspect.h"
 #include "gstpylonschema.h"
+#include "gstpylonsession.h"
 #include "gstpylonsysmembufferfactory.h"
 
 #include <exception>
@@ -93,11 +92,9 @@ class ScopedGstBufferMap {
 
 }  // namespace
 
-static void gst_pylon_add_result_meta(
-    GstPylon* self, GstBuffer* buf,
-    Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr,
+void GstPylonSession::AddResultMeta(
+    GstBuffer* buf, Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr,
     gsize override_stride) {
-  g_return_if_fail(self);
   g_return_if_fail(buf);
 
   gst_buffer_add_pylon_meta_with_stride(buf, grab_result_ptr, override_stride);
@@ -147,7 +144,7 @@ static void gst_pylon_scale_mono_sub16_to_gray16(const uint16_t* src,
   }
 }
 
-gboolean GstPylon::CaptureCompressed(
+gboolean GstPylonSession::CaptureCompressed(
     Pylon::CBaslerUniversalGrabResultPtr& grab_result,
     const Pylon::CompressionInfo_t& comp_info, GstBuffer** buf, GError** err) {
   if (comp_info.compressionStatus != Pylon::CompressionStatus_Ok) {
@@ -211,8 +208,7 @@ gboolean GstPylon::CaptureCompressed(
           buffer_ref, static_cast<GDestroyNotify>(free_ptr_grab_result));
 
       try {
-        gst_pylon_add_result_meta(this, *buf, buffer_ref->grab_result,
-                                  effective_stride);
+        AddResultMeta(*buf, buffer_ref->grab_result, effective_stride);
       } catch (const Pylon::GenericException& e) {
         g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                     "Failed to attach Pylon meta: %s", e.GetDescription());
@@ -287,7 +283,7 @@ gboolean GstPylon::CaptureCompressed(
   }
 
   try {
-    gst_pylon_add_result_meta(this, *buf, grab_result, effective_stride);
+    AddResultMeta(*buf, grab_result, effective_stride);
   } catch (const Pylon::GenericException& e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                 "Failed to attach Pylon meta: %s", e.GetDescription());
@@ -301,9 +297,9 @@ gboolean GstPylon::CaptureCompressed(
   return TRUE;
 }
 
-gboolean GstPylon::Capture(GstBuffer** buf,
-                           GstPylonCaptureErrorEnum capture_error,
-                           GstClockTime* arrival_pts, GError** err) {
+gboolean GstPylonSession::Capture(GstBuffer** buf,
+                                  GstPylonCaptureErrorEnum capture_error,
+                                  GstClockTime* arrival_pts, GError** err) {
   g_return_val_if_fail(buf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
@@ -507,8 +503,7 @@ gboolean GstPylon::Capture(GstBuffer** buf,
       *buf = out_buf.release();
 
       try {
-        gst_pylon_add_result_meta(this, *buf, pending_frame.grab,
-                                  effective_stride);
+        AddResultMeta(*buf, pending_frame.grab, effective_stride);
       } catch (const Pylon::GenericException& e) {
         g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                     "Failed to attach Pylon meta: %s", e.GetDescription());
@@ -539,8 +534,7 @@ gboolean GstPylon::Capture(GstBuffer** buf,
   }
 
   try {
-    gst_pylon_add_result_meta(this, *buf, wrapped_ref->grab_result,
-                              effective_stride);
+    AddResultMeta(*buf, wrapped_ref->grab_result, effective_stride);
   } catch (const Pylon::GenericException& e) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                 "Failed to attach Pylon meta: %s", e.GetDescription());

@@ -34,14 +34,16 @@
 
 #include "gst/pylon/gstpylonformatmapping.h"
 #include "gst/pylon/gstpylonobject.h"
-#include "gstpylon.h"
 #include "gstpylonbufferfactory.h"
 #include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
 #include "gstpylonruntime.h"
+#include "gstpylontypes.h"
 
+#include <gst/gst.h>
 #include <gst/pylon/gstpylonincludes.h>
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <memory>
@@ -49,106 +51,45 @@
 #include <string>
 #include <vector>
 
-typedef struct {
-  const std::string st_name;
-  std::vector<PixelFormatMappingType> format_map;
-} GstStPixelFormats;
+class GstPylonSession {
+ public:
+  static std::unique_ptr<GstPylonSession> Create(
+      GstElement* gstpylonsrc, const gchar* device_user_name,
+      const gchar* device_serial_number, gint device_index,
+      const gchar* user_set, const gchar* pfs_location,
+      gboolean enable_correction, GError** err);
 
-typedef enum {
-  MEM_SYSMEM,
-  MEM_NVMM,
-} GstPylonMemoryTypeEnum;
+  explicit GstPylonSession(GstElement* element);
+  ~GstPylonSession();
 
-struct _GstPylon {
-  explicit _GstPylon(GstElement* element)
-      : runtime(GstPylonRuntime::Acquire()), gstpylonsrc(element) {}
+  GstPylonSession(const GstPylonSession&) = delete;
+  GstPylonSession& operator=(const GstPylonSession&) = delete;
 
-  ~_GstPylon() {
-    image_handler.InterruptWaitForImage();
-    image_handler.SetClockCallback(nullptr);
-
-    if (gcamera) {
-      gst_pylon_object_rebind_nodemap(gcamera, nullptr);
-    }
-    if (gstream_grabber) {
-      gst_pylon_object_rebind_nodemap(gstream_grabber, nullptr);
-    }
-
-    {
-      std::lock_guard<std::recursive_mutex> lock(*camera_mutex);
-      try {
-        if (handlers_registered) {
-          camera->DeregisterImageEventHandler(&image_handler);
-          camera->DeregisterConfiguration(&disconnect_handler);
-        }
-        if (camera->IsGrabbing()) {
-          camera->StopGrabbing();
-        }
-        if (camera->IsOpen()) {
-          camera->Close();
-        }
-        if (camera->IsPylonDeviceAttached()) {
-          camera->DestroyDevice();
-        }
-      } catch (const GenICam::GenericException& e) {
-        GST_WARNING_OBJECT(gstpylonsrc,
-                           "Ignoring exception during teardown: %s",
-                           e.GetDescription());
-      } catch (const std::exception& e) {
-        GST_WARNING_OBJECT(gstpylonsrc,
-                           "Ignoring exception during teardown: %s", e.what());
-      }
-    }
-
-    if (negotiated_caps) {
-      gst_caps_unref(negotiated_caps);
-      negotiated_caps = nullptr;
-    }
-    if (cached_caps) {
-      gst_caps_unref(cached_caps);
-      cached_caps = nullptr;
-    }
-
-    if (gcamera) {
-      gst_object_unparent(GST_OBJECT(gcamera));
-    }
-    if (gstream_grabber) {
-      gst_object_unparent(GST_OBJECT(gstream_grabber));
-    }
-    g_clear_object(&gcamera);
-    g_clear_object(&gstream_grabber);
-  }
-
-  void Open(const gchar* device_user_name, const gchar* device_serial_number,
-            gint device_index, const gchar* user_set, const gchar* pfs_location,
-            gboolean enable_correction);
   void SetMaxPendingFrames(guint max_pending_frames);
   void SetGrabTimeout(guint timeout_ms);
   void SetAutoReconnect(gboolean enable);
-  gboolean TryReconnect(GError** err);
+
   gboolean Start(GError** err);
   gboolean Stop(GError** err);
+  void InterruptCapture();
+  void ClearCaptureInterrupt();
+  gboolean Capture(GstBuffer** buf, GstPylonCaptureErrorEnum capture_error,
+                   GstClockTime* arrival_pts, GError** err);
+
   gboolean ApplyUserConfig(const gchar* user_set, GError** err);
   gboolean LoadPfsConfig(const gchar* pfs_location, GError** err);
   gboolean ApplySessionConfig(const gchar* user_set, const gchar* pfs_location,
                               GError** err);
   gboolean EnsureConfigured(const gchar* user_set, const gchar* pfs_location,
                             gboolean enable_correction, GError** err);
+
+  GstCaps* QueryConfiguration(GError** err);
+  gboolean SetConfiguration(const GstCaps* conf, GError** err);
   gboolean GetStartupGeometry(gint* start_width, gint* start_height);
   gboolean GetPreferredCapsValues(std::string* preferred_gst_format,
                                   gdouble* preferred_fps);
   gboolean ExecuteCommand(const gchar* command_name, GError** err);
-  gboolean Capture(GstBuffer** buf, GstPylonCaptureErrorEnum capture_error,
-                   GstClockTime* arrival_pts, GError** err);
-  gboolean CaptureCompressed(Pylon::CBaslerUniversalGrabResultPtr& grab_result,
-                             const Pylon::CompressionInfo_t& comp_info,
-                             GstBuffer** buf, GError** err);
-  GstCaps* QueryConfiguration(GError** err);
-  gboolean SetConfiguration(const GstCaps* conf, GError** err);
-  void InvalidateCapsCache();
-  void RefreshDecompressor();
-  void InterruptCapture();
-  void ClearCaptureInterrupt();
+
   void SetEnableCorrection(gboolean enable_correction);
   GObject* RefCamera() const;
   GObject* RefStreamGrabber() const;
@@ -157,9 +98,47 @@ struct _GstPylon {
                                   const gchar* device_serial_number) const;
   gboolean IsConfigApplied(const gchar* user_set, const gchar* pfs_location,
                            gboolean enable_correction) const;
+
+#ifdef NVMM_ENABLED
+  void SetNvsurfaceLayout(GstPylonNvsurfaceLayoutEnum layout) {
+    nvsurface_layout = layout;
+  }
+  GstPylonNvsurfaceLayoutEnum GetNvsurfaceLayout() const {
+    return nvsurface_layout;
+  }
+  void SetGpuId(guint id) { gpu_id = id; }
+  guint GetGpuId() const { return gpu_id; }
+#endif
+
 #ifdef GST_PYLON_ENABLE_TEST_HOOKS
   void TestTriggerDisconnect();
 #endif
+
+ private:
+  void Open(const gchar* device_user_name, const gchar* device_serial_number,
+            gint device_index, const gchar* user_set, const gchar* pfs_location,
+            gboolean enable_correction);
+  void AttachAndOpen(const Pylon::CDeviceInfo& device_info, int retries);
+  void ReleaseDevice();
+  gboolean TryReconnect(GError** err);
+  gboolean CaptureCompressed(Pylon::CBaslerUniversalGrabResultPtr& grab_result,
+                             const Pylon::CompressionInfo_t& comp_info,
+                             GstBuffer** buf, GError** err);
+  void AddResultMeta(GstBuffer* buf,
+                     Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr,
+                     gsize override_stride);
+  void InvalidateCapsCache();
+  void RefreshDecompressor();
+
+  /* Caps query helpers (called with camera_mutex held) */
+  gboolean QueryFormat(GValue* outvalue,
+                       PixelFormatMappingView pixel_format_mapping);
+  void QueryInteger(GValue* outvalue, const std::string& name);
+  void QueryWidth(GValue* outvalue);
+  void QueryHeight(GValue* outvalue);
+  void QueryFramerate(GValue* outvalue);
+  gboolean QueryCaps(GstStructure* st,
+                     PixelFormatMappingView pixel_format_mapping);
 
   /* Destroyed last so PylonTerminate() runs after camera, buffers and handlers
    * are released. */
@@ -210,4 +189,7 @@ struct GstPylonBufferRef {
   Pylon::CBaslerUniversalGrabResultPtr grab_result;
 };
 
-extern const std::vector<GstStPixelFormats> gst_structure_formats;
+inline constexpr std::array<GstStPixelFormats, 2> gst_structure_formats = {{
+    {"video/x-raw", pixel_format_mapping_raw},
+    {"video/x-bayer", pixel_format_mapping_bayer},
+}};

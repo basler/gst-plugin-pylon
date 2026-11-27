@@ -2,31 +2,44 @@
 
 ## Status
 
-Accepted
+Accepted (updated for `GstPylonSession` C++ class and encapsulated locking)
 
 ## Context
 
 `pylonsrc` must open cameras, apply user-set/PFS configuration, tear down on
-failure, and optionally reuse an already-open device across GStreamer state
-changes. Pylon also requires balanced `PylonInitialize` / `PylonTerminate` at
-the plugin edge.
+failure, handle disconnect/auto-reconnect, and optionally reuse an already-open
+device across GStreamer state changes. Pylon also requires balanced
+`PylonInitialize` / `PylonTerminate` across every active session and every
+in-flight zero-copy `GstBuffer`.
 
-Before the lean-up, configuration branching lived partly in `gstpylonsrc.cpp`
-and partly in `GstPylon`, and child objects mutated session fields through raw
-back-pointers (`framerate_configured*`, `owner`).
+Before the v2.0.0 hardening cleanup, configuration branching lived partly in
+`gstpylonsrc.cpp` and partly behind a C-style wrapper facade (`gstpylon.h` /
+`gstpylon.cpp`), session fields were public in a `_GstPylon` struct, and
+`GstPylonObjectPrivate` was exposed in a public header for direct mutation.
 
 ## Decision
 
-- `GstPylon` owns the open camera session: device selection, child objects,
-  applied-config tracking, capture handlers, and
-  `ApplySessionConfig` / `EnsureConfigured`.
-- `GstPylonSrc` owns GStreamer state transitions and Pylon runtime
-  `PylonInitialize` / `PylonTerminate`. It creates, replaces, or reuses a
-  session, then asks the session to ensure configuration.
-- Child `GstPylonObject` instances record whether framerate was configured
-  locally and expose that via
-  `gst_pylon_object_is_framerate_configured()` /
-  `gst_pylon_object_mark_framerate_configured()`.
+- `GstPylonSession` (`ext/pylon/gstpylonsession.h`) is a C++ class with private
+  state that owns the open camera session: device selection (`AttachAndOpen` /
+  `ReleaseDevice`), child objects, applied-config tracking, capture handlers,
+  caps negotiation/caching, and `ApplySessionConfig` / `EnsureConfigured`.
+- `GstPylonSrc` holds `std::unique_ptr<GstPylonSession> session`, guarded by
+  `session_lock`, and owns GStreamer state transitions.
+- Pylon runtime lifetime is managed by a ref-counted `GstPylonRuntime` guard
+  (`ext/pylon/gstpylonruntime.h`), held by each `GstPylonSession` (destroyed
+  last) and by each in-flight zero-copy `GstBuffer` (`GstPylonBufferRef`), as
+  well as `GstPylonDeviceProvider` and `gstpyloninspect`.
+- Camera/nodemap access across `GstPylonSession` and its child `GstPylonObject`
+  instances is serialized by a shared `std::shared_ptr<std::recursive_mutex>`
+  (`camera_mutex`), acquired strictly after `session_lock` and before the image
+  handler mutex.
+- `GstPylonObjectPrivate` is private to `gstpylonobject.cpp`. External callers
+  use typed accessors:
+  - `gst_pylon_object_rebind_nodemap()`
+  - `gst_pylon_object_get_dimension_cache()`
+  - `gst_pylon_object_take_offset_cache()`
+  - `gst_pylon_object_get_enable_correction()` / `gst_pylon_object_set_enable_correction()`
+  - `gst_pylon_object_is_framerate_configured()` / `gst_pylon_object_mark_framerate_configured()`
 - Child objects use `gst_object_set_parent()` for element-scoped error logging
   through `GST_OBJECT_PARENT`, not a custom owner pointer.
 
@@ -34,7 +47,8 @@ back-pointers (`framerate_configured*`, `owner`).
 
 - `start` policy is: same device → `EnsureConfigured`; else replace session and
   apply config.
-- Failed start cleanup remains at the element edge so runtime terminate happens
-  exactly once.
+- Zero-copy `GstBuffer`s safely outlive `GstPylonSession` teardown and
+  `GST_STATE_NULL` transitions without dangling Pylon runtime state.
 - Session implementation is split across `gstpylonsession.cpp`,
-  `gstpyloncapture.cpp`, and `gstpyloncaps.cpp` behind `gstpylon-private.h`.
+  `gstpyloncapture.cpp`, and `gstpyloncaps.cpp` implementing `GstPylonSession`,
+  with shared enums in `gstpylontypes.h`.

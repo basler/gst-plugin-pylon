@@ -8,7 +8,6 @@ plugin_rpath = pylon_rpath
 
 pylon_sources = [
   'gstchildinspector.cpp',
-  'gstpylon.cpp',
   'gstpyloncaps.cpp',
   'gstpyloncapture.cpp',
   'gstpylondeviceprovider.cpp',

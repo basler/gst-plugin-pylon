@@ -48,6 +48,24 @@
 
 namespace {
 
+typedef struct {
+  gint width;
+  gint height;
+  gint offsetx;
+  gint offsety;
+} dimension_t;
+
+typedef struct {
+  std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera;
+  std::shared_ptr<std::recursive_mutex> camera_mutex;
+  GenApi::INodeMap* nodemap;
+  gboolean enable_correction;
+  gboolean framerate_configured;
+  dimension_t dimension_cache;
+  GstPylonFramerateChangedCb framerate_changed_cb;
+  gpointer framerate_changed_data;
+} GstPylonObjectPrivate;
+
 class OptionalCameraLock {
  public:
   explicit OptionalCameraLock(
@@ -148,7 +166,7 @@ static GType gst_pylon_object_ensure_schema_type(
  * End of GObject definition
  ***********************************************************/
 
-gpointer gst_pylon_object_get_instance_private(GstPylonObject* self) {
+static gpointer gst_pylon_object_get_instance_private(GstPylonObject* self) {
   auto* klass = reinterpret_cast<GstPylonObjectClass*>(
       G_OBJECT_GET_CLASS(reinterpret_cast<GObject*>(self)));
   return G_STRUCT_MEMBER_P(self, klass->private_offset);
@@ -794,7 +812,52 @@ void gst_pylon_object_set_enable_correction(GObject* obj,
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
       gst_pylon_object_get_instance_private(self));
+  OptionalCameraLock cam_lock(priv->camera_mutex);
   priv->enable_correction = enable_correction;
+}
+
+gboolean gst_pylon_object_get_enable_correction(GObject* obj) {
+  g_return_val_if_fail(obj, FALSE);
+
+  GstPylonObject* self = GST_PYLON_OBJECT(obj);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
+  OptionalCameraLock cam_lock(priv->camera_mutex);
+  return priv->enable_correction;
+}
+
+void gst_pylon_object_get_dimension_cache(GObject* obj, gint* width,
+                                          gint* height) {
+  g_return_if_fail(obj);
+
+  GstPylonObject* self = GST_PYLON_OBJECT(obj);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
+  OptionalCameraLock cam_lock(priv->camera_mutex);
+  if (width) {
+    *width = priv->dimension_cache.width;
+  }
+  if (height) {
+    *height = priv->dimension_cache.height;
+  }
+}
+
+void gst_pylon_object_take_offset_cache(GObject* obj, gint* offsetx,
+                                        gint* offsety) {
+  g_return_if_fail(obj);
+
+  GstPylonObject* self = GST_PYLON_OBJECT(obj);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
+  OptionalCameraLock cam_lock(priv->camera_mutex);
+  if (offsetx) {
+    *offsetx = priv->dimension_cache.offsetx;
+    priv->dimension_cache.offsetx = -1;
+  }
+  if (offsety) {
+    *offsety = priv->dimension_cache.offsety;
+    priv->dimension_cache.offsety = -1;
+  }
 }
 
 gboolean gst_pylon_object_is_framerate_configured(GObject* obj) {

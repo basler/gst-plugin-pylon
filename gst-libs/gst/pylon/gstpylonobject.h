@@ -54,25 +54,7 @@ struct _GstPylonObjectClass {
   gint private_offset;
 };
 
-typedef struct {
-  gint width;
-  gint height;
-  gint offsetx;
-  gint offsety;
-} dimension_t;
-
 typedef void (*GstPylonFramerateChangedCb)(gpointer user_data, gdouble fps);
-
-typedef struct {
-  std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera;
-  std::shared_ptr<std::recursive_mutex> camera_mutex;
-  GenApi::INodeMap* nodemap;
-  gboolean enable_correction;
-  gboolean framerate_configured;
-  dimension_t dimension_cache;
-  GstPylonFramerateChangedCb framerate_changed_cb;
-  gpointer framerate_changed_data;
-} GstPylonObjectPrivate;
 
 struct GstPylonObjectSchema {
   std::string device_full_name;
@@ -99,6 +81,13 @@ EXT_PYLONSRC_API void gst_pylon_object_rebind_nodemap(
     GObject* obj, GenApi::INodeMap* nodemap);
 EXT_PYLONSRC_API void gst_pylon_object_set_enable_correction(
     GObject* obj, gboolean enable_correction);
+EXT_PYLONSRC_API gboolean gst_pylon_object_get_enable_correction(GObject* obj);
+EXT_PYLONSRC_API void gst_pylon_object_get_dimension_cache(GObject* obj,
+                                                           gint* width,
+                                                           gint* height);
+EXT_PYLONSRC_API void gst_pylon_object_take_offset_cache(GObject* obj,
+                                                         gint* offsetx,
+                                                         gint* offsety);
 EXT_PYLONSRC_API gboolean
 gst_pylon_object_is_framerate_configured(GObject* obj);
 EXT_PYLONSRC_API void gst_pylon_object_mark_framerate_configured(GObject* obj);
@@ -110,9 +99,6 @@ EXT_PYLONSRC_API gboolean gst_pylon_object_execute_command(
 EXT_PYLONSRC_API void gst_pylon_object_set_pylon_selector(
     GenApi::INodeMap& nodemap, const gchar* selector_name,
     gint64& selector_value);
-
-EXT_PYLONSRC_API gpointer
-gst_pylon_object_get_instance_private(GstPylonObject* self);
 
 #ifdef GST_PYLON_ENABLE_TEST_HOOKS
 EXT_PYLONSRC_API void gst_pylon_object_test_set_inject_std_exception(

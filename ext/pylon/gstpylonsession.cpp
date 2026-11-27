@@ -46,12 +46,11 @@
 #include "gst/pylon/gstpylonmetaprivate.h"
 #include "gst/pylon/gstpylonobject.h"
 #include "gst/pylon/gstpylontlenumerate.h"
-#include "gstpylon-private.h"
-#include "gstpylon.h"
 #include "gstpylondisconnecthandler.h"
 #include "gstpylonimagehandler.h"
 #include "gstpyloninspect.h"
 #include "gstpylonschema.h"
+#include "gstpylonsession.h"
 #include "gstpylonsysmembufferfactory.h"
 
 #include <exception>
@@ -86,9 +85,128 @@ gulong gst_pylon_jittered_backoff_us(int retry_idx) {
 
 }  // namespace
 
-const std::vector<GstStPixelFormats> gst_structure_formats = {
-    {"video/x-raw", pixel_format_mapping_raw},
-    {"video/x-bayer", pixel_format_mapping_bayer}};
+std::unique_ptr<GstPylonSession> GstPylonSession::Create(
+    GstElement* gstpylonsrc, const gchar* device_user_name,
+    const gchar* device_serial_number, gint device_index, const gchar* user_set,
+    const gchar* pfs_location, gboolean enable_correction, GError** err) {
+  g_return_val_if_fail(err && *err == NULL, nullptr);
+
+  auto session = std::make_unique<GstPylonSession>(gstpylonsrc);
+  try {
+    session->Open(device_user_name, device_serial_number, device_index,
+                  user_set, pfs_location, enable_correction);
+  } catch (const GenICam::GenericException& e) {
+    GST_ERROR_OBJECT(gstpylonsrc,
+                     "GstPylonSession::Create failed opening camera: %s",
+                     e.GetDescription());
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                e.GetDescription());
+    return nullptr;
+  } catch (const std::exception& e) {
+    GST_ERROR_OBJECT(gstpylonsrc,
+                     "GstPylonSession::Create caught std::exception: %s",
+                     e.what());
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                e.what());
+    return nullptr;
+  }
+
+  return session;
+}
+
+GstPylonSession::GstPylonSession(GstElement* element)
+    : runtime(GstPylonRuntime::Acquire()), gstpylonsrc(element) {}
+
+GstPylonSession::~GstPylonSession() {
+  image_handler.InterruptWaitForImage();
+  image_handler.SetClockCallback(nullptr);
+
+  if (gcamera) {
+    gst_pylon_object_rebind_nodemap(gcamera, nullptr);
+  }
+  if (gstream_grabber) {
+    gst_pylon_object_rebind_nodemap(gstream_grabber, nullptr);
+  }
+
+  {
+    std::lock_guard<std::recursive_mutex> lock(*camera_mutex);
+    try {
+      if (handlers_registered) {
+        camera->DeregisterImageEventHandler(&image_handler);
+        camera->DeregisterConfiguration(&disconnect_handler);
+        handlers_registered = false;
+      }
+    } catch (const GenICam::GenericException& e) {
+      GST_WARNING_OBJECT(gstpylonsrc,
+                         "Ignoring handler deregister error during teardown: "
+                         "%s",
+                         e.GetDescription());
+    }
+    ReleaseDevice();
+  }
+
+  if (negotiated_caps) {
+    gst_caps_unref(negotiated_caps);
+    negotiated_caps = nullptr;
+  }
+  InvalidateCapsCache();
+
+  if (gcamera) {
+    gst_object_unparent(GST_OBJECT(gcamera));
+  }
+  if (gstream_grabber) {
+    gst_object_unparent(GST_OBJECT(gstream_grabber));
+  }
+  g_clear_object(&gcamera);
+  g_clear_object(&gstream_grabber);
+}
+
+void GstPylonSession::ReleaseDevice() {
+  try {
+    if (camera->IsGrabbing()) {
+      camera->StopGrabbing();
+    }
+    if (camera->IsOpen()) {
+      camera->Close();
+    }
+    if (camera->IsPylonDeviceAttached()) {
+      camera->DestroyDevice();
+    }
+  } catch (const GenICam::GenericException& e) {
+    GST_DEBUG_OBJECT(gstpylonsrc, "Ignoring device release error: %s",
+                     e.GetDescription());
+  } catch (const std::exception& e) {
+    GST_DEBUG_OBJECT(gstpylonsrc, "Ignoring device release error: %s",
+                     e.what());
+  }
+}
+
+void GstPylonSession::AttachAndOpen(const Pylon::CDeviceInfo& device_info,
+                                    int retries) {
+  Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
+  std::string last_error;
+
+  for (int attempt = 0; attempt <= retries; ++attempt) {
+    try {
+      camera->Attach(factory.CreateDevice(device_info));
+      camera->Open();
+      return;
+    } catch (const GenICam::GenericException& e) {
+      last_error = e.GetDescription();
+      if (retries > 0) {
+        GST_INFO_OBJECT(gstpylonsrc, "Retrying open of %s (%d/%d): %s",
+                        device_info.GetSerialNumber().c_str(), attempt + 1,
+                        retries + 1, e.GetDescription());
+      }
+      ReleaseDevice();
+      if (attempt < retries) {
+        g_usleep(gst_pylon_jittered_backoff_us(attempt));
+      }
+    }
+  }
+
+  throw Pylon::GenericException(last_error.c_str(), __FILE__, __LINE__);
+}
 
 static std::string gst_pylon_query_default_set(
     const Pylon::CBaslerUniversalInstantCamera& camera) {
@@ -108,19 +226,18 @@ static std::string gst_pylon_query_default_set(
   return set;
 }
 
-static void gst_pylon_apply_set(GstPylon* self, std::string& set) {
-  g_return_if_fail(self);
-
+static void gst_pylon_apply_set(Pylon::CBaslerUniversalInstantCamera& camera,
+                                std::string& set) {
   /* If auto or nothing is set, return default config */
   if ("Auto" == set || set.empty()) {
-    set = gst_pylon_query_default_set(*self->camera);
+    set = gst_pylon_query_default_set(camera);
   }
 
-  if (self->camera->UserSetSelector.CanSetValue(set.c_str())) {
-    self->camera->UserSetSelector.SetValue(set.c_str());
+  if (camera.UserSetSelector.CanSetValue(set.c_str())) {
+    camera.UserSetSelector.SetValue(set.c_str());
   } else {
     GenApi::StringList_t values;
-    self->camera->UserSetSelector.GetSettableValues(values);
+    camera.UserSetSelector.GetSettableValues(values);
     std::string msg = "Invalid user set, has to be one of the following:\n";
     msg += "Auto\n";
 
@@ -130,13 +247,13 @@ static void gst_pylon_apply_set(GstPylon* self, std::string& set) {
     throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
   }
 
-  self->camera->UserSetLoad.Execute();
+  camera.UserSetLoad.Execute();
 }
 
-void GstPylon::Open(const gchar* device_user_name,
-                    const gchar* device_serial_number, gint device_index,
-                    const gchar* user_set, const gchar* pfs_location,
-                    gboolean enable_correction) {
+void GstPylonSession::Open(const gchar* device_user_name,
+                           const gchar* device_serial_number, gint device_index,
+                           const gchar* user_set, const gchar* pfs_location,
+                           gboolean enable_correction) {
   requested_device_index = device_index;
   requested_device_user_name = device_user_name ? device_user_name : "";
   requested_device_serial_number =
@@ -146,7 +263,6 @@ void GstPylon::Open(const gchar* device_user_name,
   applied_pfs_location = "";
   applied_enable_correction = enable_correction;
 
-  Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
   Pylon::DeviceInfoList_t filter(1);
   Pylon::DeviceInfoList_t device_list;
   Pylon::CDeviceInfo device_info;
@@ -225,20 +341,10 @@ void GstPylon::Open(const gchar* device_user_name,
     bool attached = false;
     std::string last_error;
     try {
-      camera->Attach(factory.CreateDevice(device_info));
-      camera->Open();
+      AttachAndOpen(device_info, 0);
       attached = true;
     } catch (const GenICam::GenericException& e) {
       last_error = e.GetDescription();
-      try {
-        if (camera->IsPylonDeviceAttached()) {
-          camera->DestroyDevice();
-        }
-      } catch (const GenICam::GenericException& cleanup_err) {
-        GST_DEBUG_OBJECT(gstpylonsrc,
-                         "Ignoring device cleanup error after open failure: %s",
-                         cleanup_err.GetDescription());
-      }
     }
 
     if (!attached) {
@@ -264,68 +370,10 @@ void GstPylon::Open(const gchar* device_user_name,
       }
 
       device_info = matching_devices.at(0);
-      for (int retry_idx = 0; retry_idx < max_open_retries; ++retry_idx) {
-        g_usleep(gst_pylon_jittered_backoff_us(retry_idx));
-        try {
-          camera->Attach(factory.CreateDevice(device_info));
-          camera->Open();
-          attached = true;
-          break;
-        } catch (const GenICam::GenericException& e) {
-          last_error = e.GetDescription();
-          GST_INFO_OBJECT(gstpylonsrc, "Retrying open of %s (%d/%d): %s",
-                          device_info.GetSerialNumber().c_str(), retry_idx + 1,
-                          max_open_retries, e.GetDescription());
-          try {
-            if (camera->IsPylonDeviceAttached()) {
-              camera->DestroyDevice();
-            }
-          } catch (const GenICam::GenericException& cleanup_err) {
-            GST_DEBUG_OBJECT(
-                gstpylonsrc,
-                "Ignoring device cleanup error during open retry: %s",
-                cleanup_err.GetDescription());
-          }
-        }
-      }
-
-      if (!attached) {
-        throw Pylon::GenericException(last_error.c_str(), __FILE__, __LINE__);
-      }
+      AttachAndOpen(device_info, max_open_retries);
     }
   } else {
-    std::string last_error;
-    bool attached = false;
-    for (int retry_idx = 0; retry_idx <= max_open_retries; retry_idx++) {
-      try {
-        camera->Attach(factory.CreateDevice(device_info));
-        camera->Open();
-        attached = true;
-        break;
-      } catch (const GenICam::GenericException& e) {
-        last_error = e.GetDescription();
-        GST_INFO_OBJECT(gstpylonsrc, "Failed to Open %s (%s)\n",
-                        device_info.GetSerialNumber().c_str(),
-                        e.GetDescription());
-        try {
-          if (camera->IsPylonDeviceAttached()) {
-            camera->DestroyDevice();
-          }
-        } catch (const GenICam::GenericException& cleanup_err) {
-          GST_DEBUG_OBJECT(
-              gstpylonsrc,
-              "Ignoring device cleanup error during open retry: %s",
-              cleanup_err.GetDescription());
-        }
-        if (retry_idx < max_open_retries) {
-          g_usleep(gst_pylon_jittered_backoff_us(retry_idx));
-        }
-      }
-    }
-
-    if (!attached) {
-      throw Pylon::GenericException(last_error.c_str(), __FILE__, __LINE__);
-    }
+    AttachAndOpen(device_info, max_open_retries);
   }
 
   GST_INFO_OBJECT(gstpylonsrc, "Camera opened");
@@ -338,7 +386,7 @@ void GstPylon::Open(const gchar* device_user_name,
    * "Auto" here and immediately reloading in ApplySessionConfig(). */
   if (camera->UserSetSelector.IsWritable()) {
     std::string initial_set = user_set ? user_set : "Auto";
-    gst_pylon_apply_set(this, initial_set);
+    gst_pylon_apply_set(*camera, initial_set);
     GST_INFO_OBJECT(gstpylonsrc, "Applied initial user set %s",
                     initial_set.c_str());
   }
@@ -419,19 +467,19 @@ void GstPylon::Open(const gchar* device_user_name,
   GST_INFO_OBJECT(gstpylonsrc, "Registered camera event handlers");
 }
 
-void GstPylon::SetMaxPendingFrames(guint max_pending_frames) {
+void GstPylonSession::SetMaxPendingFrames(guint max_pending_frames) {
   image_handler.SetMaxPendingFrames(max_pending_frames);
 }
 
-void GstPylon::SetGrabTimeout(guint timeout_ms) {
+void GstPylonSession::SetGrabTimeout(guint timeout_ms) {
   grab_timeout_ms.store(timeout_ms, std::memory_order_relaxed);
 }
 
-void GstPylon::SetAutoReconnect(gboolean enable) {
+void GstPylonSession::SetAutoReconnect(gboolean enable) {
   auto_reconnect.store(enable, std::memory_order_relaxed);
 }
 
-void GstPylon::RefreshDecompressor() {
+void GstPylonSession::RefreshDecompressor() {
   compression_active = false;
   try {
     GenApi::INodeMap& nodemap = camera->GetNodeMap();
@@ -455,7 +503,7 @@ void GstPylon::RefreshDecompressor() {
   }
 }
 
-gboolean GstPylon::TryReconnect(GError** err) {
+gboolean GstPylonSession::TryReconnect(GError** err) {
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
   constexpr int RECONNECT_MAX_ATTEMPTS = 15;
@@ -480,24 +528,9 @@ gboolean GstPylon::TryReconnect(GError** err) {
       gst_pylon_object_rebind_nodemap(gstream_grabber, nullptr);
     }
     InvalidateCapsCache();
-    try {
-      if (camera->IsGrabbing()) {
-        camera->StopGrabbing();
-      }
-      if (camera->IsOpen()) {
-        camera->Close();
-      }
-      if (camera->IsPylonDeviceAttached()) {
-        camera->DestroyDevice();
-      }
-    } catch (const GenICam::GenericException& cleanup_err) {
-      GST_DEBUG_OBJECT(gstpylonsrc,
-                       "Ignoring teardown error before reconnect: %s",
-                       cleanup_err.GetDescription());
-    }
+    ReleaseDevice();
   }
 
-  Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
   Pylon::CDeviceInfo filter_info;
   if (!requested_device_user_name.empty()) {
     filter_info.SetUserDefinedName(requested_device_user_name.c_str());
@@ -529,8 +562,7 @@ gboolean GstPylon::TryReconnect(GError** err) {
              static_cast<size_t>(requested_device_index) < list.size())
                 ? static_cast<size_t>(requested_device_index)
                 : 0;
-        camera->Attach(factory.CreateDevice(list.at(idx)));
-        camera->Open();
+        AttachAndOpen(list.at(idx), 0);
 
         camera->DeviceFeaturePersistenceEnd.TryExecute();
         camera->DeviceRegistersStreamingEnd.TryExecute();
@@ -539,7 +571,7 @@ gboolean GstPylon::TryReconnect(GError** err) {
           std::string set_to_apply =
               applied_user_set.empty() ? "Auto" : applied_user_set;
           if (camera->UserSetSelector.IsWritable()) {
-            gst_pylon_apply_set(this, set_to_apply);
+            gst_pylon_apply_set(*camera, set_to_apply);
           }
         }
         if (!applied_pfs_location.empty()) {
@@ -623,7 +655,7 @@ gboolean GstPylon::TryReconnect(GError** err) {
   return FALSE;
 }
 
-gboolean GstPylon::Start(GError** err) {
+gboolean GstPylonSession::Start(GError** err) {
   g_return_val_if_fail(err && *err == NULL, FALSE);
   std::lock_guard<std::recursive_mutex> lock(*camera_mutex);
 
@@ -667,7 +699,7 @@ gboolean GstPylon::Start(GError** err) {
   return TRUE;
 }
 
-gboolean GstPylon::Stop(GError** err) {
+gboolean GstPylonSession::Stop(GError** err) {
   g_return_val_if_fail(err && *err == NULL, FALSE);
   std::lock_guard<std::recursive_mutex> lock(*camera_mutex);
 
@@ -686,7 +718,7 @@ gboolean GstPylon::Stop(GError** err) {
   return TRUE;
 }
 
-gboolean GstPylon::ApplyUserConfig(const gchar* user_set, GError** err) {
+gboolean GstPylonSession::ApplyUserConfig(const gchar* user_set, GError** err) {
   g_return_val_if_fail(err && *err == NULL, FALSE);
   std::lock_guard<std::recursive_mutex> lock(*camera_mutex);
   InvalidateCapsCache();
@@ -708,7 +740,7 @@ gboolean GstPylon::ApplyUserConfig(const gchar* user_set, GError** err) {
       set = std::string(user_set);
     }
 
-    gst_pylon_apply_set(this, set);
+    gst_pylon_apply_set(*camera, set);
     applied_user_set = user_set ? user_set : "";
     applied_pfs_location = "";
     has_applied_config = TRUE;
@@ -721,7 +753,8 @@ gboolean GstPylon::ApplyUserConfig(const gchar* user_set, GError** err) {
   return TRUE;
 }
 
-gboolean GstPylon::LoadPfsConfig(const gchar* pfs_location, GError** err) {
+gboolean GstPylonSession::LoadPfsConfig(const gchar* pfs_location,
+                                        GError** err) {
   g_return_val_if_fail(pfs_location, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
   std::lock_guard<std::recursive_mutex> lock(*camera_mutex);
@@ -744,19 +777,22 @@ gboolean GstPylon::LoadPfsConfig(const gchar* pfs_location, GError** err) {
   return TRUE;
 }
 
-gboolean GstPylon::GetStartupGeometry(gint* start_width, gint* start_height) {
+gboolean GstPylonSession::GetStartupGeometry(gint* start_width,
+                                             gint* start_height) {
   g_return_val_if_fail(start_height, FALSE);
   g_return_val_if_fail(start_width, FALSE);
 
   /* Honor cached Width/Height set via cam::Width / cam::Height before start */
   if (gcamera) {
-    auto* cam_priv = static_cast<GstPylonObjectPrivate*>(
-        gst_pylon_object_get_instance_private(GST_PYLON_OBJECT(gcamera)));
-    *start_width = cam_priv->dimension_cache.width >= 0
-                       ? cam_priv->dimension_cache.width
+    gint cached_width = -1;
+    gint cached_height = -1;
+    gst_pylon_object_get_dimension_cache(gcamera, &cached_width,
+                                         &cached_height);
+    *start_width = cached_width >= 0
+                       ? cached_width
                        : static_cast<gint>(camera->Width.GetValue());
-    *start_height = cam_priv->dimension_cache.height >= 0
-                        ? cam_priv->dimension_cache.height
+    *start_height = cached_height >= 0
+                        ? cached_height
                         : static_cast<gint>(camera->Height.GetValue());
     return TRUE;
   }
@@ -767,8 +803,8 @@ gboolean GstPylon::GetStartupGeometry(gint* start_width, gint* start_height) {
   return TRUE;
 }
 
-gboolean GstPylon::GetPreferredCapsValues(std::string* preferred_gst_format,
-                                          gdouble* preferred_fps) {
+gboolean GstPylonSession::GetPreferredCapsValues(
+    std::string* preferred_gst_format, gdouble* preferred_fps) {
   if (!camera || !camera->IsOpen()) {
     return FALSE;
   }
@@ -814,7 +850,8 @@ gboolean GstPylon::GetPreferredCapsValues(std::string* preferred_gst_format,
   return TRUE;
 }
 
-gboolean GstPylon::ExecuteCommand(const gchar* command_name, GError** err) {
+gboolean GstPylonSession::ExecuteCommand(const gchar* command_name,
+                                         GError** err) {
   if (!gcamera) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                 "Camera child object is not initialized");
@@ -823,23 +860,29 @@ gboolean GstPylon::ExecuteCommand(const gchar* command_name, GError** err) {
   return gst_pylon_object_execute_command(gcamera, command_name, err);
 }
 
-void GstPylon::InterruptCapture() { image_handler.InterruptWaitForImage(); }
+void GstPylonSession::InterruptCapture() {
+  image_handler.InterruptWaitForImage();
+}
 
-void GstPylon::ClearCaptureInterrupt() { image_handler.ClearInterrupt(); }
+void GstPylonSession::ClearCaptureInterrupt() {
+  image_handler.ClearInterrupt();
+}
 
-void GstPylon::SetEnableCorrection(gboolean enable_correction) {
+void GstPylonSession::SetEnableCorrection(gboolean enable_correction) {
   applied_enable_correction = enable_correction;
   gst_pylon_object_set_enable_correction(gcamera, enable_correction);
   gst_pylon_object_set_enable_correction(gstream_grabber, enable_correction);
 }
 
-GObject* GstPylon::RefCamera() const { return G_OBJECT(g_object_ref(gcamera)); }
+GObject* GstPylonSession::RefCamera() const {
+  return G_OBJECT(g_object_ref(gcamera));
+}
 
-GObject* GstPylon::RefStreamGrabber() const {
+GObject* GstPylonSession::RefStreamGrabber() const {
   return G_OBJECT(g_object_ref(gstream_grabber));
 }
 
-gboolean GstPylon::MatchesRequestedDevice(
+gboolean GstPylonSession::MatchesRequestedDevice(
     gint device_index, const gchar* device_user_name,
     const gchar* device_serial_number) const {
   std::string user_name = device_user_name ? device_user_name : "";
@@ -850,9 +893,9 @@ gboolean GstPylon::MatchesRequestedDevice(
          requested_device_serial_number == serial_number;
 }
 
-gboolean GstPylon::IsConfigApplied(const gchar* user_set,
-                                   const gchar* pfs_location,
-                                   gboolean enable_correction) const {
+gboolean GstPylonSession::IsConfigApplied(const gchar* user_set,
+                                          const gchar* pfs_location,
+                                          gboolean enable_correction) const {
   if (!has_applied_config) {
     return FALSE;
   }
@@ -865,8 +908,9 @@ gboolean GstPylon::IsConfigApplied(const gchar* user_set,
          applied_enable_correction == enable_correction;
 }
 
-gboolean GstPylon::ApplySessionConfig(const gchar* user_set,
-                                      const gchar* pfs_location, GError** err) {
+gboolean GstPylonSession::ApplySessionConfig(const gchar* user_set,
+                                             const gchar* pfs_location,
+                                             GError** err) {
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
   if (!ApplyUserConfig(user_set, err)) {
@@ -880,9 +924,10 @@ gboolean GstPylon::ApplySessionConfig(const gchar* user_set,
   return LoadPfsConfig(pfs_location, err);
 }
 
-gboolean GstPylon::EnsureConfigured(const gchar* user_set,
-                                    const gchar* pfs_location,
-                                    gboolean enable_correction, GError** err) {
+gboolean GstPylonSession::EnsureConfigured(const gchar* user_set,
+                                           const gchar* pfs_location,
+                                           gboolean enable_correction,
+                                           GError** err) {
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
   if (IsConfigApplied(user_set, pfs_location, enable_correction)) {
@@ -893,7 +938,7 @@ gboolean GstPylon::EnsureConfigured(const gchar* user_set,
   return ApplySessionConfig(user_set, pfs_location, err);
 }
 
-void GstPylon::InvalidateCapsCache() {
+void GstPylonSession::InvalidateCapsCache() {
   if (cached_caps) {
     gst_caps_unref(cached_caps);
     cached_caps = nullptr;
@@ -901,7 +946,7 @@ void GstPylon::InvalidateCapsCache() {
 }
 
 #ifdef GST_PYLON_ENABLE_TEST_HOOKS
-void GstPylon::TestTriggerDisconnect() {
+void GstPylonSession::TestTriggerDisconnect() {
   disconnect_handler.OnCameraDeviceRemoved(*camera);
 }
 #endif

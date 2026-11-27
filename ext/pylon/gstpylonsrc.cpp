@@ -51,8 +51,9 @@
 #include "gst/pylon/gstpylondebug.h"
 #include "gst/pylon/gstpylonmeta.h"
 #include "gst/pylon/gstpylonobject.h"
-#include "gstpylon.h"
+#include "gstpyloninspect.h"
 #include "gstpylonruntime.h"
+#include "gstpylonsession.h"
 #include "gstpylonsrc.h"
 #ifdef GST_PYLON_ENABLE_TEST_HOOKS
 #  include "gstpylonsysmembufferfactory.h"
@@ -61,10 +62,13 @@
 #include <gst/pylon/gstpylonincludes.h>
 #include <gst/video/video.h>
 
+#include <memory>
+#include <new>
+
 struct _GstPylonSrc {
   GstPushSrc base_pylonsrc;
   GMutex session_lock;
-  GstPylon* pylon;
+  std::unique_ptr<GstPylonSession> session;
   GstClockTime duration;
   GstVideoInfo video_info;
 
@@ -435,8 +439,8 @@ static void gst_pylon_src_class_init(GstPylonSrcClass* klass) {
                                    GST_PARAM_MUTABLE_READY)));
 #endif
 
-  cam_params = gst_pylon_camera_get_string_properties();
-  stream_params = gst_pylon_stream_grabber_get_string_properties();
+  cam_params = gst_pylon_inspect_camera_properties();
+  stream_params = gst_pylon_inspect_stream_properties();
 
   if (NULL == cam_params || cam_params[0] == '\0') {
     cam_prolog = "No valid cameras where found connected to the system.";
@@ -505,7 +509,7 @@ static void gst_pylon_src_init(GstPylonSrc* self) {
   GstBaseSrc* base = GST_BASE_SRC(self);
 
   g_mutex_init(&self->session_lock);
-  self->pylon = NULL;
+  new (&self->session) std::unique_ptr<GstPylonSession>();
   self->duration = GST_CLOCK_TIME_NONE;
   self->device_user_name = PROP_DEVICE_USER_NAME_DEFAULT;
   self->device_serial_number = PROP_DEVICE_SERIAL_NUMBER_DEFAULT;
@@ -608,23 +612,23 @@ static void gst_pylon_src_set_property(GObject* object, guint property_id,
 #endif
   ) {
     g_mutex_lock(&self->session_lock);
-    if (self->pylon) {
+    if (self->session) {
       switch (property_id) {
         case PROP_ENABLE_CORRECTION:
-          gst_pylon_set_enable_correction(self->pylon, enable_correction);
+          self->session->SetEnableCorrection(enable_correction);
           break;
         case PROP_GRAB_TIMEOUT:
-          gst_pylon_set_grab_timeout(self->pylon, grab_timeout);
+          self->session->SetGrabTimeout(grab_timeout);
           break;
         case PROP_AUTO_RECONNECT:
-          gst_pylon_set_auto_reconnect(self->pylon, auto_reconnect);
+          self->session->SetAutoReconnect(auto_reconnect);
           break;
 #ifdef NVMM_ENABLED
         case PROP_NVSURFACE_LAYOUT:
-          gst_pylon_set_nvsurface_layout(self->pylon, nvsurface_layout);
+          self->session->SetNvsurfaceLayout(nvsurface_layout);
           break;
         case PROP_GPU_ID:
-          gst_pylon_set_gpu_id(self->pylon, gpu_id);
+          self->session->SetGpuId(gpu_id);
           break;
 #endif
         default:
@@ -709,9 +713,10 @@ static void gst_pylon_src_finalize(GObject* object) {
   /* Clean up any session opened early via GstChildProxy in NULL state if the
    * element was unreffed without ever transitioning READY -> NULL (stop). */
   g_mutex_lock(&self->session_lock);
-  if (self->pylon) {
+  if (self->session) {
     gst_pylon_src_discard_session(self);
   }
+  self->session.~unique_ptr();
   g_mutex_unlock(&self->session_lock);
   g_mutex_clear(&self->session_lock);
 
@@ -738,7 +743,7 @@ static GstCaps* gst_pylon_src_get_caps(GstBaseSrc* src, GstCaps* filter) {
 
   g_mutex_lock(&self->session_lock);
   try {
-    if (!self->pylon) {
+    if (!self->session) {
       outcaps = gst_pad_get_pad_template_caps(GST_BASE_SRC_PAD(self));
       GST_INFO_OBJECT(
           self,
@@ -747,7 +752,7 @@ static GstCaps* gst_pylon_src_get_caps(GstBaseSrc* src, GstCaps* filter) {
       goto out;
     }
 
-    outcaps = gst_pylon_query_configuration(self->pylon, &error);
+    outcaps = self->session->QueryConfiguration(&error);
 
     if (outcaps == NULL && error) {
       goto log_gst_error;
@@ -824,11 +829,10 @@ static GstCaps* gst_pylon_src_fixate(GstBaseSrc* src, GstCaps* caps) {
   std::string preferred_gst_format;
   gdouble configured_fps = 0.0;
   g_mutex_lock(&self->session_lock);
-  if (self->pylon) {
-    gst_pylon_get_startup_geometry(self->pylon, &preferred_width,
-                                   &preferred_height);
-    gst_pylon_get_preferred_caps_values(self->pylon, &preferred_gst_format,
-                                        &configured_fps);
+  if (self->session) {
+    self->session->GetStartupGeometry(&preferred_width, &preferred_height);
+    self->session->GetPreferredCapsValues(&preferred_gst_format,
+                                          &configured_fps);
     if (configured_fps > 0.0) {
       gst_util_double_to_fraction(configured_fps, &preferred_framerate_num,
                                   &preferred_framerate_den);
@@ -930,7 +934,7 @@ static gboolean gst_pylon_src_set_caps(GstBaseSrc* src, GstCaps* caps) {
   guint max_pending_frames = PROP_MAX_PENDING_FRAMES_DEFAULT;
 
   g_mutex_lock(&self->session_lock);
-  if (!self->pylon) {
+  if (!self->session) {
     action = "configure";
     error_msg = g_strdup("Camera instance not initialised");
     goto error;
@@ -963,21 +967,21 @@ static gboolean gst_pylon_src_set_caps(GstBaseSrc* src, GstCaps* caps) {
     gst_element_post_message(GST_ELEMENT_CAST(self),
                              gst_message_new_latency(GST_OBJECT_CAST(self)));
 
-    ret = gst_pylon_stop(self->pylon, &error);
+    ret = self->session->Stop(&error);
     if (FALSE == ret && error) {
       action = "stop";
       goto log_error;
     }
 
-    ret = gst_pylon_set_configuration(self->pylon, caps, &error);
+    ret = self->session->SetConfiguration(caps, &error);
     if (FALSE == ret && error) {
       action = "configure";
       goto log_error;
     }
 
-    gst_pylon_set_max_pending_frames(self->pylon, max_pending_frames);
+    self->session->SetMaxPendingFrames(max_pending_frames);
 
-    ret = gst_pylon_start(self->pylon, &error);
+    ret = self->session->Start(&error);
     if (FALSE == ret && error) {
       action = "start";
       goto log_error;
@@ -1019,8 +1023,8 @@ log_error:
 
 error_after_start: {
   GError* stop_error = NULL;
-  if (self->pylon) {
-    gst_pylon_stop(self->pylon, &stop_error);
+  if (self->session) {
+    self->session->Stop(&stop_error);
     g_clear_error(&stop_error);
   }
 }
@@ -1053,14 +1057,12 @@ static gboolean gst_pylon_src_teardown_session(GstPylonSrc* self,
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(error && *error == NULL, FALSE);
 
-  if (!self->pylon) {
+  if (!self->session) {
     return TRUE;
   }
 
-  const gboolean stopped = gst_pylon_stop(self->pylon, error);
-
-  gst_pylon_free(self->pylon);
-  self->pylon = NULL;
+  const gboolean stopped = self->session->Stop(error);
+  self->session.reset();
 
   return stopped && *error == NULL;
 }
@@ -1082,7 +1084,7 @@ static gboolean gst_pylon_src_create_session(GstPylonSrc* self,
   GstPylonNvsurfaceLayoutEnum nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
   guint gpu_id = PROP_GPU_ID_DEFAULT;
 #endif
-  GstPylon* new_pylon = NULL;
+  std::unique_ptr<GstPylonSession> new_session;
 
   GST_OBJECT_LOCK(self);
   device_user_name =
@@ -1112,21 +1114,21 @@ static gboolean gst_pylon_src_create_session(GstPylonSrc* self,
         device_user_name, device_serial_number, device_index, user_set,
         pfs_location, ((enable_correction) ? "True" : "False"));
 
-    new_pylon = gst_pylon_new(GST_ELEMENT_CAST(self), device_user_name,
-                              device_serial_number, device_index, user_set,
-                              pfs_location, enable_correction, error);
-    if (new_pylon) {
-      gst_pylon_set_grab_timeout(new_pylon, grab_timeout);
-      gst_pylon_set_auto_reconnect(new_pylon, auto_reconnect);
-      GObject* cam_obj = gst_pylon_get_camera(new_pylon);
+    new_session = GstPylonSession::Create(
+        GST_ELEMENT_CAST(self), device_user_name, device_serial_number,
+        device_index, user_set, pfs_location, enable_correction, error);
+    if (new_session) {
+      new_session->SetGrabTimeout(grab_timeout);
+      new_session->SetAutoReconnect(auto_reconnect);
+      GObject* cam_obj = new_session->RefCamera();
       if (cam_obj) {
         gst_pylon_object_set_framerate_callback(
             cam_obj, gst_pylon_src_on_framerate_changed, self);
         g_object_unref(cam_obj);
       }
 #ifdef NVMM_ENABLED
-      gst_pylon_set_nvsurface_layout(new_pylon, nvsurface_layout);
-      gst_pylon_set_gpu_id(new_pylon, gpu_id);
+      new_session->SetNvsurfaceLayout(nvsurface_layout);
+      new_session->SetGpuId(gpu_id);
 #endif
     }
   } catch (const GenICam::GenericException& e) {
@@ -1140,14 +1142,11 @@ static gboolean gst_pylon_src_create_session(GstPylonSrc* self,
   }
 
   if (!*error) {
-    self->pylon = new_pylon;
-    new_pylon = NULL;
+    self->session = std::move(new_session);
   }
 
 out:
-  if (new_pylon) {
-    gst_pylon_free(new_pylon);
-  }
+  new_session.reset();
   g_free(device_user_name);
   g_free(device_serial_number);
   g_free(user_set);
@@ -1160,13 +1159,13 @@ out:
 }
 
 static void gst_pylon_src_discard_session(GstPylonSrc* self) {
-  if (!self->pylon) {
+  if (!self->session) {
     return;
   }
 
   try {
     GError* cleanup_error = NULL;
-    if (!gst_pylon_stop(self->pylon, &cleanup_error) && cleanup_error) {
+    if (!self->session->Stop(&cleanup_error) && cleanup_error) {
       GST_WARNING_OBJECT(self, "Ignoring stop error during cleanup: %s",
                          cleanup_error->message);
       g_error_free(cleanup_error);
@@ -1177,26 +1176,25 @@ static void gst_pylon_src_discard_session(GstPylonSrc* self) {
   }
 
   try {
-    gst_pylon_free(self->pylon);
+    self->session.reset();
   } catch (const GenICam::GenericException& e) {
     GST_WARNING_OBJECT(self, "Ignoring exception during cleanup free: %s",
                        e.GetDescription());
   }
-  self->pylon = NULL;
 }
 
 static GObject* gst_pylon_src_ref_child(GstPylonSrc* self, guint property_id) {
   g_return_val_if_fail(self, NULL);
 
-  if (!self->pylon) {
+  if (!self->session) {
     return NULL;
   }
 
   switch (property_id) {
     case PROP_CAM:
-      return gst_pylon_get_camera(self->pylon);
+      return self->session->RefCamera();
     case PROP_STREAM:
-      return gst_pylon_get_stream_grabber(self->pylon);
+      return self->session->RefStreamGrabber();
     default:
       return NULL;
   }
@@ -1224,10 +1222,9 @@ static gboolean gst_pylon_src_start_locked(GstPylonSrc* self) {
   gboolean enable_correction = PROP_ENABLE_CORRECTION_DEFAULT;
 
   GST_OBJECT_LOCK(self);
-  same_device =
-      self->pylon && gst_pylon_is_same_device(self->pylon, self->device_index,
-                                              self->device_user_name,
-                                              self->device_serial_number);
+  same_device = self->session && self->session->MatchesRequestedDevice(
+                                     self->device_index, self->device_user_name,
+                                     self->device_serial_number);
   user_set = self->user_set ? g_strdup(self->user_set) : NULL;
   pfs_location = self->pfs_location ? g_strdup(self->pfs_location) : NULL;
   enable_correction = self->enable_correction;
@@ -1236,8 +1233,8 @@ static gboolean gst_pylon_src_start_locked(GstPylonSrc* self) {
   if (same_device) {
     GST_INFO_OBJECT(
         self, "Reusing open device; ensuring user-set/PFS/enable-correction");
-    ret = gst_pylon_ensure_configured(self->pylon, user_set, pfs_location,
-                                      enable_correction, &error);
+    ret = self->session->EnsureConfigured(user_set, pfs_location,
+                                          enable_correction, &error);
     g_free(user_set);
     g_free(pfs_location);
     if (!ret || error) {
@@ -1250,7 +1247,7 @@ static gboolean gst_pylon_src_start_locked(GstPylonSrc* self) {
   g_free(pfs_location);
 
   try {
-    if (self->pylon) {
+    if (self->session) {
       if (!gst_pylon_src_teardown_session(self, &error)) {
         ret = FALSE;
         goto log_gst_error;
@@ -1332,8 +1329,8 @@ static gboolean gst_pylon_src_unlock(GstBaseSrc* src) {
   GST_LOG_OBJECT(self, "unlock");
 
   g_mutex_lock(&self->session_lock);
-  if (self->pylon) {
-    gst_pylon_interrupt_capture(self->pylon);
+  if (self->session) {
+    self->session->InterruptCapture();
   }
   g_mutex_unlock(&self->session_lock);
 
@@ -1346,8 +1343,8 @@ static gboolean gst_pylon_src_unlock_stop(GstBaseSrc* src) {
   GST_LOG_OBJECT(self, "unlock_stop");
 
   g_mutex_lock(&self->session_lock);
-  if (self->pylon) {
-    gst_pylon_clear_capture_interrupt(self->pylon);
+  if (self->session) {
+    self->session->ClearCaptureInterrupt();
   }
   g_mutex_unlock(&self->session_lock);
 
@@ -1398,8 +1395,8 @@ static gboolean gst_pylon_src_query(GstBaseSrc* src, GstQuery* query) {
       } else if (st && gst_structure_has_name(
                            st, "pylonsrc-test-trigger-disconnect")) {
         g_mutex_lock(&self->session_lock);
-        if (self->pylon) {
-          gst_pylon_test_trigger_disconnect(self->pylon);
+        if (self->session) {
+          self->session->TestTriggerDisconnect();
           res = TRUE;
         }
         g_mutex_unlock(&self->session_lock);
@@ -1528,9 +1525,9 @@ static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf) {
     capture_error = self->capture_error;
     GST_OBJECT_UNLOCK(self);
 
-    pylon_ret = gst_pylon_capture(
-        self->pylon, buf, static_cast<GstPylonCaptureErrorEnum>(capture_error),
-        &arrival_pts, &error);
+    pylon_ret = self->session->Capture(
+        buf, static_cast<GstPylonCaptureErrorEnum>(capture_error), &arrival_pts,
+        &error);
 
     if (pylon_ret == FALSE) {
       if (error) {
@@ -1586,7 +1583,7 @@ static void gst_pylon_src_on_framerate_changed(gpointer user_data,
 static gboolean gst_pylon_src_execute_command_action(
     GstPylonSrc* self, const gchar* command_name) {
   g_mutex_lock(&self->session_lock);
-  if (!self->pylon) {
+  if (!self->session) {
     if (!gst_pylon_src_start_locked(self)) {
       g_mutex_unlock(&self->session_lock);
       GST_ERROR_OBJECT(
@@ -1597,8 +1594,7 @@ static gboolean gst_pylon_src_execute_command_action(
   }
 
   GError* error = NULL;
-  const gboolean ok =
-      gst_pylon_execute_command(self->pylon, command_name, &error);
+  const gboolean ok = self->session->ExecuteCommand(command_name, &error);
   g_mutex_unlock(&self->session_lock);
   if (!ok && error) {
     GST_WARNING_OBJECT(self, "execute-command \"%s\" failed: %s",

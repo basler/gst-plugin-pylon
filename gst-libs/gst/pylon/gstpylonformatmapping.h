@@ -35,71 +35,106 @@
 
 #include <gst/gstversion.h>
 
+#include <array>
+#include <cstddef>
 #include <string>
-#include <vector>
-
-bool isSupportedPylonFormat(const std::string& format);
+#include <string_view>
 
 /* Pixel format definitions */
-typedef struct {
-  std::string pfnc_name;
-  std::string gst_name;
-} PixelFormatMappingType;
-
-/* Prefer full 16-bit before 12/10-bit when downstream negotiates GRAY16_LE */
-const std::vector<PixelFormatMappingType> pixel_format_mapping_raw = {
-    {"Mono8", "GRAY8"},
-    {"Mono16", "GRAY16_LE"},
-    {"Mono12", "GRAY16_LE"},
-    {"Mono10", "GRAY16_LE"},
-    {"RGB8Packed", "RGB"},
-    {"BGR8Packed", "BGR"},
-    {"RGB8", "RGB"},
-    {"BGR8", "BGR"},
-    {"YCbCr422_8", "YUY2"},
-    {"YUV422_8_UYVY", "UYVY"},
-    {"YUV422_8", "YUY2"},
-    {"YUV422Packed", "UYVY"},
-    {"YUV422_YUYV_Packed", "YUY2"}};
-
-/* Subset of raw formats directly supported by NvBufSurface NVMM surfaces */
-const std::vector<PixelFormatMappingType> pixel_format_mapping_nvmm_raw = {
-    {"Mono8", "GRAY8"},        {"RGB8Packed", "RGB"},
-    {"BGR8Packed", "BGR"},     {"RGB8", "RGB"},
-    {"BGR8", "BGR"},           {"YCbCr422_8", "YUY2"},
-    {"YUV422_8_UYVY", "UYVY"}, {"YUV422_8", "YUY2"},
-    {"YUV422Packed", "UYVY"},  {"YUV422_YUYV_Packed", "YUY2"}};
-
-const std::vector<PixelFormatMappingType> pixel_format_mapping_bayer = {
-    {"BayerBG8", "bggr"},      {"BayerGR8", "grbg"},
-    {"BayerRG8", "rggb"},      {"BayerGB8", "gbrg"},
-#if GST_CHECK_VERSION(1, 24, 0)
-    {"BayerBG10", "bggr10le"}, {"BayerGR10", "grbg10le"},
-    {"BayerRG10", "rggb10le"}, {"BayerGB10", "gbrg10le"},
-    {"BayerBG12", "bggr12le"}, {"BayerGR12", "grbg12le"},
-    {"BayerRG12", "rggb12le"}, {"BayerGB12", "gbrg12le"},
-    {"BayerBG16", "bggr16le"}, {"BayerGR16", "grbg16le"},
-    {"BayerRG16", "rggb16le"}, {"BayerGB16", "gbrg16le"},
-#endif
+struct PixelFormatMappingType {
+  std::string_view pfnc_name;
+  std::string_view gst_name;
 };
 
-inline bool isSupportedPylonFormat(const std::string& format) {
-  bool res = false;
+struct PixelFormatMappingView {
+  const PixelFormatMappingType* data = nullptr;
+  std::size_t size = 0;
+
+  constexpr PixelFormatMappingView() = default;
+  template <std::size_t N>
+  constexpr PixelFormatMappingView(
+      const std::array<PixelFormatMappingType, N>& arr)
+      : data(arr.data()), size(N) {}
+
+  constexpr const PixelFormatMappingType* begin() const { return data; }
+  constexpr const PixelFormatMappingType* end() const { return data + size; }
+};
+
+/* Prefer full 16-bit before 12/10-bit when downstream negotiates GRAY16_LE */
+inline constexpr std::array<PixelFormatMappingType, 13>
+    pixel_format_mapping_raw = {{
+        {"Mono8", "GRAY8"},
+        {"Mono16", "GRAY16_LE"},
+        {"Mono12", "GRAY16_LE"},
+        {"Mono10", "GRAY16_LE"},
+        {"RGB8Packed", "RGB"},
+        {"BGR8Packed", "BGR"},
+        {"RGB8", "RGB"},
+        {"BGR8", "BGR"},
+        {"YCbCr422_8", "YUY2"},
+        {"YUV422_8_UYVY", "UYVY"},
+        {"YUV422_8", "YUY2"},
+        {"YUV422Packed", "UYVY"},
+        {"YUV422_YUYV_Packed", "YUY2"},
+    }};
+
+/* Subset of raw formats directly supported by NvBufSurface NVMM surfaces */
+inline constexpr std::array<PixelFormatMappingType, 10>
+    pixel_format_mapping_nvmm_raw = {{
+        {"Mono8", "GRAY8"},
+        {"RGB8Packed", "RGB"},
+        {"BGR8Packed", "BGR"},
+        {"RGB8", "RGB"},
+        {"BGR8", "BGR"},
+        {"YCbCr422_8", "YUY2"},
+        {"YUV422_8_UYVY", "UYVY"},
+        {"YUV422_8", "YUY2"},
+        {"YUV422Packed", "UYVY"},
+        {"YUV422_YUYV_Packed", "YUY2"},
+    }};
+
+#if GST_CHECK_VERSION(1, 24, 0)
+inline constexpr std::array<PixelFormatMappingType, 16>
+    pixel_format_mapping_bayer = {{
+        {"BayerBG8", "bggr"},
+        {"BayerGR8", "grbg"},
+        {"BayerRG8", "rggb"},
+        {"BayerGB8", "gbrg"},
+        {"BayerBG10", "bggr10le"},
+        {"BayerGR10", "grbg10le"},
+        {"BayerRG10", "rggb10le"},
+        {"BayerGB10", "gbrg10le"},
+        {"BayerBG12", "bggr12le"},
+        {"BayerGR12", "grbg12le"},
+        {"BayerRG12", "rggb12le"},
+        {"BayerGB12", "gbrg12le"},
+        {"BayerBG16", "bggr16le"},
+        {"BayerGR16", "grbg16le"},
+        {"BayerRG16", "rggb16le"},
+        {"BayerGB16", "gbrg16le"},
+    }};
+#else
+inline constexpr std::array<PixelFormatMappingType, 4>
+    pixel_format_mapping_bayer = {{
+        {"BayerBG8", "bggr"},
+        {"BayerGR8", "grbg"},
+        {"BayerRG8", "rggb"},
+        {"BayerGB8", "gbrg"},
+    }};
+#endif
+
+inline bool isSupportedPylonFormat(std::string_view format) {
   for (const auto& fd : pixel_format_mapping_raw) {
     if (fd.pfnc_name == format) {
-      res = true;
-      break;
+      return true;
     }
   }
-  if (!res) {
-    for (const auto& fd : pixel_format_mapping_bayer) {
-      if (fd.pfnc_name == format) {
-        res = true;
-        break;
-      }
+  for (const auto& fd : pixel_format_mapping_bayer) {
+    if (fd.pfnc_name == format) {
+      return true;
     }
   }
-  return res;
+  return false;
 }
 
 #endif

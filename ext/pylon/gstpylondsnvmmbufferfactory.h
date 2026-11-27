@@ -34,8 +34,8 @@
 #define GST_PYLON_DSNVMM_BUFFER_FACTORY_H
 
 #include <gst/gst.h>
-#include <gstpylon.h>
 #include <gstpylonbufferfactory.h>
+#include <gstpylontypes.h>
 #include <nvbufsurface.h>
 
 class GstPylonDsNvmmBufferFactory : public GstPylonBufferFactory {
