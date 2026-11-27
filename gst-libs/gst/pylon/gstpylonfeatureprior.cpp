@@ -340,8 +340,9 @@ GstPylonDeviceProfile gst_pylon_detect_device_profile(
     if (family_param.IsReadable()) {
       family_name = family_param.GetValue().c_str();
     }
-  } catch (const Pylon::GenericException &) {
+  } catch (const Pylon::GenericException &e) {
     /* StreamGrabber or non-SFNC nodemaps may not expose DeviceFamilyName */
+    GST_LOG("DeviceFamilyName unavailable on nodemap: %s", e.GetDescription());
   }
 
   try {
@@ -349,9 +350,11 @@ GstPylonDeviceProfile gst_pylon_detect_device_profile(
     if (fw_param.IsReadable()) {
       fw_version = fw_param.GetValue().c_str();
     }
-  } catch (const Pylon::GenericException &) {
+  } catch (const Pylon::GenericException &e) {
     /* StreamGrabber or non-SFNC nodemaps may not expose DeviceFirmwareVersion
      */
+    GST_LOG("DeviceFirmwareVersion unavailable on nodemap: %s",
+            e.GetDescription());
   }
 
   const GstPylonDeviceProfile detected =

@@ -30,12 +30,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_INSPECT_H_
-#define _GST_PYLON_INSPECT_H_
+#pragma once
 
 #include <glib.h>
 
-gchar* gst_pylon_inspect_camera_properties();
-gchar* gst_pylon_inspect_stream_properties();
-
-#endif
+[[nodiscard]] gchar* gst_pylon_inspect_camera_properties();
+[[nodiscard]] gchar* gst_pylon_inspect_stream_properties();

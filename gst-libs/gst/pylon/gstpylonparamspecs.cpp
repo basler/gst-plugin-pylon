@@ -124,8 +124,9 @@ static void gst_pylon_param_spec_selector_epilog(GParamSpec *spec,
   data->feature = g_strdup(feature_name);
   data->selector_value = selector_value;
 
-  g_param_spec_set_qdata_full(spec, quark, data,
-                              (GDestroyNotify)gst_pylon_param_spec_data_free);
+  g_param_spec_set_qdata_full(
+      spec, quark, data,
+      reinterpret_cast<GDestroyNotify>(gst_pylon_param_spec_data_free));
 }
 
 GParamSpec *gst_pylon_param_spec_selector_int64(

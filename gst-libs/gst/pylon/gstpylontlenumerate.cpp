@@ -40,6 +40,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
+#include <cstring>
 #include <set>
 #include <sstream>
 #include <vector>

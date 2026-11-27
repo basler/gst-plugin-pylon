@@ -30,8 +30,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_DEVICE_PROVIDER_H_
-#define _GST_PYLON_DEVICE_PROVIDER_H_
+#pragma once
 
 #include <gst/gst.h>
 
@@ -46,5 +45,3 @@ G_DECLARE_FINAL_TYPE(GstPylonDeviceProvider, gst_pylon_device_provider, GST,
                      PYLON_DEVICE_PROVIDER, GstDeviceProvider)
 
 G_END_DECLS
-
-#endif

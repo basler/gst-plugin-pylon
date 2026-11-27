@@ -43,25 +43,49 @@ G_BEGIN_DECLS
 typedef struct _GstPylonOffset GstPylonOffset;
 typedef struct _GstPylonMeta GstPylonMeta;
 
+/**
+ * @brief Region-of-interest offset reported by the camera for a grabbed frame.
+ */
 struct _GstPylonOffset {
-  guint64 offset_x;
-  guint64 offset_y;
+  guint64 offset_x; /**< Horizontal offset in pixels. */
+  guint64 offset_y; /**< Vertical offset in pixels. */
 };
 
+/**
+ * @brief Per-frame Basler pylon metadata attached to a GstBuffer.
+ *
+ * Carries grab-result metadata (block ID, image number, skipped image count,
+ * ROI offset, camera timestamp, stride) and optional GenICam chunk values.
+ */
 struct _GstPylonMeta {
-  GstMeta meta;
+  GstMeta meta; /**< Base GStreamer metadata header. */
 
-  GstStructure *chunks;
-  guint64 block_id;
-  guint64 image_number;
-  guint64 skipped_images;
-  GstPylonOffset offset;
-  GstClockTime timestamp;
-  gsize stride;
+  GstStructure *chunks;   /**< Optional GenICam chunk key/value structure. */
+  guint64 block_id;       /**< Camera/transport-layer block identifier. */
+  guint64 image_number;   /**< Sequential grabbed image number. */
+  guint64 skipped_images; /**< Number of images skipped before this frame. */
+  GstPylonOffset offset;  /**< Frame ROI X/Y offset in pixels. */
+  GstClockTime timestamp; /**< Camera hardware timestamp. */
+  gsize stride;           /**< Row stride in bytes (0 if unavailable). */
 };
 
+/**
+ * @brief Returns the GType registered for the GstPylonMeta API.
+ * @return The GType of the pylon metadata API.
+ */
 EXT_PYLONSRC_API GType gst_pylon_meta_api_get_type(void);
+
+/**
+ * @brief Returns the GstMetaInfo descriptor for GstPylonMeta.
+ * @return Pointer to the static GstMetaInfo instance.
+ */
 EXT_PYLONSRC_API const GstMetaInfo *gst_pylon_meta_get_info(void);
+
+/**
+ * @brief Retrieves the GstPylonMeta attached to a GstBuffer, if present.
+ * @param buffer The GstBuffer to inspect (must not be NULL).
+ * @return Pointer to the buffer's GstPylonMeta, or NULL if none is attached.
+ */
 EXT_PYLONSRC_API GstPylonMeta *gst_buffer_get_pylon_meta(GstBuffer *buffer);
 
 G_END_DECLS

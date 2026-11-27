@@ -131,7 +131,9 @@ void GstPylonInspectCache::Set(const std::string& schema_key,
                            static_cast<gssize>(serialized.size()), &err)) {
     GST_WARNING("Could not write introspection cache to %s: %s",
                 filepath.c_str(), err ? err->message : "unknown error");
-    if (err) g_error_free(err);
+    if (err) {
+      g_error_free(err);
+    }
     g_unlink(tmp_path);
   } else {
     (void)g_chmod(tmp_path, 0600);

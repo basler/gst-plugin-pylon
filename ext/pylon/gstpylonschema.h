@@ -30,8 +30,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_SCHEMA_H_
-#define _GST_PYLON_SCHEMA_H_
+#pragma once
 
 #include <gst/pylon/gstpyloncache.h>
 #include <gst/pylon/gstpylonincludes.h>
@@ -53,5 +52,3 @@ GstPylonObjectSchema gst_pylon_make_camera_schema(
     Pylon::CBaslerUniversalInstantCamera& camera, GstPylonCache& feature_cache);
 GstPylonObjectSchema gst_pylon_make_stream_schema(
     Pylon::CBaslerUniversalInstantCamera& camera, GstPylonCache& feature_cache);
-
-#endif

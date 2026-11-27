@@ -176,7 +176,15 @@ static void gst_pylon_get_introspection_strings_impl(gchar** cam_out,
 
   Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
   Pylon::DeviceInfoList_t device_list;
-  gst_pylon_enumerate_devices(device_list);
+  try {
+    gst_pylon_enumerate_devices(device_list);
+  } catch (const Pylon::GenericException& e) {
+    GST_WARNING("Device enumeration failed during inspection: %s",
+                e.GetDescription());
+    *cam_out = g_strdup("");
+    *stream_out = g_strdup("");
+    return;
+  }
 
   for (const auto& device : device_list) {
     try {
@@ -200,7 +208,9 @@ static void gst_pylon_get_introspection_strings_impl(gchar** cam_out,
           gst_pylon_get_stream_properties_block);
 
       camera.Close();
-    } catch (const Pylon::GenericException&) {
+    } catch (const Pylon::GenericException& e) {
+      GST_DEBUG("Skipping device '%s' during inspection: %s",
+                device.GetFriendlyName().c_str(), e.GetDescription());
       continue;
     }
   }

@@ -375,15 +375,21 @@ gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
             break;
           }
         }
-        if (fmt_valid) break;
+        if (fmt_valid) {
+          break;
+        }
       }
 
       /* Otherwise choose first supported PFNC candidate */
       for (const auto& fmt : pfnc_formats) {
         fmt_valid = pixelformat.TrySetValue(fmt.c_str());
-        if (fmt_valid) break;
+        if (fmt_valid) {
+          break;
+        }
       }
-      if (fmt_valid) break;
+      if (fmt_valid) {
+        break;
+      }
     }
 
     if (!fmt_valid) {
@@ -405,9 +411,9 @@ gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
      * -> offset will be adjusted to keep dimensions
      */
 
-    GstPylonObjectPrivate* cam_properties =
-        (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(
-            reinterpret_cast<GstPylonObject*>(gcamera));
+    GstPylonObjectPrivate* cam_properties = static_cast<GstPylonObjectPrivate*>(
+        gst_pylon_object_get_instance_private(
+            reinterpret_cast<GstPylonObject*>(gcamera)));
 
     auto& offsetx_cache = cam_properties->dimension_cache.offsetx;
     auto& offsety_cache = cam_properties->dimension_cache.offsety;
@@ -421,7 +427,7 @@ gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
           offsetx.SetValue(
               offsetx_cache,
               Pylon::EIntegerValueCorrection::IntegerValueCorrection_None);
-        } catch (GenICam::OutOfRangeException&) {
+        } catch (const GenICam::OutOfRangeException&) {
           offsetx.SetValue(
               offsetx_cache,
               Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);
@@ -445,7 +451,7 @@ gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
             offsety.SetValue(
                 offsety_cache,
                 Pylon::EIntegerValueCorrection::IntegerValueCorrection_None);
-          } catch (GenICam::OutOfRangeException&) {
+          } catch (const GenICam::OutOfRangeException&) {
             offsety.SetValue(
                 offsety_cache,
                 Pylon::EIntegerValueCorrection::IntegerValueCorrection_Nearest);

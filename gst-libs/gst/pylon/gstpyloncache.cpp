@@ -145,7 +145,9 @@ void GstPylonCache::CreateCacheFile() {
     g_unlink(tmp_path);
     g_free(tmp_path);
     std::string file_err_str = file_err ? file_err->message : "write failed";
-    if (file_err) g_error_free(file_err);
+    if (file_err) {
+      g_error_free(file_err);
+    }
     throw Pylon::GenericException(file_err_str.c_str(), __FILE__, __LINE__);
   }
 
@@ -224,10 +226,16 @@ void GstPylonCache::SetDoubleProps(const gchar* feature_name, const gdouble min,
 
 bool GstPylonCache::GetIntProps(const gchar* feature_name, gint64& min,
                                 gint64& max, GParamFlags& flags) {
-  if (!GetIntegerAttribute(feature_name, "min", min)) return false;
-  if (!GetIntegerAttribute(feature_name, "max", max)) return false;
+  if (!GetIntegerAttribute(feature_name, "min", min)) {
+    return false;
+  }
+  if (!GetIntegerAttribute(feature_name, "max", max)) {
+    return false;
+  }
   gint64 flag_val = 0;
-  if (!GetIntegerAttribute(feature_name, "flags", flag_val)) return false;
+  if (!GetIntegerAttribute(feature_name, "flags", flag_val)) {
+    return false;
+  }
 
   static constexpr gint64 kMaxSaneDimension = 32768;
   if ((g_str_has_suffix(feature_name, "Width") ||
@@ -248,11 +256,17 @@ bool GstPylonCache::GetIntProps(const gchar* feature_name, gint64& min,
 
 bool GstPylonCache::GetDoubleProps(const char* feature_name, gdouble& min,
                                    gdouble& max, GParamFlags& flags) {
-  if (!GetDoubleAttribute(feature_name, "min", min)) return false;
-  if (!GetDoubleAttribute(feature_name, "max", max)) return false;
+  if (!GetDoubleAttribute(feature_name, "min", min)) {
+    return false;
+  }
+  if (!GetDoubleAttribute(feature_name, "max", max)) {
+    return false;
+  }
 
   gint64 flag_val = 0;
-  if (!GetIntegerAttribute(feature_name, "flags", flag_val)) return false;
+  if (!GetIntegerAttribute(feature_name, "flags", flag_val)) {
+    return false;
+  }
 
   flags = static_cast<GParamFlags>(flag_val);
 
@@ -261,7 +275,9 @@ bool GstPylonCache::GetDoubleProps(const char* feature_name, gdouble& min,
 
 bool GstPylonCache::GetFlags(const gchar* feature_name, GParamFlags& flags) {
   gint64 flag_val = 0;
-  if (!GetIntegerAttribute(feature_name, "flags", flag_val)) return false;
+  if (!GetIntegerAttribute(feature_name, "flags", flag_val)) {
+    return false;
+  }
   flags = static_cast<GParamFlags>(flag_val);
   return true;
 }

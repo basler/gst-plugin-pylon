@@ -30,8 +30,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_PRIVATE_H_
-#define _GST_PYLON_PRIVATE_H_
+#pragma once
 
 #include "gst/pylon/gstpylonformatmapping.h"
 #include "gstpylon.h"
@@ -42,6 +41,7 @@
 #include <gst/pylon/gstpylonincludes.h>
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -57,23 +57,7 @@ typedef enum {
 } GstPylonMemoryTypeEnum;
 
 struct _GstPylon {
-  explicit _GstPylon(GstElement* element)
-      : gstpylonsrc(element),
-        gcamera(nullptr),
-        gstream_grabber(nullptr),
-        mem_type(MEM_SYSMEM),
-        requested_device_index(-1),
-        handlers_registered(false),
-        applied_enable_correction(TRUE),
-        has_applied_config(FALSE),
-        grab_timeout_ms(0),
-        auto_reconnect(FALSE),
-        compression_active(false) {
-#ifdef NVMM_ENABLED
-    nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
-    gpu_id = PROP_GPU_ID_DEFAULT;
-#endif
-  }
+  explicit _GstPylon(GstElement* element) : gstpylonsrc(element) {}
 
   ~_GstPylon() {
     image_handler.InterruptWaitForImage();
@@ -137,6 +121,9 @@ struct _GstPylon {
   gboolean ExecuteCommand(const gchar* command_name, GError** err);
   gboolean Capture(GstBuffer** buf, GstPylonCaptureErrorEnum capture_error,
                    GError** err);
+  gboolean CaptureCompressed(
+      std::unique_ptr<Pylon::CBaslerUniversalGrabResultPtr>& grab_result_ptr,
+      const Pylon::CompressionInfo_t& comp_info, GstBuffer** buf, GError** err);
   GstCaps* QueryConfiguration(GError** err);
   gboolean SetConfiguration(const GstCaps* conf, GError** err);
   void RefreshDecompressor();
@@ -151,36 +138,37 @@ struct _GstPylon {
   gboolean IsConfigApplied(const gchar* user_set, const gchar* pfs_location,
                            gboolean enable_correction) const;
 
-  GstElement* gstpylonsrc;
+  GstElement* gstpylonsrc = nullptr;
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera =
       std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
-  GObject* gcamera;
-  GObject* gstream_grabber;
+  GObject* gcamera = nullptr;
+  GObject* gstream_grabber = nullptr;
   GstPylonImageHandler image_handler;
   GstPylonDisconnectHandler disconnect_handler;
 
   std::shared_ptr<GstPylonBufferFactory> buffer_factory;
-  GstPylonMemoryTypeEnum mem_type;
+  GstPylonMemoryTypeEnum mem_type = MEM_SYSMEM;
 
   std::string requested_device_user_name;
   std::string requested_device_serial_number;
-  gint requested_device_index;
-  bool handlers_registered;
+  gint requested_device_index = -1;
+  bool handlers_registered = false;
   std::string applied_user_set;
   std::string applied_pfs_location;
-  gboolean applied_enable_correction;
-  gboolean has_applied_config;
+  gboolean applied_enable_correction = TRUE;
+  gboolean has_applied_config = FALSE;
 
-  std::atomic<guint> grab_timeout_ms;
-  std::atomic<gboolean> auto_reconnect;
+  std::atomic<guint> grab_timeout_ms{0};
+  std::atomic<gboolean> auto_reconnect{FALSE};
   GstCaps* negotiated_caps = nullptr;
 
   Pylon::CImageDecompressor decompressor;
-  bool compression_active;
+  bool compression_active = false;
+  std::vector<uint8_t> decomp_scratch_buf;
 
 #ifdef NVMM_ENABLED
-  GstPylonNvsurfaceLayoutEnum nvsurface_layout;
-  guint gpu_id;
+  GstPylonNvsurfaceLayoutEnum nvsurface_layout = PROP_NVSURFACE_LAYOUT_DEFAULT;
+  guint gpu_id = PROP_GPU_ID_DEFAULT;
 #endif
 };
 
@@ -188,5 +176,3 @@ using GrabResultPair = std::pair<std::shared_ptr<GstPylonBufferFactory>,
                                  Pylon::CBaslerUniversalGrabResultPtr*>;
 
 extern const std::vector<GstStPixelFormats> gst_structure_formats;
-
-#endif

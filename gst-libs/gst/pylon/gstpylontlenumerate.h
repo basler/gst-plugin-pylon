@@ -30,8 +30,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_TL_ENUMERATE_H_
-#define _GST_PYLON_TL_ENUMERATE_H_
+#pragma once
 
 #include <gst/pylon/gstpylon-prelude.h>
 #include <gst/pylon/gstpylonincludes.h>
@@ -49,5 +48,3 @@ EXT_PYLONSRC_API std::string gst_pylon_get_tl_friendly_name(
 EXT_PYLONSRC_API void gst_pylon_enumerate_devices(
     Pylon::DeviceInfoList_t& device_list,
     const Pylon::DeviceInfoList_t* filter = nullptr);
-
-#endif

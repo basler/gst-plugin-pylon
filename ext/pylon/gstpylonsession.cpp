@@ -228,13 +228,16 @@ void GstPylon::Open(const gchar* device_user_name,
       camera->Attach(factory.CreateDevice(device_info));
       camera->Open();
       attached = true;
-    } catch (GenICam::GenericException& e) {
+    } catch (const GenICam::GenericException& e) {
       last_error = e.GetDescription();
       try {
         if (camera->IsPylonDeviceAttached()) {
           camera->DestroyDevice();
         }
-      } catch (const GenICam::GenericException&) {
+      } catch (const GenICam::GenericException& cleanup_err) {
+        GST_DEBUG_OBJECT(gstpylonsrc,
+                         "Ignoring device cleanup error after open failure: %s",
+                         cleanup_err.GetDescription());
       }
     }
 
@@ -268,7 +271,7 @@ void GstPylon::Open(const gchar* device_user_name,
           camera->Open();
           attached = true;
           break;
-        } catch (GenICam::GenericException& e) {
+        } catch (const GenICam::GenericException& e) {
           last_error = e.GetDescription();
           GST_INFO_OBJECT(gstpylonsrc, "Retrying open of %s (%d/%d): %s",
                           device_info.GetSerialNumber().c_str(), retry_idx + 1,
@@ -277,7 +280,11 @@ void GstPylon::Open(const gchar* device_user_name,
             if (camera->IsPylonDeviceAttached()) {
               camera->DestroyDevice();
             }
-          } catch (const GenICam::GenericException&) {
+          } catch (const GenICam::GenericException& cleanup_err) {
+            GST_DEBUG_OBJECT(
+                gstpylonsrc,
+                "Ignoring device cleanup error during open retry: %s",
+                cleanup_err.GetDescription());
           }
         }
       }
@@ -295,7 +302,7 @@ void GstPylon::Open(const gchar* device_user_name,
         camera->Open();
         attached = true;
         break;
-      } catch (GenICam::GenericException& e) {
+      } catch (const GenICam::GenericException& e) {
         last_error = e.GetDescription();
         GST_INFO_OBJECT(gstpylonsrc, "Failed to Open %s (%s)\n",
                         device_info.GetSerialNumber().c_str(),
@@ -304,7 +311,11 @@ void GstPylon::Open(const gchar* device_user_name,
           if (camera->IsPylonDeviceAttached()) {
             camera->DestroyDevice();
           }
-        } catch (const GenICam::GenericException&) {
+        } catch (const GenICam::GenericException& cleanup_err) {
+          GST_DEBUG_OBJECT(
+              gstpylonsrc,
+              "Ignoring device cleanup error during open retry: %s",
+              cleanup_err.GetDescription());
         }
         if (retry_idx < max_open_retries) {
           g_usleep(gst_pylon_jittered_backoff_us(retry_idx));
@@ -445,7 +456,10 @@ gboolean GstPylon::TryReconnect(GError** err) {
     if (camera->IsPylonDeviceAttached()) {
       camera->DestroyDevice();
     }
-  } catch (const GenICam::GenericException&) {
+  } catch (const GenICam::GenericException& cleanup_err) {
+    GST_DEBUG_OBJECT(gstpylonsrc,
+                     "Ignoring teardown error before reconnect: %s",
+                     cleanup_err.GetDescription());
   }
 
   Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
@@ -542,7 +556,11 @@ gboolean GstPylon::TryReconnect(GError** err) {
         if (camera->IsPylonDeviceAttached()) {
           camera->DestroyDevice();
         }
-      } catch (const GenICam::GenericException&) {
+      } catch (const GenICam::GenericException& cleanup_err) {
+        GST_DEBUG_OBJECT(
+            gstpylonsrc,
+            "Ignoring device cleanup error after reconnect attempt: %s",
+            cleanup_err.GetDescription());
       }
     }
 

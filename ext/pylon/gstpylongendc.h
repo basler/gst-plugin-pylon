@@ -30,8 +30,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_PYLON_GENDC_H__
-#define __GST_PYLON_GENDC_H__
+#pragma once
 
 #include <gst/gst.h>
 #include <gst/pylon/gstpylonincludes.h>
@@ -56,7 +55,7 @@ struct GstPylonResolvedPayload {
  * is destroyed before this function returns so the caller's grab result buffer
  * does not accumulate extra container references; the returned `data` pointer
  * remains valid for as long as the underlying grab result buffer is alive. */
-inline bool gst_pylon_resolve_gendc_component(
+[[nodiscard]] inline bool gst_pylon_resolve_gendc_component(
     const Pylon::CPylonDataContainer& container, GstPylonResolvedPayload& out,
     GError** err) {
   Pylon::CPylonDataComponent comp = container.GetFirstImageDataComponent(false);
@@ -93,7 +92,7 @@ inline bool gst_pylon_resolve_gendc_component(
   return true;
 }
 
-inline bool gst_pylon_resolve_grab_payload(
+[[nodiscard]] inline bool gst_pylon_resolve_grab_payload(
     const Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr,
     bool allow_corrupted, GstPylonResolvedPayload& out, GError** err) {
   if (grab_result_ptr->GrabSucceeded() &&
@@ -143,5 +142,3 @@ inline bool gst_pylon_resolve_grab_payload(
     return false;
   }
 }
-
-#endif

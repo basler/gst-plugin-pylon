@@ -94,12 +94,12 @@ static GType gst_pylon_object_ensure_schema_type(
       sizeof(GstPylonObjectClass),
       NULL,
       NULL,
-      (GClassInitFunc)gst_pylon_object_class_intern_init,
+      reinterpret_cast<GClassInitFunc>(gst_pylon_object_class_intern_init),
       NULL,
       class_data,
       sizeof(GstPylonObject),
       0,
-      (GInstanceInitFunc)gst_pylon_object_init,
+      reinterpret_cast<GInstanceInitFunc>(gst_pylon_object_init),
   };
 
   type = g_type_register_static(GST_TYPE_OBJECT, type_name.c_str(), &typeinfo,
@@ -208,8 +208,8 @@ static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
 }
 
 static void gst_pylon_object_init(GstPylonObject* self) {
-  GstPylonObjectPrivate* priv =
-      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
   new (&priv->camera) std::shared_ptr<Pylon::CBaslerUniversalInstantCamera>();
 }
 
@@ -237,7 +237,7 @@ void gst_pylon_object_set_pylon_feature<GGetInt64, Pylon::CIntegerParameter>(
      */
     try {
       param.SetValue(gst_val);
-    } catch (GenICam::OutOfRangeException&) {
+    } catch (const GenICam::OutOfRangeException&) {
       value_corrected = true;
       param.SetValue(
           gst_val,
@@ -401,9 +401,9 @@ static void gst_pylon_object_feature_get_value(
 static void gst_pylon_object_set_property(GObject* object, guint property_id,
                                           const GValue* value,
                                           GParamSpec* pspec) {
-  GstPylonObject* self = (GstPylonObject*)object;
-  GstPylonObjectPrivate* priv =
-      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  GstPylonObject* self = reinterpret_cast<GstPylonObject*>(object);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
   GType value_type = g_type_fundamental(G_VALUE_TYPE(value));
   GstPylonParamSpecSelectorData* selector_data = NULL;
 
@@ -490,9 +490,9 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
 
 static void gst_pylon_object_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec) {
-  GstPylonObject* self = (GstPylonObject*)object;
-  GstPylonObjectPrivate* priv =
-      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  GstPylonObject* self = reinterpret_cast<GstPylonObject*>(object);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
   GstPylonParamSpecSelectorData* selector_data = NULL;
 
   if (GST_PYLON_PARAM_FLAG_IS_SET(pspec, GST_PYLON_PARAM_IS_SELECTOR)) {
@@ -579,9 +579,9 @@ GObject* gst_pylon_object_new_for_schema(
   }
 
   GObject* obj = G_OBJECT(g_object_new(type, "name", type_name.c_str(), NULL));
-  GstPylonObject* self = (GstPylonObject*)obj;
-  GstPylonObjectPrivate* priv =
-      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  GstPylonObject* self = reinterpret_cast<GstPylonObject*>(obj);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
 
   priv->camera = std::move(camera);
   priv->nodemap = &schema.node_map();
@@ -604,8 +604,8 @@ void gst_pylon_object_set_framerate_callback(GObject* obj,
   g_return_if_fail(obj);
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
-  GstPylonObjectPrivate* priv =
-      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
   priv->framerate_changed_cb = cb;
   priv->framerate_changed_data = user_data;
 }
@@ -618,8 +618,8 @@ gboolean gst_pylon_object_execute_command(GObject* obj,
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
-  GstPylonObjectPrivate* priv =
-      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
 
   if (!priv->nodemap) {
     g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
@@ -691,8 +691,8 @@ void gst_pylon_object_set_enable_correction(GObject* obj,
   g_return_if_fail(obj);
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
-  GstPylonObjectPrivate* priv =
-      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
   priv->enable_correction = enable_correction;
 }
 
@@ -700,8 +700,8 @@ gboolean gst_pylon_object_is_framerate_configured(GObject* obj) {
   g_return_val_if_fail(obj, FALSE);
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
-  GstPylonObjectPrivate* priv =
-      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
   return priv->framerate_configured;
 }
 
@@ -709,15 +709,15 @@ void gst_pylon_object_mark_framerate_configured(GObject* obj) {
   g_return_if_fail(obj);
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
-  GstPylonObjectPrivate* priv =
-      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
   priv->framerate_configured = TRUE;
 }
 
 static void gst_pylon_object_finalize(GObject* object) {
-  GstPylonObject* self = (GstPylonObject*)object;
-  GstPylonObjectPrivate* priv =
-      (GstPylonObjectPrivate*)gst_pylon_object_get_instance_private(self);
+  GstPylonObject* self = reinterpret_cast<GstPylonObject*>(object);
+  GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
+      gst_pylon_object_get_instance_private(self));
 
   priv->camera.~shared_ptr();
   new (&priv->camera) std::shared_ptr<Pylon::CBaslerUniversalInstantCamera>();

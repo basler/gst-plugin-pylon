@@ -30,8 +30,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_INSPECT_CACHE_H_
-#define _GST_PYLON_INSPECT_CACHE_H_
+#pragma once
 
 #include <gst/gst.h>
 
@@ -40,8 +39,8 @@
 /* Disk cache of full gst-inspect property blurbs keyed by schema identity. */
 class GST_PLUGIN_EXPORT GstPylonInspectCache {
  public:
-  static gchar* Get(const std::string& schema_key);
+  /* Returns a newly allocated string owned by the caller (free with g_free()),
+   * or NULL if no valid cache entry exists. */
+  [[nodiscard]] static gchar* Get(const std::string& schema_key);
   static void Set(const std::string& schema_key, const std::string& content);
 };
-
-#endif

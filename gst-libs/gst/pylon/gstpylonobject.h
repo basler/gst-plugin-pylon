@@ -42,6 +42,9 @@
 #include <gst/pylon/gstpyloncache.h>
 #include <gst/pylon/gstpylonincludes.h>
 
+#include <memory>
+#include <string>
+
 G_DECLARE_DERIVABLE_TYPE(GstPylonObject, gst_pylon_object, GST, PYLON_OBJECT,
                          GstObject)
 

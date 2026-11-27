@@ -49,8 +49,12 @@ static gint64 gst_pylon_clamp_int64_default(Pylon::CIntegerParameter& param,
       def = min_val;
     }
   }
-  if (def < min_val) def = min_val;
-  if (def > max_val) def = max_val;
+  if (def < min_val) {
+    def = min_val;
+  }
+  if (def > max_val) {
+    def = max_val;
+  }
   return def;
 }
 
@@ -65,8 +69,12 @@ static gdouble gst_pylon_clamp_double_default(Pylon::CFloatParameter& param,
       def = min_val;
     }
   }
-  if (def < min_val) def = min_val;
-  if (def > max_val) def = max_val;
+  if (def < min_val) {
+    def = min_val;
+  }
+  if (def > max_val) {
+    def = max_val;
+  }
   return def;
 }
 

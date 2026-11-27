@@ -181,7 +181,7 @@ static GType gst_pylon_capture_error_enum_get_type(void) {
     g_once_init_leave(&gtype, tmp);
   }
 
-  return (GType)gtype;
+  return static_cast<GType>(gtype);
 }
 
 #ifdef NVMM_ENABLED
@@ -200,7 +200,7 @@ static GType gst_pylon_nvsurface_layout_enum_get_type(void) {
     g_once_init_leave(&gtype, tmp);
   }
 
-  return (GType)gtype;
+  return static_cast<GType>(gtype);
 }
 #endif
 
@@ -805,7 +805,9 @@ static GstCaps* gst_pylon_src_fixate(GstBaseSrc* src, GstCaps* caps) {
     for (guint i = 0; i < n_structs; ++i) {
       const GstStructure* cand = gst_caps_get_structure(caps, i);
       const GValue* fmt_val = gst_structure_get_value(cand, "format");
-      if (!fmt_val) continue;
+      if (!fmt_val) {
+        continue;
+      }
       if (G_VALUE_HOLDS_STRING(fmt_val)) {
         if (preferred_gst_format == g_value_get_string(fmt_val)) {
           chosen_idx = i;
@@ -823,7 +825,9 @@ static GstCaps* gst_pylon_src_fixate(GstBaseSrc* src, GstCaps* caps) {
             break;
           }
         }
-        if (found) break;
+        if (found) {
+          break;
+        }
       }
     }
   }
@@ -1359,7 +1363,8 @@ static void gst_plyon_src_add_metadata(GstPylonSrc* self, GstBuffer* buf) {
   g_return_if_fail(self);
   g_return_if_fail(buf);
 
-  pylon_meta = (GstPylonMeta*)gst_buffer_get_meta(buf, GST_PYLON_META_API_TYPE);
+  pylon_meta = reinterpret_cast<GstPylonMeta*>(
+      gst_buffer_get_meta(buf, GST_PYLON_META_API_TYPE));
 
   GST_OBJECT_LOCK(self);
   /* set duration */

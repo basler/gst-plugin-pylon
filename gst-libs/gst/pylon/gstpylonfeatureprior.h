@@ -30,8 +30,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_PYLON_FEATURE_PRIOR_H_
-#define _GST_PYLON_FEATURE_PRIOR_H_
+#pragma once
 
 #include <gst/gst.h>
 #include <gst/pylon/gstpylonincludes.h>
@@ -110,5 +109,3 @@ gboolean gst_pylon_prior_resolve_double_limits(GstPylonDeviceProfile profile,
                                                GenApi::INode *node,
                                                gdouble &min_out,
                                                gdouble &max_out);
-
-#endif

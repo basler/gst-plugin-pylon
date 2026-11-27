@@ -44,7 +44,9 @@ void GstPylonSysMemBufferFactory::AllocateBuffer(
   const size_t PAGE_SIZE = getpagesize();
   const size_t aligned_buffer_size = RoundUp(buffer_size, PAGE_SIZE);
   int ret = posix_memalign(p_created_buffer, PAGE_SIZE, aligned_buffer_size);
-  if (ret) *p_created_buffer = nullptr;
+  if (ret) {
+    *p_created_buffer = nullptr;
+  }
 #else
   *p_created_buffer = malloc(buffer_size);
 #endif

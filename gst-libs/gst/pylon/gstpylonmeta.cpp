@@ -211,8 +211,10 @@ static void gst_pylon_extract_meta_geometry(
         }
         return;
       }
-    } catch (const GenICam::GenericException&) {
+    } catch (const GenICam::GenericException& e) {
       /* Fall back to grab result top-level fields below */
+      GST_LOG("Falling back from GenDC metadata to grab result fields: %s",
+              e.GetDescription());
     }
   }
 
@@ -239,10 +241,10 @@ void gst_buffer_add_pylon_meta_with_stride(
   g_return_if_fail(buffer != NULL);
 
   GST_LOG("Adding Pylon chunk meta to buffer %" GST_PTR_FORMAT,
-          (gpointer)buffer);
+          static_cast<gpointer>(buffer));
 
-  GstPylonMeta* self =
-      (GstPylonMeta*)gst_buffer_add_meta(buffer, GST_PYLON_META_INFO, NULL);
+  GstPylonMeta* self = reinterpret_cast<GstPylonMeta*>(
+      gst_buffer_add_meta(buffer, GST_PYLON_META_INFO, NULL));
 
   /* Add meta to GstPylonMeta */
   self->block_id = grab_result_ptr->GetBlockID();
@@ -263,7 +265,7 @@ void gst_buffer_add_pylon_meta(
 
 static gboolean gst_pylon_meta_init(GstMeta* meta, gpointer params,
                                     GstBuffer* buffer) {
-  GstPylonMeta* pylon_meta = (GstPylonMeta*)meta;
+  GstPylonMeta* pylon_meta = reinterpret_cast<GstPylonMeta*>(meta);
 
   (void)params;
   (void)buffer;
@@ -273,7 +275,7 @@ static gboolean gst_pylon_meta_init(GstMeta* meta, gpointer params,
 }
 
 static void gst_pylon_meta_free(GstMeta* meta, GstBuffer* buffer) {
-  GstPylonMeta* pylon_meta = (GstPylonMeta*)meta;
+  GstPylonMeta* pylon_meta = reinterpret_cast<GstPylonMeta*>(meta);
 
   (void)buffer;
   gst_structure_free(pylon_meta->chunks);
