@@ -31,7 +31,11 @@ else
 fi
 
 export LC_ALL=C
+# Camera emulator only. The golden must not depend on whatever USB3/GigE
+# cameras are attached to the host, so skip every real transport layer.
 export PYLON_CAMEMU=2
+export PYLONSRC_SKIP_TRANSPORT_LAYERS=usb,gige,cxp,cameralink
+unset GST_PYLON_SKIP_TL
 export GST_PLUGIN_PATH
 export LD_LIBRARY_PATH
 
@@ -45,6 +49,7 @@ fi
 # - collapse multiple blank lines to one
 # - normalize Filename (path varies) and Version (git hash varies)
 # - normalize child-property Default: lines (live camera state can vary)
+# - normalize the emulator DeviceVersion (it mirrors the installed pylon SDK build)
 normalize_inspect() {
   sed 's/[[:space:]]*$//' \
     | sed 's/^[[:space:]]*\t/\t/' \
@@ -54,6 +59,7 @@ normalize_inspect() {
     | sed '/^[[:space:]]\{20,\}/s/Default: true/Default: <bool>/g; /^[[:space:]]\{20,\}/s/Default: false/Default: <bool>/g' \
     | sed '/^[[:space:]]\{20,\}/s/Default: [0-9][0-9.]*, "[^"]*"/Default: <enum>/g' \
     | sed '/^[[:space:]]\{20,\}/s/Default: [0-9][0-9.e+-]*/Default: <num>/g' \
+    | sed '/^[[:space:]]\{20,\}/s/Default: "[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+"/Default: "<sdk-version>"/g' \
     | sed '/^[[:space:]]\{20,\}/s/Default: "(null)"/Default: <str>/g; /^[[:space:]]\{20,\}/s/Default: ""/Default: <str>/g' \
     | cat -s
 }

@@ -7,7 +7,7 @@ Factory Details:
 
 Plugin Details:
   Name                     pylon
-  Description              Basler/Pylon plugin for pylon SDK 12.2.1(1300)
+  Description              Basler/Pylon plugin for pylon SDK 12.5.2(1565)
   Filename                 libgstpylon.so
   Version                  PLACEHOLDER
   License                  BSD
@@ -644,7 +644,7 @@ Element Properties:
                                                                         String. Default: "none"
                                    DeviceVersion                      : Indicates the version of the device.
                                                                         flags: readable
-                                                                        String. Default: "12.2.1.1300"
+                                                                        String. Default: "<sdk-version>"
                                    DeviceFirmwareVersion              : Indicates the version of the device's firmware and software.
                                                                         flags: readable
                                                                         String. Default: "1.1"
@@ -664,27 +664,24 @@ Element Properties:
                                                                         Enum "_Emulation__0815_0000__DeviceTemperatureSelector" Default: <enum>
                                                                            (0): Coreboard          - The temperature is measured on the core board.
                                                                            (1): Sensor             - The temperature is measured on the image sensor.
+                                   DeviceSFNCVersionMajor             : Major version number of the SFNC specification that the camera is compatible with.
+                                                                        flags: readable
+                                                                        Integer64. Range: -9223372036854775808 - 9223372036854775807 Default: <num>
+                                   DeviceSFNCVersionMinor             : Minor version number of the SFNC specification that the camera is compatible with.
+                                                                        flags: readable
+                                                                        Integer64. Range: -9223372036854775808 - 9223372036854775807 Default: <num>
+                                   DeviceSFNCVersionSubMinor          : Subminor version number of the SFNC specification that the camera is compatible with.
+                                                                        flags: readable
+                                                                        Integer64. Range: -9223372036854775808 - 9223372036854775807 Default: <num>
+                                   TestEventPayload                   : Payload value to be carried by the next Test event generated via TestEventGenerate.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: -9223372036854775808 - 9223372036854775807 Default: <num>
+                                   PayloadSize                        : Size of the payload in bytes.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 4294967295 Default: <num>
                                    ForceFailedBufferCount             : Number of failed buffers to generate.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
                                                                         Integer64. Range: 1 - 1024 Default: <num>
-                                   PgiEnable                          : Enables the Basler PGI image optimization algorithm.
-                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Boolean. Default: <bool>
-                                   PgiSharpnessEnhancement            : Sharpening value to be applied.
-                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Double. Range: 1 - 4 Default: <num>
-                                   PgiSharpnessEnhancementRaw         : Sharpening value to be applied (raw value).
-                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 512 - 2047 Default: <num>
-                                   PgiNoiseReduction                  : Amount of noise reduction to be applied.
-                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Double. Range: 0 - 2 Default: <num>
-                                   PgiThreads                         : Number of host worker threads used for PGI processing. 0 = auto (physical cores).
-                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 0 - 256 Default: <num>
-                                   PgiBandHeight                      : Height of the image bands used for PGI processing. 0 = auto (cache-aware).
-                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 0 - 4096 Default: <num>
                                    BslImageCompressionBCBDecompressedImageSize:
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
                                                                         Integer64. Range: -9223372036854775808 - 9223372036854775807 Default: <num>
@@ -1281,7 +1278,7 @@ Element Properties:
                                                                         String. Default: "none"
                                    DeviceVersion                      : Indicates the version of the device.
                                                                         flags: readable
-                                                                        String. Default: "12.2.1.1300"
+                                                                        String. Default: "<sdk-version>"
                                    DeviceFirmwareVersion              : Indicates the version of the device's firmware and software.
                                                                         flags: readable
                                                                         String. Default: "1.1"
@@ -1301,27 +1298,24 @@ Element Properties:
                                                                         Enum "_Emulation__0815_0001__DeviceTemperatureSelector" Default: <enum>
                                                                            (0): Coreboard          - The temperature is measured on the core board.
                                                                            (1): Sensor             - The temperature is measured on the image sensor.
+                                   DeviceSFNCVersionMajor             : Major version number of the SFNC specification that the camera is compatible with.
+                                                                        flags: readable
+                                                                        Integer64. Range: -9223372036854775808 - 9223372036854775807 Default: <num>
+                                   DeviceSFNCVersionMinor             : Minor version number of the SFNC specification that the camera is compatible with.
+                                                                        flags: readable
+                                                                        Integer64. Range: -9223372036854775808 - 9223372036854775807 Default: <num>
+                                   DeviceSFNCVersionSubMinor          : Subminor version number of the SFNC specification that the camera is compatible with.
+                                                                        flags: readable
+                                                                        Integer64. Range: -9223372036854775808 - 9223372036854775807 Default: <num>
+                                   TestEventPayload                   : Payload value to be carried by the next Test event generated via TestEventGenerate.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: -9223372036854775808 - 9223372036854775807 Default: <num>
+                                   PayloadSize                        : Size of the payload in bytes.
+                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                                                                        Integer64. Range: 0 - 4294967295 Default: <num>
                                    ForceFailedBufferCount             : Number of failed buffers to generate.
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
                                                                         Integer64. Range: 1 - 1024 Default: <num>
-                                   PgiEnable                          : Enables the Basler PGI image optimization algorithm.
-                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Boolean. Default: <bool>
-                                   PgiSharpnessEnhancement            : Sharpening value to be applied.
-                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Double. Range: 1 - 4 Default: <num>
-                                   PgiSharpnessEnhancementRaw         : Sharpening value to be applied (raw value).
-                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 512 - 2047 Default: <num>
-                                   PgiNoiseReduction                  : Amount of noise reduction to be applied.
-                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Double. Range: 0 - 2 Default: <num>
-                                   PgiThreads                         : Number of host worker threads used for PGI processing. 0 = auto (physical cores).
-                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 0 - 256 Default: <num>
-                                   PgiBandHeight                      : Height of the image bands used for PGI processing. 0 = auto (cache-aware).
-                                                                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
-                                                                        Integer64. Range: 0 - 4096 Default: <num>
                                    BslImageCompressionBCBDecompressedImageSize:
                                                                         flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
                                                                         Integer64. Range: -9223372036854775808 - 9223372036854775807 Default: <num>
