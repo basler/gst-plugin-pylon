@@ -247,8 +247,10 @@ void gst_buffer_add_pylon_meta_with_stride(
       gst_buffer_add_meta(buffer, GST_PYLON_META_INFO, NULL));
 
   /* Add meta to GstPylonMeta */
-  self->block_id = grab_result_ptr->GetBlockID();
+  const guint64 raw_block_id = grab_result_ptr->GetBlockID();
   self->image_number = grab_result_ptr->GetImageNumber();
+  self->block_id =
+      (raw_block_id != G_MAXUINT64) ? raw_block_id : self->image_number;
   self->skipped_images = grab_result_ptr->GetNumberOfSkippedImages();
   gst_pylon_extract_meta_geometry(grab_result_ptr, self, override_stride);
 

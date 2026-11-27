@@ -69,8 +69,9 @@ All notable changes to this project will be documented in this file.
 - Relaxed PFS nodemap float verification on load
 - Preserved `AcquisitionFrameRate` set via child property or PFS for hardware
   triggering
-- `GstPylonMeta.block_id` now stores transport `GetBlockID()` (with `GstBuffer`
-  offset falling back to `image_number` when transport reports `UINT64_MAX`)
+- `GstPylonMeta.block_id` now stores transport `GetBlockID()` (falling back to
+  `image_number` when the transport reports `UINT64_MAX`, matching `GstBuffer`
+  offset)
 - `capture-error=keep` marks delivered buffers with `GST_BUFFER_FLAG_CORRUPTED`
 - Hardened NVMM `NvBufSurfaceAllocate` / `NvBufSurfaceMap` error handling,
   `NvBufSurfaceUnMap` on free, and strict `memory:NVMM` format filtering
