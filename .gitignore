@@ -37,3 +37,6 @@ subprojects/packagecache
 /debian
 # Local container package outputs
 /deb-out-*/
+
+# Local git worktrees (embedded repos, never content)
+.worktrees/
