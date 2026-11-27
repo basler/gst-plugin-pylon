@@ -55,7 +55,17 @@ def build_id(source_root, version):
     if os.path.exists(os.path.join(source_root, ".git")):
         rev = _git(source_root, "rev-parse", "--short=12", "HEAD")
         if rev:
-            status = _git(source_root, "status", "--porcelain", "--untracked-files=no")
+            # packaging/debian/changelog is rewritten by the .deb build itself
+            # (tools/patch_deb_changelog.sh); that is not a source change.
+            status = _git(
+                source_root,
+                "status",
+                "--porcelain",
+                "--untracked-files=no",
+                "--",
+                ".",
+                ":(exclude)packaging/debian/changelog",
+            )
             dirty = bool(status)
             tag = _git(source_root, "describe", "--exact-match", "--tags", "HEAD")
             if tag == "v" + version and not dirty:
