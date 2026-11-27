@@ -354,7 +354,7 @@ jobs:
           . build_python/bin/activate
           meson setup builddir_asan -Db_sanitize=address,undefined -Db_lundef=false -Dpython-bindings=disabled
           ninja -C builddir_asan
-          meson test -C builddir_asan generic_meta generic_nvmmcolor generic_featureprior generic_imagehandler --print-errorlogs
+          meson test -C builddir_asan generic_meta generic_nvmmcolor generic_featureprior generic_imagehandler generic_gendc --print-errorlogs
 
   build_windows:
     name: Build & test Windows (x86_64)

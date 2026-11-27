@@ -578,9 +578,15 @@ static void gst_pylon_src_set_property(GObject* object, guint property_id,
     case PROP_NVSURFACE_LAYOUT:
       self->nvsurface_layout =
           static_cast<GstPylonNvsurfaceLayoutEnum>(g_value_get_enum(value));
+      if (self->pylon) {
+        gst_pylon_set_nvsurface_layout(self->pylon, self->nvsurface_layout);
+      }
       break;
     case PROP_GPU_ID:
       self->gpu_id = g_value_get_uint(value);
+      if (self->pylon) {
+        gst_pylon_set_gpu_id(self->pylon, self->gpu_id);
+      }
       break;
 #endif
     default:
@@ -1396,20 +1402,22 @@ static void gst_plyon_src_add_metadata(GstPylonSrc* self, GstBuffer* buf) {
                                           GST_CLOCK_TIME_NONE);
   gst_caps_unref(ref);
 
-  /* add video meta data */
+  /* add video meta data (raw video formats only; Bayer has format UNKNOWN) */
   format = GST_VIDEO_INFO_FORMAT(&self->video_info);
   width = GST_VIDEO_INFO_WIDTH(&self->video_info);
   height = GST_VIDEO_INFO_HEIGHT(&self->video_info);
   n_planes = GST_VIDEO_INFO_N_PLANES(&self->video_info);
 
-  /* assuming pylon formats come in a single plane */
-  for (guint p = 0; p < n_planes; p++) {
-    stride[p] = pylon_meta->stride;
-  }
+  if (format != GST_VIDEO_FORMAT_UNKNOWN && n_planes > 0) {
+    /* assuming pylon formats come in a single plane */
+    for (guint p = 0; p < n_planes; p++) {
+      stride[p] = pylon_meta->stride;
+    }
 
-  gst_buffer_add_video_meta_full(buf, GST_VIDEO_FRAME_FLAG_NONE, format, width,
-                                 height, n_planes, self->video_info.offset,
-                                 stride);
+    gst_buffer_add_video_meta_full(buf, GST_VIDEO_FRAME_FLAG_NONE, format,
+                                   width, height, n_planes,
+                                   self->video_info.offset, stride);
+  }
 }
 
 /* ask the subclass to create a buffer with offset and size, the default

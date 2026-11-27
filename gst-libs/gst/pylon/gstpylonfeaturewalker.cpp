@@ -231,6 +231,70 @@ std::vector<std::string> GstPylonFeatureWalker::process_selector_features(
   return enum_values;
 }
 
+namespace {
+
+class SelectorStateGuard {
+ public:
+  explicit SelectorStateGuard(GenApi::INode* selector_node)
+      : selector_node_(selector_node) {
+    if (!selector_node_ || !GenApi::IsReadable(selector_node_)) {
+      return;
+    }
+    try {
+      switch (selector_node_->GetPrincipalInterfaceType()) {
+        case GenApi::intfIEnumeration:
+          saved_value_ = Pylon::CEnumParameter(selector_node_).GetIntValue();
+          has_saved_ = true;
+          break;
+        case GenApi::intfIInteger:
+          saved_value_ = Pylon::CIntegerParameter(selector_node_).GetValue();
+          has_saved_ = true;
+          break;
+        default:
+          break;
+      }
+    } catch (const GenICam::GenericException&) {
+      has_saved_ = false;
+    }
+  }
+
+  ~SelectorStateGuard() {
+    if (!has_saved_ || !selector_node_ || !GenApi::IsWritable(selector_node_)) {
+      return;
+    }
+    try {
+      switch (selector_node_->GetPrincipalInterfaceType()) {
+        case GenApi::intfIEnumeration: {
+          Pylon::CEnumParameter p(selector_node_);
+          if (p.GetIntValue() != saved_value_) {
+            p.SetIntValue(saved_value_);
+          }
+          break;
+        }
+        case GenApi::intfIInteger: {
+          Pylon::CIntegerParameter p(selector_node_);
+          if (p.GetValue() != saved_value_) {
+            p.SetValue(saved_value_);
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    } catch (const GenICam::GenericException& e) {
+      GST_DEBUG("Could not restore selector '%s': %s",
+                selector_node_->GetName().c_str(), e.GetDescription());
+    }
+  }
+
+ private:
+  GenApi::INode* selector_node_ = nullptr;
+  gint64 saved_value_ = 0;
+  bool has_saved_ = false;
+};
+
+}  // namespace
+
 std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     GenApi::INode* node, GstPylonParamFactory& param_factory) {
   GenApi::INode* selector_node = NULL;
@@ -249,6 +313,11 @@ std::vector<GParamSpec*> gst_pylon_camera_handle_node(
     selector_node = NULL;
   }
 
+  /* Restore any selector modified during property introspection (e.g.
+   * Stream.TransmissionType, TriggerSelector, CounterSelector) back to its
+   * original hardware/driver state before returning. */
+  SelectorStateGuard selector_guard(selector_node);
+
   for (auto& enum_value : enum_values) {
     try {
       if (NULL != selector_node) {
@@ -265,8 +334,15 @@ std::vector<GParamSpec*> gst_pylon_camera_handle_node(
         }
       }
 
-      specs_list.push_back(
-          param_factory.make_param(node, selector_node, selector_value));
+      GParamSpec* spec =
+          param_factory.make_param(node, selector_node, selector_value);
+      if (spec) {
+        if (spec->flags & (G_PARAM_READABLE | G_PARAM_WRITABLE)) {
+          specs_list.push_back(spec);
+        } else {
+          g_param_spec_sink(spec);
+        }
+      }
     } catch (const Pylon::GenericException& e) {
       GST_DEBUG("Unable to fully install property '%s-%s' : %s",
                 node->GetName().c_str(), enum_value.c_str(),

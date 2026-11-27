@@ -61,7 +61,30 @@
 
 /* retry open camera limits in case of collision with other process */
 constexpr int FAILED_OPEN_RETRY_COUNT = 30;
-constexpr int FAILED_OPEN_RETRY_WAIT_TIME_MS = 1000;
+constexpr int FAILED_OPEN_RETRY_WAIT_TIME_MS = 350;
+
+namespace {
+
+int gst_pylon_get_open_retry_count() {
+  const gchar* env = g_getenv("PYLONSRC_OPEN_RETRIES");
+  if (env && env[0] != '\0') {
+    char* endptr = nullptr;
+    const long parsed = std::strtol(env, &endptr, 10);
+    if (endptr != env && parsed >= 0 && parsed <= 600) {
+      return static_cast<int>(parsed);
+    }
+  }
+  return FAILED_OPEN_RETRY_COUNT;
+}
+
+gulong gst_pylon_jittered_backoff_us(int retry_idx) {
+  const int base_ms =
+      std::min(FAILED_OPEN_RETRY_WAIT_TIME_MS, 100 + retry_idx * 50);
+  const int jitter_ms = g_random_int_range(0, 125);
+  return static_cast<gulong>(base_ms + jitter_ms) * 1000UL;
+}
+
+}  // namespace
 
 const std::vector<GstStPixelFormats> gst_structure_formats = {
     {"video/x-raw", pixel_format_mapping_raw},
@@ -138,7 +161,13 @@ void GstPylon::Open(const gchar* device_user_name,
     device_info.SetSerialNumber(device_serial_number);
   }
 
+  const bool skip_tl_active = []() {
+    const gchar* env = g_getenv("PYLONSRC_SKIP_TRANSPORT_LAYERS");
+    return env && env[0] != '\0';
+  }();
+
   const bool open_by_filter_directly =
+      !skip_tl_active &&
       (device_serial_number != nullptr || device_user_name != nullptr) &&
       device_index == -1;
 
@@ -190,21 +219,77 @@ void GstPylon::Open(const gchar* device_user_name,
   GST_INFO_OBJECT(gstpylonsrc, "Selected device %s",
                   device_info.GetSerialNumber().c_str());
 
+  const int max_open_retries = gst_pylon_get_open_retry_count();
+
   if (open_by_filter_directly) {
+    bool attached = false;
+    std::string last_error;
     try {
       camera->Attach(factory.CreateDevice(device_info));
       camera->Open();
+      attached = true;
     } catch (GenICam::GenericException& e) {
-      std::string msg = "No devices found matching the specified criteria";
-      msg += ": ";
-      msg += e.GetDescription();
-      throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+      last_error = e.GetDescription();
+      try {
+        if (camera->IsPylonDeviceAttached()) {
+          camera->DestroyDevice();
+        }
+      } catch (const GenICam::GenericException&) {
+      }
+    }
+
+    if (!attached) {
+      /* Distinguish a non-existent device (fail immediately) from a physical
+       * device that is present on the bus but temporarily locked or contended
+       * during multi-process startup/handoff. */
+      Pylon::DeviceInfoList_t matching_devices;
+      gst_pylon_enumerate_devices(matching_devices, &filter);
+
+      if (matching_devices.empty()) {
+        std::string msg =
+            "No devices found matching the specified criteria: " + last_error;
+        throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+      }
+
+      if (matching_devices.size() > 1) {
+        std::string msg = "At least " +
+                          std::to_string(matching_devices.size()) +
+                          " devices match the specified criteria, use "
+                          "\"device-index\", \"device-serial-number\" or "
+                          "\"device-user-name\" to select one unambiguously";
+        throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
+      }
+
+      device_info = matching_devices.at(0);
+      for (int retry_idx = 0; retry_idx < max_open_retries; ++retry_idx) {
+        g_usleep(gst_pylon_jittered_backoff_us(retry_idx));
+        try {
+          camera->Attach(factory.CreateDevice(device_info));
+          camera->Open();
+          attached = true;
+          break;
+        } catch (GenICam::GenericException& e) {
+          last_error = e.GetDescription();
+          GST_INFO_OBJECT(gstpylonsrc, "Retrying open of %s (%d/%d): %s",
+                          device_info.GetSerialNumber().c_str(), retry_idx + 1,
+                          max_open_retries, e.GetDescription());
+          try {
+            if (camera->IsPylonDeviceAttached()) {
+              camera->DestroyDevice();
+            }
+          } catch (const GenICam::GenericException&) {
+          }
+        }
+      }
+
+      if (!attached) {
+        throw Pylon::GenericException(last_error.c_str(), __FILE__, __LINE__);
+      }
     }
   } else {
     std::string last_error;
     bool attached = false;
-    for (auto retry_idx = 0; retry_idx <= FAILED_OPEN_RETRY_COUNT;
-         retry_idx++) {
+    for (int retry_idx = 0; retry_idx <= max_open_retries; retry_idx++) {
       try {
         camera->Attach(factory.CreateDevice(device_info));
         camera->Open();
@@ -221,7 +306,9 @@ void GstPylon::Open(const gchar* device_user_name,
           }
         } catch (const GenICam::GenericException&) {
         }
-        g_usleep(FAILED_OPEN_RETRY_WAIT_TIME_MS * 1000);
+        if (retry_idx < max_open_retries) {
+          g_usleep(gst_pylon_jittered_backoff_us(retry_idx));
+        }
       }
     }
 

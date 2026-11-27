@@ -69,6 +69,7 @@ else
   pygstpylon_plugin_path = meson.project_build_root() / 'ext' / 'pylon'
   pygstpylon_test_env = {
     'PYLON_CAMEMU': '4',
+    'PYLONSRC_SKIP_TRANSPORT_LAYERS': 'usb,gige,cxp,cameralink',
     'PYLON_ROOT': pygstpylon_pylon_root,
     'PYTHONPATH': meson.current_build_dir(),
     'GST_PLUGIN_PATH': pygstpylon_plugin_path,

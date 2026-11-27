@@ -12,6 +12,10 @@ option('python-bindings', type : 'feature', value : 'disabled', yield : true,
        description: 'Enable meta Python bindings')
 option('nvmm', type : 'feature', value : 'auto',
        description: 'NVMM buffer support (DeepStream nvbufsurface + CUDA)')
+option('nvds-incdir', type : 'string', value : '',
+       description: 'Optional custom include directory containing nvbufsurface.h')
+option('nvds-libdir', type : 'string', value : '',
+       description: 'Optional custom library directory containing libnvbufsurface.so')
 
 # Common options
 option('package-name', type : 'string', yield : true,

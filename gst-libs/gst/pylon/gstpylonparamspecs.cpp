@@ -114,6 +114,7 @@ static void gst_pylon_param_spec_selector_epilog(GParamSpec *spec,
                                                  guint64 selector_value) {
   static GQuark quark = g_quark_from_static_string(QSTRING);
 
+  g_return_if_fail(spec);
   g_return_if_fail(feature_name);
   g_return_if_fail(selector_name);
 

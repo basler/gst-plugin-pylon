@@ -46,6 +46,8 @@
 
 GstPylonDsNvmmBufferFactory::GstPylonDsNvmmBufferFactory(
     const GstPylonNvsurfaceLayoutEnum nvsurface_layout, const guint gpu_id) {
+  this->layout = NVBUF_LAYOUT_PITCH;
+  this->create_params = {};
   this->gpu_id = gpu_id;
 
   switch (nvsurface_layout) {

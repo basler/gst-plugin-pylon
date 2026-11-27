@@ -124,14 +124,22 @@ void GstPylonInspectCache::Set(const std::string& schema_key,
       std::string(GST_PYLON_INTROSPECTION_CACHE_MAGIC) +
       GST_PYLON_INTROSPECTION_CACHE_LENGTH + std::to_string(content.size()) +
       "\n\n" + content;
+  gchar* tmp_path = g_strdup_printf("%s.tmp.%u", filepath.c_str(),
+                                    static_cast<guint>(g_random_int()));
   GError* err = NULL;
-  if (!g_file_set_contents(filepath.c_str(), serialized.c_str(),
+  if (!g_file_set_contents(tmp_path, serialized.c_str(),
                            static_cast<gssize>(serialized.size()), &err)) {
     GST_WARNING("Could not write introspection cache to %s: %s",
                 filepath.c_str(), err ? err->message : "unknown error");
     if (err) g_error_free(err);
-  } else if (g_chmod(filepath.c_str(), 0600) != 0) {
-    GST_WARNING("Failed to set permissions on introspection cache file %s: %s",
-                filepath.c_str(), strerror(errno));
+    g_unlink(tmp_path);
+  } else {
+    (void)g_chmod(tmp_path, 0600);
+    if (g_rename(tmp_path, filepath.c_str()) != 0) {
+      GST_WARNING("Could not rename introspection cache into %s: %s",
+                  filepath.c_str(), strerror(errno));
+      g_unlink(tmp_path);
+    }
   }
+  g_free(tmp_path);
 }

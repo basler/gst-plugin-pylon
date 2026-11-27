@@ -69,16 +69,6 @@ const std::unordered_set<std::string> &gen2_exclusive_families() {
   return families;
 }
 
-/* Camera families (DeviceFamilyName) shared across first- and
- * second-generation models (e.g. dart 1st gen vs. dart 2), which therefore
- * require the structured DeviceFirmwareVersion format to disambiguate. */
-const std::unordered_set<std::string> &gen2_shared_families() {
-  static const std::unordered_set<std::string> families = {
-      "dart",
-  };
-  return families;
-}
-
 /* Features that are always locked when TLParamsLocked is set to 1. */
 const std::unordered_set<std::string> &gen2_tl_always_locked() {
   static const std::unordered_set<std::string> features = {
@@ -330,8 +320,10 @@ GstPylonDeviceProfile gst_pylon_detect_device_profile(
     return GstPylonDeviceProfile::kBaslerGen2;
   }
 
-  if (gen2_shared_families().count(device_family_name) > 0 &&
-      is_structured_firmware_version(device_firmware_version)) {
+  /* All Basler 2nd-generation firmware uses the structured
+   * "p=.../s=.../v=..." DeviceFirmwareVersion string regardless of family
+   * marketing name (dart, ace 2, boost, racer 2, stereo, etc.). */
+  if (is_structured_firmware_version(device_firmware_version)) {
     return GstPylonDeviceProfile::kBaslerGen2;
   }
 

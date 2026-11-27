@@ -24,6 +24,7 @@ else
       'BUILD_DIR': build_root,
       'BUILD_PREFIX': install_prefix,
       'PYLON_CAMEMU': '2',
+      'PYLONSRC_SKIP_TRANSPORT_LAYERS': 'usb,gige,cxp,cameralink',
       'PYLON_ROOT': compat_pylon_root,
     },
     timeout: 90,

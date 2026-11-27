@@ -691,10 +691,6 @@ void gst_pylon_query_feature_properties_double(
 
   gchar* feature_cache_name = NULL;
   if (selector) {
-    /* Set selector value value */
-    gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
-                                        selector_value);
-
     feature_cache_name = gst_pylon_create_selected_name(
         nodemap, node->GetName().c_str(), selector->GetName().c_str(),
         selector_value);
@@ -706,6 +702,10 @@ void gst_pylon_query_feature_properties_double(
   if (!feature_cache.GetDoubleProps(feature_cache_name,
                                     minimum_under_all_settings,
                                     maximum_under_all_settings, flags)) {
+    if (selector) {
+      gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
+                                          selector_value);
+    }
     flags = gst_pylon_query_access(nodemap, node, device_profile);
     if (feature_cache.IsLimitProbeEnabled()) {
       gst_pylon_find_limits<Pylon::CFloatParameter, gdouble>(
@@ -737,8 +737,6 @@ void gst_pylon_query_feature_properties_flags(
 
   gchar* feature_cache_name = NULL;
   if (selector) {
-    gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
-                                        selector_value);
     feature_cache_name = gst_pylon_create_selected_name(
         nodemap, node->GetName().c_str(), selector->GetName().c_str(),
         selector_value);
@@ -747,6 +745,10 @@ void gst_pylon_query_feature_properties_flags(
   }
 
   if (!feature_cache.GetFlags(feature_cache_name, flags)) {
+    if (selector) {
+      gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
+                                          selector_value);
+    }
     flags = gst_pylon_query_access(nodemap, node, device_profile);
     feature_cache.SetFlags(feature_cache_name, flags);
   }
@@ -764,14 +766,9 @@ void gst_pylon_query_feature_properties_integer(
 
   gchar* feature_cache_name = NULL;
   if (selector) {
-    /* Set selector value value */
-    gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
-                                        selector_value);
-
     feature_cache_name = gst_pylon_create_selected_name(
         nodemap, node->GetName().c_str(), selector->GetName().c_str(),
         selector_value);
-
   } else {
     feature_cache_name = g_strdup(node->GetName().c_str());
   }
@@ -779,6 +776,10 @@ void gst_pylon_query_feature_properties_integer(
   /* If access to a feature cache entry fails, create new props dynamically */
   if (!feature_cache.GetIntProps(feature_cache_name, minimum_under_all_settings,
                                  maximum_under_all_settings, flags)) {
+    if (selector) {
+      gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
+                                          selector_value);
+    }
     flags = gst_pylon_query_access(nodemap, node, device_profile);
     if (feature_cache.IsLimitProbeEnabled()) {
       gst_pylon_find_limits<Pylon::CIntegerParameter, gint64>(

@@ -48,6 +48,7 @@
 #include "gstpylon-private.h"
 #include "gstpylon.h"
 #include "gstpylondisconnecthandler.h"
+#include "gstpylongendc.h"
 #include "gstpylonimagehandler.h"
 #include "gstpyloninspect.h"
 #include "gstpylonschema.h"
@@ -263,6 +264,59 @@ gboolean GstPylon::Capture(GstBuffer** buf,
       const bool is_sub16_mono = (px_type == Pylon::PixelType_Mono10 ||
                                   px_type == Pylon::PixelType_Mono12);
 
+#ifdef NVMM_ENABLED
+      if (MEM_NVMM == mem_type) {
+        NvBufSurface* surf = reinterpret_cast<NvBufSurface*>(
+            (*grab_result_ptr)->GetBufferContext());
+
+        std::vector<uint8_t> decomp_buf(comp_info.decompressedImageSize);
+        size_t out_sz = decomp_buf.size();
+        decompressor.DecompressImage(decomp_buf.data(), &out_sz,
+                                     *grab_result_ptr);
+
+        size_t decomp_stride = 0;
+        if (!Pylon::ComputeStride(decomp_stride, px_type,
+                                  static_cast<uint32_t>(comp_info.width),
+                                  comp_info.paddingX)) {
+          decomp_stride = (static_cast<size_t>(comp_info.width) *
+                           Pylon::BitPerPixel(px_type)) >>
+                          3;
+        }
+        const size_t src_width = (static_cast<size_t>(comp_info.width) *
+                                  Pylon::BitPerPixel(px_type)) >>
+                                 3;
+
+        cudaError_t cuda_err = cudaMemcpy2D(
+            surf->surfaceList[0].mappedAddr.addr[0], surf->surfaceList[0].pitch,
+            decomp_buf.data(), decomp_stride, src_width, comp_info.height,
+            cudaMemcpyDefault);
+        if (cuda_err != cudaSuccess) {
+          g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
+                      "Error copying decompressed memory to device");
+          delete grab_result_ptr;
+          return FALSE;
+        }
+
+        effective_stride = decomp_stride;
+        auto buffer_ref = new GrabResultPair(buffer_factory, grab_result_ptr);
+        *buf = gst_buffer_new_wrapped_full(
+            GST_MEMORY_FLAG_READONLY, surf, sizeof(*surf), 0, sizeof(*surf),
+            buffer_ref, static_cast<GDestroyNotify>(free_ptr_grab_result));
+
+        try {
+          gst_pylon_add_result_meta(this, *buf, *grab_result_ptr,
+                                    effective_stride);
+        } catch (const Pylon::GenericException& e) {
+          g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
+                      "Failed to attach Pylon meta: %s", e.GetDescription());
+          gst_buffer_unref(*buf);
+          *buf = NULL;
+          return FALSE;
+        }
+        return TRUE;
+      }
+#endif
+
       if (is_sub16_mono) {
         std::vector<uint8_t> raw_unpacked(comp_info.decompressedImageSize);
         size_t out_sz = raw_unpacked.size();
@@ -331,26 +385,32 @@ gboolean GstPylon::Capture(GstBuffer** buf,
     return TRUE;
   }
 
+  /* Resolve image payload from either standard Image/Chunk payloads or GenDC
+   * containers (GeV 3.0 GenDC-only and USB3 optional GenDC). */
+  GstPylonResolvedPayload resolved;
+  if (!gst_pylon_resolve_grab_payload(*grab_result_ptr, keep_failed_grab,
+                                      resolved, err)) {
+    delete grab_result_ptr;
+    return FALSE;
+  }
+
 #ifdef NVMM_ENABLED
   if (MEM_NVMM == mem_type) {
     NvBufSurface* surf =
         reinterpret_cast<NvBufSurface*>((*grab_result_ptr)->GetBufferContext());
 
-    size_t src_stride;
-    (*grab_result_ptr)->GetStride(src_stride);
-
     /* calc src width in byte from pixel type info */
-    const auto src_width_pix = (*grab_result_ptr)->GetWidth();
-    const auto src_bit_per_pix =
-        Pylon::BitPerPixel((*grab_result_ptr)->GetPixelType());
+    const auto src_width_pix = resolved.width;
+    const auto src_bit_per_pix = Pylon::BitPerPixel(resolved.pixel_type);
 
     g_assert(0 == (src_width_pix * src_bit_per_pix) % 8);
     const size_t src_width = (src_width_pix * src_bit_per_pix) >> 3;
+    const size_t src_stride = resolved.stride > 0 ? resolved.stride : src_width;
 
-    cudaError_t cuda_err = cudaMemcpy2D(
-        surf->surfaceList[0].mappedAddr.addr[0], surf->surfaceList[0].pitch,
-        (*grab_result_ptr)->GetBuffer(), src_stride, src_width,
-        (*grab_result_ptr)->GetHeight(), cudaMemcpyDefault);
+    cudaError_t cuda_err =
+        cudaMemcpy2D(surf->surfaceList[0].mappedAddr.addr[0],
+                     surf->surfaceList[0].pitch, resolved.data, src_stride,
+                     src_width, resolved.height, cudaMemcpyDefault);
     if (cuda_err != cudaSuccess) {
       g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
                   "Error copying memory to device");
@@ -358,27 +418,29 @@ gboolean GstPylon::Capture(GstBuffer** buf,
       return FALSE;
     }
 
+    effective_stride = src_stride;
     auto buffer_ref = new GrabResultPair(buffer_factory, grab_result_ptr);
     *buf = gst_buffer_new_wrapped_full(
         GST_MEMORY_FLAG_READONLY, surf, sizeof(*surf), 0, sizeof(*surf),
         buffer_ref, static_cast<GDestroyNotify>(free_ptr_grab_result));
   } else {
 #endif
-    const Pylon::EPixelType px_type = (*grab_result_ptr)->GetPixelType();
+    const Pylon::EPixelType px_type = resolved.pixel_type;
     if (!keep_failed_grab && (px_type == Pylon::PixelType_Mono10 ||
                               px_type == Pylon::PixelType_Mono12)) {
-      const uint32_t width = (*grab_result_ptr)->GetWidth();
-      const uint32_t height = (*grab_result_ptr)->GetHeight();
-      size_t src_stride = static_cast<size_t>(width) * 2;
-      (*grab_result_ptr)->GetStride(src_stride);
+      const uint32_t width = resolved.width;
+      const uint32_t height = resolved.height;
+      const size_t src_stride = resolved.stride > 0
+                                    ? resolved.stride
+                                    : static_cast<size_t>(width) * 2;
 
       const gsize dst_size = static_cast<gsize>(width) * height * 2;
       GstBuffer* out_buf = gst_buffer_new_allocate(NULL, dst_size, NULL);
       GstMapInfo map;
       gst_buffer_map(out_buf, &map, GST_MAP_WRITE);
       gst_pylon_scale_mono_sub16_to_gray16(
-          static_cast<const uint16_t*>((*grab_result_ptr)->GetBuffer()),
-          src_stride, reinterpret_cast<uint16_t*>(map.data), width, height,
+          static_cast<const uint16_t*>(resolved.data), src_stride,
+          reinterpret_cast<uint16_t*>(map.data), width, height,
           px_type == Pylon::PixelType_Mono10 ? 10U : 12U);
       gst_buffer_unmap(out_buf, &map);
 
@@ -401,11 +463,14 @@ gboolean GstPylon::Capture(GstBuffer** buf,
       return TRUE;
     }
 
-    gsize buffer_size = (*grab_result_ptr)->GetImageSize();
+    if (resolved.stride > 0) {
+      effective_stride = resolved.stride;
+    }
+    gsize buffer_size = resolved.size;
     auto buffer_ref = new GrabResultPair(buffer_factory, grab_result_ptr);
     *buf = gst_buffer_new_wrapped_full(
-        static_cast<GstMemoryFlags>(0), (*grab_result_ptr)->GetBuffer(),
-        buffer_size, 0, buffer_size, buffer_ref,
+        static_cast<GstMemoryFlags>(0), resolved.data, buffer_size, 0,
+        buffer_size, buffer_ref,
         static_cast<GDestroyNotify>(free_ptr_grab_result));
 #ifdef NVMM_ENABLED
   }

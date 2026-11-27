@@ -23,6 +23,12 @@ All notable changes to this project will be documented in this file.
   (`bggr10le`, `bggr12le`, `bggr16le`, etc. on GStreamer ≥ 1.24)
 - Basler Compression Beyond transparent decompression via
   `Pylon::CImageDecompressor` (#98, #99)
+- Zero-copy GenDC container (`PayloadType_GenDC`) image component extraction and
+  metadata resolution for GeV 3.0 GenDC-only cameras and USB3 Vision cameras
+  with optional `GenDCStreamingMode` (`gstpylongendc`, `generic_gendc`)
+- Multi-process camera startup coordination: direct filter open with bounded
+  jittered retry on transient device contention while failing immediately on
+  non-existent devices, plus process-safe atomic cache file commits
 - GenICam `ICommand` execution via `execute-command` action signal on
   `pylonsrc` (supporting selector syntax such as `TriggerSoftware-FrameStart`,
   #58)
@@ -45,6 +51,15 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Eliminated double `UserSetLoad` execution during session startup
+- Restored GenICam selector state (including `Stream.TransmissionType`,
+  `TriggerSelector`, `CounterSelector`, etc.) after property introspection and
+  skipped selector writes on warm cache hits, fixing GigE Vision stream routing
+  and reducing warm-start latency
+- Registered all implemented `GenApi::IEnumeration` entries in `GEnumClass` and
+  guarded unavailable/out-of-range `GParamSpec` defaults, eliminating GLib
+  critical assertions on real USB3 and GigE Vision cameras
+- Linked dynamic `libcudart` instead of `cudart_static` in NVMM/DeepStream
+  builds and ensured `MEM_NVMM` handles GenDC and Compression Beyond payloads
 - Made dynamic `GstPylonObject` private offset per-subclass and thread-safe for
   multi-camera pipelines, and cleaned up sessions opened in `NULL` state on
   finalize

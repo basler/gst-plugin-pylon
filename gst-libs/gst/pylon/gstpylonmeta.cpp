@@ -185,6 +185,53 @@ static void gst_pylon_meta_fill_result_chunks(
   }
 }
 
+/* Extract image metadata from either a regular image grab result or a GenDC
+ * container's primary image component. Note: any CPylonDataContainer /
+ * CPylonDataComponent created here is destroyed before returning so the grab
+ * result's buffer refcount is not held past this call. */
+static void gst_pylon_extract_meta_geometry(
+    const Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr,
+    GstPylonMeta* self, gsize override_stride) {
+  if (grab_result_ptr->GrabSucceeded() &&
+      grab_result_ptr->GetPayloadType() == Pylon::PayloadType_GenDC) {
+    try {
+      Pylon::CPylonDataComponent comp =
+          grab_result_ptr->GetFirstImageDataComponent(false);
+      if (comp.IsValid()) {
+        self->offset.offset_x = comp.GetOffsetX();
+        self->offset.offset_y = comp.GetOffsetY();
+        const uint64_t comp_ts = comp.GetTimeStamp();
+        self->timestamp =
+            comp_ts != 0 ? comp_ts : grab_result_ptr->GetTimeStamp();
+        if (override_stride > 0) {
+          self->stride = override_stride;
+        } else {
+          size_t comp_stride = 0;
+          self->stride = comp.GetStride(comp_stride) ? comp_stride : 0;
+        }
+        return;
+      }
+    } catch (const GenICam::GenericException&) {
+      /* Fall back to grab result top-level fields below */
+    }
+  }
+
+  self->offset.offset_x = grab_result_ptr->GetOffsetX();
+  self->offset.offset_y = grab_result_ptr->GetOffsetY();
+  self->timestamp = grab_result_ptr->GetTimeStamp();
+  if (override_stride > 0) {
+    self->stride = override_stride;
+  } else {
+    try {
+      if (!grab_result_ptr->GetStride(self->stride)) {
+        self->stride = 0;
+      }
+    } catch (const Pylon::GenericException&) {
+      self->stride = 0;
+    }
+  }
+}
+
 void gst_buffer_add_pylon_meta_with_stride(
     GstBuffer* buffer,
     const Pylon::CBaslerUniversalGrabResultPtr& grab_result_ptr,
@@ -201,20 +248,7 @@ void gst_buffer_add_pylon_meta_with_stride(
   self->block_id = grab_result_ptr->GetBlockID();
   self->image_number = grab_result_ptr->GetImageNumber();
   self->skipped_images = grab_result_ptr->GetNumberOfSkippedImages();
-  self->offset.offset_x = grab_result_ptr->GetOffsetX();
-  self->offset.offset_y = grab_result_ptr->GetOffsetY();
-  self->timestamp = grab_result_ptr->GetTimeStamp();
-  if (override_stride > 0) {
-    self->stride = override_stride;
-  } else {
-    try {
-      if (!grab_result_ptr->GetStride(self->stride)) {
-        self->stride = 0;
-      }
-    } catch (const Pylon::GenericException&) {
-      self->stride = 0;
-    }
-  }
+  gst_pylon_extract_meta_geometry(grab_result_ptr, self, override_stride);
 
   if (grab_result_ptr->IsChunkDataAvailable()) {
     gst_pylon_meta_fill_result_chunks(self, grab_result_ptr);
@@ -246,6 +280,9 @@ static void gst_pylon_meta_free(GstMeta* meta, GstBuffer* buffer) {
 }
 
 GstPylonMeta* gst_buffer_get_pylon_meta(GstBuffer* buffer) {
+  if (!buffer) {
+    return NULL;
+  }
   return reinterpret_cast<GstPylonMeta*>(
       gst_buffer_get_meta(buffer, GST_PYLON_META_API_TYPE));
 }

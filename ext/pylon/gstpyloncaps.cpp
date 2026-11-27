@@ -489,9 +489,15 @@ gboolean GstPylon::SetConfiguration(const GstCaps* conf, GError** err) {
       }
     }
 
-    guint64 maxnumbuffers = 0;
-    g_object_get(gstream_grabber, "MaxNumBuffer", &maxnumbuffers, nullptr);
-    camera->MaxNumBuffer.TrySetValue(maxnumbuffers);
+    if (gstream_grabber &&
+        g_object_class_find_property(G_OBJECT_GET_CLASS(gstream_grabber),
+                                     "MaxNumBuffer")) {
+      guint64 maxnumbuffers = 0;
+      g_object_get(gstream_grabber, "MaxNumBuffer", &maxnumbuffers, nullptr);
+      if (maxnumbuffers > 0) {
+        camera->MaxNumBuffer.TrySetValue(maxnumbuffers);
+      }
+    }
 
 #ifdef NVMM_ENABLED
     GstCapsFeatures* features = gst_caps_get_features(conf, 0);

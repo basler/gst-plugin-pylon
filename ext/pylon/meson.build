@@ -23,12 +23,20 @@ pylon_sources = [
 # DeepStream installs a versioned tree plus a `deepstream` symlink.
 # On Jetson without DeepStream, nvbufsurface.h is provided by jetson_multimedia_api.
 fs_nvmm = import('fs')
-nvds_libdir = [
+custom_nvds_libdir = get_option('nvds-libdir')
+nvds_libdir = []
+if custom_nvds_libdir != ''
+  nvds_libdir += [custom_nvds_libdir]
+endif
+nvds_libdir += [
   '/opt/nvidia/deepstream/deepstream/lib',
   '/usr/lib/aarch64-linux-gnu/nvidia',
   '/usr/lib/aarch64-linux-gnu/tegra',
 ]
-if fs_nvmm.exists('/opt/nvidia/deepstream/deepstream/sources/includes/nvbufsurface.h')
+custom_nvds_incdir = get_option('nvds-incdir')
+if custom_nvds_incdir != '' and fs_nvmm.exists(custom_nvds_incdir / 'nvbufsurface.h')
+  nvds_incdir = custom_nvds_incdir
+elif fs_nvmm.exists('/opt/nvidia/deepstream/deepstream/sources/includes/nvbufsurface.h')
   nvds_incdir = '/opt/nvidia/deepstream/deepstream/sources/includes'
 elif fs_nvmm.exists('/usr/src/jetson_multimedia_api/include/nvbufsurface.h')
   nvds_incdir = '/usr/src/jetson_multimedia_api/include'
@@ -45,15 +53,18 @@ cuda_incdir = '/usr/local/cuda/include'
 nvmm_opt = get_option('nvmm')
 if not nvmm_opt.disabled()
   nvds_dep = cc.find_library('nvbufsurface', dirs: nvds_libdir, required: false)
-  cuda_dep = dependency('cuda', version : '>=11', required: false)
+  cuda_dep = dependency('cudart', version : '>=11', required: false)
   if not cuda_dep.found()
-    # JetPack often has no cuda.pc; fall back to the toolkit layout.
+    # JetPack often has no cudart.pc; fall back to the toolkit layout before
+    # dependency('cuda') so we link dynamic libcudart.so instead of cudart_static.
     cuda_lib = cc.find_library('cudart', dirs: cuda_libdirs, required: false)
     if cuda_lib.found() and fs_nvmm.exists(cuda_incdir / 'cuda_runtime.h')
       cuda_dep = declare_dependency(
         dependencies: cuda_lib,
         include_directories: include_directories(cuda_incdir),
       )
+    else
+      cuda_dep = dependency('cuda', version : '>=11', required: false)
     endif
   endif
 

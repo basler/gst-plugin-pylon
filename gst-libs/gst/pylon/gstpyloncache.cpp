@@ -117,35 +117,50 @@ gboolean GstPylonCache::HasNewSettings() { return is_modified; }
 
 void GstPylonCache::CreateCacheFile() {
   GError* file_err = NULL;
-
-#if defined(GLIB_VERSION_2_66) && GLIB_VERSION_MIN_REQUIRED >= GLIB_VERSION_2_66
   gchar* contents = NULL;
   gsize length = 0;
 
   contents = g_key_file_to_data(this->feature_cache_dict, &length, NULL);
   g_assert(contents != NULL);
 
+  /* Write to a process-unique temporary sibling and atomically rename into
+   * place so concurrent pipelines starting on the same camera model never
+   * collide or observe partially written cache files. */
+  gchar* tmp_path = g_strdup_printf("%s.tmp.%u.%p", this->filepath.c_str(),
+                                    static_cast<guint>(g_random_int()),
+                                    static_cast<const void*>(this));
+
+#if defined(GLIB_VERSION_2_66) && GLIB_VERSION_MIN_REQUIRED >= GLIB_VERSION_2_66
   gboolean ret = g_file_set_contents_full(
-      this->filepath.c_str(), contents, length,
+      tmp_path, contents, length,
       static_cast<GFileSetContentsFlags>(G_FILE_SET_CONTENTS_CONSISTENT), 0600,
       &file_err);
-
-  g_free(contents);
 #else
-  gboolean ret = g_key_file_save_to_file(this->feature_cache_dict,
-                                         this->filepath.c_str(), &file_err);
+  gboolean ret = g_file_set_contents(tmp_path, contents, length, &file_err);
 #endif
 
+  g_free(contents);
+
   if (!ret) {
-    std::string file_err_str = file_err->message;
-    g_error_free(file_err);
+    g_unlink(tmp_path);
+    g_free(tmp_path);
+    std::string file_err_str = file_err ? file_err->message : "write failed";
+    if (file_err) g_error_free(file_err);
     throw Pylon::GenericException(file_err_str.c_str(), __FILE__, __LINE__);
   }
 
-  if (g_chmod(this->filepath.c_str(), 0600) != 0) {
-    GST_WARNING("Failed to set permissions on cache file %s: %s",
-                this->filepath.c_str(), strerror(errno));
+  (void)g_chmod(tmp_path, 0600);
+
+  if (g_rename(tmp_path, this->filepath.c_str()) != 0) {
+    const int saved_errno = errno;
+    g_unlink(tmp_path);
+    g_free(tmp_path);
+    std::string msg = "Failed to commit cache file " + this->filepath + ": " +
+                      std::string(strerror(saved_errno));
+    throw Pylon::GenericException(msg.c_str(), __FILE__, __LINE__);
   }
+
+  g_free(tmp_path);
 }
 
 void GstPylonCache::SetIntegerAttribute(const char* feature,

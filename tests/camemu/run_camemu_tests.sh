@@ -9,6 +9,9 @@ BUILD_PREFIX="${BUILD_PREFIX:-$PROJECT_ROOT/install}"
 BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build}"
 PYLON_ROOT="${PYLON_ROOT:-/opt/pylon}"
 PYLON_CAMEMU="${PYLON_CAMEMU:-3}"
+# Isolate CamEmu tests from any physical USB/GigE/CXP/CameraLink cameras that
+# happen to be plugged into the developer machine or CI runner.
+PYLONSRC_SKIP_TRANSPORT_LAYERS="${PYLONSRC_SKIP_TRANSPORT_LAYERS:-usb,gige,cxp,cameralink}"
 
 EMU_SERIAL_0="0815-0000"
 EMU_SERIAL_1="0815-0001"
@@ -72,7 +75,7 @@ done
 LD_LIBRARY_PATH="${lib_join}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 DYLD_LIBRARY_PATH="${lib_join}${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
 
-export PYLON_ROOT PYLON_CAMEMU GST_PLUGIN_PATH PATH
+export PYLON_ROOT PYLON_CAMEMU PYLONSRC_SKIP_TRANSPORT_LAYERS GST_PLUGIN_PATH PATH
 export LD_LIBRARY_PATH DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH
 export GST_DEBUG_NO_COLOR=1
 
@@ -323,6 +326,20 @@ expect_ok "sequential_pipeline_runs" \
     for i in 1 2 3; do
       gst-launch-1.0 -q pylonsrc device-serial-number='"$EMU_SERIAL_0"' num-buffers=3 ! '"$SYS_CAPS"' ! fakesink || exit 1
     done
+  '
+
+expect_ok "multiprocess_concurrent_distinct_cameras" \
+  bash -c '
+    rm -rf "${TMPDIR:-/tmp}/gstpylon-mp-cache-$$"
+    export XDG_CACHE_HOME="${TMPDIR:-/tmp}/gstpylon-mp-cache-$$"
+    trap "rm -rf \"$XDG_CACHE_HOME\"" EXIT
+    gst-launch-1.0 -q pylonsrc device-serial-number='"$EMU_SERIAL_0"' num-buffers=10 ! '"$SYS_CAPS"' ! fakesink &
+    p0=$!
+    gst-launch-1.0 -q pylonsrc device-serial-number='"$EMU_SERIAL_1"' num-buffers=10 ! '"$SYS_CAPS"' ! fakesink &
+    p1=$!
+    gst-launch-1.0 -q pylonsrc device-index=2 num-buffers=10 ! '"$SYS_CAPS"' ! fakesink &
+    p2=$!
+    wait "$p0" && wait "$p1" && wait "$p2"
   '
 
 echo

@@ -73,6 +73,7 @@ foreach t : pylon_tests
     env.prepend('LD_LIBRARY_PATH', pylon_lib_dir)
     env.set('GSETTINGS_BACKEND', 'memory')
     env.set('PYLON_CAMEMU', env_overrides.get('PYLON_CAMEMU', '1'))
+    env.set('PYLONSRC_SKIP_TRANSPORT_LAYERS', 'usb,gige,cxp,cameralink')
     env.set('PYLON_ROOT', check_pylon_root)
 
     env.set('GST_REGISTRY', join_paths(meson.current_build_dir(), '@0@.registry'.format(test_name)))
@@ -123,3 +124,22 @@ featureprior_test = executable(
   cpp_args: ['-DHAVE_CONFIG_H=1'],
 )
 test('generic_featureprior', featureprior_test, timeout: 30)
+
+# GenDC container zero-copy payload resolution test (CamEmu)
+gendc_test = executable(
+  'generic_gendc',
+  'generic/gendc.cpp',
+  include_directories: [
+    configinc,
+    include_directories('../../ext/pylon'),
+    include_directories('../../gst-libs'),
+  ],
+  dependencies: [gst_dep, pylon_dep],
+  cpp_args: ['-DHAVE_CONFIG_H=1'],
+)
+test('generic_gendc', gendc_test, timeout: 30,
+  env: {
+    'PYLON_CAMEMU': '1',
+    'PYLONSRC_SKIP_TRANSPORT_LAYERS': 'usb,gige,cxp,cameralink',
+    'PYLON_ROOT': check_pylon_root,
+  })
