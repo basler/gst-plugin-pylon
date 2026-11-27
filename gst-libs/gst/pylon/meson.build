@@ -86,10 +86,15 @@ gstpylon_headers = [
 
 install_headers(gstpylon_headers, subdir : 'gstreamer-1.0/gst/pylon/')
 
+gstpylon_cpp_args = gst_plugin_pylon_args + ['-DBUILDING_EXT_PYLONSRC']
+if get_option('test-hooks')
+  gstpylon_cpp_args += ['-DGST_PYLON_ENABLE_TEST_HOOKS']
+endif
+
 gstpylon = library('gstpylon-' + api_version,
   gstpylon_sources,
   c_args : gst_plugin_pylon_args + '-DBUILDING_EXT_PYLONSRC',
-  cpp_args : gst_plugin_pylon_args + '-DBUILDING_EXT_PYLONSRC',
+  cpp_args : gstpylon_cpp_args,
   link_args : [noseh_link_args],
   gnu_symbol_visibility: 'inlineshidden',
   include_directories : [configinc],

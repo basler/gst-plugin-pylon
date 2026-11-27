@@ -24,3 +24,5 @@ option('package-origin', type : 'string', value : 'https://github.com/basler/gst
        description : 'package origin URL to use in plugins')
 option('doc', type : 'feature', value : 'auto', yield: true,
        description: 'Enable documentation.')
+option('test-hooks', type : 'boolean', value : false,
+       description: 'Enable internal test hooks for regression and fault-injection tests')

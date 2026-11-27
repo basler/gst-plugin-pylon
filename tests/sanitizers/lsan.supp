@@ -1,0 +1,32 @@
+# LeakSanitizer suppressions scoped strictly to third-party runtime internals
+# (Pylon SDK, GenApi, GLib/GObject one-time static type/quark allocations,
+# and GStreamer registry/plugin loader).
+#
+# NEVER suppress leaks originating in ext/pylon/ or gst-libs/gst/pylon/.
+
+# Pylon / GenApi runtime singletons
+leak:libpylonbase
+leak:libpylonutility
+leak:libGCBase
+leak:libGenApi
+leak:libpylonc
+leak:libgxapi
+leak:libuxapi
+leak:libPylonCamEmu
+leak:libpylon_TL_
+leak:libPgiPlugin
+leak:Pylon::PylonInitialize
+leak:Pylon::CTlFactory
+leak:CreateTransportLayerPlugin
+leak:<unknown module>
+
+# GLib / GObject / GStreamer static one-time registrations (GType, GQuark, registry)
+leak:g_type_register_static
+leak:g_type_register_fundamental
+leak:g_type_class_ref
+leak:g_quark_from_static_string
+leak:g_quark_from_string
+leak:gst_registry_scan_path_level
+leak:gst_plugin_load_file
+leak:g_module_open
+leak:gdbus_shared_thread_func

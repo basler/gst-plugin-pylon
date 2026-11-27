@@ -8,6 +8,7 @@ pylon_tests = [
   [ 'generic/states' ],
   [ 'generic/meta', false, [gstpylon_dep] ],
   [ 'pylon/pylonsrc_camemu', false, [], [], { 'PYLON_CAMEMU': '3', 'CK_DEFAULT_TIMEOUT': '30' } ],
+  [ 'pylon/pylonsrc_concurrency', false, [], [], { 'PYLON_CAMEMU': '2', 'CK_DEFAULT_TIMEOUT': '60' } ],
 ]
 
 test_defines = [
@@ -17,6 +18,9 @@ test_defines = [
   '-DGST_TEST_FILES_PATH="' + meson.current_source_dir() + '/../files"',
   '-DGST_USE_UNSTABLE_API',
 ]
+if get_option('test-hooks')
+  test_defines += ['-DGST_PYLON_ENABLE_TEST_HOOKS']
+endif
 
 pluginsdirs = []
 pylon_plugin_dir = meson.global_build_root() / 'ext' / 'pylon'
@@ -143,3 +147,16 @@ test('generic_gendc', gendc_test, timeout: 30,
     'PYLONSRC_SKIP_TRANSPORT_LAYERS': 'usb,gige,cxp,cameralink',
     'PYLON_ROOT': check_pylon_root,
   })
+
+# Synthetic GenApi XML nodemap unit test (no camera required)
+nodemap_test = executable(
+  'generic_nodemap',
+  'generic/nodemap.cpp',
+  include_directories: [
+    configinc,
+    include_directories('../../gst-libs'),
+  ],
+  dependencies: [gst_dep, gstpylon_dep],
+  cpp_args: ['-DHAVE_CONFIG_H=1'],
+)
+test('generic_nodemap', nodemap_test, timeout: 30)

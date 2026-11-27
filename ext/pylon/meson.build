@@ -1,6 +1,9 @@
 dependencies = [gstpylon_dep]
 plugin_inc = [configinc]
 cpp_args = [gst_plugin_pylon_args]
+if get_option('test-hooks')
+  cpp_args += ['-DGST_PYLON_ENABLE_TEST_HOOKS', '-DGST_PYLON_IMAGEHANDLER_ENABLE_TEST_HOOKS']
+endif
 plugin_rpath = pylon_rpath
 
 pylon_sources = [

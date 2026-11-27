@@ -1,0 +1,18 @@
+# ThreadSanitizer suppressions scoped strictly to third-party runtime internals
+# (Pylon SDK, GenApi, GLib/GIO/GStreamer uninstrumented shared libraries).
+#
+# NEVER suppress races originating in ext/pylon/ or gst-libs/gst/pylon/.
+
+race:^Pylon::
+race:^GenApi::
+race:^GenICam::
+race:libpylonbase
+race:libpylonutility
+race:libGenApi
+race:libGCBase
+race:libpylon_TL_camemu
+race:libglib-2.0
+race:libgobject-2.0
+race:libgio-2.0
+race:libgstreamer-1.0
+mutex:direct_mutex_lock

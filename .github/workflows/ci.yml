@@ -352,20 +352,47 @@ jobs:
           gst-inspect-1.0 pylonsrc
           gst-launch-1.0 pylonsrc num-buffers=10 ! fakesink
 
-      - name: Compile and run unit tests with ASan + UBSan (x86_64)
+      - name: Compile and run full test suite with ASan + UBSan + LSan (x86_64)
         if: matrix.arch == 'x86_64'
         run: |
           export PYLON_ROOT=/opt/pylon
           export LD_LIBRARY_PATH="/opt/pylon/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          mkdir -p /tmp/pylon-tl-camemu
+          ln -sf /opt/pylon/lib/libpylon_TL_camemu.so /tmp/pylon-tl-camemu/
+          export PYLON_TL_PATH=/tmp/pylon-tl-camemu
+          export GST_REGISTRY_FORK=no
+          export CK_FORK=no
+          export CK_TIMEOUT_MULTIPLIER=4
           export CC=clang
           export CXX=clang++
           export PYLON_CAMEMU=3
-          export ASAN_OPTIONS=detect_leaks=0:halt_on_error=1:abort_on_error=1
+          export ASAN_OPTIONS=detect_leaks=1:halt_on_error=1:abort_on_error=1
+          export LSAN_OPTIONS=suppressions=$PWD/tests/sanitizers/lsan.supp
           export UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_stacktrace=1
           . build_python/bin/activate
-          meson setup builddir_asan -Db_sanitize=address,undefined -Db_lundef=false -Dpython-bindings=disabled
+          meson setup builddir_asan -Db_sanitize=address,undefined -Db_lundef=false -Dcpp_args=-fno-sanitize=vptr -Dpython-bindings=disabled -Dtest-hooks=true
           ninja -C builddir_asan
-          meson test -C builddir_asan generic_meta generic_nvmmcolor generic_featureprior generic_imagehandler generic_gendc --print-errorlogs
+          meson test -C builddir_asan --print-errorlogs
+
+      - name: Compile and run concurrency tests with TSan (x86_64)
+        if: matrix.arch == 'x86_64'
+        run: |
+          export PYLON_ROOT=/opt/pylon
+          export LD_LIBRARY_PATH="/opt/pylon/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          mkdir -p /tmp/pylon-tl-camemu
+          ln -sf /opt/pylon/lib/libpylon_TL_camemu.so /tmp/pylon-tl-camemu/
+          export PYLON_TL_PATH=/tmp/pylon-tl-camemu
+          export GST_REGISTRY_FORK=no
+          export CK_FORK=no
+          export CK_TIMEOUT_MULTIPLIER=4
+          export CC=clang
+          export CXX=clang++
+          export PYLON_CAMEMU=2
+          export TSAN_OPTIONS=suppressions=$PWD/tests/sanitizers/tsan.supp:halt_on_error=1:report_mutex_bugs=0
+          . build_python/bin/activate
+          meson setup builddir_tsan -Db_sanitize=thread -Db_lundef=false -Dpython-bindings=disabled -Dtest-hooks=true
+          ninja -C builddir_tsan
+          meson test -C builddir_tsan generic_imagehandler pylon_pylonsrc_concurrency --print-errorlogs
 
   build_windows:
     name: Build & test Windows (x86_64)
