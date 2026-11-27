@@ -43,6 +43,13 @@ All notable changes to this project will be documented in this file.
   (`GST_PYLON_PROBE_LIMITS=1` opt-in for full dynamic probing)
 - Golden `gst-inspect` compatibility test suite (`tests/compat/`),
   `generic_featureprior`, `generic_meta`, and `pylon_pylonsrc_camemu` tests
+- Automated `v1.1.0` vs `v2.0.0` A/B backwards-compatibility proof harness
+  (`tests/compat/run_ab_compat.py`) with machine-checked intentional-delta
+  ledger (`tests/compat/intentional_deltas_v2.json`), zero-recompile C/Python
+  drop-in and `libgstpylon-1.0` ABI verification, `~/.cache/gstpylon` migration
+  checks, A/B performance benchmark (`tests/compat/bench_ab_v1_vs_v2.py`,
+  supporting both `PYLON_CAMEMU` and physical `--serial` cameras), hardware
+  sign-off matrix (`tests/compat/HARDWARE_SIGNOFF.md`), and Linux x86_64 CI gate
 - Jetson Multimedia API (`nvbufsurface.h`) fallback detection for NVMM builds
   without DeepStream
 - Boolean and string chunk support in CPython `abi3` `pygstpylon`, plus Windows
@@ -75,6 +82,11 @@ All notable changes to this project will be documented in this file.
 - `capture-error=keep` marks delivered buffers with `GST_BUFFER_FLAG_CORRUPTED`
 - Hardened NVMM `NvBufSurfaceAllocate` / `NvBufSurfaceMap` error handling,
   `NvBufSurfaceUnMap` on free, and strict `memory:NVMM` format filtering
+- Fixed warm-run feature cache misses by narrowing `GstPylonCache` dimension
+  validation to exact `Width`/`Height` matches (preventing false invalidation
+  of read-only `SensorWidth`/`SensorHeight`) and negative-caching unavailable
+  features and unselectable selector states with `flags = 0` so warm startups
+  perform zero re-introspection and zero `.config` cache rewrites
 - Fixed Hotdoc C++ source globs in `docs/meson.build`
 
 ### Changed

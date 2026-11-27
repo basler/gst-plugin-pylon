@@ -118,6 +118,16 @@ The mapping of the camera pixel format names to the gstreamer format names is:
 | BayerGR8          |  grbg      |
 | BayerRG8          |  rggb      |
 | BayerGB8          |  gbrg      |
+| Mono10 / Mono12 / Mono16 | GRAY16_LE |
+| BayerBG10 / 12 / 16 | bggr10le / bggr12le / bggr16le *(GStreamer ≥ 1.24)* |
+| BayerGR10 / 12 / 16 | grbg10le / grbg12le / grbg16le *(GStreamer ≥ 1.24)* |
+| BayerRG10 / 12 / 16 | rggb10le / rggb12le / rggb16le *(GStreamer ≥ 1.24)* |
+| BayerGB10 / 12 / 16 | gbrg10le / gbrg12le / gbrg16le *(GStreamer ≥ 1.24)* |
+
+Cameras using **Basler Compression Beyond** or **GenDC** (`PayloadType_GenDC`,
+e.g. GeV 3.0 GenDC-only or USB3 Vision cameras with `GenDCStreamingMode`) are
+decompressed/extracted transparently into the negotiated GStreamer caps (including
+`memory:NVMM`).
 
 ### Fixation
 
@@ -166,7 +176,7 @@ The first field of `colorimetry`, 1, is the full range; the second, 4, is the BT
 
 This feature is controlled by the enumeration property `capture-error`. You can choose one of the following options:
 
-* **keep:** Use the partial or corrupted buffers.
+* **keep:** Use the partial or corrupted buffers (delivered buffers are marked with `GST_BUFFER_FLAG_CORRUPTED`).
 * **skip:** Skip the partial or corrupted buffers. A maximum of 100 buffers can be skipped before the pipeline aborts
 * **abort:** Stop pipeline in case of any capture error.
 
@@ -177,6 +187,33 @@ As an example, the following pipeline will skip corrupted or partial buffers:
 ```
 gst-launch-1.0 pylonsrc capture-error=skip ! videoconvert ! autovideosink
 ```
+
+Capture errors and reconnection events are also emitted as structured element bus messages (`pylonsrc-capture-error` and `pylonsrc-reconnect`).
+
+### Grab timeout and auto-reconnect
+
+* **`grab-timeout`:** Per-frame grab timeout in milliseconds (`0` = wait indefinitely, default).
+* **`auto-reconnect`:** Opt-in automatic recovery when a camera disconnects (`false` by default).
+
+```bash
+gst-launch-1.0 pylonsrc grab-timeout=2000 auto-reconnect=true ! videoconvert ! autovideosink
+```
+
+### Executing GenICam commands
+
+GenICam `ICommand` nodes (including selector-qualified commands such as `TriggerSoftware-FrameStart`) can be triggered programmatically via the `execute-command` action signal on `pylonsrc`:
+
+```c
+gboolean ok = FALSE;
+g_signal_emit_by_name(pylonsrc, "execute-command", "TriggerSoftware-FrameStart", &ok);
+```
+
+### Startup optimization and environment variables
+
+* `PYLONSRC_SKIP_TRANSPORT_LAYERS` / `GST_PYLON_SKIP_TL`: Comma-separated list of transport layers to skip during discovery (e.g. `gige,cxp`), reducing startup latency when only specific interfaces are used.
+* `GST_PYLON_PROBE_LIMITS=1`: Opt-in to full dynamic GenICam limit probing during `gst-inspect-1.0` (by default `gst-inspect-1.0` is read-only and non-destructive).
+* `GST_PYLON_INSPECT_DEVICES=1`: Force eager device enumeration during `class_init` outside of `gst-inspect-1.0`.
+* The plugin also registers a metadata-only `pylondeviceprovider` at `GST_RANK_NONE` for non-blocking camera discovery without hijacking `autovideosrc` or OpenCV.
 
 ### Pending frames
 
@@ -794,6 +831,42 @@ ninja -C builddir test
 ```
 
 Camemu functional tests run on Linux and macOS (and on Windows when `bash` is available). The pipe-FD / RSS leak check needs `/proc` and is skipped on other platforms.
+
+# Testing and Backwards-Compatibility Verification
+
+Run the full Meson test suite (unit tests for metadata, NVMM colorimetry, Gen2 feature priors, GenDC payload extraction, image handler state machine, CamEmu pipelines, `pygstpylon`, and golden `gst-inspect` regression checks):
+
+```bash
+PYLON_ROOT=/opt/pylon meson test -C build --print-errorlogs
+```
+
+## A/B Backwards-Compatibility Proof (`v1.1.0` vs `v2.0.0`)
+
+To verify that existing `v1.1.0` C, Python, and `gst-launch-1.0` users can upgrade without changing or recompiling their code, run the automated A/B differential suite:
+
+```bash
+PYLON_ROOT=/opt/pylon python3 tests/compat/run_ab_compat.py --baseline-ref v1.1.0 --v2-build build
+```
+
+This builds `v1.1.0` in an isolated temporary worktree and verifies:
+* Zero-recompile drop-in execution of `v1.1.0` C binaries, `run_camemu_tests.sh`, and `test_pygstpylon.py` against `v2.0.0` shared libraries (`libgstpylon-1.0.so`, `libgstpylon.so`, `pygstpylon.abi3.so`).
+* `libgstpylon-1.0` exported C symbols, SONAME, and `GstPylonMeta` struct layout compatibility.
+* Side-by-side behavioral equivalence across properties, signals, pad templates, lazy `class_init` + `GstChildProxy`, caps fixation, metadata, error paths, and `GstDeviceMonitor` non-interference, checked against `tests/compat/intentional_deltas_v2.json`.
+* In-place `~/.cache/gstpylon` migration from `v1.1.0` to `v2.0.0` under `G_DEBUG=fatal-criticals`.
+
+## A/B Performance Benchmark (CamEmu & Physical Cameras)
+
+Compare cold/warm time-to-first-frame, cache completeness, `gst-inspect-1.0` latency, and sustained capture between `v1.1.0` and `v2.0.0`:
+
+```bash
+# Camera emulator (CI / headless)
+PYLON_ROOT=/opt/pylon python3 tests/compat/bench_ab_v1_vs_v2.py --v2-build build
+
+# Connected physical USB3 / GigE cameras
+PYLON_ROOT=/opt/pylon python3 tests/compat/bench_ab_v1_vs_v2.py --v2-build build --serial <SERIAL_1> --serial <SERIAL_2>
+```
+
+For physical USB3/GigE, line-scan, and Jetson NVMM release verification, see [tests/compat/HARDWARE_SIGNOFF.md](tests/compat/HARDWARE_SIGNOFF.md).
 
 
 # Known issues
