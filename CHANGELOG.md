@@ -119,6 +119,19 @@ All notable changes to this project will be documented in this file.
 - Restarting `pylonsrc` on the same device reuses the session and skips
   configuration when nothing changed
 
+### Acknowledgements
+- `max-pending-frames` (PR [#153](https://github.com/basler/gst-plugin-pylon/pull/153)) and
+  the NVMM full-range YUV follow-ups (PR [#154](https://github.com/basler/gst-plugin-pylon/pull/154))
+  were contributed by @poeggi. This release builds on both.
+- Hardware-trigger `AcquisitionFrameRate` (PR [#147](https://github.com/basler/gst-plugin-pylon/pull/147))
+  and the Jetson Multimedia API `nvbufsurface.h` fallback (PR [#152](https://github.com/basler/gst-plugin-pylon/pull/152))
+  are carried over from the 1.x hotfix line.
+- Fixes for the linescan, PFS, and runtime open issues
+  ([#136](https://github.com/basler/gst-plugin-pylon/issues/136),
+  [#138](https://github.com/basler/gst-plugin-pylon/issues/138),
+  [#140](https://github.com/basler/gst-plugin-pylon/issues/140),
+  [#141](https://github.com/basler/gst-plugin-pylon/issues/141)) are included.
+
 ## [1.1.0] - 2026-11-26
 
 ### Added
