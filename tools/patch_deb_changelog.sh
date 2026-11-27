@@ -95,21 +95,56 @@ echo "Build-time pylon version: ${PYLON_VERSION}"
 # Create a temporary file
 temp_file=$(mktemp)
 
-# Extract the current version from the changelog
-current_version=$(head -n 1 "$changelog_file" | sed -n 's/.*(\(.*\)).*/\1/p')
-
-# Strip prior +pylon / -1~ platform suffixes so the script is idempotent.
-# Normal packages:  <base>+pylon<ver>
-# NVIDIA packages:  <base>+pylon<ver>-1~<L4T>
-# +pylon ver is sanitized (no '-'), so '-1~' always marks the L4T suffix.
-base_version=$(echo "$current_version" | sed -E 's/\+pylon[A-Za-z0-9.~+]*//; s/-1~.*//')
-if [[ -f /etc/nv_tegra_release ]]; then
-    new_version="${base_version}+pylon${PYLON_VERSION_SAFE}-1~${PLATFORM_VERSION}"
-else
-    new_version="${base_version}+pylon${PYLON_VERSION_SAFE}"
+# Version of the project: meson.build is the single source of truth.
+project_version="$(grep -m1 -oP "^\s+version\s*:\s*'\K[0-9][^']*" meson.build || true)"
+if [[ -z "$project_version" ]]; then
+    echo "Error: cannot read project version from meson.build." >&2
+    exit 1
 fi
 
-sed "1s/(${current_version})/(${new_version})/" "$changelog_file" > "$temp_file"
+# Build identity from git, see tools/build_id.py:
+#   <ver>                 exact release tag
+#   <ver>+g<rev>[.dirty]  untagged commit (dirty tree)
+#   <ver>+unknown         no git metadata
+build_id="$(python3 tools/build_id.py "$PWD" "$project_version")"
+
+if [[ "${GST_PYLON_STRICT_VERSION:-0}" == "1" ]]; then
+    case "$build_id" in
+        *+unknown|*.dirty)
+            echo "Error: strict versioning refuses build '${build_id}'." >&2
+            echo "Build from a clean git checkout (no uncommitted changes)." >&2
+            exit 1
+            ;;
+    esac
+fi
+
+# Debian ordering: "~" sorts before the release, so dev builds are older than
+# <ver>. The commit count increases along a branch, so apt orders test builds.
+case "$build_id" in
+    "$project_version")
+        base_version="$project_version"
+        ;;
+    *+unknown)
+        base_version="${project_version}~dev.0+unknown"
+        ;;
+    *)
+        commit_count="$(git rev-list --count HEAD)"
+        base_version="${project_version}~dev.${commit_count}+${build_id#*+}"
+        ;;
+esac
+
+# Keep the epoch of the existing changelog entry (1: for this package).
+current_version=$(head -n 1 "$changelog_file" | sed -n 's/.*(\(.*\)).*/\1/p')
+epoch="$(echo "$current_version" | sed -n 's/^\([0-9]*:\).*/\1/p')"
+epoch="${epoch:-1:}"
+
+if [[ -f /etc/nv_tegra_release ]]; then
+    new_version="${epoch}${base_version}+pylon${PYLON_VERSION_SAFE}-1~${PLATFORM_VERSION}"
+else
+    new_version="${epoch}${base_version}+pylon${PYLON_VERSION_SAFE}"
+fi
+
+sed "1s|^gst-plugin-pylon ([^)]*)|gst-plugin-pylon (${new_version})|" "$changelog_file" > "$temp_file"
 mv "$temp_file" "$changelog_file"
 
 echo "Changelog updated successfully to version ${new_version}"

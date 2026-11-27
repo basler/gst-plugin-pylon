@@ -609,6 +609,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          # Full history: the package version encodes the commit count.
+          fetch-depth: 0
 
       - name: Download pylon Debian bundle (${{ matrix.arch }})
         uses: actions/download-artifact@v7
@@ -819,6 +822,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Download pylon Debian bundle (arm64)
         uses: actions/download-artifact@v7
