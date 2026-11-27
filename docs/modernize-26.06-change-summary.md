@@ -53,7 +53,7 @@ GstPylon (camera session)
 
 `GstPylon` is a C++ session type with `Open`, `Start`, `Stop`,
 `ApplySessionConfig`, `EnsureConfigured`, `Capture`, and identity helpers. The
-public C API in `gstpylon.h` stays a thin wrapper.
+session logic lives in the `GstPylonSession` class (`gstpylonsession.h`).
 
 `pylonsrc` start policy:
 
@@ -107,7 +107,7 @@ access returns an owned snapshot, including bool/string chunks.
 
 ## Build, CI, Jetson
 
-- Version `2.0.0`; Meson `>= 1.4.0`; GStreamer `>= 1.20.0`; Pylon 26.x / SDK
+- Version `2.0.0`; Meson `>= 0.61`; GStreamer `>= 1.20.0`; Pylon 26.x / SDK
   `>= 12.2`
 - CI: Ubuntu 24.04 x86_64/aarch64, Windows, macOS via Conan `pylon-core`
 - Debian targets: Ubuntu 22.04/24.04, Debian bookworm
@@ -142,7 +142,7 @@ Notable behavior changes:
 | Session open/config | `ext/pylon/gstpylonsession.cpp` |
 | Capture / interrupt | `ext/pylon/gstpyloncapture.cpp` |
 | Caps | `ext/pylon/gstpyloncaps.cpp` |
-| Session type | `ext/pylon/gstpylon-private.h` |
+| Session type | `ext/pylon/gstpylonsession.h` |
 | Inspect text | `ext/pylon/gstpyloninspect.cpp` |
 | Schema factories | `ext/pylon/gstpylonschema.*` |
 | Child objects | `gst-libs/gst/pylon/gstpylonobject.*` |

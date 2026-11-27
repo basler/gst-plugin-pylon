@@ -22,7 +22,7 @@ Historically, `gst_pylon_src_class_init` initialized the Pylon runtime, enumerat
 Furthermore, `GstPylonInspectCache` is consulted per device regardless of how many cameras are connected.
 
 ### 2. Single-Pass Session Configuration & Cached Enum Flags
-- `GstPylon::Open()` applies `user-set` / `pfs-location` once before building the camera `GstPylonSchema`, eliminating the second `UserSetLoad` round-trip.
+- `GstPylonSession::Create()` (`Open()`) applies `user-set` / `pfs-location` once before building the camera `GstPylonSchema`, eliminating the second `UserSetLoad` round-trip.
 - `gst_pylon_query_feature_properties_flags()` caches enum `GParamFlags` in `GstPylonCache` and leverages declarative Gen2 feature priors (`gstpylonfeatureprior`) to avoid unnecessary `TLParamsLocked` register writes on Basler 2nd-generation firmware (`ace 2`, `dart M/R/E`, `boost`, `racer 2`).
 
 ### 3. Transport-Layer Filtering (`PYLONSRC_SKIP_TRANSPORT_LAYERS`)

@@ -325,6 +325,17 @@ jobs:
           meson test -C builddir_clang --print-errorlogs
           ninja -C builddir_clang install
 
+      - name: Strict warnings build (-Wall -Wextra -Werror, GCC and Clang)
+        run: |
+          export PYLON_ROOT=/opt/pylon
+          export LD_LIBRARY_PATH="/opt/pylon/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          . build_python/bin/activate
+          # pylon's own headers trigger -Wdeprecated-copy; keep third-party noise out
+          CC=gcc CXX=g++ meson setup builddir_werror_gcc -Dwerror=true -Dwarning_level=2 -Dpython-bindings=disabled -Dtest-hooks=true -Dcpp_args=-Wno-deprecated-copy
+          ninja -C builddir_werror_gcc
+          CC=clang CXX=clang++ meson setup builddir_werror_clang -Dwerror=true -Dwarning_level=2 -Dpython-bindings=disabled -Dtest-hooks=true -Dcpp_args="-Wno-deprecated-copy -Wno-deprecated-copy-with-dtor"
+          ninja -C builddir_werror_clang
+
       - name: Smoke test installed plugin (GCC)
         run: |
           export PYLON_ROOT=/opt/pylon

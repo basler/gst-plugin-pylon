@@ -98,6 +98,8 @@ std::atomic<bool> g_test_inject_std_exception{false};
  ***********************************************************/
 
 static void gst_pylon_object_init(GstPylonObject* self);
+static void gst_pylon_object_instance_init(GTypeInstance* instance,
+                                           gpointer g_class);
 static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
                                         GstPylonObjectClassData* class_data);
 static std::string gst_pylon_object_get_schema_type_name(
@@ -150,7 +152,7 @@ static GType gst_pylon_object_ensure_schema_type(
       class_data,
       sizeof(GstPylonObject),
       0,
-      reinterpret_cast<GInstanceInitFunc>(gst_pylon_object_init),
+      gst_pylon_object_instance_init,
       NULL,
   };
 
@@ -257,6 +259,12 @@ static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
   gst_pylon_object_install_properties(klass, class_data->schema);
 
   delete (class_data);
+}
+
+static void gst_pylon_object_instance_init(GTypeInstance* instance,
+                                           gpointer g_class) {
+  (void)g_class;
+  gst_pylon_object_init(reinterpret_cast<GstPylonObject*>(instance));
 }
 
 static void gst_pylon_object_init(GstPylonObject* self) {

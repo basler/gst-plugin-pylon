@@ -91,7 +91,7 @@ if not nvmm_opt.disabled()
 endif
 
 gstpylon_plugin = library('gstpylon',
-  pylon_sources + git_version,
+  pylon_sources,
   c_args : gst_plugin_pylon_args,
   cpp_args : cpp_args,
   link_args : [noseh_link_args],

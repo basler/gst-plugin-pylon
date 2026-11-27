@@ -18,9 +18,21 @@ All notable changes to this project will be documented in this file.
   devices or hijacking OpenCV / `autovideosrc`
 - Transport-layer filtering via `PYLONSRC_SKIP_TRANSPORT_LAYERS` /
   `GST_PYLON_SKIP_TL` (e.g. `gige,cxp`) with RAII `CTlFactory::ReleaseTl`
-- High bit-depth pixel formats: `Mono10`/`Mono12`/`Mono16` → `GRAY16_LE` (with
-  full-range 16-bit scaling for 10/12-bit unpacked mono) and 10/12/16-bit Bayer
-  (`bggr10le`, `bggr12le`, `bggr16le`, etc. on GStreamer ≥ 1.24)
+- High bit-depth pixel formats: `Mono10`/`Mono12`/`Mono16` → `GRAY16_LE`
+  (zero-copy; 10/12-bit values stay LSB-aligned and are not rescaled), packed
+  `Mono10p`/`Mono12p`/`Mono12Packed` unpacked to `GRAY16_LE`, and 10/12/16-bit
+  Bayer (`bggr10le`, `bggr12le`, `bggr16le`, etc. on GStreamer ≥ 1.24)
+- Pool-starvation guard: frames are copied when downstream holds more than
+  `MaxNumBuffer - 2` pylon buffers, and padded frames are repacked when
+  downstream has no `GstVideoMeta` support
+- `GstPylonMeta` survives `gst_buffer_copy()`
+- Ref-counted `GstPylonRuntime` guard: zero-copy buffers may outlive the element
+  without leaving pylon initialized or terminated early
+- Emulator-backed regression tests for state-change loops, buffers outliving the
+  element, concurrent child-property access, disconnect/reconnect, arrival
+  timestamps and allocation failures; opt-in `-Dtest-hooks=true`; ASan+UBSan+LSan
+  and TSan CI jobs; `-Werror` GCC/Clang CI build
+- `docs/architecture.md` and ADR 0004
 - Basler Compression Beyond transparent decompression via
   `Pylon::CImageDecompressor` (#98, #99)
 - Zero-copy GenDC container (`PayloadType_GenDC`) image component extraction and
@@ -92,6 +104,14 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Bumped project version to `2.0.0` and set explicit `cpp_std=c++17` in
   `meson.build`
+- Buffer PTS is the arrival time captured in the pylon grab callback instead of
+  the time the streaming thread dequeues the frame
+- With `auto-reconnect=true` a camera disconnect is posted as a warning, not an
+  error; the reconnect wait no longer delays a state change to `NULL`
+- Replaced the C `gstpylon.h` facade with the `GstPylonSession` class and hid
+  `GstPylonObjectPrivate`; limit probing moved to `gstpylonlimitprobe`
+- The plugin version is the Meson project version (`VERSION`); the git-describe
+  `version.h` generation was removed
 
 ## [1.1.0] - 2026-11-26
 

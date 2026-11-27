@@ -118,7 +118,9 @@ The mapping of the camera pixel format names to the gstreamer format names is:
 | BayerGR8          |  grbg      |
 | BayerRG8          |  rggb      |
 | BayerGB8          |  gbrg      |
-| Mono10 / Mono12 / Mono16 | GRAY16_LE |
+| Mono16            | GRAY16_LE  |
+| Mono10 / Mono12   | GRAY16_LE *(zero-copy, values are LSB-aligned: 0..1023 / 0..4095, not rescaled)* |
+| Mono10p / Mono12p / Mono12Packed | GRAY16_LE *(unpacked to 16-bit on capture)* |
 | BayerBG10 / 12 / 16 | bggr10le / bggr12le / bggr16le *(GStreamer ≥ 1.24)* |
 | BayerGR10 / 12 / 16 | grbg10le / grbg12le / grbg16le *(GStreamer ≥ 1.24)* |
 | BayerRG10 / 12 / 16 | rggb10le / rggb12le / rggb16le *(GStreamer ≥ 1.24)* |
@@ -188,12 +190,15 @@ As an example, the following pipeline will skip corrupted or partial buffers:
 gst-launch-1.0 pylonsrc capture-error=skip ! videoconvert ! autovideosink
 ```
 
-Capture errors and reconnection events are also emitted as structured element bus messages (`pylonsrc-capture-error` and `pylonsrc-reconnect`).
+Capture errors and reconnection events are also emitted as structured element bus messages:
+
+* `pylonsrc-capture-error`: fields `action` (`kept`, `skipped`, `aborted`), `skipped-frames`, `error-code` and `description`.
+* `pylonsrc-reconnect`: field `status` (`reconnecting`, `reconnected`) and, for `reconnected`, the `attempt` number.
 
 ### Grab timeout and auto-reconnect
 
 * **`grab-timeout`:** Per-frame grab timeout in milliseconds (`0` = wait indefinitely, default).
-* **`auto-reconnect`:** Opt-in automatic recovery when a camera disconnects (`false` by default).
+* **`auto-reconnect`:** Opt-in automatic recovery when a camera disconnects (`false` by default). With `auto-reconnect=true` a disconnect is reported as a bus *warning* followed by `pylonsrc-reconnect` messages; the element retries once per second for up to 15 attempts and only then posts an error. Without it, a disconnect is an error.
 
 ```bash
 gst-launch-1.0 pylonsrc grab-timeout=2000 auto-reconnect=true ! videoconvert ! autovideosink
@@ -211,6 +216,7 @@ g_signal_emit_by_name(pylonsrc, "execute-command", "TriggerSoftware-FrameStart",
 ### Startup optimization and environment variables
 
 * `PYLONSRC_SKIP_TRANSPORT_LAYERS` / `GST_PYLON_SKIP_TL`: Comma-separated list of transport layers to skip during discovery (e.g. `gige,cxp`), reducing startup latency when only specific interfaces are used.
+* `PYLONSRC_OPEN_RETRIES`: Number of times opening a camera is retried when it is temporarily busy (default `30`, range `0`..`600`, with a delay growing from 100 ms to 350 ms). Set to `0` to fail immediately.
 * `GST_PYLON_PROBE_LIMITS=1`: Opt-in to full dynamic GenICam limit probing during `gst-inspect-1.0` (by default `gst-inspect-1.0` is read-only and non-destructive).
 * `GST_PYLON_INSPECT_DEVICES=1`: Force eager device enumeration during `class_init` outside of `gst-inspect-1.0`.
 * The plugin also registers a metadata-only `pylondeviceprovider` at `GST_RANK_NONE` for non-blocking camera discovery without hijacking `autovideosrc` or OpenCV.
@@ -227,7 +233,7 @@ We recommend 2. It bridges short stalls and ties up only one more grab buffer th
 
 Queued frames stay in pylon grab buffers, so no memory is copied or allocated.
 Keep `max-pending-frames` well below `stream::MaxNumBuffer`.
-The pipeline downstream also holds buffers.
+The pipeline downstream also holds buffers. If downstream holds nearly all of them (more than `MaxNumBuffer - 2`), `pylonsrc` copies further frames instead of passing the pylon buffer on, so the camera keeps streaming.
 
 As an example, the following pipeline queues up to 2 frames:
 

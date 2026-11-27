@@ -15,32 +15,6 @@ message('Building against GStreamer ' + gst_version)
 
 python3 = import('python').find_installation()
 
-# generate project version from git info
-py_script = '''
-import subprocess
-import sys, os
-
-meson_project_path = sys.argv[1]
-
-git_dir = os.path.join(meson_project_path, ".git")
-
-try:
-    cmd_result = subprocess.run(
-        ["git", "--git-dir=" + git_dir, "describe", "--tags", "--abbrev=7", "--dirty=+"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        check=True,
-    )
-    vcs_tag = cmd_result.stdout.decode("utf-8")[1:-1]
-except (FileNotFoundError, subprocess.CalledProcessError):
-    sys.exit(1)
-
-print(vcs_tag)
-'''
-git_version = vcs_tag(command : ['python3', '-c', py_script, meson.project_source_root()],
-             input: 'version.h.in', output: 'version.h', replace_string: '@GIT_VERSION@',
-             fallback: meson.project_version() + '-local')
-
 version_arr = gst_version.split('.')
 gst_version_major = version_arr[0].to_int()
 gst_version_minor = version_arr[1].to_int()
