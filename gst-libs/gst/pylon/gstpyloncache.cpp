@@ -238,9 +238,7 @@ bool GstPylonCache::GetIntProps(const gchar* feature_name, gint64& min,
   }
 
   static constexpr gint64 kMaxSaneDimension = 32768;
-  if ((g_str_has_suffix(feature_name, "Width") ||
-       g_str_has_suffix(feature_name, "Height") ||
-       g_strcmp0(feature_name, "Width") == 0 ||
+  if ((g_strcmp0(feature_name, "Width") == 0 ||
        g_strcmp0(feature_name, "Height") == 0) &&
       (max > kMaxSaneDimension || min < 0 || min > max)) {
     GST_WARNING("Ignoring invalid cache entry for %s (min=%" G_GINT64_FORMAT

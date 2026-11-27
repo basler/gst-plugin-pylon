@@ -90,6 +90,9 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_int64(
   gst_pylon_query_feature_properties_integer(
       schema.node_map(), node, schema.cache(), flags, min_value, max_value,
       NULL, 0, device_profile);
+  if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
+    return NULL;
+  }
 
   return g_param_spec_int64(
       node->GetName(), node->GetDisplayName(), node->GetToolTip(), min_value,
@@ -110,6 +113,9 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_int64(
   gst_pylon_query_feature_properties_integer(
       schema.node_map(), node, schema.cache(), flags, min_value, max_value,
       selector, selector_value, device_profile);
+  if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
+    return NULL;
+  }
 
   return gst_pylon_param_spec_selector_int64(
       schema.node_map(), node->GetName(), selector->GetName(), selector_value,
@@ -125,6 +131,9 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_bool(
   GParamFlags flags = G_PARAM_READABLE;
   gst_pylon_query_feature_properties_flags(
       schema.node_map(), node, schema.cache(), flags, NULL, 0, device_profile);
+  if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
+    return NULL;
+  }
   gboolean def = param.IsReadable() ? param.GetValue() : FALSE;
 
   return g_param_spec_boolean(node->GetName(), node->GetDisplayName(),
@@ -141,6 +150,9 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_bool(
   gst_pylon_query_feature_properties_flags(schema.node_map(), node,
                                            schema.cache(), flags, selector,
                                            selector_value, device_profile);
+  if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
+    return NULL;
+  }
   gboolean def = param.IsReadable() ? param.GetValue() : FALSE;
 
   return gst_pylon_param_spec_selector_boolean(
@@ -160,6 +172,9 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_double(
   gst_pylon_query_feature_properties_double(schema.node_map(), node,
                                             schema.cache(), flags, min_value,
                                             max_value, NULL, 0, device_profile);
+  if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
+    return NULL;
+  }
 
   return g_param_spec_double(
       node->GetName(), node->GetDisplayName(), node->GetToolTip(), min_value,
@@ -180,6 +195,9 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_double(
   gst_pylon_query_feature_properties_double(
       schema.node_map(), node, schema.cache(), flags, min_value, max_value,
       selector, selector_value, device_profile);
+  if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
+    return NULL;
+  }
 
   return gst_pylon_param_spec_selector_double(
       schema.node_map(), node->GetName(), selector->GetName(), selector_value,
@@ -194,6 +212,9 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_str(GenApi::INode* node) {
   GParamFlags flags = G_PARAM_READABLE;
   gst_pylon_query_feature_properties_flags(
       schema.node_map(), node, schema.cache(), flags, NULL, 0, device_profile);
+  if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
+    return NULL;
+  }
   std::string def = param.IsReadable() ? param.GetValue().c_str() : "";
 
   return g_param_spec_string(node->GetName(), node->GetDisplayName(),
@@ -210,6 +231,9 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_str(
   gst_pylon_query_feature_properties_flags(schema.node_map(), node,
                                            schema.cache(), flags, selector,
                                            selector_value, device_profile);
+  if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
+    return NULL;
+  }
   std::string def = param.IsReadable() ? param.GetValue().c_str() : "";
 
   return gst_pylon_param_spec_selector_string(
@@ -313,11 +337,15 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_enum(
     GenApi::INode* node) {
   g_return_val_if_fail(node, NULL);
 
-  Pylon::CEnumParameter param(node);
-  GType type = gst_pylon_make_enum_type(node);
   GParamFlags flags = G_PARAM_READABLE;
   gst_pylon_query_feature_properties_flags(
       schema.node_map(), node, schema.cache(), flags, NULL, 0, device_profile);
+  if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
+    return NULL;
+  }
+
+  Pylon::CEnumParameter param(node);
+  GType type = gst_pylon_make_enum_type(node);
   gint def_val = gst_pylon_resolve_enum_default(type, param);
 
   return g_param_spec_enum(node->GetName(), node->GetDisplayName(),
@@ -329,12 +357,16 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_enum(
   g_return_val_if_fail(node, NULL);
   g_return_val_if_fail(selector, NULL);
 
-  Pylon::CEnumParameter param(node);
-  GType type = gst_pylon_make_enum_type(node);
   GParamFlags flags = G_PARAM_READABLE;
   gst_pylon_query_feature_properties_flags(schema.node_map(), node,
                                            schema.cache(), flags, selector,
                                            selector_value, device_profile);
+  if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
+    return NULL;
+  }
+
+  Pylon::CEnumParameter param(node);
+  GType type = gst_pylon_make_enum_type(node);
   gint def_val = gst_pylon_resolve_enum_default(type, param);
 
   return gst_pylon_param_spec_selector_enum(
@@ -394,11 +426,6 @@ GParamSpec* GstPylonParamFactory::make_param(GenApi::INode* node,
       Pylon::String_t msg =
           "Unsupported node of type " + GenApi::GetInterfaceName(node);
       throw Pylon::GenericException(msg, __FILE__, __LINE__);
-  }
-
-  if (!spec) {
-    Pylon::String_t msg = "Property creation failed for " + node->GetName();
-    throw Pylon::GenericException(msg, __FILE__, __LINE__);
   }
 
   return spec;

@@ -702,24 +702,35 @@ void gst_pylon_query_feature_properties_double(
   if (!feature_cache.GetDoubleProps(feature_cache_name,
                                     minimum_under_all_settings,
                                     maximum_under_all_settings, flags)) {
-    if (selector) {
-      gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
-                                          selector_value);
-    }
-    flags = gst_pylon_query_access(nodemap, node, device_profile);
-    if (feature_cache.IsLimitProbeEnabled()) {
-      gst_pylon_find_limits<Pylon::CFloatParameter, gdouble>(
-          node, minimum_under_all_settings, maximum_under_all_settings,
-          device_profile);
-    } else if (!gst_pylon_try_prior_limits(device_profile, node,
-                                           minimum_under_all_settings,
-                                           maximum_under_all_settings)) {
-      minimum_under_all_settings =
-          gst_pylon_query_feature_limits<Pylon::CFloatParameter, gdouble>(
-              node, "min");
-      maximum_under_all_settings =
-          gst_pylon_query_feature_limits<Pylon::CFloatParameter, gdouble>(
-              node, "max");
+    try {
+      if (selector) {
+        gst_pylon_object_set_pylon_selector(
+            nodemap, selector->GetName().c_str(), selector_value);
+      }
+      flags = gst_pylon_query_access(nodemap, node, device_profile);
+      if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
+        minimum_under_all_settings = 0.0;
+        maximum_under_all_settings = 0.0;
+      } else if (feature_cache.IsLimitProbeEnabled()) {
+        gst_pylon_find_limits<Pylon::CFloatParameter, gdouble>(
+            node, minimum_under_all_settings, maximum_under_all_settings,
+            device_profile);
+      } else if (!gst_pylon_try_prior_limits(device_profile, node,
+                                             minimum_under_all_settings,
+                                             maximum_under_all_settings)) {
+        minimum_under_all_settings =
+            gst_pylon_query_feature_limits<Pylon::CFloatParameter, gdouble>(
+                node, "min");
+        maximum_under_all_settings =
+            gst_pylon_query_feature_limits<Pylon::CFloatParameter, gdouble>(
+                node, "max");
+      }
+    } catch (const GenICam::GenericException& e) {
+      GST_DEBUG("Caching unavailable float feature '%s': %s",
+                feature_cache_name, e.GetDescription());
+      flags = static_cast<GParamFlags>(0);
+      minimum_under_all_settings = 0.0;
+      maximum_under_all_settings = 0.0;
     }
 
     feature_cache.SetDoubleProps(feature_cache_name, minimum_under_all_settings,
@@ -745,11 +756,17 @@ void gst_pylon_query_feature_properties_flags(
   }
 
   if (!feature_cache.GetFlags(feature_cache_name, flags)) {
-    if (selector) {
-      gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
-                                          selector_value);
+    try {
+      if (selector) {
+        gst_pylon_object_set_pylon_selector(
+            nodemap, selector->GetName().c_str(), selector_value);
+      }
+      flags = gst_pylon_query_access(nodemap, node, device_profile);
+    } catch (const GenICam::GenericException& e) {
+      GST_DEBUG("Caching unavailable feature '%s': %s", feature_cache_name,
+                e.GetDescription());
+      flags = static_cast<GParamFlags>(0);
     }
-    flags = gst_pylon_query_access(nodemap, node, device_profile);
     feature_cache.SetFlags(feature_cache_name, flags);
   }
 
@@ -776,24 +793,35 @@ void gst_pylon_query_feature_properties_integer(
   /* If access to a feature cache entry fails, create new props dynamically */
   if (!feature_cache.GetIntProps(feature_cache_name, minimum_under_all_settings,
                                  maximum_under_all_settings, flags)) {
-    if (selector) {
-      gst_pylon_object_set_pylon_selector(nodemap, selector->GetName().c_str(),
-                                          selector_value);
-    }
-    flags = gst_pylon_query_access(nodemap, node, device_profile);
-    if (feature_cache.IsLimitProbeEnabled()) {
-      gst_pylon_find_limits<Pylon::CIntegerParameter, gint64>(
-          node, minimum_under_all_settings, maximum_under_all_settings,
-          device_profile);
-    } else if (!gst_pylon_try_prior_limits(device_profile, node,
-                                           minimum_under_all_settings,
-                                           maximum_under_all_settings)) {
-      minimum_under_all_settings =
-          gst_pylon_query_feature_limits<Pylon::CIntegerParameter, gint64>(
-              node, "min");
-      maximum_under_all_settings =
-          gst_pylon_query_feature_limits<Pylon::CIntegerParameter, gint64>(
-              node, "max");
+    try {
+      if (selector) {
+        gst_pylon_object_set_pylon_selector(
+            nodemap, selector->GetName().c_str(), selector_value);
+      }
+      flags = gst_pylon_query_access(nodemap, node, device_profile);
+      if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
+        minimum_under_all_settings = 0;
+        maximum_under_all_settings = 0;
+      } else if (feature_cache.IsLimitProbeEnabled()) {
+        gst_pylon_find_limits<Pylon::CIntegerParameter, gint64>(
+            node, minimum_under_all_settings, maximum_under_all_settings,
+            device_profile);
+      } else if (!gst_pylon_try_prior_limits(device_profile, node,
+                                             minimum_under_all_settings,
+                                             maximum_under_all_settings)) {
+        minimum_under_all_settings =
+            gst_pylon_query_feature_limits<Pylon::CIntegerParameter, gint64>(
+                node, "min");
+        maximum_under_all_settings =
+            gst_pylon_query_feature_limits<Pylon::CIntegerParameter, gint64>(
+                node, "max");
+      }
+    } catch (const GenICam::GenericException& e) {
+      GST_DEBUG("Caching unavailable integer feature '%s': %s",
+                feature_cache_name, e.GetDescription());
+      flags = static_cast<GParamFlags>(0);
+      minimum_under_all_settings = 0;
+      maximum_under_all_settings = 0;
     }
 
     feature_cache.SetIntProps(feature_cache_name, minimum_under_all_settings,
