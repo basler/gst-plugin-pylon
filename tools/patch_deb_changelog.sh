@@ -128,7 +128,11 @@ case "$build_id" in
         base_version="${project_version}~dev.0+unknown"
         ;;
     *)
-        commit_count="$(git rev-list --count HEAD)"
+        # git archive tarballs carry the commit ID but no history to count.
+        commit_count=0
+        if [[ -e .git ]]; then
+            commit_count="$(git rev-list --count HEAD)"
+        fi
         base_version="${project_version}~dev.${commit_count}+${build_id#*+}"
         ;;
 esac
