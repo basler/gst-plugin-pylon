@@ -152,6 +152,22 @@ def run_cmd(cmd, *, env=None, cwd=None, timeout=120):
 # ---------------------------------------------------------------------------
 
 
+def structure_formats(st) -> list:
+    """Return the format names of a caps structure as strings.
+
+    Gst.Structure.get_value() raises TypeError ("unknown type GstValueList")
+    for list-valued fields on PyGObject builds without the GStreamer
+    overrides, so read the serialized structure instead.
+    """
+    text = st.to_string()
+    m = re.search(r"format=\(string\)\{([^}]+)\}", text)
+    if m:
+        names = [x.strip().strip('"') for x in m.group(1).split(",")]
+        return [n for n in names if n]
+    m = re.search(r'format=\(string\)("[^"]*"|[^,; ]+)', text)
+    return [m.group(1).strip('"')] if m else []
+
+
 def probe_param_spec(pspec, gobj_class_or_obj=None) -> dict:
     """Serialize a GParamSpec into a stable JSON dictionary."""
     import gi
@@ -270,27 +286,9 @@ def run_probe_mode(expected_plugin_so: str) -> int:
             feats = caps.get_features(i)
             key = f"{name}({feats.to_string()})" if feats and not feats.is_any() and feats.to_string() != "memory:SystemMemory" else name
             fmts = media_formats.setdefault(key, [])
-            if st.has_field("format"):
-                val = st.get_value("format")
-                if isinstance(val, str):
-                    if val not in fmts:
-                        fmts.append(val)
-                elif hasattr(val, "__iter__"):
-                    for f in val:
-                        if str(f) not in fmts:
-                            fmts.append(str(f))
-                else:
-                    # GstValueList in PyGObject
-                    val_str = st.to_string()
-                    m = re.search(r"format=\(string\)\{([^}]+)\}", val_str)
-                    if m:
-                        for f in [x.strip().strip('"') for x in m.group(1).split(",")]:
-                            if f and f not in fmts:
-                                fmts.append(f)
-                    else:
-                        m2 = re.search(r"format=\(string\)([^,; ]+)", val_str)
-                        if m2 and m2.group(1) not in fmts:
-                            fmts.append(m2.group(1))
+            for f in structure_formats(st):
+                if f not in fmts:
+                    fmts.append(f)
         snapshot["pad_templates"][tmpl.name_template] = media_formats
 
     # 3. Element properties & signals (on an instance in NULL state)
