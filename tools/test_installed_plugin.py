@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,37 @@ def load_build_options(build_dir):
         opt["name"]: opt.get("value")
         for opt in json.loads(options_path.read_text(encoding="utf-8"))
     }
+
+
+def env_path_value(env):
+    for key in ("Path", "PATH"):
+        if key in env:
+            return env[key]
+    return ""
+
+
+def resolve_gst_tool(name, env):
+    """Find gst-inspect-1.0 / gst-launch-1.0 across Unix and Windows layouts."""
+    candidates = [name]
+    if os.name == "nt":
+        candidates.append(f"{name}.exe")
+
+    search_path = env_path_value(env)
+    for candidate in candidates:
+        found = shutil.which(candidate, path=search_path)
+        if found:
+            return found
+
+    for key, value in env.items():
+        if key.upper().startswith("GSTREAMER_1_0_ROOT") and value:
+            for candidate in candidates:
+                path = Path(value) / "bin" / candidate
+                if path.is_file():
+                    return str(path)
+
+    raise FileNotFoundError(
+        f"Could not find {name}; searched PATH={search_path!r} and GSTREAMER_1_0_ROOT*"
+    )
 
 
 def check_binding(module, dll_dirs):
@@ -60,6 +92,22 @@ def smoke_test(build_dir):
                 "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "PYTHONPATH"):
         env.pop(key, None)
 
+    dll_dirs = []
+    if os.name == "nt":
+        libraries = [p for p in paths if "gstpylon-1.0" in p.name and p.suffix == ".dll"]
+        if len(libraries) != 1:
+            raise RuntimeError(f"Expected one gstpylon-1.0 DLL, found {libraries}")
+        dll_dirs.append(libraries[0].parent)
+        pylon_root = env.get("PYLON_ROOT") or options.get("pylon-root") or ""
+        if pylon_root:
+            sdk = Path(pylon_root, "Runtime", "x64")
+            if sdk.is_dir():
+                dll_dirs.append(sdk)
+        # Windows has no RPATH; gst-inspect must find dependent DLLs via PATH.
+        path_prefix = os.pathsep.join(str(d) for d in dll_dirs)
+        env["Path"] = path_prefix + os.pathsep + env_path_value(env)
+        env["PATH"] = env["Path"]
+
     with tempfile.TemporaryDirectory() as tmp:
         env.update(
             GST_PLUGIN_PATH_1_0=str(plugin.parent),
@@ -70,30 +118,22 @@ def smoke_test(build_dir):
             PYLONSRC_SKIP_TRANSPORT_LAYERS="usb,gige,cxp,cameralink",
         )
 
+        gst_inspect = resolve_gst_tool("gst-inspect-1.0", env)
+        gst_launch = resolve_gst_tool("gst-launch-1.0", env)
+
         def run(args, **kwargs):
             return subprocess.run(args, env=env, cwd=tmp, check=True, timeout=90, **kwargs)
 
-        info = run(["gst-inspect-1.0", "pylonsrc"], stdout=subprocess.PIPE).stdout
+        info = run([gst_inspect, "pylonsrc"], stdout=subprocess.PIPE).stdout
         filename = re.search(rb"^\s*Filename\s+(.+?)\s*$", info, re.MULTILINE)
         if not filename or not plugin.samefile(os.fsdecode(filename[1])):
             raise RuntimeError(f"Expected {plugin}, inspector reported {filename and filename[1]!r}")
-        run(["gst-launch-1.0", "-q", "pylonsrc", "num-buffers=5", "!", "fakesink"])
+        run([gst_launch, "-q", "pylonsrc", "num-buffers=5", "!", "fakesink"])
 
         if module is None:
             print(f"Loaded {plugin}; captured five emulated frames (python-bindings disabled).")
             return
 
-        dll_dirs = []
-        if os.name == "nt":
-            libraries = [p for p in paths if "gstpylon-1.0" in p.name and p.suffix == ".dll"]
-            if len(libraries) != 1:
-                raise RuntimeError(f"Expected one gstpylon-1.0 DLL, found {libraries}")
-            dll_dirs.append(libraries[0].parent)
-            pylon_root = env.get("PYLON_ROOT") or options.get("pylon-root") or ""
-            if pylon_root:
-                sdk = Path(pylon_root, "Runtime", "x64")
-                if sdk.is_dir():
-                    dll_dirs.append(sdk)
         run([sys.executable, "-I", Path(__file__).resolve(), "--binding", module, *dll_dirs])
         print(f"Loaded {plugin} and {module}; captured five emulated frames.")
 
