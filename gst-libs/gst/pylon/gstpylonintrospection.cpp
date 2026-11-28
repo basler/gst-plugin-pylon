@@ -115,6 +115,21 @@ GParamFlags gst_pylon_query_access(GenApi::INodeMap& nodemap,
   return static_cast<GParamFlags>(flags);
 }
 
+/* The prototype uses broad property bounds and lets GenApi enforce live
+ * limits on writes. Discovery itself never selects a feature or toggles TL
+ * locking, so it can run while the camera is grabbing. */
+static GParamFlags prototype_query_access(GenApi::INode* node) {
+  const auto mode = node->GetAccessMode();
+  const bool readable = GenApi::IsReadable(mode);
+  const bool writable = GenApi::IsWritable(mode);
+  const bool potentially_writable =
+      writable || gst_pylon_can_feature_later_be_writable(node);
+  return static_cast<GParamFlags>(
+      (readable ? G_PARAM_READABLE : 0) |
+      (potentially_writable ? (G_PARAM_WRITABLE | GST_PARAM_MUTABLE_READY)
+                            : 0));
+}
+
 void gst_pylon_query_feature_properties_double(
     GenApi::INodeMap& nodemap, GenApi::INode* node,
     GstPylonCache& feature_cache, GParamFlags& flags,
@@ -122,6 +137,13 @@ void gst_pylon_query_feature_properties_double(
     GenApi::INode* selector, gint64 selector_value,
     GstPylonDeviceProfile device_profile) {
   g_return_if_fail(node);
+
+  if (feature_cache.IsPrototypeReadOnlyDiscovery()) {
+    flags = prototype_query_access(node);
+    minimum_under_all_settings = (-G_MAXDOUBLE);
+    maximum_under_all_settings = G_MAXDOUBLE;
+    return;
+  }
 
   gchar* feature_cache_name = NULL;
   if (selector) {
@@ -176,6 +198,11 @@ void gst_pylon_query_feature_properties_flags(
     gint64 selector_value, GstPylonDeviceProfile device_profile) {
   g_return_if_fail(node);
 
+  if (feature_cache.IsPrototypeReadOnlyDiscovery()) {
+    flags = prototype_query_access(node);
+    return;
+  }
+
   gchar* feature_cache_name = NULL;
   if (selector) {
     feature_cache_name = gst_pylon_create_selected_name(
@@ -210,6 +237,13 @@ void gst_pylon_query_feature_properties_integer(
     GenApi::INode* selector, gint64 selector_value,
     GstPylonDeviceProfile device_profile) {
   g_return_if_fail(node);
+
+  if (feature_cache.IsPrototypeReadOnlyDiscovery()) {
+    flags = prototype_query_access(node);
+    minimum_under_all_settings = G_MININT64;
+    maximum_under_all_settings = G_MAXINT64;
+    return;
+  }
 
   gchar* feature_cache_name = NULL;
   if (selector) {

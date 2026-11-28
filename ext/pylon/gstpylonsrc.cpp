@@ -1026,13 +1026,14 @@ log_error:
   error_msg = g_strdup(error->message);
   g_error_free(error);
 
-error_after_start: {
-  GError* stop_error = NULL;
-  if (self->session) {
-    self->session->Stop(&stop_error);
-    g_clear_error(&stop_error);
+error_after_start:
+  {
+    GError* stop_error = NULL;
+    if (self->session) {
+      self->session->Stop(&stop_error);
+      g_clear_error(&stop_error);
+    }
   }
-}
 
 error:
   g_mutex_unlock(&self->session_lock);
@@ -1128,12 +1129,6 @@ static gboolean gst_pylon_src_create_session(GstPylonSrc* self,
     if (new_session) {
       new_session->SetGrabTimeout(grab_timeout);
       new_session->SetAutoReconnect(auto_reconnect);
-      GObject* cam_obj = new_session->RefCamera();
-      if (cam_obj) {
-        gst_pylon_object_set_framerate_callback(
-            cam_obj, gst_pylon_src_on_framerate_changed, self);
-        g_object_unref(cam_obj);
-      }
 #ifdef NVMM_ENABLED
       new_session->SetNvsurfaceLayout(nvsurface_layout);
       new_session->SetGpuId(gpu_id);
@@ -1198,14 +1193,25 @@ static GObject* gst_pylon_src_ref_child(GstPylonSrc* self, guint property_id) {
     return NULL;
   }
 
-  switch (property_id) {
-    case PROP_CAM:
-      return self->session->RefCamera();
-    case PROP_STREAM:
+  try {
+    if (property_id == PROP_CAM) {
+      GObject* child = self->session->RefCamera();
+      gst_pylon_object_set_framerate_callback(
+          child, gst_pylon_src_on_framerate_changed, self);
+      return child;
+    }
+
+    if (property_id == PROP_STREAM) {
       return self->session->RefStreamGrabber();
-    default:
-      return NULL;
+    }
+  } catch (const GenICam::GenericException& e) {
+    GST_ERROR_OBJECT(self, "Failed to create GenICam child: %s",
+                     e.GetDescription());
+  } catch (const std::exception& e) {
+    GST_ERROR_OBJECT(self, "Failed to create GenICam child: %s", e.what());
   }
+
+  return NULL;
 }
 
 static guint gst_pylon_src_child_name_to_property_id(const gchar* name) {

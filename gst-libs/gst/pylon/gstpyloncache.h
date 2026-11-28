@@ -43,6 +43,10 @@ class GST_PLUGIN_EXPORT GstPylonCache {
   ~GstPylonCache();
   gboolean HasNewSettings();
   gboolean IsLimitProbeEnabled() const;
+  static constexpr gboolean kPrototypeReadOnlyDiscovery = -1;
+  bool IsPrototypeReadOnlyDiscovery() const {
+    return enable_limit_probe == kPrototypeReadOnlyDiscovery;
+  }
 
   void SetIntProps(const gchar* feature_name, const gint64 min,
                    const gint64 max, const GParamFlags flags);

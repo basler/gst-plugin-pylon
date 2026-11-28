@@ -391,8 +391,10 @@ gboolean GstPylonSession::SetConfiguration(const GstCaps* conf, GError** err) {
        */
       if (!cur_pfnc.empty()) {
         for (const auto& fmt : pfnc_formats) {
-          if (fmt == cur_pfnc && pixelformat.CanSetValue(fmt.c_str())) {
-            fmt_valid = pixelformat.TrySetValue(fmt.c_str());
+          if (fmt == cur_pfnc) {
+            fmt_valid =
+                fast_preconfigured || (pixelformat.CanSetValue(fmt.c_str()) &&
+                                       pixelformat.TrySetValue(fmt.c_str()));
             break;
           }
         }
@@ -420,12 +422,18 @@ gboolean GstPylonSession::SetConfiguration(const GstCaps* conf, GError** err) {
     }
 
     Pylon::CIntegerParameter width(nodemap, "Width");
-    width.SetValue(gst_width, Pylon::IntegerValueCorrection_None);
-    GST_INFO("Set Feature Width: %d", gst_width);
+    if (!fast_preconfigured || !width.IsReadable() ||
+        width.GetValue() != gst_width) {
+      width.SetValue(gst_width, Pylon::IntegerValueCorrection_None);
+      GST_INFO("Set Feature Width: %d", gst_width);
+    }
 
     Pylon::CIntegerParameter height(nodemap, "Height");
-    height.SetValue(gst_height, Pylon::IntegerValueCorrection_None);
-    GST_INFO("Set Feature Height: %d", gst_height);
+    if (!fast_preconfigured || !height.IsReadable() ||
+        height.GetValue() != gst_height) {
+      height.SetValue(gst_height, Pylon::IntegerValueCorrection_None);
+      GST_INFO("Set Feature Height: %d", gst_height);
+    }
 
     /* set the cached offsetx/y values
      * respect the rounding value adjustment rules
@@ -434,9 +442,11 @@ gboolean GstPylonSession::SetConfiguration(const GstCaps* conf, GError** err) {
 
     gint offsetx_cache = -1;
     gint offsety_cache = -1;
-    gst_pylon_object_take_offset_cache(gcamera, &offsetx_cache, &offsety_cache);
-    const gboolean enable_correction =
-        gst_pylon_object_get_enable_correction(gcamera);
+    if (gcamera) {
+      gst_pylon_object_take_offset_cache(gcamera, &offsetx_cache,
+                                         &offsety_cache);
+    }
+    const gboolean enable_correction = applied_enable_correction;
 
     bool value_corrected = false;
     if (offsetx_cache >= 0) {
@@ -491,8 +501,7 @@ gboolean GstPylonSession::SetConfiguration(const GstCaps* conf, GError** err) {
 
     /* Honor framerate only when an explicit config source set it. Camera
      * defaults may have AcquisitionFrameRateEnable already true. */
-    const bool apply_caps_framerate =
-        !gst_pylon_object_is_framerate_configured(gcamera);
+    const bool apply_caps_framerate = !PreserveConfiguredFramerate();
     if (apply_caps_framerate) {
       /* Basler dart gen1 models have no framerate_enable feature */
       framerate_enable.TrySetValue(true);

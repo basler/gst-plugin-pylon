@@ -68,12 +68,14 @@ static std::string gst_pylon_cache_create_filepath(
 
 GstPylonCache::GstPylonCache(const std::string& name,
                              gboolean enable_limit_probe)
-    : filepath(gst_pylon_cache_create_filepath(name)),
+    : filepath(enable_limit_probe == kPrototypeReadOnlyDiscovery
+                   ? std::string{}
+                   : gst_pylon_cache_create_filepath(name)),
       feature_cache_dict(g_key_file_new()),
       is_modified(FALSE),
       enable_limit_probe(enable_limit_probe) {
   /* load initial cache file */
-  if (!LoadCacheFile()) {
+  if (!IsPrototypeReadOnlyDiscovery() && !LoadCacheFile()) {
     GST_LOG("No feature cache file found");
   }
 }
@@ -81,6 +83,9 @@ GstPylonCache::GstPylonCache(const std::string& name,
 GstPylonCache::~GstPylonCache() { g_key_file_free(this->feature_cache_dict); }
 
 gboolean GstPylonCache::IsLimitProbeEnabled() const {
+  if (IsPrototypeReadOnlyDiscovery()) {
+    return FALSE;
+  }
   const gchar* env = g_getenv("GST_PYLON_PROBE_LIMITS");
   if (env) {
     if (g_strcmp0(env, "0") == 0 || g_ascii_strcasecmp(env, "false") == 0) {

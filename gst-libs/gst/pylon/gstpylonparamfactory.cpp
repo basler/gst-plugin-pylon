@@ -96,7 +96,10 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_int64(
 
   return g_param_spec_int64(
       node->GetName(), node->GetDisplayName(), node->GetToolTip(), min_value,
-      max_value, gst_pylon_clamp_int64_default(param, min_value, max_value),
+      max_value,
+      schema.cache().IsPrototypeReadOnlyDiscovery()
+          ? 0
+          : gst_pylon_clamp_int64_default(param, min_value, max_value),
       flags);
 }
 
@@ -120,7 +123,10 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_int64(
   return gst_pylon_param_spec_selector_int64(
       schema.node_map(), node->GetName(), selector->GetName(), selector_value,
       node->GetDisplayName(), node->GetToolTip(), min_value, max_value,
-      gst_pylon_clamp_int64_default(param, min_value, max_value), flags);
+      schema.cache().IsPrototypeReadOnlyDiscovery()
+          ? 0
+          : gst_pylon_clamp_int64_default(param, min_value, max_value),
+      flags);
 }
 
 GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_bool(
@@ -134,7 +140,8 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_bool(
   if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
     return NULL;
   }
-  gboolean def = param.IsReadable() ? param.GetValue() : FALSE;
+  gboolean def = !schema.cache().IsPrototypeReadOnlyDiscovery() &&
+                 param.IsReadable() && param.GetValue();
 
   return g_param_spec_boolean(node->GetName(), node->GetDisplayName(),
                               node->GetToolTip(), def, flags);
@@ -153,7 +160,8 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_bool(
   if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
     return NULL;
   }
-  gboolean def = param.IsReadable() ? param.GetValue() : FALSE;
+  gboolean def = !schema.cache().IsPrototypeReadOnlyDiscovery() &&
+                 param.IsReadable() && param.GetValue();
 
   return gst_pylon_param_spec_selector_boolean(
       schema.node_map(), node->GetName(), selector->GetName(), selector_value,
@@ -178,7 +186,10 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_double(
 
   return g_param_spec_double(
       node->GetName(), node->GetDisplayName(), node->GetToolTip(), min_value,
-      max_value, gst_pylon_clamp_double_default(param, min_value, max_value),
+      max_value,
+      schema.cache().IsPrototypeReadOnlyDiscovery()
+          ? 0
+          : gst_pylon_clamp_double_default(param, min_value, max_value),
       flags);
 }
 
@@ -202,7 +213,10 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_double(
   return gst_pylon_param_spec_selector_double(
       schema.node_map(), node->GetName(), selector->GetName(), selector_value,
       node->GetDisplayName(), node->GetToolTip(), min_value, max_value,
-      gst_pylon_clamp_double_default(param, min_value, max_value), flags);
+      schema.cache().IsPrototypeReadOnlyDiscovery()
+          ? 0
+          : gst_pylon_clamp_double_default(param, min_value, max_value),
+      flags);
 }
 
 GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_str(GenApi::INode* node) {
@@ -215,7 +229,10 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_str(GenApi::INode* node) {
   if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
     return NULL;
   }
-  std::string def = param.IsReadable() ? param.GetValue().c_str() : "";
+  std::string def =
+      !schema.cache().IsPrototypeReadOnlyDiscovery() && param.IsReadable()
+          ? param.GetValue().c_str()
+          : "";
 
   return g_param_spec_string(node->GetName(), node->GetDisplayName(),
                              node->GetToolTip(), def.c_str(), flags);
@@ -234,7 +251,10 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_str(
   if (!(flags & (G_PARAM_READABLE | G_PARAM_WRITABLE))) {
     return NULL;
   }
-  std::string def = param.IsReadable() ? param.GetValue().c_str() : "";
+  std::string def =
+      !schema.cache().IsPrototypeReadOnlyDiscovery() && param.IsReadable()
+          ? param.GetValue().c_str()
+          : "";
 
   return gst_pylon_param_spec_selector_string(
       schema.node_map(), node->GetName(), selector->GetName(), selector_value,
@@ -309,10 +329,11 @@ GType GstPylonParamFactory::gst_pylon_make_enum_type(GenApi::INode* node) {
 }
 
 static gint gst_pylon_resolve_enum_default(GType enum_type,
-                                           Pylon::CEnumParameter& param) {
+                                           Pylon::CEnumParameter& param,
+                                           bool read_current) {
   gint def_val = 0;
   bool has_cur = false;
-  if (param.IsReadable()) {
+  if (read_current && param.IsReadable()) {
     try {
       def_val = static_cast<gint>(param.GetIntValue());
       has_cur = true;
@@ -346,7 +367,8 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_enum(
 
   Pylon::CEnumParameter param(node);
   GType type = gst_pylon_make_enum_type(node);
-  gint def_val = gst_pylon_resolve_enum_default(type, param);
+  gint def_val = gst_pylon_resolve_enum_default(
+      type, param, !schema.cache().IsPrototypeReadOnlyDiscovery());
 
   return g_param_spec_enum(node->GetName(), node->GetDisplayName(),
                            node->GetToolTip(), type, def_val, flags);
@@ -367,7 +389,8 @@ GParamSpec* GstPylonParamFactory::gst_pylon_make_spec_selector_enum(
 
   Pylon::CEnumParameter param(node);
   GType type = gst_pylon_make_enum_type(node);
-  gint def_val = gst_pylon_resolve_enum_default(type, param);
+  gint def_val = gst_pylon_resolve_enum_default(
+      type, param, !schema.cache().IsPrototypeReadOnlyDiscovery());
 
   return gst_pylon_param_spec_selector_enum(
       schema.node_map(), node->GetName(), selector->GetName(), selector_value,

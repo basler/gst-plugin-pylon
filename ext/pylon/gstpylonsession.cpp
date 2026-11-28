@@ -412,28 +412,15 @@ void GstPylonSession::Open(const gchar* device_user_name,
     }
   }
 
-  GstPylonCache camera_feature_cache(
-      gst_pylon_camera_schema_cache_key(*camera));
-  GstPylonObjectSchema camera_schema =
-      gst_pylon_make_camera_schema(*camera, camera_feature_cache);
-  gcamera = gst_pylon_object_new_for_schema(camera, camera_schema,
-                                            enable_correction, camera_mutex);
-  if (pfs_loaded) {
-    gst_pylon_object_mark_framerate_configured(gcamera);
+  /* Prototype: can a saved configuration reach acquisition before either
+   * GenICam child is built, and still permit lookup during capture? */
+  fast_preconfigured =
+      (pfs_loaded || (user_set && *user_set)) &&
+      g_strcmp0(g_getenv("GST_PYLON_PROTOTYPE_FAST_PRECONFIGURED"), "1") == 0;
+  if (!fast_preconfigured) {
+    g_object_unref(RefCamera());
+    g_object_unref(RefStreamGrabber());
   }
-  gst_object_set_parent(GST_OBJECT(gcamera), GST_OBJECT(gstpylonsrc));
-  g_object_ref(gcamera);
-  GST_INFO_OBJECT(gstpylonsrc, "Created camera child object");
-
-  GstPylonCache stream_feature_cache(
-      gst_pylon_stream_schema_cache_key(*camera));
-  GstPylonObjectSchema stream_schema =
-      gst_pylon_make_stream_schema(*camera, stream_feature_cache);
-  gstream_grabber = gst_pylon_object_new_for_schema(
-      camera, stream_schema, enable_correction, camera_mutex);
-  gst_object_set_parent(GST_OBJECT(gstream_grabber), GST_OBJECT(gstpylonsrc));
-  g_object_ref(gstream_grabber);
-  GST_INFO_OBJECT(gstpylonsrc, "Created stream grabber child object");
 
   GstElement* elem_for_clock = gstpylonsrc;
   image_handler.SetClockCallback([elem_for_clock]() -> GstClockTime {
@@ -775,7 +762,9 @@ gboolean GstPylonSession::LoadPfsConfig(const gchar* pfs_location,
   try {
     Pylon::CFeaturePersistence::Load(pfs_location, &camera->GetNodeMap(),
                                      check_nodemap_sanity);
-    gst_pylon_object_mark_framerate_configured(gcamera);
+    if (gcamera && !fast_preconfigured) {
+      gst_pylon_object_mark_framerate_configured(gcamera);
+    }
     applied_pfs_location = pfs_location;
     has_applied_config = TRUE;
   } catch (const Pylon::GenericException& e) {
@@ -841,8 +830,7 @@ gboolean GstPylonSession::GetPreferredCapsValues(
       }
     }
 
-    if (preferred_fps && gcamera &&
-        gst_pylon_object_is_framerate_configured(gcamera)) {
+    if (preferred_fps && PreserveConfiguredFramerate()) {
       Pylon::CFloatParameter fps;
       if (camera->GetSfncVersion() >= Pylon::Sfnc_2_0_0) {
         fps.Attach(nodemap, "AcquisitionFrameRate");
@@ -862,12 +850,17 @@ gboolean GstPylonSession::GetPreferredCapsValues(
 
 gboolean GstPylonSession::ExecuteCommand(const gchar* command_name,
                                          GError** err) {
-  if (!gcamera) {
-    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED,
-                "Camera child object is not initialized");
-    return FALSE;
+  try {
+    g_object_unref(RefCamera());
+    return gst_pylon_object_execute_command(gcamera, command_name, err);
+  } catch (const GenICam::GenericException& e) {
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                e.GetDescription());
+  } catch (const std::exception& e) {
+    g_set_error(err, GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_FAILED, "%s",
+                e.what());
   }
-  return gst_pylon_object_execute_command(gcamera, command_name, err);
+  return FALSE;
 }
 
 void GstPylonSession::InterruptCapture() {
@@ -880,16 +873,52 @@ void GstPylonSession::ClearCaptureInterrupt() {
 
 void GstPylonSession::SetEnableCorrection(gboolean enable_correction) {
   applied_enable_correction = enable_correction;
-  gst_pylon_object_set_enable_correction(gcamera, enable_correction);
-  gst_pylon_object_set_enable_correction(gstream_grabber, enable_correction);
+  if (gcamera) {
+    gst_pylon_object_set_enable_correction(gcamera, enable_correction);
+  }
+  if (gstream_grabber) {
+    gst_pylon_object_set_enable_correction(gstream_grabber, enable_correction);
+  }
 }
 
-GObject* GstPylonSession::RefCamera() const {
-  return G_OBJECT(g_object_ref(gcamera));
+GObject* GstPylonSession::RefChild(bool stream) {
+  std::lock_guard<std::recursive_mutex> lock(*camera_mutex);
+  GObject*& child = stream ? gstream_grabber : gcamera;
+  if (!child) {
+    const auto key = stream ? gst_pylon_stream_schema_cache_key(*camera)
+                            : gst_pylon_camera_schema_cache_key(*camera);
+    const std::string prototype_suffix = "_fast_preconfigured_prototype";
+    GstPylonCache cache(
+        fast_preconfigured ? key + prototype_suffix : key,
+        fast_preconfigured ? GstPylonCache::kPrototypeReadOnlyDiscovery : TRUE);
+    auto schema = stream ? gst_pylon_make_stream_schema(*camera, cache)
+                         : gst_pylon_make_camera_schema(*camera, cache);
+    if (fast_preconfigured) {
+      schema.schema_cache_key += prototype_suffix;
+      schema.device_full_name += " Fast Preconfigured Prototype";
+    }
+    child = gst_pylon_object_new_for_schema(
+        camera, schema, applied_enable_correction, camera_mutex);
+    if (!stream && !fast_preconfigured && !applied_pfs_location.empty()) {
+      gst_pylon_object_mark_framerate_configured(child);
+    }
+    gst_object_set_parent(GST_OBJECT(child), GST_OBJECT(gstpylonsrc));
+    g_object_ref(child);
+    GST_INFO_OBJECT(gstpylonsrc, "Created %s child object",
+                    stream ? "stream grabber" : "camera");
+  }
+
+  return G_OBJECT(g_object_ref(child));
 }
 
-GObject* GstPylonSession::RefStreamGrabber() const {
-  return G_OBJECT(g_object_ref(gstream_grabber));
+GObject* GstPylonSession::RefCamera() { return RefChild(false); }
+
+GObject* GstPylonSession::RefStreamGrabber() { return RefChild(true); }
+
+bool GstPylonSession::PreserveConfiguredFramerate() const {
+  return !applied_pfs_location.empty() ||
+         (fast_preconfigured && !applied_user_set.empty()) ||
+         (gcamera && gst_pylon_object_is_framerate_configured(gcamera));
 }
 
 gboolean GstPylonSession::MatchesRequestedDevice(

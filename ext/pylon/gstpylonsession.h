@@ -94,8 +94,8 @@ class GstPylonSession {
   gboolean ExecuteCommand(const gchar* command_name, GError** err);
 
   void SetEnableCorrection(gboolean enable_correction);
-  GObject* RefCamera() const;
-  GObject* RefStreamGrabber() const;
+  GObject* RefCamera();
+  GObject* RefStreamGrabber();
   gboolean MatchesRequestedDevice(gint device_index,
                                   const gchar* device_user_name,
                                   const gchar* device_serial_number) const;
@@ -123,6 +123,8 @@ class GstPylonSession {
             gboolean enable_correction);
   void AttachAndOpen(const Pylon::CDeviceInfo& device_info, int retries);
   void ReleaseDevice();
+  GObject* RefChild(bool stream);
+  bool PreserveConfiguredFramerate() const;
   gboolean TryReconnect(GError** err);
   gboolean CaptureCompressed(Pylon::CBaslerUniversalGrabResultPtr& grab_result,
                              const Pylon::CompressionInfo_t& comp_info,
@@ -156,6 +158,7 @@ class GstPylonSession {
   GstElement* gstpylonsrc = nullptr;
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera =
       std::make_shared<Pylon::CBaslerUniversalInstantCamera>();
+  bool fast_preconfigured = false;
   GObject* gcamera = nullptr;
   GObject* gstream_grabber = nullptr;
   GstPylonImageHandler image_handler;

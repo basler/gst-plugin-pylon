@@ -708,6 +708,7 @@ void gst_pylon_object_set_framerate_callback(GObject* obj,
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
       gst_pylon_object_get_instance_private(self));
+  OptionalCameraLock cam_lock(priv->camera_mutex);
   priv->framerate_changed_cb = cb;
   priv->framerate_changed_data = user_data;
 }
