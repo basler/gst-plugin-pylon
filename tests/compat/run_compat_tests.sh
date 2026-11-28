@@ -152,11 +152,18 @@ actual_bayer="$(extract_bayer_formats "$actual_inspect")"
 # normalize_inspect grows new rules (blank lines, action syntax, etc.).
 normalized_golden=$(mktemp)
 normalize_inspect < "$GOLDEN_DIR/gst_inspect_pylonsrc.txt" > "$normalized_golden"
+# Builds against GStreamer < 1.24 compile out the 10/12/16-bit Bayer formats
+# (GST_PYLON_SRC_BAYER_FORMATS in ext/pylon/gstpylonsrc.cpp). Drop exactly those from the
+# golden and still compare the rest of the surface.
+if [[ "$golden_bayer" == *10le* && "$actual_bayer" != *10le* ]]; then
+  echo "NOTE: GStreamer < 1.24 build; ignoring 10/12/16-bit Bayer pad formats"
+  stripped_golden=$(mktemp)
+  sed -E '/^[[:space:]]*format:/s/, \(string\)(rggb|bggr|gbrg|grbg)(10|12|16)le//g' \
+    "$normalized_golden" > "$stripped_golden"
+  mv "$stripped_golden" "$normalized_golden"
+fi
 if [[ -n "$golden_sdk" && -n "$actual_sdk" && "$golden_sdk" != "$actual_sdk" && "${PYLON_COMPAT_STRICT_GOLDEN:-0}" != "1" ]]; then
   echo "SKIP: golden diff skipped (golden is for pylon SDK $golden_sdk, built against $actual_sdk; set PYLON_COMPAT_STRICT_GOLDEN=1 to enforce)"
-  skipped=1
-elif [[ -n "$golden_bayer" && -n "$actual_bayer" && "$golden_bayer" != "$actual_bayer" && "${PYLON_COMPAT_STRICT_GOLDEN:-0}" != "1" ]]; then
-  echo "SKIP: golden diff skipped (Bayer pad formats differ; golden expects GStreamer formats unavailable in this build; set PYLON_COMPAT_STRICT_GOLDEN=1 to enforce)"
   skipped=1
 elif ! diff -u "$normalized_golden" "$actual_inspect"; then
   echo "FAIL: gst-inspect output differs from golden"
@@ -182,7 +189,7 @@ fi
 
 if [[ $skipped -eq 1 ]]; then
   echo ""
-  echo "Required-property and pipeline checks passed; golden diff skipped due to SDK or GStreamer pad-format mismatch."
+  echo "Required-property and pipeline checks passed; golden diff skipped due to pylon SDK version mismatch."
   exit 77
 fi
 
