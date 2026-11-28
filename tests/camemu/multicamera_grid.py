@@ -36,8 +36,12 @@ def make_grid():
             "! video/x-raw,format=GRAY8,width=320,height=240 "
             f"! queue ! videoconvert ! grid.sink_{i}"
         )
+    # Force GRAY8 after videoconvert: compositor itself only gained native
+    # grayscale output around GStreamer 1.22, but Debian packaging CI still
+    # builds against Ubuntu 22.04 / GStreamer 1.20.
     return Gst.parse_launch(
         f"compositor name=grid background=black {' '.join(positions)} "
+        f"! videoconvert "
         f"! video/x-raw,format=GRAY8,width={WIDTH},height={HEIGHT},framerate=20/1 "
         "! appsink name=output sync=false max-buffers=2 drop=true "
         + " ".join(sources)
