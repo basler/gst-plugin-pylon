@@ -32,8 +32,7 @@ pygstpylon_deps = [
 # DEB_PYTHON_INSTALL_LAYOUT=deb lands under dist-packages.
 py_install_dir = py3.get_install_dir()
 
-# Use CPython's stable ABI (3.10+) so the package built on Ubuntu 22.04 also
-# imports on Debian bookworm (3.11) and Ubuntu 24.04 (3.12). Meson 0.61 does
+# Same CPython stable ABI floor as pypylon (3.9 / cp39-abi3). Meson 0.61 does
 # not have python.extension_module(limited_api:), so name the shared module
 # explicitly with the standard abi3 suffix.
 if host_system == 'windows'
@@ -63,7 +62,7 @@ pymeta = shared_module('pygstpylon',
   install_dir : py_install_dir,
   build_rpath : pylon_rpath,
   install_rpath : binding_rpath,
-  cpp_args: ['-DHAVE_CONFIG_H=1', '-DPy_LIMITED_API=0x030A0000'],
+  cpp_args: ['-DHAVE_CONFIG_H=1', '-DPy_LIMITED_API=0x03090000'],
   link_args : py3_link_args,
   include_directories : [configinc],
   gnu_symbol_visibility: 'inlineshidden',

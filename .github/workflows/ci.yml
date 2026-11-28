@@ -550,13 +550,13 @@ jobs:
           cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-msvc-x86_64-1.26.9.msi TARGETDIR="C:\" /quiet ADDLOCAL=ALL /L*V gst.log
           if ($LASTEXITCODE) { cat gst.log; exit 1 }
 
-      # The module is built with the runner's default Python (3.12). Importing it
-      # from the stable-ABI floor and a newer release proves version independence.
-      - name: Set up Python 3.10
-        id: py310
+      # Same floor as pypylon (cp39-abi3). Built with the runner's default
+      # Python (3.12); importing from 3.9 and a newer release proves independence.
+      - name: Set up Python 3.9
+        id: py39
         uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
+          python-version: "3.9"
 
       - name: Set up Python 3.13
         id: py313
@@ -579,7 +579,7 @@ jobs:
             --package $dest `
             --gst-root $gstRoot `
             --pylon-runtime $pylonRuntime `
-            --python "${{ steps.py310.outputs.python-path }}" `
+            --python "${{ steps.py39.outputs.python-path }}" `
             --python "${{ steps.py313.outputs.python-path }}"
 
   build_macos:

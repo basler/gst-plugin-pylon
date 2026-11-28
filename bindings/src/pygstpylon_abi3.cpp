@@ -3,7 +3,8 @@
  * CPython stable-ABI bindings for GstPylonMeta.
  */
 
-#define Py_LIMITED_API 0x030A0000
+/* Same floor as pypylon (cp39-abi3 / Py_LIMITED_API 0x03090000). */
+#define Py_LIMITED_API 0x03090000
 #include "config.h"
 
 #include <Python.h>

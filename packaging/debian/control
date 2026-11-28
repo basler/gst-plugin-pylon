@@ -52,7 +52,7 @@ XB-Pylon-Built-Against: ${pylon:Built-Against}
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          ${python3:Depends},
-         python3 (>= 3.10),
+         python3 (>= 3.9),
          pylon (= ${pylon:Version}),
          gst-plugin-pylon (= ${binary:Version}),
          deepstream-6.4 <nvidia> | deepstream-7.0 <nvidia> | deepstream-7.1 <nvidia>

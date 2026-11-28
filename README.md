@@ -606,8 +606,9 @@ PYLON_ROOT=/opt/pylon dpkg-buildpackage -us -uc -rfakeroot
 The package build uses the system Meson/Ninja packages (no pip bootstrap) and runs
 the Meson test suite, including camemu and pygstpylon (`PYLON_CAMEMU=4`). Skip
 tests with `DEB_BUILD_OPTIONS=nocheck` if you have no emulators.
-`python3-pygstpylon` uses CPython's stable ABI with a Python 3.10 floor, so the
-same package imports with the distro Python on every supported target.
+`python3-pygstpylon` uses the same CPython stable ABI floor as pypylon
+(`Py_LIMITED_API` 3.9 / `cp39-abi3`), so the same package imports with the
+distro Python on every supported target.
 
 To reproduce the build-once/install-many check locally, provide an SDK archive
 containing a top-level `pylon/` directory:
@@ -880,9 +881,10 @@ compiler or GStreamer development package is required.
    gst-inspect-1.0 pylonsrc
    ```
 
-`python\pygstpylon.pyd` uses the CPython stable ABI and imports on any 64-bit
-CPython 3.10 or newer. Python 3.8+ ignores `PATH` when loading extension
-dependencies, so register the DLL directories before importing:
+`python\pygstpylon.pyd` uses the same CPython stable ABI floor as pypylon
+(`cp39-abi3`) and imports on any 64-bit CPython 3.9 or newer. Python 3.8+
+ignores `PATH` when loading extension dependencies, so register the DLL
+directories before importing:
 
 ```python
 import os, sys
@@ -894,7 +896,7 @@ import pygstpylon
 ```
 
 CI runs exactly these steps on a fresh runner (`tools/test_windows_package.py`),
-importing the module with Python 3.10 and 3.13.
+importing the module with Python 3.9 and 3.13.
 
 ## macOS
 pylon Software Suite 26.06 and newer support macOS (`arm64`). Install GStreamer and the build tools with Homebrew, set `PYLON_ROOT` to the pylon prefix, then use meson/ninja:

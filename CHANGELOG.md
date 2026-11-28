@@ -147,8 +147,9 @@ All notable changes to this project will be documented in this file.
 - Universal Debian/Ubuntu binary packages built once per architecture (`amd64`,
   `arm64`) and verified across Ubuntu 22.04, Ubuntu 24.04, Debian 12
   (bookworm), and Debian 13 (trixie)
-- CPython stable-ABI (`abi3`, Python 3.10+) `python3-pygstpylon` package so a
-  single `.deb` works across distro Python 3.10–3.13+ runtimes
+- CPython stable-ABI (`abi3`, same 3.9 / `cp39-abi3` floor as pypylon)
+  `python3-pygstpylon` package so a single `.deb` works across distro
+  Python 3.9–3.13+ runtimes
 - NVIDIA Jetson `nvidia` Debian build profile supporting JetPack 6 / DeepStream
   6.4, 7.0, and 7.1 (with CUDA toolkit fallback when `cuda.pc` is absent)
 - Per-package CycloneDX 1.6 build SBOMs (`*.cdx.json`) and Grype vulnerability
