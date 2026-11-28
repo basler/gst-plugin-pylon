@@ -1,6 +1,20 @@
 py_mod = import('python')
 py3 = py_mod.find_installation('python3')
 py3_dep = py3.dependency()
+py3_link_args = []
+# With Py_LIMITED_API, pyconfig.h requests python3.lib (the stable-ABI import
+# library for python3.dll). Meson's dependency links python3XY.lib, which would
+# bind the module to one interpreter version, so keep only headers here.
+if cxx.get_argument_syntax() == 'msvc'
+  py3_libdir = run_command(py3, '-c',
+    'import os, sys; print(os.path.join(sys.base_prefix, "libs"))',
+    check: true).stdout().strip()
+  if not fs.is_file(py3_libdir / 'python3.lib')
+    error('python3.lib not found in ' + py3_libdir + '; it is required for the stable-ABI pygstpylon module')
+  endif
+  py3_dep = py3_dep.partial_dependency(compile_args: true, includes: true)
+  py3_link_args = ['/LIBPATH:' + py3_libdir]
+endif
 message(py3.full_path())
 message(py3.get_install_dir())
 
@@ -41,14 +55,6 @@ if host_system == 'linux' or host_system == 'darwin'
   endif
 endif
 
-# Stable ABI (python3.lib) is for Linux packaging across distro Python
-# versions. On Windows, Py_LIMITED_API pulls in python3.lib via pragma
-# while Meson links python3XY.lib; CI images often lack python3.lib.
-binding_cpp_args = ['-DHAVE_CONFIG_H=1']
-if host_system != 'windows'
-  binding_cpp_args += ['-DPy_LIMITED_API=0x030A0000']
-endif
-
 pymeta = shared_module('pygstpylon',
   pygstpylon_sources,
   name_prefix : '',
@@ -57,7 +63,8 @@ pymeta = shared_module('pygstpylon',
   install_dir : py_install_dir,
   build_rpath : pylon_rpath,
   install_rpath : binding_rpath,
-  cpp_args: binding_cpp_args,
+  cpp_args: ['-DHAVE_CONFIG_H=1', '-DPy_LIMITED_API=0x030A0000'],
+  link_args : py3_link_args,
   include_directories : [configinc],
   gnu_symbol_visibility: 'inlineshidden',
   dependencies : pygstpylon_deps,

@@ -3,12 +3,7 @@
  * CPython stable-ABI bindings for GstPylonMeta.
  */
 
-/* Stable ABI is for Linux packaging across distro Python versions. On
- * Windows, Py_LIMITED_API injects a pragma for python3.lib which CI images
- * often lack; link the versioned interpreter instead. */
-#ifndef _WIN32
-#  define Py_LIMITED_API 0x030A0000
-#endif
+#define Py_LIMITED_API 0x030A0000
 #include "config.h"
 
 #include <Python.h>
