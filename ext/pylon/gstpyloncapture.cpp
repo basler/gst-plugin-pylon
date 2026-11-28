@@ -317,7 +317,8 @@ gboolean GstPylonSession::CaptureCompressed(
 
 gboolean GstPylonSession::Capture(GstBuffer** buf,
                                   GstPylonCaptureErrorEnum capture_error,
-                                  GstClockTime* arrival_pts, GError** err) {
+                                  GstClockTime* arrival_clock_time,
+                                  GError** err) {
   g_return_val_if_fail(buf, FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
@@ -418,8 +419,8 @@ gboolean GstPylonSession::Capture(GstBuffer** buf,
     }
   }
 
-  if (arrival_pts) {
-    *arrival_pts = pending_frame.arrival_time;
+  if (arrival_clock_time) {
+    *arrival_clock_time = pending_frame.arrival_time;
   }
 
   /* Check for Basler Compression Beyond compressed payloads before accessing

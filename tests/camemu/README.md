@@ -37,11 +37,19 @@ meson test -C build camemu_pylonsrc --print-errorlogs
 | Property order | `cam::` before `user-set`/`pfs-location` still applies final config |
 | Pipeline | queue, videoconvert, sequential open/close (system-memory caps so NVMM builds work under fakeroot) |
 | Buffers | PyGObject appsink count when PyGObject is available |
+| Multi-camera grid | `multicamera_grid.py` checks startup timestamps on all 16 inputs and verifies that every tile contains pixels in consecutive compositor frames. It checks descriptor cleanup across three starts on Linux. |
 | Pending frames | `max-pending-frames=3` pipeline; `pending_frames_continuity.py`: consecutive buffer offsets through a 4-frame consumer stall |
 | NVMM full-range | `nvmm_full_range_contract.py`: GStreamer colorimetry defaults that NVMM surface selection relies on. Set `RUN_NVMM_FULL_RANGE=1` on Jetson for a YUY2 `1:4:5:1` NVMM pipeline |
 | Restart cleanup | `restart_resource_leak.py`: 4096x4096 RGB; pipe FD + RSS across EOS and abrupt-stop cycles (Linux `/proc` only; skipped elsewhere) |
 
 Unit tests (no camera): `meson test generic_imagehandler generic_nvmmcolor` — image-handler queue/recover and NVMM color-kind policy.
+
+On Linux, set `ulimit -Sn 4096` inside the subshell before launching the
+16-camera grid manually. With pylon 12.2.1 the live grid used about 1,223
+descriptors. The test sets the soft limit inside its own process and skips
+when the hard limit is below 4096. To reproduce the descriptor pressure with
+the built plugin on the GStreamer plugin path, run
+`python3 tests/camemu/multicamera_grid.py --soft-limit 1024`.
 
 Against NVIDIA's real `nvbufsurface.h` (container, no GPU):
 

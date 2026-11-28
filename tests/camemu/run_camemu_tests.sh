@@ -240,6 +240,22 @@ if command -v python3 >/dev/null 2>&1 || [[ -x /usr/bin/python3 ]]; then
     # Pipe FD / VmRSS sampling uses /proc (Linux). Camemu itself is
     # cross-platform; skip only this check elsewhere.
     if [[ -d /proc/self/fd ]]; then
+      if gst-inspect-1.0 compositor >/dev/null 2>&1; then
+        grid_cmd=("$PYTHON_GI" "$SCRIPT_DIR/multicamera_grid.py")
+        if [[ -n "$TIMEOUT_CMD" ]]; then
+          grid_cmd=("$TIMEOUT_CMD" 60 "${grid_cmd[@]}")
+        fi
+        if grid_output="$(LC_ALL=C "${grid_cmd[@]}" 2>&1)"; then
+          run_pass "multicamera_grid"
+        elif [[ $? -eq 77 ]]; then
+          run_skip "multicamera_grid ($grid_output)"
+        else
+          run_fail "multicamera_grid" "$grid_output"
+        fi
+      else
+        run_skip "multicamera_grid (GStreamer compositor unavailable)"
+      fi
+
       # Restart cycles with 4096x4096 RGB (~50 MiB/frame): pipe FD growth and
       # RSS must stay bounded; abrupt stop leaves a pending grab in the handler.
       # The RSS budget is per cycle because a real grab-result leak is ~1
@@ -251,18 +267,21 @@ if command -v python3 >/dev/null 2>&1 || [[ -x /usr/bin/python3 ]]; then
           --serial "$EMU_SERIAL_0" --cycles 10 --max-pipe-growth 8 \
           --max-rss-frames-per-cycle 0.5 --settle-ms 400
     else
+      run_skip "multicamera_grid (FD sampling is Linux-only)"
       run_skip "restart_resource_cleanup (/proc FD and VmRSS sampling is Linux-only)"
     fi
   else
     run_skip "appsink_buffer_count (PyGObject not available)"
     run_skip "pending_frames_survive_stall (PyGObject not available)"
     run_skip "nvmm_full_range_contract (PyGObject not available)"
+    run_skip "multicamera_grid (PyGObject not available)"
     run_skip "restart_resource_cleanup (PyGObject not available)"
   fi
 else
   run_skip "appsink_buffer_count (python3 not available)"
   run_skip "pending_frames_survive_stall (python3 not available)"
   run_skip "nvmm_full_range_contract (python3 not available)"
+  run_skip "multicamera_grid (python3 not available)"
   run_skip "restart_resource_cleanup (python3 not available)"
 fi
 

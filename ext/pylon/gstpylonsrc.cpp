@@ -114,7 +114,7 @@ static gboolean gst_pylon_src_unlock(GstBaseSrc* src);
 static gboolean gst_pylon_src_unlock_stop(GstBaseSrc* src);
 static gboolean gst_pylon_src_query(GstBaseSrc* src, GstQuery* query);
 static void gst_pylon_src_add_metadata(GstPylonSrc* self, GstBuffer* buf,
-                                       GstClockTime arrival_pts);
+                                       GstClockTime arrival_clock_time);
 static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf);
 static gboolean gst_pylon_src_start_locked(GstPylonSrc* self);
 static gboolean gst_pylon_src_teardown_session(GstPylonSrc* self,
@@ -1436,11 +1436,11 @@ static gboolean gst_pylon_src_query(GstBaseSrc* src, GstQuery* query) {
 
 /* add time metadata to buffer */
 static void gst_pylon_src_add_metadata(GstPylonSrc* self, GstBuffer* buf,
-                                       GstClockTime arrival_pts) {
+                                       GstClockTime arrival_clock_time) {
   GstClock* clock = NULL;
-  GstClockTime abs_time = GST_CLOCK_TIME_NONE;
+  GstClockTime abs_time = arrival_clock_time;
   GstClockTime base_time = GST_CLOCK_TIME_NONE;
-  GstClockTime timestamp = arrival_pts;
+  GstClockTime timestamp = GST_CLOCK_TIME_NONE;
   GstCaps* ref = NULL;
   guint64 offset = G_GUINT64_CONSTANT(0);
   GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
@@ -1460,31 +1460,20 @@ static void gst_pylon_src_add_metadata(GstPylonSrc* self, GstBuffer* buf,
   /* set duration */
   GST_BUFFER_DURATION(buf) = self->duration;
 
-  if (!GST_CLOCK_TIME_IS_VALID(timestamp)) {
-    if ((clock = GST_ELEMENT_CLOCK(self))) {
-      base_time = GST_ELEMENT(self)->base_time;
-      gst_object_ref(clock);
-    } else {
-      base_time = GST_CLOCK_TIME_NONE;
-    }
+  base_time = GST_ELEMENT(self)->base_time;
+  if (!GST_CLOCK_TIME_IS_VALID(abs_time) && (clock = GST_ELEMENT_CLOCK(self))) {
+    gst_object_ref(clock);
   }
   GST_OBJECT_UNLOCK(self);
 
-  /* Fallback to sampling pipeline clock if arrival_pts was not available */
-  if (!GST_CLOCK_TIME_IS_VALID(timestamp)) {
-    if (clock) {
-      abs_time = gst_clock_get_time(clock);
-      gst_object_unref(clock);
-    } else {
-      abs_time = GST_CLOCK_TIME_NONE;
-    }
-
-    if (GST_CLOCK_TIME_IS_VALID(abs_time) &&
-        GST_CLOCK_TIME_IS_VALID(base_time) && abs_time >= base_time) {
-      timestamp = abs_time - base_time;
-    } else {
-      timestamp = GST_CLOCK_TIME_NONE;
-    }
+  /* Sample at delivery if no clock was available at arrival. Frames from
+   * before the running-time origin belong at the start of that timeline. */
+  if (clock) {
+    abs_time = gst_clock_get_time(clock);
+    gst_object_unref(clock);
+  }
+  if (GST_CLOCK_TIME_IS_VALID(abs_time) && GST_CLOCK_TIME_IS_VALID(base_time)) {
+    timestamp = abs_time >= base_time ? abs_time - base_time : 0;
   }
   offset = pylon_meta->block_id != GST_BUFFER_OFFSET_NONE
                ? pylon_meta->block_id
@@ -1582,7 +1571,7 @@ static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf) {
   gboolean pylon_ret = TRUE;
   GstFlowReturn ret = GST_FLOW_OK;
   gint capture_error = -1;
-  GstClockTime arrival_pts = GST_CLOCK_TIME_NONE;
+  GstClockTime arrival_clock_time = GST_CLOCK_TIME_NONE;
 
   try {
     GST_OBJECT_LOCK(self);
@@ -1590,8 +1579,8 @@ static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf) {
     GST_OBJECT_UNLOCK(self);
 
     pylon_ret = self->session->Capture(
-        buf, static_cast<GstPylonCaptureErrorEnum>(capture_error), &arrival_pts,
-        &error);
+        buf, static_cast<GstPylonCaptureErrorEnum>(capture_error),
+        &arrival_clock_time, &error);
 
     if (pylon_ret == FALSE) {
       if (error) {
@@ -1607,7 +1596,7 @@ static GstFlowReturn gst_pylon_src_create(GstPushSrc* src, GstBuffer** buf) {
     }
 
     *buf = gst_pylon_src_repack_padded(self, *buf);
-    gst_pylon_src_add_metadata(self, *buf, arrival_pts);
+    gst_pylon_src_add_metadata(self, *buf, arrival_clock_time);
 
     GST_LOG_OBJECT(self, "Created buffer %" GST_PTR_FORMAT, (gpointer)*buf);
   } catch (const GenICam::GenericException& e) {

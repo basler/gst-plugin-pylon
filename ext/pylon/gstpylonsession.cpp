@@ -441,10 +441,8 @@ void GstPylonSession::Open(const gchar* device_user_name,
       return GST_CLOCK_TIME_NONE;
     }
     GstClock* clock = NULL;
-    GstClockTime base_time = GST_CLOCK_TIME_NONE;
     GST_OBJECT_LOCK(elem_for_clock);
     if ((clock = GST_ELEMENT_CLOCK(elem_for_clock))) {
-      base_time = GST_ELEMENT(elem_for_clock)->base_time;
       gst_object_ref(clock);
     }
     GST_OBJECT_UNLOCK(elem_for_clock);
@@ -453,11 +451,9 @@ void GstPylonSession::Open(const gchar* device_user_name,
     }
     const GstClockTime abs_time = gst_clock_get_time(clock);
     gst_object_unref(clock);
-    if (GST_CLOCK_TIME_IS_VALID(abs_time) &&
-        GST_CLOCK_TIME_IS_VALID(base_time) && abs_time >= base_time) {
-      return abs_time - base_time;
-    }
-    return GST_CLOCK_TIME_NONE;
+    /* The pipeline may still be distributing base_time while the grab
+     * thread runs. Convert this clock sample when the source delivers it. */
+    return abs_time;
   });
 
   camera->RegisterImageEventHandler(

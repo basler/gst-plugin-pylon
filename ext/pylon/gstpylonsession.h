@@ -77,7 +77,7 @@ class GstPylonSession {
   void InterruptCapture();
   void ClearCaptureInterrupt();
   gboolean Capture(GstBuffer** buf, GstPylonCaptureErrorEnum capture_error,
-                   GstClockTime* arrival_pts, GError** err);
+                   GstClockTime* arrival_clock_time, GError** err);
 
   gboolean ApplyUserConfig(const gchar* user_set, GError** err);
   gboolean LoadPfsConfig(const gchar* pfs_location, GError** err);
