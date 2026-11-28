@@ -883,8 +883,14 @@ def compare_snapshots(v1: dict, v2: dict, ledger: dict) -> tuple[list[str], list
             failures.append(f"Error case '{err_key}' failed on v1.1.0 but unexpectedly succeeded on v2.0.0")
 
     # 10. DeviceMonitor non-interference
-    if not v2["device_monitor"]["started"]:
-        failures.append("GstDeviceMonitor failed to start with v2.0.0 loaded")
+    # With no eligible video provider installed, start() legitimately returns
+    # False. The rank-zero pylon provider is opt-in; loading it must preserve
+    # the baseline monitor behavior rather than force discovery to succeed.
+    if v1["device_monitor"]["started"] != v2["device_monitor"]["started"]:
+        failures.append(
+            "GstDeviceMonitor start result changed: "
+            f"v1={v1['device_monitor']['started']} -> v2={v2['device_monitor']['started']}"
+        )
 
     return failures, deltas
 
