@@ -287,8 +287,8 @@ GType GstPylonParamFactory::gst_pylon_make_enum_type(GenApi::INode* node) {
 
       /* We need a copy of the strings so that they are persistent
          throughout the application lifespan */
-      GEnumValue ev = {value, g_strdup(symbolic.c_str()),
-                       g_strdup(tooltip.c_str())};
+      GEnumValue ev = {value, g_intern_string(symbolic.c_str()),
+                       g_intern_string(tooltip.c_str())};
       enumvalues.push_back(ev);
     }
 

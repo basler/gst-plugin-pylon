@@ -46,8 +46,6 @@
 #include <stdexcept>
 #include <utility>
 
-namespace {
-
 typedef struct {
   gint width;
   gint height;
@@ -55,7 +53,7 @@ typedef struct {
   gint offsety;
 } dimension_t;
 
-typedef struct {
+typedef struct _GstPylonObjectPrivate {
   std::shared_ptr<Pylon::CBaslerUniversalInstantCamera> camera;
   std::shared_ptr<std::recursive_mutex> camera_mutex;
   GenApi::INodeMap* nodemap;
@@ -65,6 +63,8 @@ typedef struct {
   GstPylonFramerateChangedCb framerate_changed_cb;
   gpointer framerate_changed_data;
 } GstPylonObjectPrivate;
+
+namespace {
 
 class OptionalCameraLock {
  public:
@@ -97,27 +97,36 @@ std::atomic<bool> g_test_inject_std_exception{false};
  * Start of GObject definition
  ***********************************************************/
 
-static void gst_pylon_object_init(GstPylonObject* self);
-static void gst_pylon_object_instance_init(GTypeInstance* instance,
-                                           gpointer g_class);
-static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
-                                        GstPylonObjectClassData* class_data);
+G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE(GstPylonObject, gst_pylon_object,
+                                    GST_TYPE_OBJECT)
+
 static std::string gst_pylon_object_get_schema_type_name(
     const GstPylonObjectSchema& schema);
 static GType gst_pylon_object_find_schema_type(
     const GstPylonObjectSchema& schema);
 static GType gst_pylon_object_ensure_schema_type(
     const GstPylonObjectSchema& schema);
+static void gst_pylon_object_install_properties(
+    GstPylonObjectClass* klass, const GstPylonObjectSchema& schema);
+static void gst_pylon_object_set_property(GObject* object, guint property_id,
+                                          const GValue* value,
+                                          GParamSpec* pspec);
+static void gst_pylon_object_get_property(GObject* object, guint property_id,
+                                          GValue* value, GParamSpec* pspec);
 static std::mutex schema_type_registry_mutex;
 
-static void gst_pylon_object_class_intern_init(
-    gpointer klass, GstPylonObjectClassData* class_data) {
-  auto* pylon_klass = static_cast<GstPylonObjectClass*>(klass);
-  if (class_data->private_offset != 0) {
-    g_type_class_adjust_private_offset(klass, &class_data->private_offset);
-  }
-  pylon_klass->private_offset = class_data->private_offset;
-  gst_pylon_object_class_init(pylon_klass, class_data);
+static void gst_pylon_object_schema_class_init(gpointer klass,
+                                               gpointer class_data) {
+  GObjectClass* oclass = G_OBJECT_CLASS(klass);
+  /* GObject clears set_property/get_property on every derived class before
+   * class_init so subclasses that install properties must wire them explicitly.
+   */
+  oclass->set_property = gst_pylon_object_set_property;
+  oclass->get_property = gst_pylon_object_get_property;
+
+  auto* schema = static_cast<GstPylonObjectSchema*>(class_data);
+  gst_pylon_object_install_properties(GST_PYLON_OBJECT_CLASS(klass), *schema);
+  delete schema;
 }
 
 GType gst_pylon_object_register_schema(const GstPylonObjectSchema& schema) {
@@ -139,27 +148,24 @@ static GType gst_pylon_object_ensure_schema_type(
     return type;
   }
 
-  GstPylonObjectClassData* class_data =
-      new GstPylonObjectClassData({schema, 0});
+  auto* class_data = new GstPylonObjectSchema(schema);
   std::string type_name = gst_pylon_object_get_schema_type_name(schema);
 
   GTypeInfo typeinfo = {
       sizeof(GstPylonObjectClass),
       NULL,
       NULL,
-      reinterpret_cast<GClassInitFunc>(gst_pylon_object_class_intern_init),
+      gst_pylon_object_schema_class_init,
       NULL,
       class_data,
       sizeof(GstPylonObject),
       0,
-      gst_pylon_object_instance_init,
+      NULL,
       NULL,
   };
 
-  type = g_type_register_static(GST_TYPE_OBJECT, type_name.c_str(), &typeinfo,
-                                static_cast<GTypeFlags>(0));
-  class_data->private_offset =
-      g_type_add_instance_private(type, sizeof(GstPylonObjectPrivate));
+  type = g_type_register_static(GST_TYPE_PYLON_OBJECT, type_name.c_str(),
+                                &typeinfo, static_cast<GTypeFlags>(0));
 
   return type;
 }
@@ -168,15 +174,7 @@ static GType gst_pylon_object_ensure_schema_type(
  * End of GObject definition
  ***********************************************************/
 
-static gpointer gst_pylon_object_get_instance_private(GstPylonObject* self) {
-  auto* klass = reinterpret_cast<GstPylonObjectClass*>(
-      G_OBJECT_GET_CLASS(reinterpret_cast<GObject*>(self)));
-  return G_STRUCT_MEMBER_P(self, klass->private_offset);
-}
-
 /* prototypes */
-static void gst_pylon_object_install_properties(
-    GstPylonObjectClass* klass, const GstPylonObjectSchema& schema);
 
 static std::string gst_pylon_object_get_schema_type_name(
     const GstPylonObjectSchema& schema) {
@@ -216,11 +214,6 @@ static void gst_pylon_object_feature_get_value(
     GstPylonParamSpecSelectorData* selector_data, F get_value,
     const GValue* value);
 
-static void gst_pylon_object_set_property(GObject* object, guint property_id,
-                                          const GValue* value,
-                                          GParamSpec* pspec);
-static void gst_pylon_object_get_property(GObject* object, guint property_id,
-                                          GValue* value, GParamSpec* pspec);
 static void gst_pylon_object_finalize(GObject* self);
 
 /* GValue get fptr */
@@ -248,23 +241,10 @@ static void gst_pylon_object_install_properties(
   GstPylonFeatureWalker::install_properties(oclass, schema);
 }
 
-static void gst_pylon_object_class_init(GstPylonObjectClass* klass,
-                                        GstPylonObjectClassData* class_data) {
+static void gst_pylon_object_class_init(GstPylonObjectClass* klass) {
   GObjectClass* oclass = G_OBJECT_CLASS(klass);
 
-  oclass->set_property = gst_pylon_object_set_property;
-  oclass->get_property = gst_pylon_object_get_property;
   oclass->finalize = gst_pylon_object_finalize;
-
-  gst_pylon_object_install_properties(klass, class_data->schema);
-
-  delete (class_data);
-}
-
-static void gst_pylon_object_instance_init(GTypeInstance* instance,
-                                           gpointer g_class) {
-  (void)g_class;
-  gst_pylon_object_init(reinterpret_cast<GstPylonObject*>(instance));
 }
 
 static void gst_pylon_object_init(GstPylonObject* self) {
@@ -471,7 +451,7 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
                                           const GValue* value,
                                           GParamSpec* pspec) {
   (void)property_id;
-  GstPylonObject* self = reinterpret_cast<GstPylonObject*>(object);
+  GstPylonObject* self = GST_PYLON_OBJECT(object);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
       gst_pylon_object_get_instance_private(self));
   OptionalCameraLock cam_lock(priv->camera_mutex);
@@ -592,7 +572,7 @@ static void gst_pylon_object_set_property(GObject* object, guint property_id,
 static void gst_pylon_object_get_property(GObject* object, guint property_id,
                                           GValue* value, GParamSpec* pspec) {
   (void)property_id;
-  GstPylonObject* self = reinterpret_cast<GstPylonObject*>(object);
+  GstPylonObject* self = GST_PYLON_OBJECT(object);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
       gst_pylon_object_get_instance_private(self));
   OptionalCameraLock cam_lock(priv->camera_mutex);
@@ -690,7 +670,7 @@ GObject* gst_pylon_object_new_for_schema(
   GType type = gst_pylon_object_ensure_schema_type(schema);
 
   GObject* obj = G_OBJECT(g_object_new(type, "name", type_name.c_str(), NULL));
-  GstPylonObject* self = reinterpret_cast<GstPylonObject*>(obj);
+  GstPylonObject* self = GST_PYLON_OBJECT(obj);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
       gst_pylon_object_get_instance_private(self));
 
@@ -711,7 +691,7 @@ GObject* gst_pylon_object_new_for_schema(
 }
 
 void gst_pylon_object_rebind_nodemap(GObject* obj, GenApi::INodeMap* nodemap) {
-  g_return_if_fail(obj);
+  g_return_if_fail(GST_IS_PYLON_OBJECT(obj));
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
@@ -723,7 +703,7 @@ void gst_pylon_object_rebind_nodemap(GObject* obj, GenApi::INodeMap* nodemap) {
 void gst_pylon_object_set_framerate_callback(GObject* obj,
                                              GstPylonFramerateChangedCb cb,
                                              gpointer user_data) {
-  g_return_if_fail(obj);
+  g_return_if_fail(GST_IS_PYLON_OBJECT(obj));
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
@@ -735,7 +715,7 @@ void gst_pylon_object_set_framerate_callback(GObject* obj,
 gboolean gst_pylon_object_execute_command(GObject* obj,
                                           const gchar* command_name,
                                           GError** err) {
-  g_return_val_if_fail(obj, FALSE);
+  g_return_val_if_fail(GST_IS_PYLON_OBJECT(obj), FALSE);
   g_return_val_if_fail(command_name && command_name[0] != '\0', FALSE);
   g_return_val_if_fail(err && *err == NULL, FALSE);
 
@@ -815,7 +795,7 @@ gboolean gst_pylon_object_execute_command(GObject* obj,
 
 void gst_pylon_object_set_enable_correction(GObject* obj,
                                             gboolean enable_correction) {
-  g_return_if_fail(obj);
+  g_return_if_fail(GST_IS_PYLON_OBJECT(obj));
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
@@ -825,7 +805,7 @@ void gst_pylon_object_set_enable_correction(GObject* obj,
 }
 
 gboolean gst_pylon_object_get_enable_correction(GObject* obj) {
-  g_return_val_if_fail(obj, FALSE);
+  g_return_val_if_fail(GST_IS_PYLON_OBJECT(obj), FALSE);
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
@@ -836,7 +816,7 @@ gboolean gst_pylon_object_get_enable_correction(GObject* obj) {
 
 void gst_pylon_object_get_dimension_cache(GObject* obj, gint* width,
                                           gint* height) {
-  g_return_if_fail(obj);
+  g_return_if_fail(GST_IS_PYLON_OBJECT(obj));
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
@@ -852,7 +832,7 @@ void gst_pylon_object_get_dimension_cache(GObject* obj, gint* width,
 
 void gst_pylon_object_take_offset_cache(GObject* obj, gint* offsetx,
                                         gint* offsety) {
-  g_return_if_fail(obj);
+  g_return_if_fail(GST_IS_PYLON_OBJECT(obj));
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
@@ -869,7 +849,7 @@ void gst_pylon_object_take_offset_cache(GObject* obj, gint* offsetx,
 }
 
 gboolean gst_pylon_object_is_framerate_configured(GObject* obj) {
-  g_return_val_if_fail(obj, FALSE);
+  g_return_val_if_fail(GST_IS_PYLON_OBJECT(obj), FALSE);
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
@@ -878,7 +858,7 @@ gboolean gst_pylon_object_is_framerate_configured(GObject* obj) {
 }
 
 void gst_pylon_object_mark_framerate_configured(GObject* obj) {
-  g_return_if_fail(obj);
+  g_return_if_fail(GST_IS_PYLON_OBJECT(obj));
 
   GstPylonObject* self = GST_PYLON_OBJECT(obj);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
@@ -887,7 +867,7 @@ void gst_pylon_object_mark_framerate_configured(GObject* obj) {
 }
 
 static void gst_pylon_object_finalize(GObject* object) {
-  GstPylonObject* self = reinterpret_cast<GstPylonObject*>(object);
+  GstPylonObject* self = GST_PYLON_OBJECT(object);
   GstPylonObjectPrivate* priv = static_cast<GstPylonObjectPrivate*>(
       gst_pylon_object_get_instance_private(self));
 
@@ -896,8 +876,7 @@ static void gst_pylon_object_finalize(GObject* object) {
   priv->camera_mutex.~shared_ptr();
   new (&priv->camera_mutex) std::shared_ptr<std::recursive_mutex>();
 
-  gpointer parent_class = g_type_class_peek_parent(G_OBJECT_GET_CLASS(object));
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(gst_pylon_object_parent_class)->finalize(object);
 }
 
 #ifdef GST_PYLON_ENABLE_TEST_HOOKS

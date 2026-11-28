@@ -46,12 +46,13 @@
 #include <mutex>
 #include <string>
 
+#define GST_TYPE_PYLON_OBJECT (gst_pylon_object_get_type())
+EXT_PYLONSRC_API
 G_DECLARE_DERIVABLE_TYPE(GstPylonObject, gst_pylon_object, GST, PYLON_OBJECT,
                          GstObject)
 
 struct _GstPylonObjectClass {
   GstObjectClass parent_class;
-  gint private_offset;
 };
 
 typedef void (*GstPylonFramerateChangedCb)(gpointer user_data, gdouble fps);
@@ -64,11 +65,6 @@ struct GstPylonObjectSchema {
 
   GstPylonCache& cache() const { return *feature_cache; }
   GenApi::INodeMap& node_map() const { return *nodemap; }
-};
-
-struct GstPylonObjectClassData {
-  GstPylonObjectSchema schema;
-  gint private_offset;
 };
 
 EXT_PYLONSRC_API GType

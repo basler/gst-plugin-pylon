@@ -168,6 +168,9 @@ static void TestWideIntegerSelectorRegistration() {
   CHECK(t != G_TYPE_INVALID,
         "gst_pylon_object_register_schema succeeds with 64-bit range integer "
         "selector");
+  CHECK(g_type_is_a(t, GST_TYPE_PYLON_OBJECT),
+        "schema GType derives from GstPylonObject");
+  CHECK(g_type_is_a(t, GST_TYPE_OBJECT), "schema GType derives from GstObject");
 }
 
 int main(int argc, char** argv) {
