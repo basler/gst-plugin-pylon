@@ -41,6 +41,14 @@ if host_system == 'linux' or host_system == 'darwin'
   endif
 endif
 
+# Stable ABI (python3.lib) is for Linux packaging across distro Python
+# versions. On Windows, Py_LIMITED_API pulls in python3.lib via pragma
+# while Meson links python3XY.lib; CI images often lack python3.lib.
+binding_cpp_args = ['-DHAVE_CONFIG_H=1']
+if host_system != 'windows'
+  binding_cpp_args += ['-DPy_LIMITED_API=0x030A0000']
+endif
+
 pymeta = shared_module('pygstpylon',
   pygstpylon_sources,
   name_prefix : '',
@@ -49,7 +57,7 @@ pymeta = shared_module('pygstpylon',
   install_dir : py_install_dir,
   build_rpath : pylon_rpath,
   install_rpath : binding_rpath,
-  cpp_args: ['-DHAVE_CONFIG_H=1', '-DPy_LIMITED_API=0x030A0000'],
+  cpp_args: binding_cpp_args,
   include_directories : [configinc],
   gnu_symbol_visibility: 'inlineshidden',
   dependencies : pygstpylon_deps,

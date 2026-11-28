@@ -42,7 +42,7 @@ class GstPylonParamFactory {
  public:
   explicit GstPylonParamFactory(const GstPylonObjectSchema& schema)
       : schema(schema),
-        device_profile(gst_pylon_detect_device_profile(schema.node_map())) {};
+        device_profile(gst_pylon_detect_device_profile(schema.node_map())) {}
 
   GParamSpec* make_param(GenApi::INode* node, GenApi::INode* selector,
                          guint64 selector_value);

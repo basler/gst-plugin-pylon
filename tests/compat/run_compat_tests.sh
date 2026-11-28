@@ -21,12 +21,12 @@ if [[ "${1:-}" == "--generate" ]]; then
 fi
 
 # Normalize gst-inspect output for stable comparison:
-# - strip trailing whitespace
-# - collapse multiple blank lines to one
+# - strip trailing whitespace and blank lines (gst-inspect spacing varies)
 # - normalize Filename (path varies) and Version (git hash varies)
 # - normalize child-property Default: lines (live camera state can vary)
 # - normalize the emulator DeviceVersion (it mirrors the installed pylon SDK build)
 # - omit the Element Flags section added by newer gst-inspect versions
+# - drop GStreamer-version-specific base-class props / flag bits / action syntax
 normalize_inspect() {
   sed 's/[[:space:]]*$//' \
     | sed 's/^[[:space:]]*\t/\t/' \
@@ -39,7 +39,34 @@ normalize_inspect() {
     | sed '/^[[:space:]]\{20,\}/s/Default: [0-9][0-9.e+-]*/Default: <num>/g' \
     | sed -E '/^[[:space:]]{20,}/s/Default: "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+"/Default: "<sdk-version>"/g' \
     | sed '/^[[:space:]]\{20,\}/s/Default: "(null)"/Default: <str>/g; /^[[:space:]]\{20,\}/s/Default: ""/Default: <str>/g' \
-    | cat -s
+    | sed -E 's/(flags: readable, writable), 0x[0-9a-fA-F]+/\1/' \
+    | sed '/^[[:space:]]*automatic-eos[[:space:]]*:/,/^$/d' \
+    | awk '
+        /^[[:space:]]*"execute-command"/ {
+          print "  \"execute-command\" :  <action>"
+          skip_action = 1
+          next
+        }
+        skip_action {
+          if ($0 ~ /^[[:space:]]*$/) { skip_action = 0; next }
+          if ($0 ~ /^[[:space:]]/ && $0 !~ /^[[:space:]]*"/) next
+          skip_action = 0
+        }
+        /^$/ { next }
+        { print }
+      '
+}
+
+# Pad-template Bayer formats differ by GStreamer version (10/12/16le need >= 1.24).
+extract_bayer_formats() {
+  awk '
+    /video\/x-bayer/ { in_bayer=1; next }
+    in_bayer && /format:/ {
+      sub(/^[[:space:]]*format:[[:space:]]*/, "")
+      print
+      exit
+    }
+  ' "$1"
 }
 
 extract_inspect_surface() {
@@ -119,16 +146,25 @@ require_inspect_property "$actual_inspect" "stream"
 
 golden_sdk="$(extract_sdk_version "$GOLDEN_DIR/gst_inspect_pylonsrc.txt")"
 actual_sdk="$(extract_sdk_version "$actual_inspect")"
+golden_bayer="$(extract_bayer_formats "$GOLDEN_DIR/gst_inspect_pylonsrc.txt")"
+actual_bayer="$(extract_bayer_formats "$actual_inspect")"
+# Compare against a normalized golden so older goldens still match after
+# normalize_inspect grows new rules (blank lines, action syntax, etc.).
+normalized_golden=$(mktemp)
+normalize_inspect < "$GOLDEN_DIR/gst_inspect_pylonsrc.txt" > "$normalized_golden"
 if [[ -n "$golden_sdk" && -n "$actual_sdk" && "$golden_sdk" != "$actual_sdk" && "${PYLON_COMPAT_STRICT_GOLDEN:-0}" != "1" ]]; then
   echo "SKIP: golden diff skipped (golden is for pylon SDK $golden_sdk, built against $actual_sdk; set PYLON_COMPAT_STRICT_GOLDEN=1 to enforce)"
   skipped=1
-elif ! diff -u "$GOLDEN_DIR/gst_inspect_pylonsrc.txt" "$actual_inspect"; then
+elif [[ -n "$golden_bayer" && -n "$actual_bayer" && "$golden_bayer" != "$actual_bayer" && "${PYLON_COMPAT_STRICT_GOLDEN:-0}" != "1" ]]; then
+  echo "SKIP: golden diff skipped (Bayer pad formats differ; golden expects GStreamer formats unavailable in this build; set PYLON_COMPAT_STRICT_GOLDEN=1 to enforce)"
+  skipped=1
+elif ! diff -u "$normalized_golden" "$actual_inspect"; then
   echo "FAIL: gst-inspect output differs from golden"
   failed=1
 else
   echo "PASS: gst-inspect matches golden"
 fi
-rm -f "$actual_inspect"
+rm -f "$actual_inspect" "$normalized_golden"
 
 # Test 2: pipeline runs to completion
 if run_pipeline; then
@@ -146,7 +182,7 @@ fi
 
 if [[ $skipped -eq 1 ]]; then
   echo ""
-  echo "Required-property and pipeline checks passed; golden diff skipped due to pylon SDK version mismatch."
+  echo "Required-property and pipeline checks passed; golden diff skipped due to SDK or GStreamer pad-format mismatch."
   exit 77
 fi
 

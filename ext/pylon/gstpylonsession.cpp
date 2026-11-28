@@ -78,8 +78,9 @@ int gst_pylon_get_open_retry_count() {
 }
 
 gulong gst_pylon_jittered_backoff_us(int retry_idx) {
+  /* Parenthesize to survive windows.h min/max macros if NOMINMAX is absent. */
   const int base_ms =
-      std::min(FAILED_OPEN_RETRY_WAIT_TIME_MS, 100 + retry_idx * 50);
+      (std::min)(FAILED_OPEN_RETRY_WAIT_TIME_MS, 100 + retry_idx * 50);
   const int jitter_ms = g_random_int_range(0, 125);
   return static_cast<gulong>(base_ms + jitter_ms) * 1000UL;
 }
@@ -690,7 +691,7 @@ gboolean GstPylonSession::Start(GError** err) {
     int limit = INT_MAX;
     if (camera->MaxNumBuffer.IsReadable()) {
       limit = static_cast<int>(
-          std::max<gint64>(1, camera->MaxNumBuffer.GetValue() - 2));
+          (std::max)(gint64{1}, camera->MaxNumBuffer.GetValue() - 2));
     }
     max_in_flight.store(limit, std::memory_order_relaxed);
 

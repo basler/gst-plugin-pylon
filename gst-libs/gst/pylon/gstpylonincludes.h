@@ -1,6 +1,14 @@
 #ifndef GST_PYLON_INCLUDES_H
 #define GST_PYLON_INCLUDES_H
 
+/* windows.h (pulled in by pylon) defines min/max macros that break
+ * std::min/max. */
+#ifdef _WIN32
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#endif
+
 #ifdef _MSC_VER  // MSVC
 #  pragma warning(push)
 #  pragma warning(disable : 4265)
