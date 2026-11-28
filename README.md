@@ -865,6 +865,37 @@ Finally, test for proper installation:
 gst-inspect-1.0 pylonsrc
 ```
 
+### Installing the prebuilt Windows archive
+
+The release page ships `gst-plugin-pylon-<version>-windows-x86_64.zip`. It needs
+the GStreamer **runtime** MSI (MSVC x86_64) and the pylon Software Suite; no
+compiler or GStreamer development package is required.
+
+1. Extract the archive, for example to `C:\Program Files\gst-plugin-pylon`.
+2. Point GStreamer at the plugin and make the DLLs findable:
+
+   ```cmd
+   set GST_PLUGIN_PATH=C:\Program Files\gst-plugin-pylon\lib\gstreamer-1.0
+   set PATH=C:\Program Files\gst-plugin-pylon\bin;%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin;%PATH%
+   gst-inspect-1.0 pylonsrc
+   ```
+
+`python\pygstpylon.pyd` uses the CPython stable ABI and imports on any 64-bit
+CPython 3.10 or newer. Python 3.8+ ignores `PATH` when loading extension
+dependencies, so register the DLL directories before importing:
+
+```python
+import os, sys
+os.add_dll_directory(r"C:\Program Files\gst-plugin-pylon\bin")
+os.add_dll_directory(os.environ["GSTREAMER_1_0_ROOT_MSVC_X86_64"] + r"\bin")
+os.add_dll_directory(r"C:\Program Files\Basler\pylon\Runtime\x64")
+sys.path.insert(0, r"C:\Program Files\gst-plugin-pylon\python")
+import pygstpylon
+```
+
+CI runs exactly these steps on a fresh runner (`tools/test_windows_package.py`),
+importing the module with Python 3.10 and 3.13.
+
 ## macOS
 pylon Software Suite 26.06 and newer support macOS (`arm64`). Install GStreamer and the build tools with Homebrew, set `PYLON_ROOT` to the pylon prefix, then use meson/ninja:
 

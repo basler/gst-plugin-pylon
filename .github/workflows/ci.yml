@@ -519,6 +519,69 @@ jobs:
           path: windows-artifacts/*.zip
           if-no-files-found: error
 
+  test_windows_package:
+    name: Test Windows package (fresh install)
+    needs: [prepare, download_desktop_sdk, build_windows]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Download Windows binary archive
+        uses: actions/download-artifact@v7
+        with:
+          name: windows-binaries-x86_64
+          path: windows-artifacts
+
+      - name: Download pylon SDK
+        uses: actions/download-artifact@v7
+        with:
+          name: Windows_Pylon_SDK
+          path: pylon-sdk
+
+      - name: Download GStreamer runtime
+        uses: suisei-cn/actions-download-file@v1
+        with:
+          url: https://gstreamer.freedesktop.org/data/pkg/windows/1.26.9/msvc/gstreamer-1.0-msvc-x86_64-1.26.9.msi
+          target: ${{ runner.temp }}\
+
+      - name: Install GStreamer runtime only
+        run: |
+          cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-msvc-x86_64-1.26.9.msi TARGETDIR="C:\" /quiet ADDLOCAL=ALL /L*V gst.log
+          if ($LASTEXITCODE) { cat gst.log; exit 1 }
+
+      # The module is built with the runner's default Python (3.12). Importing it
+      # from the stable-ABI floor and a newer release proves version independence.
+      - name: Set up Python 3.10
+        id: py310
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Set up Python 3.13
+        id: py313
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Extract archive and test as a user would
+        shell: pwsh
+        run: |
+          $gstRoot = [Environment]::GetEnvironmentVariable('GSTREAMER_1_0_ROOT_MSVC_X86_64', 'Machine')
+          if (-not $gstRoot) { $gstRoot = 'C:\Program Files\gstreamer\1.0\msvc_x86_64' }
+          $gstRoot = $gstRoot.TrimEnd('\')
+          if (Test-Path "$gstRoot\include\gstreamer-1.0") { throw "GStreamer devel files present; this job must use the runtime only" }
+          $pylonRuntime = (Resolve-Path "pylon-sdk\pylon\Runtime\x64").Path
+          $zip = Get-ChildItem windows-artifacts\*.zip | Select-Object -First 1
+          $dest = Join-Path $env:RUNNER_TEMP "Program Files\gst-plugin-pylon"
+          Expand-Archive $zip.FullName -DestinationPath $dest
+          python tools/test_windows_package.py `
+            --package $dest `
+            --gst-root $gstRoot `
+            --pylon-runtime $pylonRuntime `
+            --python "${{ steps.py310.outputs.python-path }}" `
+            --python "${{ steps.py313.outputs.python-path }}"
+
   build_macos:
     name: Build & test macOS (arm64)
     needs: [prepare, download_desktop_sdk]
@@ -871,6 +934,7 @@ jobs:
       - prepare
       - build_linux
       - build_windows
+      - test_windows_package
       - build_macos
       - build_deb
       - test_deb
@@ -933,6 +997,7 @@ jobs:
       - download_desktop_sdk
       - build_linux
       - build_windows
+      - test_windows_package
       - build_macos
       - build_deb
       - test_deb
