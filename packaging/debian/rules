@@ -14,7 +14,7 @@ export DEB_PYTHON_INSTALL_LAYOUT = deb
 export PYLON_CAMEMU ?= 4
 export PYLON_ROOT ?= /opt/pylon
 
-# fakeroot resets LD_LIBRARY_PATH; keep pylon (and DeepStream/CUDA for NVMM) visible
+# Library directories used by dpkg-shlibdeps when collecting binary dependencies.
 PYLON_LIB := /opt/pylon/lib
 NVDS_LIB := /opt/nvidia/deepstream/deepstream/lib
 NVIDIA_LIB := /usr/lib/aarch64-linux-gnu/nvidia
@@ -26,8 +26,6 @@ ifneq ($(filter nvidia,$(DEB_BUILD_PROFILES)),)
 SHLIB_DIRS += -l$(NVDS_LIB) -l$(NVIDIA_LIB) -l$(CUDA_LIB)
 MESON_NVMM := -Dnvmm=enabled
 endif
-
-export LD_LIBRARY_PATH := $(PYLON_LIB):$(NVDS_LIB):$(NVIDIA_LIB):$(CUDA_LIB)$(if $(LD_LIBRARY_PATH),:$(LD_LIBRARY_PATH))
 
 %:
 	dh $@ --with python3 --buildsystem=meson

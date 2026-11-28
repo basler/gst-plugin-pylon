@@ -85,8 +85,10 @@ apt-get install -y \
   "${dev_debs[0]}" \
   "${python_debs[0]}"
 
-export LD_LIBRARY_PATH="/opt/pylon/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-gst-inspect-1.0 pylonsrc >/dev/null
+unset LD_LIBRARY_PATH GST_PLUGIN_PATH GST_PLUGIN_PATH_1_0 PYTHONPATH
+installed_plugin="$(dpkg-query -L gst-plugin-pylon | sed -n '/\/libgstpylon\.so$/p')"
+loaded_plugin="$(LC_ALL=C gst-inspect-1.0 pylonsrc | sed -nE 's/^[[:space:]]*Filename[[:space:]]+//p')"
+[[ "$installed_plugin" -ef "$loaded_plugin" ]]
 gst-launch-1.0 -q \
   pylonsrc device-serial-number=0815-0000 num-buffers=5 ! fakesink
 

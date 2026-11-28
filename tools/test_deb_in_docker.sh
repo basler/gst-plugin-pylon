@@ -59,7 +59,6 @@ tools/patch_deb_changelog.sh
 
 PYLON_ROOT=/opt/pylon \
 PYLON_CAMEMU=4 \
-LD_LIBRARY_PATH=/opt/pylon/lib \
 dpkg-buildpackage -us -uc -b -rfakeroot
 
 cp -v ../*.deb ../*.buildinfo ../*.changes /out/
