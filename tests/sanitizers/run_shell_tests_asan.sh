@@ -30,12 +30,14 @@ cc="${CC:-clang}"
 arch="$(uname -m)"
 if "$cc" --version 2>/dev/null | grep -qi clang; then
   asan_rt="$("$cc" -print-file-name="libclang_rt.asan-${arch}.so")"
-  ubsan_rt="$("$cc" -print-file-name="libclang_rt.ubsan_standalone-${arch}.so")"
+  # Clang's ASan DSO already exports the UBSan handlers. Loading both
+  # runtimes can deadlock during process startup.
+  runtimes=("$asan_rt")
 else
   asan_rt="$("$cc" -print-file-name=libasan.so)"
-  ubsan_rt="$("$cc" -print-file-name=libubsan.so)"
+  runtimes=("$asan_rt" "$("$cc" -print-file-name=libubsan.so)")
 fi
-for rt in "$asan_rt" "$ubsan_rt"; do
+for rt in "${runtimes[@]}"; do
   if [[ ! -f "$rt" ]]; then
     echo "error: sanitizer runtime not found: $rt (CC=$cc)" >&2
     exit 1
@@ -53,7 +55,7 @@ for tool in gst-launch-1.0 gst-inspect-1.0 python3; do
   fi
   cat > "$wrap_dir/$tool" <<EOF
 #!/bin/sh
-exec env LD_PRELOAD="$asan_rt $ubsan_rt" \\
+exec env LD_PRELOAD="${runtimes[*]}" \\
   ASAN_OPTIONS="detect_leaks=0:halt_on_error=1:abort_on_error=1" \\
   "$real" "\$@"
 EOF
