@@ -477,17 +477,18 @@ sudo apt install python3-dev python3-gi gir1.2-gstreamer-1.0
 
 ```
 
-The build process relies on `PYLON_ROOT` pointing to a pylon tree with
-`include/pylon` (official installer under `/opt/pylon`, or any other extracted
-SDK). Meson finds pylon via CMake using that path and sets an install RPATH to
-`$PYLON_ROOT/lib`, so a from-source install does **not** require a `pylon`
-Debian package.
+The build process relies on `-Dpylon-root` (or the `PYLON_ROOT` environment
+variable) pointing to a pylon tree with `include/pylon` (official installer
+under `/opt/pylon`, or any other extracted SDK). Meson finds pylon via CMake
+using that path and sets an install RPATH to `$PYLON_ROOT/lib` on native Linux
+builds (overridable via `-Dpylon-rpath`), so a from-source install does **not**
+require a `pylon` Debian package.
 
 ```bash
 # official Linux installer
 export PYLON_ROOT=/opt/pylon
-# or a local SDK, for example:
-# export PYLON_ROOT=/path/to/pylon
+# or pass directly to Meson without exporting PYLON_ROOT:
+# meson setup builddir --prefix /usr/ -Dpylon-root=/path/to/pylon
 ```
 
 Then proceed to configure the project. Check `meson_options.txt` for a
@@ -516,6 +517,9 @@ ninja -C builddir
 ninja -C builddir test
 # or a single suite:
 # meson test -C builddir pygstpylon --print-errorlogs
+
+# Inspect the uninstalled plugin from this build
+meson devenv -C builddir gst-inspect-1.0 pylonsrc
 
 # Install plugin (and pygstpylon if bindings were enabled)
 sudo ninja -C builddir install
@@ -744,13 +748,52 @@ meson setup builddir --prefix /usr/ --werror --buildtype=debug -Dgobject-cast-ch
 
 ### Cross compilation for linux targets
 
-#### YOCTO recipe
-A reference yocto recipe for honister is available in the [meta-basler-tools](https://github.com/basler/meta-basler-tools/tree/honister/recipes-multimedia/gstreamer)
-on github. 
+Pass a Meson cross file (`--cross-file <file>`) and point `-Dpylon-root` (or
+`PYLON_ROOT`) at the target pylon SDK:
 
-Builds on yocto kirkstone and later work without the patch.
+```bash
+meson setup builddir \
+  --cross-file cross-aarch64.ini \
+  --prefix /usr \
+  -Dpylon-root=/path/to/sysroot/opt/pylon \
+  -Dtests=disabled
+ninja -C builddir
+DESTDIR=/path/to/staging meson install -C builddir
+```
 
-( This recipe still needs a backport patch due to the version of meson tool in honister. )
+How cross-compilation paths and RPATHs are handled:
+
+- **Sysroot RPATH stripping**: When `pylon-root` is inside the cross sysroot
+  (`sys_root` in the cross file or `PKG_CONFIG_SYSROOT_DIR` in the environment,
+  as set by Yocto's `meson.bbclass`), Meson strips the sysroot prefix for the
+  installed `DT_RUNPATH` (for example, `${RECIPE_SYSROOT}/opt/pylon` becomes
+  `/opt/pylon/lib`, and `/usr/lib` is omitted to avoid standard-RPATH QA
+  errors). `libgstpylon.so` and `pygstpylon` also embed relative `$ORIGIN`
+  entries to locate `libgstpylon-1.0.so`.
+- **SDK staged outside `sys_root`**: If `pylon-root` is outside the sysroot,
+  Meson omits the pylon install RPATH so build-host paths never leak into
+  installed binaries. Pass `-Dpylon-rpath=/opt/pylon/lib` if the target stores
+  pylon outside standard library paths, or `-Dpylon-rpath=none` to omit it
+  explicitly.
+- **Python**: Build-time helper scripts always use the build-machine Python
+  (`native: true`), so cross files may set `[binaries] python` to the target
+  interpreter without breaking configure. Runtime `pygstpylon` tests and Hotdoc
+  documentation are skipped automatically when host binaries cannot be run.
+- **NVMM**: Default DeepStream/CUDA probes are restricted to the cross sysroot
+  (or skipped when no `sys_root` is set). Pass `-Dnvds-incdir` and
+  `-Dnvds-libdir` if NVMM headers/libraries live in a custom location.
+
+#### Yocto recipe
+A reference Yocto recipe for honister is available in the [meta-basler-tools](https://github.com/basler/meta-basler-tools/tree/honister/recipes-multimedia/gstreamer)
+repository on GitHub.
+
+Builds on Yocto kirkstone and later work without the patch. Set
+`-Dpylon-root=${RECIPE_SYSROOT}/opt/pylon` (or export
+`PYLON_ROOT=${RECIPE_SYSROOT}/opt/pylon`); the sysroot prefix is stripped
+automatically from installed RPATHs so Yocto `buildpaths`/`rpaths` QA checks
+pass without `patchelf` workarounds.
+
+(The honister recipe still needs a backport patch due to the older Meson version in honister.)
 
 ## Windows
 Install the dependencies:
@@ -802,9 +845,7 @@ This will generate a Visual Studio solution in the build directory
 To test without install:
 
 ```
-set GST_PLUGIN_PATH=build/ext/pylon
-
-%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin\gst-launch-1.0.exe pylonsrc ! videoconvert ! autovideosink
+meson devenv -C build gst-launch-1.0.exe pylonsrc ! videoconvert ! autovideosink
 ```
 
 To install into main gstreamer directory

@@ -23,7 +23,7 @@ PYLON_ROOT=/opt/pylon ninja -C build test
 Or only this suite:
 
 ```bash
-PYLON_ROOT=/opt/pylon PYLON_CAMEMU=3 ./tests/camemu/run_camemu_tests.sh
+meson test -C build camemu_pylonsrc --print-errorlogs
 ```
 
 ## Coverage

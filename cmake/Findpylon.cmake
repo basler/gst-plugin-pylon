@@ -23,11 +23,15 @@
 #     List containing needed libraries for linking pylon C++ SDK.
 #
 
-# Checks the PYLON_DEV_DIR and PYLON_ROOT environment variables
-if(DEFINED ENV{PYLON_DEV_DIR})
-  set(PYLON_DEV_DIR "$ENV{PYLON_DEV_DIR}")
-elseif(DEFINED ENV{PYLON_ROOT})
-  set(PYLON_DEV_DIR "$ENV{PYLON_ROOT}")
+# Checks CMake variables and the PYLON_DEV_DIR / PYLON_ROOT environment variables
+if(NOT DEFINED PYLON_DEV_DIR OR "${PYLON_DEV_DIR}" STREQUAL "")
+  if(DEFINED PYLON_ROOT AND NOT "${PYLON_ROOT}" STREQUAL "")
+    set(PYLON_DEV_DIR "${PYLON_ROOT}")
+  elseif(DEFINED ENV{PYLON_DEV_DIR})
+    set(PYLON_DEV_DIR "$ENV{PYLON_DEV_DIR}")
+  elseif(DEFINED ENV{PYLON_ROOT})
+    set(PYLON_DEV_DIR "$ENV{PYLON_ROOT}")
+  endif()
 endif()
 
 if(APPLE)

@@ -23,8 +23,6 @@ if get_option('test-hooks')
 endif
 
 pluginsdirs = []
-pylon_plugin_dir = meson.global_build_root() / 'ext' / 'pylon'
-pylon_lib_dir = meson.global_build_root() / 'gst-libs' / 'gst' / 'pylon'
 if gst_dep.type_name() == 'pkgconfig'
   pbase = dependency('gstreamer-plugins-base-' + api_version, required: true)
   pluginsdirs = [gst_dep.get_variable(pkgconfig : 'pluginsdir'),
@@ -54,10 +52,6 @@ pylonsrc
 test_deps = [gst_dep, gstbase_dep, gstcheck_dep, gstvideo_dep,
   gstpbutils_dep, valgrind_dep] + glib_deps
 
-check_pylon_root = run_command(python3, '-c',
-  'import os; print(os.environ.get("PYLON_ROOT", "/opt/pylon"))',
-  check: false).stdout().strip()
-
 # FIXME: add valgrind suppression common/gst.supp gst-plugins-good.supp
 foreach t : pylon_tests
   fname = '@0@.c'.format(t.get(0))
@@ -67,24 +61,25 @@ foreach t : pylon_tests
   skip_test = t.get(1, false)
   env_overrides = t.get(4, {})
   if not skip_test
-    env = environment()
+    env = pylon_build_env
     env.set('GST_PLUGIN_SYSTEM_PATH_1_0', '')
     env.set('GST_STATE_IGNORE_ELEMENTS', state_ignore_elements)
     env.set('CK_DEFAULT_TIMEOUT', env_overrides.get('CK_DEFAULT_TIMEOUT', '20'))
     env.set('GST_PLUGIN_LOADING_WHITELIST', 'gstreamer', 'gst-plugins-base',
         'gst-plugin-pylon@' + meson.global_build_root())
     env.set('GST_PLUGIN_PATH_1_0', [pylon_plugin_dir, meson.global_build_root()] + pluginsdirs)
-    env.prepend('LD_LIBRARY_PATH', pylon_lib_dir)
     env.set('GSETTINGS_BACKEND', 'memory')
     env.set('PYLON_CAMEMU', env_overrides.get('PYLON_CAMEMU', '1'))
     env.set('PYLONSRC_SKIP_TRANSPORT_LAYERS', 'usb,gige,cxp,cameralink')
-    env.set('PYLON_ROOT', check_pylon_root)
 
-    env.set('GST_REGISTRY', join_paths(meson.current_build_dir(), '@0@.registry'.format(test_name)))
-    env.set('GST_PLUGIN_SCANNER_1_0', gst_plugin_scanner_path)
+    env.set('GST_REGISTRY_1_0', join_paths(meson.current_build_dir(), '@0@.registry'.format(test_name)))
+    if fs.is_file(gst_plugin_scanner_path) or fs.is_file(gst_plugin_scanner_path + '.exe')
+      env.set('GST_PLUGIN_SCANNER_1_0', gst_plugin_scanner_path)
+    endif
     exe = executable(test_name, fname, extra_sources,
       include_directories : [configinc],
       c_args : ['-DHAVE_CONFIG_H=1' ] + test_defines,
+      build_rpath : pylon_rpath,
       dependencies : test_deps + extra_deps,
     )
     test(test_name, exe, env: env, timeout: env_overrides.get('timeout', 3 * 60))
@@ -97,6 +92,7 @@ imagehandler_test = executable(
   'generic/imagehandler.cpp',
   '../../ext/pylon/gstpylonimagehandler.cpp',
   include_directories: [configinc, include_directories('../../ext/pylon')],
+  build_rpath: pylon_rpath,
   dependencies: [gst_dep, pylon_dep, dependency('threads')],
   cpp_args: [
     '-DHAVE_CONFIG_H=1',
@@ -115,7 +111,12 @@ nvmmcolor_test = executable(
   dependencies: [gst_dep, gstvideo_dep],
   cpp_args: ['-DHAVE_CONFIG_H=1'],
 )
-test('generic_nvmmcolor', nvmmcolor_test, timeout: 30)
+# These unit tests use GStreamer types without loading any elements.
+unit_env = pylon_build_env
+unit_env.set('GST_PLUGIN_SYSTEM_PATH_1_0', '')
+unit_env.set('GST_PLUGIN_PATH_1_0', '')
+unit_env.set('GST_REGISTRY_1_0', meson.current_build_dir() / 'unit.registry')
+test('generic_nvmmcolor', nvmmcolor_test, timeout: 30, env: unit_env)
 
 # Declarative Gen2 feature prior unit test (no camera required)
 featureprior_test = executable(
@@ -124,10 +125,11 @@ featureprior_test = executable(
   '../../gst-libs/gst/pylon/gstpylonfeatureprior.cpp',
   '../../gst-libs/gst/pylon/gstpylondebug.cpp',
   include_directories: [configinc, include_directories('../../gst-libs')],
+  build_rpath: pylon_rpath,
   dependencies: [gst_dep, pylon_dep],
   cpp_args: ['-DHAVE_CONFIG_H=1'],
 )
-test('generic_featureprior', featureprior_test, timeout: 30)
+test('generic_featureprior', featureprior_test, timeout: 30, env: unit_env)
 
 # GenDC container zero-copy payload resolution test (CamEmu)
 gendc_test = executable(
@@ -138,15 +140,14 @@ gendc_test = executable(
     include_directories('../../ext/pylon'),
     include_directories('../../gst-libs'),
   ],
+  build_rpath: pylon_rpath,
   dependencies: [gst_dep, pylon_dep],
   cpp_args: ['-DHAVE_CONFIG_H=1'],
 )
-test('generic_gendc', gendc_test, timeout: 30,
-  env: {
-    'PYLON_CAMEMU': '1',
-    'PYLONSRC_SKIP_TRANSPORT_LAYERS': 'usb,gige,cxp,cameralink',
-    'PYLON_ROOT': check_pylon_root,
-  })
+gendc_env = unit_env
+gendc_env.set('PYLON_CAMEMU', '1')
+gendc_env.set('PYLONSRC_SKIP_TRANSPORT_LAYERS', 'usb,gige,cxp,cameralink')
+test('generic_gendc', gendc_test, timeout: 30, env: gendc_env)
 
 # Synthetic GenApi XML nodemap unit test (no camera required)
 nodemap_test = executable(
@@ -156,7 +157,8 @@ nodemap_test = executable(
     configinc,
     include_directories('../../gst-libs'),
   ],
+  build_rpath: pylon_rpath,
   dependencies: [gst_dep, gstpylon_dep],
   cpp_args: ['-DHAVE_CONFIG_H=1'],
 )
-test('generic_nodemap', nodemap_test, timeout: 30)
+test('generic_nodemap', nodemap_test, timeout: 30, env: unit_env)

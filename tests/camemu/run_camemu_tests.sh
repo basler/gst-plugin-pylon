@@ -4,9 +4,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BUILD_PREFIX="${BUILD_PREFIX:-$PROJECT_ROOT/install}"
-BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build}"
 PYLON_ROOT="${PYLON_ROOT:-/opt/pylon}"
 PYLON_CAMEMU="${PYLON_CAMEMU:-3}"
 # Isolate CamEmu tests from any physical USB/GigE/CXP/CameraLink cameras that
@@ -20,63 +17,9 @@ pass=0
 fail=0
 skip=0
 
-# Runtime search paths for the pylon SDK and libgstpylon.
-# Under fakeroot (dpkg-buildpackage) inherited LD_LIBRARY_PATH is only fakeroot
-# paths, so DT_RUNPATH alone is not enough for the plugin scanner child.
-plugin_file=""
-for dir in \
-    "$BUILD_PREFIX/lib64/gstreamer-1.0" \
-    "$BUILD_PREFIX/lib/gstreamer-1.0" \
-    "$BUILD_DIR/ext/pylon"
-do
-  for name in libgstpylon.so libgstpylon.dylib libgstpylon.dll gstpylon.dll; do
-    if [[ -f "$dir/$name" ]]; then
-      plugin_file="$dir/$name"
-      GST_PLUGIN_PATH="$dir"
-      break 2
-    fi
-  done
-done
-if [[ -z "$plugin_file" ]]; then
-  echo "No pylonsrc plugin found. Build with: ninja -C build"
-  exit 1
-fi
-
-EXTRA_LIBS=()
-if [[ "$GST_PLUGIN_PATH" == *ext/pylon || "$GST_PLUGIN_PATH" == *ext\\pylon ]]; then
-  EXTRA_LIBS+=("$BUILD_DIR/gst-libs/gst/pylon")
-else
-  EXTRA_LIBS+=("$(dirname "$GST_PLUGIN_PATH")")
-fi
-if [[ -d "$PYLON_ROOT/lib" ]]; then
-  EXTRA_LIBS+=("$PYLON_ROOT/lib")
-fi
-# NVMM-enabled builds also need DeepStream / CUDA at plugin-load time.
-if [[ -d /opt/nvidia/deepstream/deepstream/lib ]]; then
-  EXTRA_LIBS+=("/opt/nvidia/deepstream/deepstream/lib")
-fi
-if [[ -d /usr/local/cuda/lib64 ]]; then
-  EXTRA_LIBS+=("/usr/local/cuda/lib64")
-fi
-if [[ -d "$PYLON_ROOT/Runtime/x64" ]]; then
-  PATH="$PYLON_ROOT/Runtime/x64:$PATH"
-fi
-DYLD_FRAMEWORK_PATH="${DYLD_FRAMEWORK_PATH:-}"
-for fw in "$PYLON_ROOT/Library/Frameworks" "$PYLON_ROOT/Frameworks"; do
-  if [[ -d "$fw" ]]; then
-    DYLD_FRAMEWORK_PATH="$fw${DYLD_FRAMEWORK_PATH:+:$DYLD_FRAMEWORK_PATH}"
-  fi
-done
-
-lib_join=""
-for p in "${EXTRA_LIBS[@]}"; do
-  lib_join="$p${lib_join:+:$lib_join}"
-done
-LD_LIBRARY_PATH="${lib_join}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-DYLD_LIBRARY_PATH="${lib_join}${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
-
-export PYLON_ROOT PYLON_CAMEMU PYLONSRC_SKIP_TRANSPORT_LAYERS GST_PLUGIN_PATH PATH
-export LD_LIBRARY_PATH DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH
+export PYLON_ROOT PYLON_CAMEMU PYLONSRC_SKIP_TRANSPORT_LAYERS
+source "$SCRIPT_DIR/../check_plugin_path.sh"
+check_plugin_path
 export GST_DEBUG_NO_COLOR=1
 
 run_pass() {
@@ -176,7 +119,7 @@ gst_pipeline() {
 }
 
 echo "camemu functional tests (PYLON_CAMEMU=$PYLON_CAMEMU, PYLON_ROOT=$PYLON_ROOT)"
-echo "GST_PLUGIN_PATH=$GST_PLUGIN_PATH"
+echo "Testing $PYLON_TEST_PLUGIN"
 echo
 
 expect_output "plugin_loads" "Basler/Pylon source element" \

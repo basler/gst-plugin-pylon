@@ -10,6 +10,10 @@ option('glib-checks', type : 'feature', value : 'enabled', yield : true,
        description: 'Enable GLib checks such as API guards (auto = enabled for development, disabled for stable releases)')
 option('python-bindings', type : 'feature', value : 'disabled', yield : true,
        description: 'Enable meta Python bindings')
+option('pylon-root', type : 'string', value : '',
+       description: 'Path to the Basler pylon SDK installation (falls back to PYLON_ROOT env var)')
+option('pylon-rpath', type : 'string', value : '',
+       description: 'Runtime library search path for installed Linux binaries; use "none" to omit (default: derived from pylon-root with cross sys_root stripped)')
 option('nvmm', type : 'feature', value : 'auto',
        description: 'NVMM buffer support (DeepStream nvbufsurface + CUDA)')
 option('nvds-incdir', type : 'string', value : '',

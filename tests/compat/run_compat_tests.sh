@@ -8,36 +8,12 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 GOLDEN_DIR="$SCRIPT_DIR/golden"
-BUILD_PREFIX="${BUILD_PREFIX:-$PROJECT_ROOT/install}"
-BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build}"
-PYLON_ROOT="${PYLON_ROOT:-/opt/pylon}"
-
-# Resolve plugin and lib paths
-# Prefer install dir; else use build dir (ninja test without install)
-if [[ -d "$BUILD_PREFIX/lib64/gstreamer-1.0" ]] || [[ -d "$BUILD_PREFIX/lib/gstreamer-1.0" ]]; then
-  if [[ -d "$BUILD_PREFIX/lib64" ]]; then
-    LIB_DIR="$BUILD_PREFIX/lib64"
-  else
-    LIB_DIR="$BUILD_PREFIX/lib"
-  fi
-  GST_PLUGIN_PATH="$LIB_DIR/gstreamer-1.0"
-  LD_LIBRARY_PATH="$LIB_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-elif [[ -f "$BUILD_DIR/ext/pylon/libgstpylon.so" ]]; then
-  GST_PLUGIN_PATH="$BUILD_DIR/ext/pylon"
-  LD_LIBRARY_PATH="$BUILD_DIR/gst-libs/gst/pylon${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-else
-  echo "No plugin found. Build with: ninja -C build && ninja -C build install"
-  exit 1
-fi
-
 export LC_ALL=C
 # Camera emulator only. The golden must not depend on whatever USB3/GigE
 # cameras are attached to the host, so skip every real transport layer.
 export PYLON_CAMEMU=2
 export PYLONSRC_SKIP_TRANSPORT_LAYERS=usb,gige,cxp,cameralink
 unset GST_PYLON_SKIP_TL
-export GST_PLUGIN_PATH
-export LD_LIBRARY_PATH
 
 generate=false
 if [[ "${1:-}" == "--generate" ]]; then
@@ -50,16 +26,18 @@ fi
 # - normalize Filename (path varies) and Version (git hash varies)
 # - normalize child-property Default: lines (live camera state can vary)
 # - normalize the emulator DeviceVersion (it mirrors the installed pylon SDK build)
+# - omit the Element Flags section added by newer gst-inspect versions
 normalize_inspect() {
   sed 's/[[:space:]]*$//' \
     | sed 's/^[[:space:]]*\t/\t/' \
     | sed 's/ (GstValueList)//g; s/ (GstIntRange)//g; s/ (GstFractionRange)//g' \
-    | sed 's|Filename[[:space:]]*.*libgstpylon\.so.*|Filename                 libgstpylon.so|' \
+    | sed '/^Element Flags:$/,/^$/d' \
+    | sed -E 's#Filename[[:space:]]*.*(lib)?gstpylon\.(so|dylib|dll).*#Filename                 libgstpylon.so#' \
     | sed '/^[[:space:]]*Version[[:space:]]/s/[[:space:]]*Version[[:space:]].*$/  Version                  PLACEHOLDER/' \
     | sed '/^[[:space:]]\{20,\}/s/Default: true/Default: <bool>/g; /^[[:space:]]\{20,\}/s/Default: false/Default: <bool>/g' \
     | sed '/^[[:space:]]\{20,\}/s/Default: [0-9][0-9.]*, "[^"]*"/Default: <enum>/g' \
     | sed '/^[[:space:]]\{20,\}/s/Default: [0-9][0-9.e+-]*/Default: <num>/g' \
-    | sed '/^[[:space:]]\{20,\}/s/Default: "[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+"/Default: "<sdk-version>"/g' \
+    | sed -E '/^[[:space:]]{20,}/s/Default: "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+"/Default: "<sdk-version>"/g' \
     | sed '/^[[:space:]]\{20,\}/s/Default: "(null)"/Default: <str>/g; /^[[:space:]]\{20,\}/s/Default: ""/Default: <str>/g' \
     | cat -s
 }
@@ -73,7 +51,14 @@ run_gst_inspect() {
 }
 
 run_pipeline() {
-  timeout 60 gst-launch-1.0 -q pylonsrc device-serial-number=0815-0000 num-buffers=5 ! fakesink 2>&1
+  if [[ "$(uname -s)" == Linux* ]] && command -v timeout >/dev/null 2>&1; then
+    timeout 60 gst-launch-1.0 -q pylonsrc device-serial-number=0815-0000 num-buffers=5 ! fakesink 2>&1
+  elif [[ "$(uname -s)" == Darwin* ]] && command -v gtimeout >/dev/null 2>&1; then
+    gtimeout 60 gst-launch-1.0 -q pylonsrc device-serial-number=0815-0000 num-buffers=5 ! fakesink 2>&1
+  else
+    # Meson also enforces the overall test timeout.
+    gst-launch-1.0 -q pylonsrc device-serial-number=0815-0000 num-buffers=5 ! fakesink 2>&1
+  fi
 }
 
 require_inspect_property() {
@@ -85,6 +70,10 @@ require_inspect_property() {
   fi
 }
 
+extract_sdk_version() {
+  sed -nE 's/^[[:space:]]*Description[[:space:]]+Basler\/Pylon plugin for pylon SDK[[:space:]]+(.+)$/\1/p' "$1" | head -n 1
+}
+
 mkdir -p "$GOLDEN_DIR"
 cd "$PROJECT_ROOT"
 
@@ -93,7 +82,9 @@ cd "$PROJECT_ROOT"
 TMP_CACHE="$(mktemp -d)"
 trap 'rm -rf "$TMP_CACHE"' EXIT
 export XDG_CACHE_HOME="$TMP_CACHE"
-export GST_PLUGIN_PATH
+
+source "$SCRIPT_DIR/../check_plugin_path.sh"
+check_plugin_path
 
 if $generate; then
   echo "Generating golden files..."
@@ -112,6 +103,7 @@ fi
 echo "Running inspect-surface regression tests..."
 
 failed=0
+skipped=0
 
 # Test 1: gst-inspect surface
 actual_inspect=$(mktemp)
@@ -124,7 +116,13 @@ require_inspect_property "$actual_inspect" "enable-correction"
 require_inspect_property "$actual_inspect" "user-set"
 require_inspect_property "$actual_inspect" "cam"
 require_inspect_property "$actual_inspect" "stream"
-if ! diff -u "$GOLDEN_DIR/gst_inspect_pylonsrc.txt" "$actual_inspect"; then
+
+golden_sdk="$(extract_sdk_version "$GOLDEN_DIR/gst_inspect_pylonsrc.txt")"
+actual_sdk="$(extract_sdk_version "$actual_inspect")"
+if [[ -n "$golden_sdk" && -n "$actual_sdk" && "$golden_sdk" != "$actual_sdk" && "${PYLON_COMPAT_STRICT_GOLDEN:-0}" != "1" ]]; then
+  echo "SKIP: golden diff skipped (golden is for pylon SDK $golden_sdk, built against $actual_sdk; set PYLON_COMPAT_STRICT_GOLDEN=1 to enforce)"
+  skipped=1
+elif ! diff -u "$GOLDEN_DIR/gst_inspect_pylonsrc.txt" "$actual_inspect"; then
   echo "FAIL: gst-inspect output differs from golden"
   failed=1
 else
@@ -144,6 +142,12 @@ if [[ $failed -eq 1 ]]; then
   echo ""
   echo "Inspect-surface regression check FAILED. Review intentional API changes before updating the golden file."
   exit 1
+fi
+
+if [[ $skipped -eq 1 ]]; then
+  echo ""
+  echo "Required-property and pipeline checks passed; golden diff skipped due to pylon SDK version mismatch."
+  exit 77
 fi
 
 echo ""

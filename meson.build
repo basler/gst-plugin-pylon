@@ -13,7 +13,28 @@ gst_dep = dependency('gstreamer-1.0', version : gst_req)
 gst_version = gst_dep.version()
 message('Building against GStreamer ' + gst_version)
 
-python3 = import('python').find_installation()
+# Build-machine Python for configure/build helper scripts. In cross builds,
+# import('python').find_installation() looks up the host-machine interpreter,
+# which may not be runnable on the build machine.
+if meson.is_cross_build()
+  if build_machine.system() == 'windows'
+    python3 = find_program('python', 'python3', native: true)
+  else
+    python3 = find_program('python3', 'python', native: true)
+  endif
+else
+  python3 = import('python').find_installation()
+endif
+
+cross_sysroot = ''
+if meson.is_cross_build()
+  cross_sysroot = meson.get_external_property('sys_root', '')
+  if cross_sysroot == ''
+    cross_sysroot = run_command(python3, '-c',
+      'import os; print(os.environ.get("PKG_CONFIG_SYSROOT_DIR", ""))',
+      check: false).stdout().strip()
+  endif
+endif
 
 version_arr = gst_version.split('.')
 gst_version_major = version_arr[0].to_int()
@@ -30,7 +51,7 @@ gst_version_is_dev = gst_version_minor % 2 == 1 and gst_version_micro < 90
 # untagged commit or a dirty tree is reflected without reconfiguring.
 build_id_template = files('build_id.h.in')
 build_id_h = vcs_tag(
-  command : [python3, meson.project_source_root() / 'tools' / 'build_id.py',
+  command : [python3.full_path(), meson.project_source_root() / 'tools' / 'build_id.py',
              meson.project_source_root(),
              meson.project_version()],
   input : build_id_template,
@@ -255,7 +276,38 @@ if get_option('default_library') == 'shared'
 endif
 
 subdir('gst-libs')
+if host_system == 'linux' or host_system == 'darwin'
+  loader_origin = host_system == 'darwin' ? '@loader_path' : '$ORIGIN'
+endif
 subdir('ext')
+
+# Shared by meson devenv and tests which launch an external GStreamer process.
+pylon_build_env = environment()
+pylon_plugin_dir = fs.parent(gstpylon_plugin.full_path())
+pylon_lib_dir = fs.parent(gstpylon.full_path())
+if pylon_path != ''
+  pylon_build_env.set('PYLON_ROOT', pylon_path)
+endif
+pylon_build_env.set('PYLON_TEST_PLUGIN', gstpylon_plugin.full_path())
+if meson.is_subproject()
+  pylon_build_env.prepend('GST_PLUGIN_PATH', pylon_plugin_dir)
+else
+  pylon_build_env.prepend('GST_PLUGIN_PATH_1_0', pylon_plugin_dir)
+endif
+if host_system == 'windows'
+  pylon_win_path = [pylon_lib_dir]
+  if pylon_path != '' and fs.is_dir(pylon_path / 'Runtime/x64')
+    pylon_win_path += [pylon_path / 'Runtime/x64']
+  endif
+  pylon_build_env.prepend('PATH', pylon_win_path)
+elif host_system == 'darwin' and pylon_path != ''
+  foreach fw : ['Frameworks', 'Library/Frameworks']
+    if fs.is_dir(pylon_path / fw)
+      pylon_build_env.prepend('DYLD_FRAMEWORK_PATH', pylon_path / fw)
+    endif
+  endforeach
+endif
+meson.add_devenv(pylon_build_env)
 subdir('tests')
 subdir('docs')
 

@@ -22,10 +22,23 @@ py_install_dir = py3.get_install_dir()
 # imports on Debian bookworm (3.11) and Ubuntu 24.04 (3.12). Meson 0.61 does
 # not have python.extension_module(limited_api:), so name the shared module
 # explicitly with the standard abi3 suffix.
-if host_machine.system() == 'windows'
+if host_system == 'windows'
   pymeta_suffix = 'pyd'
 else
   pymeta_suffix = 'abi3.so'
+endif
+
+binding_rpath = pylon_install_rpath
+if host_system == 'linux' or host_system == 'darwin'
+  relative_libdir = run_command(python3, '-c',
+    'import posixpath, sys; print(posixpath.relpath(sys.argv[1].replace(chr(92), "/"), sys.argv[2].replace(chr(92), "/")))',
+    get_option('prefix') / get_option('libdir'),
+    get_option('prefix') / py_install_dir,
+    check: true).stdout().strip()
+  binding_rpath = loader_origin / relative_libdir
+  if pylon_install_rpath != ''
+    binding_rpath += ':' + pylon_install_rpath
+  endif
 endif
 
 pymeta = shared_module('pygstpylon',
@@ -34,74 +47,64 @@ pymeta = shared_module('pygstpylon',
   name_suffix : pymeta_suffix,
   install : true,
   install_dir : py_install_dir,
-  install_rpath : pylon_rpath,
+  build_rpath : pylon_rpath,
+  install_rpath : binding_rpath,
   cpp_args: ['-DHAVE_CONFIG_H=1', '-DPy_LIMITED_API=0x030A0000'],
   include_directories : [configinc],
   gnu_symbol_visibility: 'inlineshidden',
   dependencies : pygstpylon_deps,
 )
 
+binding_env = environment()
+binding_env.prepend('PYTHONPATH', meson.current_build_dir())
+meson.add_devenv(binding_env)
+
 # Register here: root meson.build runs subdir('tests') before subdir('bindings'),
 # so this suite cannot depend on pymeta if it lived only under tests/.
-gi_probe = run_command(
-  py3,
-  '-c',
-  'import gi; gi.require_version("Gst", "1.0"); from gi.repository import Gst',
-  check: false,
-)
-if gi_probe.returncode() != 0
-  warning('Skipping pygstpylon tests: PyGObject (gi) not available')
+if meson.is_cross_build() and not meson.can_run_host_binaries()
+  message('Skipping pygstpylon tests while cross-building')
 else
-  pygstpylon_pylon_root = run_command(
+  gi_probe = run_command(
     py3,
     '-c',
-    'import os; print(os.environ.get("PYLON_ROOT", "/opt/pylon"))',
+    'import gi; gi.require_version("Gst", "1.0"); from gi.repository import Gst',
     check: false,
-  ).stdout().strip()
-
-  pygstpylon_lib_dirs = [
-    meson.project_build_root() / 'gst-libs' / 'gst' / 'pylon',
-    join_paths(pygstpylon_pylon_root, 'lib'),
-    '/opt/nvidia/deepstream/deepstream/lib',
-    '/usr/local/cuda/lib64',
-  ]
-  pygstpylon_lib_path = ':'.join(pygstpylon_lib_dirs)
-  pygstpylon_plugin_path = meson.project_build_root() / 'ext' / 'pylon'
-  pygstpylon_test_env = {
-    'PYLON_CAMEMU': '4',
-    'PYLONSRC_SKIP_TRANSPORT_LAYERS': 'usb,gige,cxp,cameralink',
-    'PYLON_ROOT': pygstpylon_pylon_root,
-    'PYTHONPATH': meson.current_build_dir(),
-    'GST_PLUGIN_PATH': pygstpylon_plugin_path,
-    'GST_PLUGIN_PATH_1_0': pygstpylon_plugin_path,
-    'LD_LIBRARY_PATH': pygstpylon_lib_path,
-    'DYLD_LIBRARY_PATH': pygstpylon_lib_path,
-    'MALLOC_PERTURB_': '0',
-  }
-
-  # test(depends:) needs Meson >= 0.63; Ubuntu 22.04 ships 0.61. ninja test
-  # rebuilds default targets (including pymeta) before running tests.
-  pygstpylon_test_script = files('../tests/pygstpylon/test_pygstpylon.py')
-  if meson.version().version_compare('>= 0.63')
-    test(
-      'pygstpylon',
-      py3,
-      args: [pygstpylon_test_script],
-      env: pygstpylon_test_env,
-      depends: [pymeta, gstpylon_plugin],
-      timeout: 180,
-      is_parallel: false,
-      workdir: meson.project_source_root(),
-    )
+  )
+  if gi_probe.returncode() != 0
+    warning('Skipping pygstpylon tests: PyGObject (gi) not available')
   else
-    test(
-      'pygstpylon',
-      py3,
-      args: [pygstpylon_test_script],
-      env: pygstpylon_test_env,
-      timeout: 180,
-      is_parallel: false,
-      workdir: meson.project_source_root(),
-    )
+    pygstpylon_test_env = pylon_build_env
+    pygstpylon_test_env.set('PYLON_TEST_BINDING', pymeta.full_path())
+    pygstpylon_test_env.set('PYLON_CAMEMU', '4')
+    pygstpylon_test_env.set('PYLONSRC_SKIP_TRANSPORT_LAYERS', 'usb,gige,cxp,cameralink')
+    pygstpylon_test_env.set('GST_REGISTRY_1_0', meson.current_build_dir() / 'registry.bin')
+    pygstpylon_test_env.set('PYTHONPATH', meson.current_build_dir())
+    pygstpylon_test_env.set('MALLOC_PERTURB_', '0')
+
+    # test(depends:) needs Meson >= 0.63; Ubuntu 22.04 ships 0.61. ninja test
+    # rebuilds default targets (including pymeta) before running tests.
+    pygstpylon_test_script = files('../tests/pygstpylon/test_pygstpylon.py')
+    if meson.version().version_compare('>= 0.63')
+      test(
+        'pygstpylon',
+        py3,
+        args: [pygstpylon_test_script],
+        env: pygstpylon_test_env,
+        depends: [pymeta, gstpylon_plugin],
+        timeout: 180,
+        is_parallel: false,
+        workdir: meson.project_source_root(),
+      )
+    else
+      test(
+        'pygstpylon',
+        py3,
+        args: [pygstpylon_test_script],
+        env: pygstpylon_test_env,
+        timeout: 180,
+        is_parallel: false,
+        workdir: meson.project_source_root(),
+      )
+    endif
   endif
 endif

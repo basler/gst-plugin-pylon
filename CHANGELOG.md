@@ -67,6 +67,10 @@ All notable changes to this project will be documented in this file.
 - Boolean and string chunk support in CPython `abi3` `pygstpylon`, plus Windows
   `.pyd` + `.dll`/`.pdb` release zip packaging and CI `clang-format` /
   ASan+UBSan checks
+- Meson `-Dpylon-root` and `-Dpylon-rpath` options, `meson devenv` support, and
+  Yocto/sysroot-safe cross-compilation (build-machine Python for helper scripts,
+  automatic `sys_root` / `PKG_CONFIG_SYSROOT_DIR` stripping from installed
+  RPATHs, relative `$ORIGIN`/`@loader_path` RPATHs, and cross-safe NVMM probing)
 
 ### Fixed
 - Eliminated double `UserSetLoad` execution during session startup

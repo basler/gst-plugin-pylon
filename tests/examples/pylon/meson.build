@@ -21,6 +21,7 @@ gstpylon_dep = dependency('gstpylon')
 
 foreach example_meta : examples_meta
   executable(example_meta, example_meta + '.c',
+    build_rpath: pylon_rpath,
     dependencies: [gstvideo_dep, gst_dep, gstpylon_dep],
     c_args : gst_plugin_pylon_args,
     include_directories : [configinc],

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """pygstpylon unittest suite (API + camemu, including four parallel streams)."""
 
+import os
 import unittest
 
 import gi
@@ -33,6 +34,13 @@ class TestPygstpylonApi(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         Gst.init(None)
+
+    def test_build_targets(self):
+        if "PYLON_TEST_PLUGIN" in os.environ:
+            plugin = Gst.ElementFactory.find("pylonsrc").get_plugin()
+            self.assertTrue(os.path.samefile(plugin.get_filename(), os.environ["PYLON_TEST_PLUGIN"]))
+        if "PYLON_TEST_BINDING" in os.environ:
+            self.assertTrue(os.path.samefile(pygstpylon.__file__, os.environ["PYLON_TEST_BINDING"]))
 
     def test_version(self):
         self.assertTrue(pygstpylon.__version__)

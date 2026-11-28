@@ -38,26 +38,26 @@ PYLON_ROOT=/opt/pylon python3 tests/compat/bench_ab_v1_vs_v2.py --v2-build build
 ```bash
 git checkout main
 PYLON_ROOT=/opt/pylon/ uvx meson setup build --prefix=$PWD/install
-ninja -C build install
-./tests/compat/run_compat_tests.sh --generate
+ninja -C build
+meson devenv -C build bash "$PWD/tests/compat/run_compat_tests.sh" --generate
 # Commit tests/compat/golden/ if the baseline intentionally changed
 ```
 
 ### Run compatibility check (on feature branch)
 
 ```bash
-PYLON_ROOT=/opt/pylon/ ninja -C build install
-./tests/compat/run_compat_tests.sh
+PYLON_ROOT=/opt/pylon/ ninja -C build
+meson devenv -C build bash "$PWD/tests/compat/run_compat_tests.sh"
 ```
 
 ### Via meson test
 
 ```bash
-PYLON_ROOT=/opt/pylon/ ninja -C build install
+PYLON_ROOT=/opt/pylon/ ninja -C build
 PYLON_ROOT=/opt/pylon/ ninja -C build test
 ```
 
-Uses `PYLON_CAMEMU=2`. Generate golden in an environment that matches CI (emulated cameras only). If your system has real cameras, the golden may differ from CI; regenerate golden in CI or a container without physical cameras for a consistent baseline.
+Uses `PYLON_CAMEMU=2`. Generate golden in an environment that matches CI (emulated cameras only). If your system has real cameras, the golden may differ from CI; regenerate golden in CI or a container without physical cameras for a consistent baseline. When built against a different pylon SDK version than the golden file, required-property and pipeline checks still run and fail on regression, while the exact golden diff is skipped (exit code 77 in Meson) unless `PYLON_COMPAT_STRICT_GOLDEN=1` is set.
 
 ## Comparison workflow (main vs branch)
 
@@ -69,11 +69,11 @@ To guarantee no compatibility breaks:
 
 ## Adding to CI
 
-Add after `ninja -C build install`:
+Add after `ninja -C build`:
 
 ```yaml
 - name: Compatibility check
   run: |
     export PYLON_CAMEMU=2
-    ./tests/compat/run_compat_tests.sh
+    meson devenv -C build bash "$PWD/tests/compat/run_compat_tests.sh"
 ```
